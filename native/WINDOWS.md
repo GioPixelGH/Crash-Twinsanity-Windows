@@ -136,6 +136,13 @@ lower than shorter steps make them (2.14 high, 2.22 at 240 Hz); each step in the
 more (`CharacterAgent::Move`, `FramesPast60`). 50 Hz stays the European PS2's. check_windows.py's physics check measures it:
 `$TWIN_PHYSICS_TEST` (below) at a 144 Hz and a 240 Hz screen's uneven frames against 60 Hz's.
 
+Options > Display > Show FPS (`show_fps` in options.txt, off; issue #4 asked for it) draws the frames a second in the window's top
+left corner, as a PC game's counter does (ui/fpscounter.cpp): the pictures the window shows, counted by the overlay's hook as each
+is drawn (the game's frames, the movies' and the loading screens' alike), worked out every half second. It's the window's own
+corner whatever the picture's shape (in a pillarbox's or letterbox's bar when there's one), small, above the HUD (the health bar,
+the wumpa fruit and the lives start 5% of the picture in) and away from the menus' hints (the bottom corners). Being the overlay's,
+it's never in the game's picture: the frame dumps and the pictures check don't see it. Its check is `--fps-shots` (below).
+
 ## A runaway VU program
 
 VU1's model program (the one at address 0: a list of commands, each a handler) never ended in some frames: after Crash dies on
@@ -210,7 +217,9 @@ first 2,500 frames at a fixed time, every 100th picture compared byte for byte w
 against `native/sweep/results_windows.json` (a run that went on and one that ended in a game over count alike: the scripted
 input decides which). Some 4 minutes, 25 more with the sweep. Each run has a settings folder of its own; the disc image is
 local.json's. `--hints-shots FOLDER` runs only the hints' check, with a window, and saves the pause menu's pictures there;
-`--physics` only the physics' (a minute or so).
+`--physics` only the physics' (a minute or so); `--fps-shots FOLDER` only the FPS counter's (its `FPS_CASES`, `$TWIN_FPS_TEST`,
+below: at 60 Hz, 50 Hz, 144 Hz without v-sync, and off; a minute or so), with a window, as the counter counts the pictures shown
+(the self-test checks its sums and its place without one), and saves the window's pictures there.
 
 ## Debugging
 
@@ -239,7 +248,10 @@ local.json's. `--hints-shots FOLDER` runs only the hints' check, with a window, 
   `$TWIN_FIXED_TIME=144,144,60`: the frames' rates in turn instead (a 144 Hz screen's with a slow frame now and then: the uneven
   frames past 60 Hz, the same every run).
 - `$TWIN_FRAME_STATS`: each frame's time, VU1's work, the primitives, the render thread's time and the GPU renderer's batches, texture decodes, uploads, downloads and copies.
-- The log: each line `[native] [SECONDS]` from the start. The game's trail (ui/trail.cpp) is always in it: the game controller's
+- The log: each line `[native] [SECONDS]` from the start. Once the window is there it names the graphics card and its driver:
+  OpenGL's renderer, vendor and version (the driver's own number in it: NVIDIA's "3.3.0 NVIDIA 617.14", AMD's "... Core Profile
+  Context 24.10.1...", Intel's "... Build 31.0.101..."), then each adapter Windows has (graphics/adapters_win32.cpp, DXGI's: its
+  name, PCI vendor and device, its driver's version as Device Manager shows it and its video memory). The game's trail (ui/trail.cpp) is always in it: the game controller's
   states by name with the player's place (read without changing the game's), the player's chunk as it changes, the chunk a level
   loads at, the memory card's writes and the movies opened. The detailed log (Options > Gameplay, `detailed_log` in
   options.txt, or `$TWIN_DETAILED_LOG`) adds the player's place every 5 s of play, every sound played (game/sound.cpp, as
@@ -280,6 +292,12 @@ local.json's. `--hints-shots FOLDER` runs only the hints' check, with a window, 
   keyboard` picks the controller), then the mouse clicks the pages' right and left arrows and back; "hints test: pass" and exit 0.
   `$TWIN_HINTS_TEST=FOLDER` without `--headless` also saves the window as it's shown (the picture and the overlay:
   `NativeGraphicsShootWindow`) there: hints_pause.png and hints_levels.png.
+- `$TWIN_FPS_TEST=1` or `=FOLDER` (with `--quick` and a window, ui/fpstest.cpp): the beach played a few seconds, then the status
+  button held (the HUD shows) and the FPS counter checked, then the pause menu and again: with the show FPS option on, what it
+  shows has to be the game's own frames a second (counted by the test over the same 2 s, within 8%), and at 50 and 60 Hz the
+  paced rate (within 5%: the game holds it); past 60 the rate the computer reaches is logged; off, nothing shown. With a folder the
+  window is saved there as it's shown, whatever the checks found: fps_play.png (the HUD and the counter) and fps_pause.png (the
+  menu's hints and the counter). "fps test: pass" and exit 0.
 - `$TWIN_LOOK_TEST=1` (with `--quick`, ui/looktest.cpp): the beach played a few seconds, then the mouse moved right at a steady
   3000 points a second (mouse look holding it without a window, headless too) with the mouse sensitivity and camera speed at 5
   and 5, 10 and 5, 5 and 10, the follow camera's turn measured over a second of its clock: the stick's full deflection's 120

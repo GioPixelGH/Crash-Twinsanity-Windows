@@ -67,6 +67,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionLanguage, "language", 0, 5},
     {OptionDetailedLog, "detailed_log", 0, 1},
     {OptionMenuHints, "menu_hints", 0, 1},
+    {OptionShowFps, "show_fps", 0, 1},
 };
 
 s32 g_Values[OptionCount];
@@ -302,6 +303,7 @@ void Frame()
     SweepFrame();
     SaveTestFrame();
     HintsTestFrame();
+    FpsTestFrame();
     LookTestFrame();
     PhysicsTestFrame();
     SettingsShotsFrame();

@@ -3,6 +3,7 @@
 // has them, the PC wording applied)
 #include "ui/pctext.h"
 #include "ui/bindings.h"
+#include "ui/overlayinternal.h"
 
 #include "native.h"
 
@@ -14,6 +15,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -822,6 +824,61 @@ void TestControls()
                 "checked");
 }
 
+// The FPS counter: nothing shown with the option off or before its first half second, the frames a second of pictures shown at
+// 50, 59.94, 144 and 60 a second, and drawn in the window's own top left corner whatever the window's shape
+void TestFpsCounter()
+{
+    SetOptionSaving(false);
+    double at = 100.0;
+    auto show = [&at](double rate, double seconds) {
+        u32 pictures = static_cast<u32>(std::lround(rate * seconds));
+        for (u32 i = 0; i < pictures; i++)
+        {
+            CountShownFrame(at);
+            at += 1.0 / rate;
+        }
+    };
+    SetOption(OptionShowFps, 0);
+    show(60.0, 1.0);
+    Check(FpsCounterValue() < 0, "the FPS counter off: %d shown", FpsCounterValue());
+    SetOption(OptionShowFps, 1);
+    show(60.0, 0.4);
+    Check(FpsCounterValue() < 0, "the FPS counter's first half second: %d shown", FpsCounterValue());
+    const struct
+    {
+        double rate;
+        s32 shown;
+    } Rates[] = {{50.0, 50}, {60000.0 / 1001.0, 60}, {144.0, 144}, {60.0, 60}};
+    for (const auto& rate : Rates)
+    {
+        show(rate.rate, 1.5);
+        Check(FpsCounterValue() == rate.shown, "the FPS counter at %.2f a second: %d shown", rate.rate, FpsCounterValue());
+    }
+
+    // Its box's corner the margin (6 reference pixels, scaled) from the window's, in a 16:9 window and a 4:3 one
+    for (const auto& window : {std::pair<int, int>{1920, 1080}, std::pair<int, int>{960, 720}})
+    {
+        std::vector<OverlayFrame::Command> commands;
+        AddFpsCounter(&commands, window.first, window.second);
+        f32 scale;
+        f32 offsetX;
+        f32 offsetY;
+        ReferenceMapping(static_cast<f32>(window.first), static_cast<f32>(window.second), &scale, &offsetX, &offsetY);
+        auto box = std::find_if(commands.begin(), commands.end(), [](const auto& command) { return command.kind == CommandKind::Box; });
+        auto text = std::find_if(commands.begin(), commands.end(), [](const auto& command) { return command.kind == CommandKind::Text; });
+        bool placed = box != commands.end() && std::abs(box->x * scale + offsetX - 6.0f * scale) < 0.5f &&
+                      std::abs(box->y * scale + offsetY - 6.0f * scale) < 0.5f;
+        Check(placed && text != commands.end() && text->text == U"60 FPS", "the FPS counter in a %dx%d window's corner",
+              window.first, window.second);
+    }
+
+    SetOption(OptionShowFps, 0);
+    std::vector<OverlayFrame::Command> none;
+    AddFpsCounter(&none, 1280, 720);
+    Check(none.empty() && FpsCounterValue() < 0, "the FPS counter off again: nothing drawn");
+    Native::Log("ui self-test: the FPS counter checked");
+}
+
 // --dump-button-art DIR: the Xbox's glyphs read from the Xbox disc (and the Switch's made from them) as PNGs, for looking at
 int DumpButtonArt(const char* folder)
 {
@@ -982,6 +1039,7 @@ bool RunCommand(const char* argument, int* status)
         TestSaveFlow();
         TestResolution();
         TestControls();
+        TestFpsCounter();
         Native::Log("ui self-test: %s", g_Failures == 0 ? "passed" : "FAILED");
         *status = g_Failures == 0 ? 0 : 1;
         return true;

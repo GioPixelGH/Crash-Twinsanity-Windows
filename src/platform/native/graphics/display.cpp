@@ -774,6 +774,21 @@ void NativeGraphicsAttachWindow(SDL_Window* window)
     SDL_GL_MakeCurrent(window, p.context);
     // The frames are paced by the vertical blank's own wait
     SDL_GL_SetSwapInterval(0);
+    // The graphics card and its driver in the log, for the bug reports: OpenGL's renderer, vendor and version (the driver's own
+    // number in it: NVIDIA's "3.3.0 NVIDIA 617.14", AMD's "... Core Profile Context 24.10.1...", Intel's "... Build 31.0.101...",
+    // Mesa's), then Windows' adapters and their drivers' versions
+    auto getString = reinterpret_cast<const unsigned char* (*)(GLenum)>(SDL_GL_GetProcAddress("glGetString"));
+    if (getString != nullptr)
+    {
+        auto text = [getString](GLenum name) {
+            const unsigned char* value = getString(name);
+            return value != nullptr ? reinterpret_cast<const char*>(value) : "?";
+        };
+        Native::Log("graphics: %s (%s), OpenGL %s", text(0x1F01), text(0x1F00), text(0x1F02));
+    }
+#if defined(_WIN32)
+    NativeGraphics::LogAdapters();
+#endif
     Gl& gl = p.gl;
     Load(gl.GenTextures, "glGenTextures");
     Load(gl.BindTexture, "glBindTexture");

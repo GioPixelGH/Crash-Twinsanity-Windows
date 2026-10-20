@@ -20,6 +20,9 @@ void SetFrameRate(s32 rate);
 void ShowFrame();
 // The renderer and internal resolution settings (settings.h, resolution.h) put into effect: at the start and after each picture
 void ApplyGraphicsSettings();
+// Windows: every graphics adapter written to the log with its driver's version and its memory, once the window is there
+// (adapters_win32.cpp)
+void LogAdapters();
 
 // The last picture shown: RGBA bytes, a row after another
 struct Picture

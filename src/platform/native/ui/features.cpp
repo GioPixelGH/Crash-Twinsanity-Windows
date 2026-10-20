@@ -73,6 +73,9 @@ void ApplyOption(Option option)
     case OptionVSync:
         NativeGraphicsSetVSync(IsOn(OptionVSync));
         break;
+    case OptionShowFps:
+        SetFpsCounterShown(IsOn(OptionShowFps));
+        break;
     case OptionVoiceVolume:
         ApplyVolumes();
         break;
@@ -97,6 +100,7 @@ void ApplyStartOptions()
     ApplyOption(OptionTexturePack);
     ApplyOption(OptionAntiAliasing);
     ApplyOption(OptionVSync);
+    ApplyOption(OptionShowFps);
     ApplyVolumes();
 }
 

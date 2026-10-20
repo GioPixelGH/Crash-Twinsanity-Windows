@@ -223,6 +223,8 @@ enum NativeText : u32
     TextDescMenuHints,
     TextHintsOriginal,
     TextHintsBar,
+    TextShowFps,
+    TextDescShowFps,
     NativeTextEnd,
 };
 
@@ -349,6 +351,8 @@ enum Option : u32
     OptionDetailedLog,
     // The game's menus' button hints: the game's own (0: OLEG's labels, their glyphs the controller's) or the native bar (1)
     OptionMenuHints,
+    // A frames per second counter in the window's top left corner (fpscounter.cpp)
+    OptionShowFps,
     OptionCount,
 };
 
@@ -356,6 +360,12 @@ s32 GetOption(Option option);
 // An option's default (options.cpp's table): the first start's value and the settings' reset's
 s32 DefaultOption(Option option);
 bool IsOn(Option option);
+// The show FPS option's counter (fpscounter.cpp): shown or not (ApplyOption), each picture the window shows counted at its time
+// (seconds, the presenter's thread: the overlay's hook), and the frames a second it shows (-1: none, the option off or the first
+// half second not counted yet)
+void SetFpsCounterShown(bool shown);
+void CountShownFrame(double seconds);
+s32 FpsCounterValue();
 // The game's trail in the log, a frame at a time (trail.cpp)
 void TrailFrame();
 // Sets an option (kept, and applied at once where it applies at once)

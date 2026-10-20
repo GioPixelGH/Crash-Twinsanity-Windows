@@ -153,6 +153,9 @@ void SaveTestInput(BoundPad* pad);
 // The game's menus' hints test ($TWIN_HINTS_TEST, hintstest.cpp): its frame and its scripted start
 void HintsTestFrame();
 void HintsTestInput(BoundPad* pad);
+// The FPS counter's test ($TWIN_FPS_TEST, fpstest.cpp): its frame and its scripted status button and start
+void FpsTestFrame();
+void FpsTestInput(BoundPad* pad);
 // The mouse look test ($TWIN_LOOK_TEST, looktest.cpp): whether it runs (mouse look then holds the mouse without a window), its
 // frame (the scripted motion) and the follow camera's yaw and clock (ScaleCameraTurn's)
 bool LookTestActive();

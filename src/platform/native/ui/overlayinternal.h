@@ -50,4 +50,6 @@ bool CursorArt(std::vector<u32>* pixels, s32* width, s32* height);
 bool ImageArt(OverlayImage image, std::vector<u32>* pixels, s32* width, s32* height);
 // A mouse image's art (mouseart.cpp): drawn at a fixed size, RGBA
 bool MouseArt(OverlayImage image, std::vector<u32>* pixels, s32* width, s32* height);
+// The show FPS option's counter added to the commands drawn over a window of these pixels (fpscounter.cpp; none when it's off)
+void AddFpsCounter(std::vector<OverlayFrame::Command>* commands, int pixelWidth, int pixelHeight);
 }

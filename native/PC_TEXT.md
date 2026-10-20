@@ -202,6 +202,8 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x19D | the menus' button hints: the game's own, or a bar at the bottom. | les aides des boutons : celles du jeu, ou une barre en bas. | die tastenhinweise: die des spiels oder eine leiste unten. | las ayudas de botones: las del juego o una barra abajo. | i suggerimenti dei tasti: quelli del gioco o una barra in basso. |
 | 0x19E | original | originales | original | originales | originali |
 | 0x19F | bar | barre | leiste | barra | barra |
+| 0x1A0 | show fps | afficher les fps | fps anzeigen | mostrar fps | mostra fps |
+| 0x1A1 | a frames per second counter in the top left corner. | un compteur d'images par seconde en haut à gauche. | ein bilder-pro-sekunde-zähler oben links. | un contador de imágenes por segundo arriba a la izquierda. | un contatore di fotogrammi al secondo in alto a sinistra. |
 
 ## English (29 lines)
 

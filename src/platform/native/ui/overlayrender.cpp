@@ -4,12 +4,14 @@
 // (stb_truetype), the options' backdrop worked out per pixel (its gradient, the ring target, the Twinsanity spiral of
 // native/design/options/spiral_grey.svg: two Archimedean arms r = 10 + 35.45 theta over 2.2 turns), images
 #include "ui/overlayinternal.h"
+#include "ui/nativeui.h"
 
 #include "graphics/presenter.h"
 #include "native.h"
 
 #include <SDL3/SDL.h>
 
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstring>
@@ -833,11 +835,14 @@ void DrawFrame(const std::vector<OverlayFrame::Command>& commands, int pixelWidt
     gl.Disable(GL_SCISSOR_TEST);
 }
 
-// The presenter's hook: the last frame handed over, over the game's picture
+// The presenter's hook: the last frame handed over, over the game's picture, and the FPS counter (the picture counted)
 void OverlayHook(int pixelWidth, int pixelHeight, float pixelScale)
 {
     NoteWindow(pixelWidth, pixelHeight, pixelScale);
-    DrawFrame(SubmittedFrame(), pixelWidth, pixelHeight);
+    CountShownFrame(std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count());
+    std::vector<OverlayFrame::Command> commands = SubmittedFrame();
+    AddFpsCounter(&commands, pixelWidth, pixelHeight);
+    DrawFrame(commands, pixelWidth, pixelHeight);
 }
 }
 

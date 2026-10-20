@@ -70,8 +70,8 @@ speed** (Options > Accessibility) makes the camera turn faster or slower for the
 Options (from the main or pause menu) has PC settings: the language (English, French, German, Italian or Spanish texts, voices
 and movies; Windows' language by default, the new one from the game's next start), window size or fullscreen, the internal
 resolution, widescreen (4:3, 16:9 or 21:9), the refresh rate, texture filtering, scanlines, texture packs, anti-aliasing
-(FXAA), v-sync, volumes, skipping cutscenes, faster loading, and optional fixes of the original game's bugs (off plays exactly
-like the PS2).
+(FXAA), v-sync, a frames per second counter (**Show FPS**, off by default: in the top left corner), volumes, skipping cutscenes,
+faster loading, and optional fixes of the original game's bugs (off plays exactly like the PS2).
 
 The defaults are the game as the PS2 had it, in a 1280×720 window at twice the PS2's resolution and 60 Hz: cutscenes can't be
 skipped (the PS2 game couldn't; turn **Skip cutscenes** on to hold any button through them), the original bugs are kept, and
@@ -99,7 +99,7 @@ The game writes what it's doing to `log.txt` in the settings folder, or to the t
 (`CrashTwinsanity.exe` in PowerShell or the Command Prompt). A crash writes a report there with the program's addresses, and so
 does a freeze (the game stuck for 20 seconds: where it's stuck). Each start keeps the last run's log as `log.previous.txt`, so
 after a freeze or a crash you can start the game again and still send it. Please include it with any bug report, with where in
-the game it happened.
+the game it happened: it also names your graphics card and its driver's version.
 
 The log always has the time of each line, the game's states as they change (loading, playing, a cutscene, paused, a death,
 game over) with where Crash is, the area he's in, the saves written and the movies played. To report a bug you can reproduce,

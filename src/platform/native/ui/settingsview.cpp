@@ -77,7 +77,7 @@ std::string ProperWords(const std::string& text)
         {"playstation", "PlayStation"}, {"nintendo", "Nintendo"}, {"switch", "Switch"}, {"dolby", "Dolby"}, {"pro logic ii", "Pro Logic II"},
         {"v-sync", "V-sync"},   {"esc", "Esc"},         {"fxaa", "FXAA"},   {"msaa", "MSAA"},         {"smaa", "SMAA"},
         {"crash", "Crash"},     {"cortex", "Cortex"},   {"nina", "Nina"},   {"wumpa", "Wumpa"},       {"tv", "TV"},
-        {"hud", "HUD"},         {"ui", "UI"},           {"pc", "PC"},
+        {"hud", "HUD"},         {"ui", "UI"},           {"pc", "PC"},       {"fps", "FPS"},
     };
     auto letter = [](unsigned char c) { return std::isalnum(c) != 0 || c >= 0xC0; };
     std::string out = text;

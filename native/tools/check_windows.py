@@ -9,7 +9,7 @@ The runs' logs and pictures go to build/native/check/.
 --build builds first (build_windows.py). The program checked is build/native/cmake/CrashTwinsanity.exe unless --exe says;
 the pictures are compared with --reference's (by default the last packaged build's, build/native/dist/). Every run has a
 settings folder of its own (none of the player's), and the disc image is local.json's. Exits 1 when a check fails. --physics
-runs only the physics' check.
+runs only the physics' check; --fps-shots FOLDER only the FPS counter's, with a window (the counter counts the pictures shown).
 """
 import argparse
 import json
@@ -37,6 +37,9 @@ SCENARIOS = [
 # ($TWIN_UI_PROMPTS) and the option (options.txt's menu_hints: 0 the game's own hints, 1 the bar). The pause on the window's focus
 # lost is off: a run with a window (the shots) isn't the window in front
 HINTS = [("playstation", 0), ("xbox", 0), ("switch", 0), ("keyboard", 0), ("xbox", 1)]
+# The FPS counter checked with a window (fpstest.cpp): a name, the show FPS option (options.txt's show_fps), the refresh option
+# (refresh_60hz: 0 50 Hz, 1 60 Hz, 3 144 Hz) and v-sync (off for 144 Hz: a 60 Hz screen's refresh would hold it to 60)
+FPS_CASES = [("60 Hz", 1, 1, 1), ("50 Hz", 1, 0, 1), ("144 Hz", 1, 3, 0), ("off", 0, 1, 1)]
 # What a scenario's log mustn't have besides a crash: the disk manager's pool out of room (game/disk.cpp), and DMA reading
 # memory that isn't there (what a texture's data overwritten looks like before the crash)
 MEMORY_PROBLEMS = ["disk: no room", "reads from no memory"]
@@ -138,6 +141,24 @@ def menu_hints(exe, work, shots=None):
         return name, status == 0 and last.startswith("pass"), f"{last}; {hints}"
     with ThreadPoolExecutor(1 if shots else 2) as pool:
         return list(pool.map(one, HINTS))
+
+
+def fps_counter(exe, work, shots):
+    """The FPS counter (fpstest.cpp) for each of FPS_CASES, with a window: the frames a second it shows against the game's own (and
+    at 50 and 60 Hz the game holding its rate), or none with the option off; the window's pictures saved in shots (a folder for each
+    case, fps_play.png and fps_pause.png): [(name, passed, what happened)]"""
+    results = []
+    for name, shown, refresh, vsync in FPS_CASES:
+        slug = name.replace(" ", "-").lower()
+        pictures = Path(shots) / slug
+        pictures.mkdir(parents=True, exist_ok=True)
+        status, log = run_game(exe, work / f"fps-{slug}", ["--quick"], {"TWIN_FPS_TEST": str(pictures.resolve())}, timeout=300,
+                               options=f"show_fps={shown}\nrefresh_60hz={refresh}\nvsync={vsync}\npause_on_focus_loss=0\n")
+        lines = [line.split("fps test: ", 1)[1] for line in log.splitlines() if "fps test: " in line]
+        last = lines[-1] if lines else f"exit {status}, no result"
+        counted = "; ".join(line for line in lines[:-1] if line.startswith(("playing", "paused")))
+        results.append((name, status == 0 and last == "pass", f"{last} ({counted})"))
+    return results
 
 
 def mouse_look(exe, work):
@@ -296,6 +317,8 @@ def main():
     parser.add_argument("--physics", action="store_true", help="only the physics' check (past 60 Hz against 60 Hz's)")
     parser.add_argument("--hints-shots", metavar="FOLDER",
                         help="only the menu hints' check, with a window: the pause menu's pictures saved in FOLDER")
+    parser.add_argument("--fps-shots", metavar="FOLDER",
+                        help="only the FPS counter's check, with a window: the window's pictures saved in FOLDER")
     arguments = parser.parse_args()
 
     if arguments.build:
@@ -318,6 +341,11 @@ def main():
         results = menu_hints(exe, work, arguments.hints_shots)
         for name, ok, what in results:
             print(f"hints           {'ok' if ok else 'FAILED'} {name}: {what}")
+        sys.exit(0 if all(ok for _, ok, _ in results) else 1)
+    if arguments.fps_shots:
+        results = fps_counter(exe, work, arguments.fps_shots)
+        for name, ok, what in results:
+            print(f"fps counter     {'ok' if ok else 'FAILED'} {name}: {what}")
         sys.exit(0 if all(ok for _, ok, _ in results) else 1)
     print(f"checking        {exe}")
     failed = report(exe, Path(arguments.reference) if arguments.reference else None, work, arguments.sweep)
