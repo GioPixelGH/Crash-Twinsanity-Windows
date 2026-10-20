@@ -6,7 +6,8 @@ clone of the public repository with no changes of its own, so nothing local gets
     .venv\\Scripts\\python.exe native\\tools\\release_windows.py publish NOTES.md [--preview]
 
 check: pulls (fast-forward only), configures and builds afresh (build_windows.py --configure), packages (package_windows.py),
-then checks the zip, unpacked: the program's version against native/CMakeLists.txt's, the DLLs it imports, its files against the
+then checks the zip, unpacked: the program's version against native/CMakeLists.txt's, its company and copyright against
+native/windows.rc.in's, the DLLs it imports, its files against the
 last release's, that the program has no 32-byte block of the game executable's data or VU microcode the last release's didn't,
 and check_windows.py's checks with the pictures compared with the last release's program. It prints the commit, the version and
 the zip's SHA-256, and keeps them for publish (build/native/release/release.json).
@@ -95,12 +96,29 @@ def unpack(archive, folder):
         return sorted(name for name in z.namelist() if not name.endswith("/"))
 
 
+def resource_string(exe, key):
+    """A value of the program's version resource (FileVersion, CompanyName, LegalCopyright...): "" when it has none"""
+    data = Path(exe).read_bytes()
+    at = data.find((key + "\0").encode("utf-16-le"))
+    if at < 0:
+        return ""
+    text = data[at:at + 1024].decode("utf-16-le", "replace").split("\0")
+    return next((part for part in text[1:] if part), "")
+
+
 def program_version(exe):
     """The version resource's FileVersion"""
-    data = Path(exe).read_bytes()
-    at = data.find("FileVersion".encode("utf-16-le"))
-    text = data[at:at + 80].decode("utf-16-le", "replace").split("\0")
-    return next((part for part in text[1:] if part), "")
+    return resource_string(exe, "FileVersion")
+
+
+def declared_details():
+    """The author's details native/windows.rc.in gives the program (its CompanyName and LegalCopyright), the resource
+    compiler's octal escapes (\\251 for the copyright sign) decoded"""
+    text = (HERE / "native" / "windows.rc.in").read_text(encoding="utf-8")
+    values = {}
+    for key, value in re.findall(r'VALUE "(\w+)", "((?:[^"\\]|\\.)*)"', text):
+        values[key] = re.sub(r"\\([0-7]{1,3})", lambda found: chr(int(found.group(1), 8)), value)
+    return {key: values.get(key, "") for key in ("CompanyName", "LegalCopyright")}
 
 
 def imports(exe):
@@ -171,6 +189,10 @@ def check(arguments):
     wanted, have = version(), program_version(exe)
     print(f"version         {have}{'' if have == wanted else ' (CMakeLists.txt says ' + wanted + ': FAILED)'}")
     failed |= have != wanted
+    # The author's details (Properties > Details): only our program carries them; the DLLs keep their own authors'
+    wrong = [key for key, value in declared_details().items() if not value or resource_string(exe, key) != value]
+    print(f"details         {'company and copyright as native/windows.rc.in has them' if not wrong else 'FAILED: ' + ', '.join(wrong)}")
+    failed |= bool(wrong)
     stray = [name for name in imports(exe) if not ALLOWED_IMPORTS.match(name)]
     print(f"imports         {'Windows, SDL and FFmpeg only' if not stray else 'FAILED, also: ' + ', '.join(stray)}")
     failed |= bool(stray)

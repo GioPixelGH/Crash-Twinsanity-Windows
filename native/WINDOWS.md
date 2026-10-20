@@ -304,7 +304,8 @@ In a clone of the public repository with no changes of its own (a new script in 
 
 `check` pulls (and runs again when that brought a commit, so its checks are the pulled commit's), builds afresh
 (`build_windows.py --configure`), packages (`package_windows.py`) and checks the zip, unpacked: the program's version against
-native/CMakeLists.txt's; the DLLs it imports (Windows', SDL's and FFmpeg's only); its files against the last release's;
+native/CMakeLists.txt's; its company and copyright (Properties > Details) against native/windows.rc.in's (only our program has
+them: the DLLs keep their authors'); the DLLs it imports (Windows', SDL's and FFmpeg's only); its files against the last release's;
 check_windows.py's checks, with the pictures compared with the last release's program; and that the program has no 32-byte block
 of the game executable's data or VU microcode the last release's didn't (version 1.0.5 has 23 of the 3,832 that aren't
 repetitive, none of the microcode: runs of small integers, the standard library's tables, powers of ten and digits, and file
