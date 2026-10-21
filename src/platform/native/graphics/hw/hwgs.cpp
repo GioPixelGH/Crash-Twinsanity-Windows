@@ -666,7 +666,7 @@ uniform float alp;
 uniform int ownAlpha;
 uniform vec3 background;
 out vec4 colour;
-bool Read(sampler2D buffer, vec4 place, vec2 corner, vec2 size, vec2 at, out vec4 c)
+bool Read(sampler2D source, vec4 place, vec2 corner, vec2 size, vec2 at, out vec4 c)
 {
     vec2 local = at - place.xy;
     if (local.x < 0.0 || local.y < 0.0 || local.x >= place.z || local.y >= place.w)
@@ -674,7 +674,7 @@ bool Read(sampler2D buffer, vec4 place, vec2 corner, vec2 size, vec2 at, out vec
         return false;
     }
 
-    c = texelFetch(buffer, ivec2(corner + local), 0);
+    c = texelFetch(source, ivec2(corner + local), 0);
     return true;
 }
 void main()
