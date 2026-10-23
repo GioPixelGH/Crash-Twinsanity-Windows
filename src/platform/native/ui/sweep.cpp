@@ -19,11 +19,13 @@
 #include "game/player.h"
 #include "game/reference.h"
 #include "game/string.h"
+#include "graphics/presenter.h"
 
 #include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <algorithm>
 #include <atomic>
 #include <cctype>
@@ -953,6 +955,21 @@ void SweepFrame(bool fromPads)
             controller->oleg.pictures[picture].wanted = wanted;
             controller->oleg.LoadPicture(picture, 1);
             nextPicture++;
+        }
+
+        // $TWIN_SWEEP_SHOTS=FOLDER:SECONDS: the window saved every SECONDS of play as it's shown (shot_000.png on; with a window,
+        // not --headless): a place's pictures, the README's
+        static const char* shots = std::getenv("TWIN_SWEEP_SHOTS");
+        static const char* every = shots != nullptr ? std::strrchr(shots, ':') : nullptr;
+        static f32 nextShot = every != nullptr ? static_cast<f32>(std::atof(every + 1)) : 0.0f;
+        static u32 shot = 0;
+        if (every != nullptr && nextShot > 0.0f && !fromPads && g_Played >= nextShot)
+        {
+            char name[32];
+            std::snprintf(name, sizeof(name), "/shot_%03u.png", shot++);
+            NativeGraphicsShootWindow((std::string(shots, every) + name).c_str());
+            Native::Log("sweep: shot %s at %.1f s", name + 1, g_Played);
+            nextShot += static_cast<f32>(std::atof(every + 1));
         }
 
         if (g_Played >= g_Seconds)

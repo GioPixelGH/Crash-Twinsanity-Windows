@@ -194,6 +194,8 @@ int main(int argc, char** argv)
         }
     }
 
+    // The port's version first (native/CMakeLists.txt's), for the bug reports' logs
+    Native::Log("Crash Twinsanity %s", TWIN_PORT_VERSION);
     Native::OpenDiscImage();
     NativeApplyDataFixups();
     // $TWIN_FIXED_TIME: the test runs' time (debug.h's g_DebugFixedTime): every frame takes exactly a frame's time and reads

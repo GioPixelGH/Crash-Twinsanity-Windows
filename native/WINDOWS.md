@@ -248,7 +248,8 @@ below: at 60 Hz, 50 Hz, 144 Hz without v-sync, and off; a minute or so), with a 
   `$TWIN_FIXED_TIME=144,144,60`: the frames' rates in turn instead (a 144 Hz screen's with a slow frame now and then: the uneven
   frames past 60 Hz, the same every run).
 - `$TWIN_FRAME_STATS`: each frame's time, VU1's work, the primitives, the render thread's time and the GPU renderer's batches, texture decodes, uploads, downloads and copies.
-- The log: each line `[native] [SECONDS]` from the start. Once the window is there it names the graphics card and its driver:
+- The log: each line `[native] [SECONDS]` from the start. The first names the version (`Crash Twinsanity 1.0.12`, from
+  native/CMakeLists.txt: only entry.cpp is compiled with it). Once the window is there it names the graphics card and its driver:
   OpenGL's renderer, vendor and version (the driver's own number in it: NVIDIA's "3.3.0 NVIDIA 617.14", AMD's "... Core Profile
   Context 24.10.1...", Intel's "... Build 31.0.101..."), then each adapter Windows has (graphics/adapters_win32.cpp, DXGI's: its
   name, PCI vendor and device, its driver's version as Device Manager shows it and its video memory). The game's trail (ui/trail.cpp) is always in it: the game controller's
@@ -287,6 +288,9 @@ below: at 60 Hz, 50 Hz, 144 Hz without v-sync, and off; a minute or so), with a 
   `$TWIN_TRIGGER_PLAN=list` lists the message triggers of the player's chunk (index, place, box); a list of steps (`4,die,4`)
   puts the player in a trigger or drops it to its death every 8 s, the lives kept up. `$TWIN_SWEEP_IDLE` gives no scripted
   input (cutscenes play out). `$TWIN_TEST_PICK=PATH` is the disc image dialog's pick (empty: cancelled).
+  `$TWIN_SWEEP_SHOTS=FOLDER:SECONDS` (with a window, not `--headless`) saves the window every SECONDS of play as it's shown
+  (`shot_000.png` on): the README's pictures came from it, a run's `resolution.txt` saying `scale=4`, `window=1600x900` and
+  `fullscreen=0`.
 - `$TWIN_SKIP_TEST=SECONDS` (ui/features.cpp; the skip option on in the run's options.txt, `skip_cutscenes=1`): in every scene
   that can be skipped a button pressed SECONDS after the scene's first poll and held for the hold's time (1 s) and half a second
   more; each skip logged with the scene's polls and the longest gap between two, each scene that wasn't skipped as the next

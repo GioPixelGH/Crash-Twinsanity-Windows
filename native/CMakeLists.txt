@@ -126,6 +126,9 @@ list(TRANSFORM REUSED_PS2 PREPEND ${ROOT}/)
 set(RETAIL_SOURCES ${REUSED_PS2})
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${ROOT}/native/reused_ps2.txt)
 file(GLOB_RECURSE PLATFORM_SOURCES CONFIGURE_DEPENDS ${ROOT}/src/platform/native/*.cpp)
+# The version the log's first line names (entry.cpp alone, so a new version compiles one file again)
+set_source_files_properties(${ROOT}/src/platform/native/entry.cpp PROPERTIES
+    COMPILE_DEFINITIONS "TWIN_PORT_VERSION=\"${PROJECT_VERSION}\"")
 
 # The retail data as C++, made again when the split, the converter or the C++'s declarations change
 set(DATA_CPP ${ROOT}/build/native/data.cpp)
