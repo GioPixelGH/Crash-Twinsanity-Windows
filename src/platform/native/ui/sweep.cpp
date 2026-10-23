@@ -767,8 +767,38 @@ void TriggerPlanFrame()
         {
             const Vector4& p = triggers[i]->place->position;
             const Box& box = triggers[i]->collision.box;
-            Native::Log("triggers: %zu at (%.1f, %.1f, %.1f), box (%.1f, %.1f, %.1f)-(%.1f, %.1f, %.1f)", i, p.x, p.y, p.z, box.min.x,
-                        box.min.y, box.min.z, box.max.x, box.max.y, box.max.z);
+            // The clock units between two checks of its box (0x7FFFFFFF: in effect never), and whether it's checked at all
+            const auto* node = static_cast<const TriggerNode*>(GetGameNode(&triggers[i]->nodes, NodeMessageTrigger));
+            Native::Log("triggers: %zu at (%.1f, %.1f, %.1f), box (%.1f, %.1f, %.1f)-(%.1f, %.1f, %.1f), checked every %d clock "
+                        "units%s",
+                        i, p.x, p.y, p.z, box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z, node->checkTicks,
+                        node->bits.neverPolled != 0 ? " (never polled)" : "");
+        }
+
+        // The camera triggers too (not steps of a plan), with the kinds of nodes their events go to
+        std::vector<InstanceContext*> cameras;
+        found.triggers = &cameras;
+        ForEachLiveInstance(
+            [](InstanceContext* instance, void* user)
+            {
+                auto* f = static_cast<Found*>(user);
+                if (instance->chunk == f->chunk && instance->place != nullptr &&
+                    GetGameNode(&instance->nodes, NodeCameraTrigger) != nullptr)
+                {
+                    f->triggers->push_back(instance);
+                }
+            },
+            &found);
+        for (size_t i = 0; i < cameras.size(); i++)
+        {
+            cameras[i]->place->SyncPosition();
+            const Vector4& p = cameras[i]->place->position;
+            const Box& box = cameras[i]->collision.box;
+            const auto* node = static_cast<const TriggerNode*>(GetGameNode(&cameras[i]->nodes, NodeCameraTrigger));
+            Native::Log("triggers: camera %zu at (%.1f, %.1f, %.1f), box (%.1f, %.1f, %.1f)-(%.1f, %.1f, %.1f), checked every %d "
+                        "clock units%s, events to 0x%X",
+                        i, p.x, p.y, p.z, box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z, node->checkTicks,
+                        node->bits.neverPolled != 0 ? " (never polled)" : "", node->eventKinds);
         }
     }
 

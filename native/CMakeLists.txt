@@ -241,10 +241,17 @@ foreach(target game twinsanity)
 target_include_directories(${target} PRIVATE ${ROOT}/native/include ${ROOT}/include ${ROOT}/src/platform/native)
 target_compile_definitions(${target} PRIVATE TWIN_NATIVE)
 # What the PS2 build's flags keep of the retail code's behaviour: no fused multiply-adds (the R5900 has none the game's code
-# uses), no assumptions about aliasing, null checks or signed overflow the retail compiler didn't make
+# uses), no assumptions about aliasing, null checks or signed overflow the retail compiler didn't make. A float made an integer
+# out of the integer's range saturates, as the R5900's conversion and arm64's do (x86-64's own gives 0x80000000 either way):
+# -fno-strict-float-cast-overflow makes the conversions clang's saturating ones (the same instruction on arm64). The retail code
+# makes every float an integer with one cvt.w.s (0x7FFFFFFF from 2^31 up, 0x80000000 from -2^31 down) and the game's C++ only
+# ever makes it an s32, so its results are the R5900's. It also makes a negative float made unsigned 0 (cvt.w.s's bits wrap)
+# and clamps one past a narrower type, but only the platform's code has those, on values in range. Out of range in play (the
+# level sweep with -fsanitize=float-cast-overflow): cameras' check intervals of +-2^32 clock units (High Seas Hi-Jinks, the
+# school's roof: never polled, so unused) and a sprite's wobble angle (its base never set: the heap's leftovers). WINDOWS.md
 target_compile_options(${target} PRIVATE
     -std=gnu++2c -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-strict-aliasing -fno-delete-null-pointer-checks -fwrapv
-    -ffp-contract=off -Wall -Wno-invalid-offsetof -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable
+    -ffp-contract=off -fno-strict-float-cast-overflow -Wall -Wno-invalid-offsetof -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable
     -Wno-unknown-pragmas -Wno-missing-braces -Wno-mismatched-tags)
 target_link_libraries(${target} PRIVATE SDL3::SDL3 OpenGL::GL PkgConfig::FFMPEG)
 if(WIN32)

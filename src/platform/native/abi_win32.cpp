@@ -69,9 +69,16 @@ int SelfTest()
     CallEabi<void>(reinterpret_cast<const void*>(&AbiTestMixed), &g_Marker, 2.5f, mixed);
     CallEabi<void>(reinterpret_cast<const void*>(&AbiTestPlain), &g_Marker, 2.5f, plain);
     CallEabi<void>(reinterpret_cast<const void*>(&AbiTestMixed), &g_Marker, unmixed);
-    bool good = mixed[0] == 1 && mixed[1] == 1 && plain[0] == 1 && plain[1] == 1 && unmixed[0] == 1;
-    Native::Log("selftest-abi: mixed to System V's %d %d, mixed to Windows' %d %d, unmixed to System V's %d: %s", mixed[0], mixed[1],
-                plain[0], plain[1], unmixed[0], good ? "pass" : "FAIL");
+    // Floats made s32s out of range saturate as the R5900's cvt.w.s does (-fno-strict-float-cast-overflow, native/CMakeLists.txt)
+    volatile f32 above = 4294967296.0f;
+    volatile f32 below = -4294967296.0f;
+    u32 high = static_cast<u32>(static_cast<s32>(above));
+    u32 low = static_cast<u32>(static_cast<s32>(below));
+    bool good = mixed[0] == 1 && mixed[1] == 1 && plain[0] == 1 && plain[1] == 1 && unmixed[0] == 1 && high == 0x7FFFFFFFu &&
+                low == 0x80000000u;
+    Native::Log("selftest-abi: mixed to System V's %d %d, mixed to Windows' %d %d, unmixed to System V's %d, 2^32 and -2^32 made "
+                "s32s 0x%X 0x%X: %s",
+                mixed[0], mixed[1], plain[0], plain[1], unmixed[0], high, low, good ? "pass" : "FAIL");
     return good ? 0 : 1;
 }
 
