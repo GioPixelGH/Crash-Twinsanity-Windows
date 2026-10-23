@@ -1,0 +1,61 @@
+name: Bug report
+description: Something in the game or the program doesn't work as it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please never attach your disc image or the game's files.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: >-
+        The release you're playing. The first line of log.txt names it (from 1.0.13 on); otherwise right-click
+        CrashTwinsanity.exe > Properties > Details.
+      placeholder: "1.0.12"
+    validations:
+      required: true
+  - type: input
+    id: pc
+    attributes:
+      label: PC
+      description: Windows version, graphics card and controller.
+      placeholder: "Windows 11, NVIDIA GeForce RTX 3060, Xbox One controller"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead. Screenshots or a video help a lot.
+    validations:
+      required: true
+  - type: textarea
+    id: where
+    attributes:
+      label: Where and how
+      description: >-
+        The level or area, what you were doing, and whether it happens again when you do the same thing.
+      placeholder: "Cavern Catastrophe, on the first lift with Cortex tied to Crash: ..."
+  - type: textarea
+    id: options
+    attributes:
+      label: Options you changed
+      description: >-
+        Frame rate, resolution, v-sync, filtering, texture packs, mods, and any launch options or environment variables
+        (such as TWIN_RENDER_THREAD=0).
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: >-
+        Drag log.txt here from %APPDATA%\Crash Twinsanity\ (paste that path in the Explorer's address bar). After a crash
+        or a freeze, start the game again and attach log.previous.txt too: that's the run that went wrong.
+    validations:
+      required: true
+  - type: checkboxes
+    id: copy
+    attributes:
+      label: Your copy of the game
+      options:
+        - label: I'm playing with a disc image of my own PAL copy of Crash Twinsanity (SLES-52568).
+          required: true

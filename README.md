@@ -12,6 +12,15 @@ Windows needs, makes it run at a steady 60 fps, and fixes the crashes found by p
 > Crash Twinsanity and Crash Bandicoot are trademarks of Activision. PlayStation is a trademark of Sony Interactive
 > Entertainment. This is a fan project, not affiliated with or endorsed by either.
 
+| | |
+| --- | --- |
+| ![N. Sanity Beach](docs/screenshots/beach.jpg) | ![High Seas Hi-Jinks](docs/screenshots/ice.jpg) |
+| ![A cutscene with the villains](docs/screenshots/villains.jpg) | ![Twinsanity Island](docs/screenshots/twinsanity.jpg) |
+| ![The pause menu, with an Xbox controller's buttons](docs/screenshots/pause_menu.jpg) | ![The PC options](docs/screenshots/options.jpg) |
+
+*Taken from the Windows program in a 1600×900 window at 4× the PS2's resolution, without texture packs. The menus show the
+buttons of the controller in use, and the PC options have their own screen.*
+
 ## Download
 
 The [latest release](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases/latest) has
@@ -19,6 +28,18 @@ The [latest release](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/rele
 `Crash Twinsanity` folder and pick your disc image. Version 1.0.8 is the first full release, now that the game has been
 played from the start to the credits; the ones before were previews. Linux has no download yet: build it yourself
 ([native/LINUX.md](native/LINUX.md)).
+
+## Is it safe?
+
+- The zip holds only the program built from this repository's code, the SDL 3 and FFmpeg libraries, two fonts and the
+  licences. There's no installer, and the program has no network code.
+- The release page shows the zip's SHA-256, so you can check your download with `Get-FileHash`. Here is
+  [VirusTotal's report on 1.0.12's download](https://www.virustotal.com/gui/url/6ed9050e25993157d30ef77a69c4b7e7aba61368c9669caca1caf95553cd1e90/detection).
+- The program isn't code-signed, so Windows may say "Windows protected your PC" the first time: choose **More info**, then
+  **Run anyway**.
+- You can also build it yourself (below).
+
+More in [SECURITY.md](.github/SECURITY.md), including how to report a security problem privately.
 
 ## Status
 
@@ -138,6 +159,17 @@ repository shipped isn't included here: get it from its author.
 - [Crash Twinsanity Improved](https://github.com/AlexMollard/Crash-Twinsanity-Improved) by AlexMollard: the Mac port's
   optional fixes come from this mod. Its 21:9 mode is TechieSaru's fix, from the mod's PCSX2 patches.
 - CRASHARKI, for the HD texture pack the Mac port was tested with.
+
+**Contributors and testers of the Windows port:**
+
+- [Gabriel-TwoBits](https://github.com/Gabriel-TwoBits): the Linux build, with its fixes and low memory emulation, named
+  backtraces, and the build script with its AppImage (#1, #2, #3).
+- The players whose reports and tests made it better: [NitorikoSkye](https://github.com/NitorikoSkye) (the ROG Ally and AMD
+  graphics, the physics past 60 Hz, many suggestions), [SSStylishh](https://github.com/SSStylishh) (played it to the end),
+  [APerson7778](https://github.com/APerson7778) (mouse look) and [VenezuelanHell](https://github.com/VenezuelanHell) (older
+  AMD drivers).
+
+Bug reports, suggestions and pull requests are welcome: see [CONTRIBUTING.md](.github/CONTRIBUTING.md).
 
 **References:**
 

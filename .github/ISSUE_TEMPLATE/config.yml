@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Players' guide
+    url: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/blob/main/native/PLAYING_WINDOWS.md
+    about: Options, controls, saves, mods, and what to do if something goes wrong.
+  - name: Is the download safe?
+    url: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/blob/main/.github/SECURITY.md
+    about: What the program does on your PC, how to check the download, and how to report a security problem privately.
