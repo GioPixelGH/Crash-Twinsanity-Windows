@@ -84,6 +84,8 @@ mouse and controller, saves, cutscene skipping, community fixes):
 [native/WINDOWS.md](native/WINDOWS.md) explains each change, with the reasons and how they were tested.
 [native/PLAYING_WINDOWS.md](native/PLAYING_WINDOWS.md) is the player's guide: options, controls, saves, mods.
 
+![cortexdimension](docs/screenshots/cortexdimension.jpg)
+
 ## Building on Windows
 
 You need about 3 GB of disk space, your PAL disc image and an internet connection for the first build.
@@ -139,6 +141,8 @@ More on the Windows build: [native/WINDOWS.md](native/WINDOWS.md). The decompila
 retail executable, and its tools): [README_DECOMP.md](README_DECOMP.md) and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 HAB3X's native layer: [native/NATIVE.md](native/NATIVE.md), [native/GRAPHICS.md](native/GRAPHICS.md),
 [native/AUDIO.md](native/AUDIO.md).
+
+![dungeon](docs/screenshots/dungeon.jpg)
 
 ## Texture packs
 
@@ -219,5 +223,5 @@ developer, I reviewed and supervised the work. Each commit made with it says so.
 | ![A cutscene with the villains](docs/screenshots/villains.jpg) | ![Twinsanity Island](docs/screenshots/twinsanity.jpg) |
 | ![The pause menu, with an Xbox controller's buttons](docs/screenshots/pause_menu.jpg) | ![The PC options](docs/screenshots/options.jpg) |
 
-*Taken from the Windows program in a 1600×900 window at 4× the PS2's resolution, without texture packs. The menus show the
+*Taken from the Windows program at 4× the PS2's resolution, without texture packs. The menus show the
 buttons of the controller in use, and the PC options have their own screen.*
