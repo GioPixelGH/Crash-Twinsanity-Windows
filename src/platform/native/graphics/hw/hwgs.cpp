@@ -3856,6 +3856,7 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
 
     // A glyph image's sprite (the UI's glyphs)
     Gs::Vertex glyphed[3];
+    bool glyphImage = false;
     if (state.textured && state.uv && state.type == Gs::PrimSprite)
     {
         repeatable = false;
@@ -3863,6 +3864,7 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
         if (gs_.GlyphForBackend(state, glyphed, count))
         {
             vertexes = glyphed;
+            glyphImage = true;
         }
     }
 
@@ -4195,7 +4197,8 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
             texture = cached.id;
 
             // A replacement of level 0 (PCSX2's packs), looked for when its texels change; and the dump of it in PCSX2's
-            // names (TWIN_HW_DUMP_TEXTURES=folder)
+            // names (TWIN_HW_DUMP_TEXTURES=folder). A glyph image is neither: TEX0 names the font it's drawn over, whose
+            // replacement is the pack's whole font sheet (it was drawn squeezed into the menus' buttons)
             static const char* dumpFolder = std::getenv("TWIN_HW_DUMP_TEXTURES");
             const Gs::TextureLevel& base = state.levels[0];
             if (base.cacheId != nullptr && base.texels != nullptr && (ReplacementsEnabled() || dumpFolder != nullptr) &&
@@ -4203,7 +4206,8 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
             {
                 cached.replacementVersion = base.version;
                 NativeGraphics::ReplacementKey replacementKey;
-                bool keyed = NativeGraphics::ReplacementKeyFor(gs_, base, state.context->tex0, state.context->clamp, &replacementKey);
+                bool keyed = !glyphImage &&
+                             NativeGraphics::ReplacementKeyFor(gs_, base, state.context->tex0, state.context->clamp, &replacementKey);
                 if (keyed && dumpFolder != nullptr && !cached.dumped && base.stride == base.width &&
                     (left <= 0 && top <= 0 && right >= static_cast<s32>(base.width) - 1 && bottom >= static_cast<s32>(base.height) - 1))
                 {

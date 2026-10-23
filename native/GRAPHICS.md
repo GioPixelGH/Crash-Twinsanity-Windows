@@ -176,6 +176,8 @@ into `$TWIN_HW_DUMP_DIR`), `TWIN_HW_TRACE_PRIM=N` (a primitive's batch state and
 hashes), PNG (SDL) and DDS (uncompressed, BC1-3; BC7 not yet), named as PCSX2 names them (native/research/HD_TEXTURES.md:
 XXH3-64 of the texture's GS blocks or texels, the palette's hash, the packed TEX0/TEXA word; level 0 only, as with PCSX2's
 mipmapping off). A replaced texture is sampled with the original's normalised coordinates, its mipmaps generated.
+The UI's glyph images (`glyphs.h`: the menus' buttons) are neither replaced nor dumped: TEX0 still names the font they're drawn
+over, whose replacement (the pack's whole font sheet) was drawn squeezed into each button.
 `hw/xxhash.h` is xxHash 0.8.3 (BSD 2-Clause, Yann Collet). `$TWIN_HW_DUMP_TEXTURES=folder` writes the textures the draws read
 whole under the same names (a pack's starting point). Checked against PCSX2 2.8.2's own dump of the PAL game (Metal renderer,
 mipmapping off): 50 names alike, every texture of local memory our replays dumped that PCSX2's run reached (the one name not
