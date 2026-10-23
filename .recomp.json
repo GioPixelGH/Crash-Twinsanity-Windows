@@ -1,0 +1,35 @@
+{
+  "$schema": "https://recomp.fyi/schema/v1.json",
+  "game": "Crash Twinsanity",
+  "wikidata": "Q1257775",
+  "system": "PS2",
+  "type": "port",
+  "original": {
+    "region": "Europe",
+    "serial": "SLES-52568",
+    "sha1": "d41b8d53f733f930cf03d8ea944bec24429fe57c"
+  },
+  "project": "Crash Twinsanity for Windows",
+  "status": "released",
+  "targets": ["Windows", "Linux"],
+  "toolchain": ["SDL3", "OpenGL"],
+  "approach": "Smartkin's C++ decompilation built natively on HAB3X's SDL3 platform layer, which emulates the PS2's graphics (GS, VIF, VU1) with an OpenGL renderer; the Windows port adds Windows' calling convention, the low memory emulation, three threads and the crash fixes.",
+  "maintainers": [
+    { "name": "GioPixelGH", "link": "https://github.com/GioPixelGH" }
+  ],
+  "links": [
+    { "label": "Latest release", "url": "https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases/latest" },
+    { "label": "Smartkin's decompilation", "url": "https://github.com/Smartkin/twinsanity-reversed" },
+    { "label": "HAB3X's Mac port", "url": "https://github.com/HAB3X/Crash-Twinsanity-Mac" },
+    { "label": "Full playthrough, part 1 (Italian)", "url": "https://www.youtube.com/watch?v=FoeQtD3ew04" },
+    { "label": "Full playthrough, part 2 (Italian)", "url": "https://www.youtube.com/watch?v=qvhJDY744mo" }
+  ],
+  "help": [
+    "Testing on AMD graphics cards",
+    "Testing on handhelds (ROG Ally, Steam Deck)",
+    "Bug reports with the game's log",
+    "A Linux download"
+  ],
+  "tags": ["PAL", "60fps", "widescreen", "mods", "texture-packs", "AI-assisted"],
+  "notes": "Plays from start to credits, played by hand and by testers. A steady 60 fps, or 50, 120, 144 Hz and unlimited at the same game speed; up to 4x the PS2's resolution, widescreen and 21:9; keyboard, mouse and controllers with their own button prompts; a PC options screen; an optional cutscene skip and the retail bug fixes; a mods folder and PCSX2's texture packs. The SHA-1 is of the disc's executable, SLES_525.68, which the program checks, not of the disc image. Next: the GitHub issues (AMD graphics, suggestions)."
+}
