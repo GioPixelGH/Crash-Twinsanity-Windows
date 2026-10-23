@@ -5,7 +5,7 @@
 # The retail data comes from the split as C++ (native/tools/convert_data.py writes build/native/data.cpp; this build runs it).
 # See native/NATIVE.md.
 cmake_minimum_required(VERSION 3.24)
-project(TwinsanityNative VERSION 1.0.12 LANGUAGES CXX)
+project(TwinsanityNative VERSION 1.0.13 LANGUAGES CXX)
 
 set(ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)
 # C++26 like the PS2 build's gnu++26 (CMake doesn't know AppleClang has it and would fall back to C++23)
