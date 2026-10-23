@@ -784,7 +784,7 @@ f32 NoOpCutsceneSkippedCondition::Check(GameNode*, BehaviourLevel*, const u32*)
 #ifdef TWIN_NATIVE
     // The cutscene skip the retail game disabled (it returns 0): with the option on, "hold any button to skip" (the community
     // patcher's "restored cutscene skips", condition 575 holding triangle, its executable patch at 0x2F0ACC/0x12C578, made any
-    // key, mouse button or pad button pressed after the cutscene began and held 0.6 s: ui/features.cpp)
+    // key, mouse button or pad button pressed after the cutscene began and held 1 s: ui/features.cpp)
     if (NativeUi::IsOn(NativeUi::OptionSkipCutscenes) && Parameter() != 0)
     {
         if (!NativeUi::SkipHoldComplete())

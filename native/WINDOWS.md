@@ -287,6 +287,12 @@ below: at 60 Hz, 50 Hz, 144 Hz without v-sync, and off; a minute or so), with a 
   `$TWIN_TRIGGER_PLAN=list` lists the message triggers of the player's chunk (index, place, box); a list of steps (`4,die,4`)
   puts the player in a trigger or drops it to its death every 8 s, the lives kept up. `$TWIN_SWEEP_IDLE` gives no scripted
   input (cutscenes play out). `$TWIN_TEST_PICK=PATH` is the disc image dialog's pick (empty: cancelled).
+- `$TWIN_SKIP_TEST=SECONDS` (ui/features.cpp; the skip option on in the run's options.txt, `skip_cutscenes=1`): in every scene
+  that can be skipped a button pressed SECONDS after the scene's first poll and held for the hold's time (1 s) and half a second
+  more; each skip logged with the scene's polls and the longest gap between two, each scene that wasn't skipped as the next
+  begins. A level start plays none (the player starts in play): with `$TWIN_SWEEP_IDLE` and a trigger plan (`0,1,2,...`) the
+  triggers start them. The hold is lost when the polls stop for more than 0.25 s (a new scene), so a gap near that is the thing
+  to look for.
 - `$TWIN_HINTS_TEST=1` (with `--quick`, ui/hintstest.cpp): the beach played a few seconds, then the pause menu: its hints
   checked as the menu hints option has them and logged as the prompts label them (`$TWIN_UI_PROMPTS=playstation|xbox|switch|
   keyboard` picks the controller), then the mouse clicks the pages' right and left arrows and back; "hints test: pass" and exit 0.

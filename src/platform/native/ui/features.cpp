@@ -18,6 +18,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdio>
+#include <cstdlib>
 #include <vector>
 
 // The graphics' texture settings (settings.cpp has their weak stand-ins until the graphics define them)
@@ -140,8 +142,8 @@ void ApplyGameSettingsOnce()
 namespace
 {
 using SkipClock = std::chrono::steady_clock;
-// A press (just long enough not to be a stray key bounce): "press any button to skip"
-constexpr f32 SkipHoldSeconds = 0.1f;
+// A hold long enough that a button pressed by chance as a scene starts doesn't skip it (it was 0.1 s, a press)
+constexpr f32 SkipHoldSeconds = 1.0f;
 constexpr f32 SceneGap = 0.25f;
 // The skip reported for this long once the hold completes (a scene's scripts may look a few frames later), then what's held is
 // ignored until it's let go (a scene right after isn't skipped too)
@@ -164,9 +166,74 @@ std::vector<s32> g_SkipForcedInputs;
 bool g_SkipClockForced = false;
 SkipClock::time_point g_SkipForcedNow;
 
+f32 Seconds(SkipClock::time_point from, SkipClock::time_point to)
+{
+    return std::chrono::duration<f32>(to - from).count();
+}
+
+// $TWIN_SKIP_TEST=SECONDS (testing): in each scene a button pressed SECONDS after it began and held for the hold's time and a
+// little more, as a player would, each scene logged as the next begins (its length, its polls, the longest gap between two and
+// whether the hold skipped it): whether a hold gets through the game's scenes, their polls never a SceneGap apart while it's held
+struct SkipTest
+{
+    s32 scenes = 0;
+    SkipClock::time_point began;
+    SkipClock::time_point lastPoll;
+    s32 polls = 0;
+    f32 longestGap = 0.0f;
+    f32 skippedAt = -1.0f;
+};
+SkipTest g_SkipTest;
+constexpr s32 SkipTestInput = 0x40000;
+
+f32 SkipTestDelay()
+{
+    static const char* delay = std::getenv("TWIN_SKIP_TEST");
+    return delay != nullptr ? static_cast<f32>(std::atof(delay)) : -1.0f;
+}
+
+void LogSkipTestScene()
+{
+    SkipTest& test = g_SkipTest;
+    if (test.scenes == 0)
+    {
+        return;
+    }
+
+    char skipped[48] = "not skipped";
+    if (test.skippedAt >= 0.0f)
+    {
+        std::snprintf(skipped, sizeof(skipped), "skipped %.2f s in", test.skippedAt);
+    }
+
+    Native::Log("skip test: scene %d, %.2f s, %d polls, the longest gap %.3f s: %s", test.scenes,
+                Seconds(test.began, test.lastPoll), test.polls, test.longestGap, skipped);
+}
+
+// A poll seen by the test (before the skip's own): whether its button is held now
+bool SkipTestHeld(SkipClock::time_point now)
+{
+    SkipTest& test = g_SkipTest;
+    if (test.scenes == 0 || Seconds(test.lastPoll, now) > SceneGap)
+    {
+        LogSkipTestScene();
+        s32 scenes = test.scenes + 1;
+        test = {};
+        test.scenes = scenes;
+        test.began = now;
+        test.lastPoll = now;
+    }
+
+    test.longestGap = std::max(test.longestGap, Seconds(test.lastPoll, now));
+    test.lastPoll = now;
+    test.polls++;
+    f32 in = Seconds(test.began, now);
+    return test.skippedAt < 0.0f && in >= SkipTestDelay() && in < SkipTestDelay() + SkipHoldSeconds + 0.5f;
+}
+
 // The inputs held: keys (SDL scancodes), the mouse's buttons (0x10000 + SDL's), the pad's buttons (0x20000 + SDL's) and triggers
-// (0x30000 + 0 or 1)
-std::vector<s32> HeldInputs()
+// (0x30000 + 0 or 1); the skip test's button (SkipTestInput)
+std::vector<s32> HeldInputs(SkipClock::time_point now)
 {
     if (g_SkipInputsForced)
     {
@@ -174,6 +241,11 @@ std::vector<s32> HeldInputs()
     }
 
     std::vector<s32> held;
+    if (SkipTestDelay() >= 0.0f && SkipTestHeld(now))
+    {
+        held.push_back(SkipTestInput);
+    }
+
     int count = 0;
     const bool* keys = SDL_GetKeyboardState(&count);
     for (int key = 0; keys != nullptr && key < count; key++)
@@ -224,11 +296,6 @@ SkipClock::time_point SkipNow()
     return g_SkipClockForced ? g_SkipForcedNow : SkipClock::now();
 }
 
-f32 Seconds(SkipClock::time_point from, SkipClock::time_point to)
-{
-    return std::chrono::duration<f32>(to - from).count();
-}
-
 bool Contains(const std::vector<s32>& list, s32 value)
 {
     return std::find(list.begin(), list.end(), value) != list.end();
@@ -239,7 +306,7 @@ bool PollSkipHold()
 {
     SkipHold& skip = g_Skip;
     SkipClock::time_point now = SkipNow();
-    std::vector<s32> held = HeldInputs();
+    std::vector<s32> held = HeldInputs(now);
     if (!skip.scene || Seconds(skip.lastPoll, now) > SceneGap)
     {
         // A scene begins: what's held now doesn't count
@@ -299,6 +366,13 @@ bool PollSkipHold()
     {
         skip.done = true;
         skip.doneAt = now;
+        if (SkipTestDelay() >= 0.0f && !g_SkipInputsForced)
+        {
+            g_SkipTest.skippedAt = Seconds(g_SkipTest.began, now);
+            Native::Log("skip test: scene %d skipped %.2f s in (%d polls, the longest gap %.3f s)", g_SkipTest.scenes,
+                        g_SkipTest.skippedAt, g_SkipTest.polls, g_SkipTest.longestGap);
+        }
+
         return true;
     }
 

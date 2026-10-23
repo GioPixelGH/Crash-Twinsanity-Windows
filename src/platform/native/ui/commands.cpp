@@ -792,9 +792,9 @@ void TestControls()
     constexpr s32 Space = SDL_SCANCODE_SPACE;
     constexpr s32 MouseLeft = 0x10001;
     constexpr s32 PadSouth = 0x20000;
-    hold({Space}, 1.0f);
+    hold({Space}, needed + 0.5f);
     Check(!any, "skip: held as the scene began, ignored");
-    hold({}, 1.1f);
+    hold({}, needed + 0.6f);
     // The press starts at the next poll: held about half the time
     f32 pressed = clock;
     hold({MouseLeft}, pressed + needed * 0.5f);
@@ -816,7 +816,7 @@ void TestControls()
     SetOption(OptionSkipCutscenes, 0);
     clock += 1.0f;
     hold({}, clock + 0.1f);
-    hold({PadSouth}, clock + 1.0f);
+    hold({PadSouth}, clock + needed + 0.5f);
     Check(!any && SkipHoldProgress() < 0.0f, "skip: off, never");
     SetOption(OptionSkipCutscenes, DefaultOption(OptionSkipCutscenes));
     SkipHoldForTest(false, {}, 0.0f);

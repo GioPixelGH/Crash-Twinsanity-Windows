@@ -103,7 +103,7 @@ u32 GameMovieController::Update()
         return 0;
     case StatePlaying:
 #ifdef TWIN_NATIVE
-        // With the cutscene skip option, any button held (pressed after the movie began, held 0.6 s: ui/features.cpp) ends a movie
+        // With the cutscene skip option, any button held (pressed after the movie began, held 1 s: ui/features.cpp) ends a movie
         // the way its end does (the community patcher's "movies answer triangle too", its stub at 0x116F74, made any button): the
         // script that started it carries on
         if (Step() != 0 && !NativeUi::MovieSkipHeld())

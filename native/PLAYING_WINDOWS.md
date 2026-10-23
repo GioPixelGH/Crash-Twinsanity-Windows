@@ -55,7 +55,7 @@ A controller (Xbox, PlayStation, Switch and most others) works out of the box, a
 | Status | Tab (or I) |
 | Shoulders | Z / C |
 | Pause | Esc (or Enter) |
-| Skip a cutscene | Hold any button (with Options > Gameplay > Skip cutscenes on) |
+| Skip a cutscene | Hold any button for a second (with Options > Gameplay > Skip cutscenes on) |
 | Menus | Arrow keys (or the mouse), Enter to select, Esc to go back |
 | Fullscreen | Alt+Enter |
 

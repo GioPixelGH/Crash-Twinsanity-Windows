@@ -95,13 +95,13 @@ The defaults (`src/platform/native/ui/bindings.cpp`, `Infos`; rebound on the opt
   on the game's turn and the skip below.
 
 Cutscenes and movies: "hold any button to skip" (the cutscene skip option, `OptionSkipCutscenes`, is the master switch;
-`ui/features.cpp`). Any key, mouse button or pad button (the triggers too) held 0.6 s, timed rather than counted in frames,
-skips. It counts only if pressed after the scene began: what was held as it began (running or jumping into it) is ignored until
-it's let go. A scene is the run of polls from the skip condition (572, `NoOpCutsceneSkippedCondition`) or a movie's frames
+`ui/features.cpp`). Any key, mouse button or pad button (the triggers too) held 1 s, timed rather than counted in frames,
+skips (0.1 s, a press, up to 1.0.12: a button pressed by chance as a scene started skipped it). It counts only if pressed
+after the scene began: what was held as it began (running or jumping into it) is ignored until it's let go. A scene is the run of polls from the skip condition (572, `NoOpCutsceneSkippedCondition`) or a movie's frames
 (`MovieSkipHeld`); a 0.25 s gap starts the next. The skip is reported for 0.15 s, then whatever is still held is ignored again,
 so the scene after isn't skipped too. The prompt is the game's own letterbox text (the AgentLab texts' line 0x18, "hold any
 button to skip" in the five languages; the level recipes show it, "Bug fixes (optional)" below). While a button is held, the
-overlay draws a bar under it that fills over the 0.6 s. The game's own skippable scenes (a Triangle rule,
+overlay draws a bar under it that fills over the second. The game's own skippable scenes (a Triangle rule,
 `IsTrianglePressedCondition`) still answer triangle as on the PS2.
 
 ## Native bugs found by the level sweep
