@@ -7,19 +7,12 @@ This is a Windows port of [HAB3X's Crash Twinsanity for Mac](https://github.com/
 (SDL3, an OpenGL renderer for the PS2's graphics, sound, movies, saves and a new options screen). This repository adds what
 Windows needs, makes it run at a steady 60 fps, and fixes the crashes found by playing it.
 
+![Title](docs/screenshots/title.jpg)
+
 > [!IMPORTANT]
 > **No game data is included.** You need your own copy of the PAL game (Europe/Australia, SLES-52568) as a disc image.
 > Crash Twinsanity and Crash Bandicoot are trademarks of Activision. PlayStation is a trademark of Sony Interactive
 > Entertainment. This is a fan project, not affiliated with or endorsed by either.
-
-| | |
-| --- | --- |
-| ![N. Sanity Beach](docs/screenshots/beach.jpg) | ![High Seas Hi-Jinks](docs/screenshots/ice.jpg) |
-| ![A cutscene with the villains](docs/screenshots/villains.jpg) | ![Twinsanity Island](docs/screenshots/twinsanity.jpg) |
-| ![The pause menu, with an Xbox controller's buttons](docs/screenshots/pause_menu.jpg) | ![The PC options](docs/screenshots/options.jpg) |
-
-*Taken from the Windows program in a 1600×900 window at 4× the PS2's resolution, without texture packs. The menus show the
-buttons of the controller in use, and the PC options have their own screen.*
 
 ## Download
 
@@ -28,6 +21,8 @@ The [latest release](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/rele
 `Crash Twinsanity` folder and pick your disc image. Version 1.0.8 is the first full release, now that the game has been
 played from the start to the credits; the ones before were previews. Linux has no download yet: build it yourself
 ([native/LINUX.md](native/LINUX.md)).
+
+![Menu](docs/screenshots/menu.jpg)
 
 ## Is it safe?
 
@@ -40,6 +35,8 @@ played from the start to the credits; the ones before were previews. Linux has n
 - You can also build it yourself (below).
 
 More in [SECURITY.md](.github/SECURITY.md), including how to report a security problem privately.
+
+![autosave](docs/screenshots/autosave.jpg)
 
 ## Status
 
@@ -56,6 +53,8 @@ More in [SECURITY.md](.github/SECURITY.md), including how to report a security p
   [native/LINUX.md](native/LINUX.md).
 - **macOS:** the platform code is HAB3X's and the Windows changes are kept apart (`_WIN32`), but this fork isn't built or
   tested on macOS.
+
+![beach](docs/screenshots/beach_play.jpg)
 
 ## What this port adds
 
@@ -212,3 +211,13 @@ developer, I reviewed and supervised the work. Each commit made with it says so.
 - **Third-party libraries and fonts** keep their own licences (table above).
 - **The game** (its code, data, art and sound) belongs to Activision. None of the game's files are in this repository:
   the executable, data, art and sound come from your own disc image.
+
+## Gallery
+| | |
+| --- | --- |
+| ![N. Sanity Beach](docs/screenshots/beach.jpg) | ![High Seas Hi-Jinks](docs/screenshots/ice.jpg) |
+| ![A cutscene with the villains](docs/screenshots/villains.jpg) | ![Twinsanity Island](docs/screenshots/twinsanity.jpg) |
+| ![The pause menu, with an Xbox controller's buttons](docs/screenshots/pause_menu.jpg) | ![The PC options](docs/screenshots/options.jpg) |
+
+*Taken from the Windows program in a 1600×900 window at 4× the PS2's resolution, without texture packs. The menus show the
+buttons of the controller in use, and the PC options have their own screen.*
