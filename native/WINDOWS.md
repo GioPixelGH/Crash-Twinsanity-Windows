@@ -326,6 +326,24 @@ below: at 60 Hz, 50 Hz, 144 Hz without v-sync, and off; a minute or so), with a 
   `$TWIN_PHYSICS_TIED` (Cortex tied to it) and `$TWIN_PHYSICS_SECONDS` (the watch's end). `$TWIN_PHYSICS_TRACE=FILE`: every
   frame's place, velocity, ground and movement node's velocity as CSV.
 
+### The PS2 game beside the port (PCSX2)
+
+To tell a port's bug from the game's own, the same place is played on the PS2's code in PCSX2 and its memory read by symbol:
+`tools/run_pcsx2.py` drives PCSX2 through PINE (memory reads and writes, save states: `tools/pine.py`). On Windows it runs
+local.json's `"pcsx2"`, which has to be a portable copy of the tests' own (`portable.ini` beside `pcsx2-qt.exe`, a copy of the
+user's BIOS in its `bios`, its `inis/PCSX2.ini` with `[UI] SettingsVersion = 1` and `SetupWizardIncomplete = false`, else PCSX2
+starts its settings again and its first run's wizard stops the boot, and `[EmuCore] EnablePINE = true`, `PINESlot = 28112`):
+its cards and states are the run's, never the user's. PINE is a TCP port on Windows (127.0.0.1:28112).
+
+    .venv\Scripts\python.exe tools\run_pcsx2.py retail "C:\path\to\Crash Twinsanity.iso" --quick --playing-snapshot
+    .venv\Scripts\python.exe tools\run_pcsx2.py build\SLES_525.68.elf "C:\path\to\Crash Twinsanity.iso" --manual --press 40:cross
+
+`retail` boots the disc's own executable, its symbols `symbol_addrs.txt`'s (splat's `D_XXXXXXXX` labels by their address):
+`--watch`, `--goto`, `--string`, `--chunks`, `--snapshot` work on it. The PS2 build of the decompilation (`build/SLES_525.68.elf`
+and its map, not byte for byte the retail one: its debug hooks move the addresses) adds `--press`, `--at-frame` and
+`--backtrace`. The script's own docstring has every switch. Checked 2026-10-24: the retail game to the beach in 33 s through
+PINE, its chunks read and a snapshot kept; the PS2 build's pad pressed through `g_TestPadButtons`.
+
 ## Releasing
 
 In a clone of the public repository with no changes of its own (a new script in native/tools aside):

@@ -2,8 +2,10 @@
 import socket, struct
 OPS={'read8':0,'read16':1,'read32':2,'read64':3,'write8':4,'write16':5,'write32':6,'write64':7,'version':8,'save':9,'load':10,'title':11,'id':12,'uuid':13,'gameversion':14,'status':15}
 class Pine:
+    # A Unix socket's path (Linux, macOS), or (host, port) for Windows' PCSX2, whose PINE is a TCP port: the slot
     def __init__(self, path):
-        self.s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM); self.s.settimeout(5); self.s.connect(path)
+        family=socket.AF_INET if isinstance(path,tuple) else socket.AF_UNIX
+        self.s=socket.socket(family,socket.SOCK_STREAM); self.s.settimeout(5); self.s.connect(path)
     def _call(self, payload):
         self.s.sendall(struct.pack('<I',len(payload)+4)+payload)
         head=self._recv(4); size=struct.unpack('<I',head)[0]

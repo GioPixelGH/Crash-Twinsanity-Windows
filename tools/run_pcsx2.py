@@ -32,6 +32,12 @@ stack in the scratchpad that follow a jal or jalr (live frames and stale ones al
 shows in PCSX2's log (emulog.txt in its config's logs): TLB misses at low addresses are null pointers, "# Syscall: undefined"
 is a jump into nowhere that the BIOS stopped at. On KDE Plasma, PCSX2's window goes to one monitor (--monitor, $PCSX2_MONITOR,
 HDMI-A-1 by default; kscreen-doctor -o names them), below other windows and without taking the focus (tools/kwin.py).
+
+On Windows the PCSX2 run is local.json's "pcsx2": a portable copy of its own (portable.ini beside the executable, its config,
+cards and states in its folder, PINE on in its inis/PCSX2.ini), never the user's PCSX2, so its states and cards are the run's
+and the retail executable's snapshots are allowed. PINE is a TCP port there (127.0.0.1, the slot). The elf "retail" boots the
+disc's own executable: its symbols are symbol_addrs.txt's (the default --map then), and --press and --at-frame, which need the
+PS2 build's debug hooks, aren't there.
 """
 import zipfile
 import argparse
@@ -49,9 +55,12 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pine import Pine
-import kwin
 
 MACOS = sys.platform == "darwin"
+WINDOWS = sys.platform == "win32"
+if not MACOS and not WINDOWS:
+    import kwin
+DEFAULT_MONITOR = None if MACOS or WINDOWS else kwin.DEFAULT_MONITOR
 MACOS_PCSX2_BEFORE = set()  # The PCSX2 processes already running when this run launched its own
 
 
@@ -59,8 +68,17 @@ def macos_pcsx2_pids():
     listing = subprocess.run(["ps", "-ax", "-o", "pid=,comm="], capture_output=True, text=True).stdout
     return {int(line.split(None, 1)[0]) for line in listing.splitlines()
             if line.strip() and line.rstrip().endswith(".app/Contents/MacOS/PCSX2")}
-# On macOS PCSX2 is the app (local.json's "pcsx2", its Contents/MacOS/PCSX2), its config in Application Support
-CONFIG = os.path.expanduser("~/Library/Application Support/PCSX2" if MACOS else "~/.var/app/net.pcsx2.PCSX2/config/PCSX2")
+# On macOS PCSX2 is the app (local.json's "pcsx2", its Contents/MacOS/PCSX2), its config in Application Support; on Windows the
+# portable copy's folder (local.json's "pcsx2", its pcsx2-qt.exe)
+if WINDOWS:
+    import local_config
+    WINDOWS_PCSX2 = (local_config.pcsx2() or [""])[0]
+    if not WINDOWS_PCSX2.lower().endswith(".exe") or not os.path.exists(os.path.join(os.path.dirname(WINDOWS_PCSX2), "portable.ini")):
+        raise SystemExit("Put a portable PCSX2 of the tests' own (its pcsx2-qt.exe, a portable.ini beside it) in local.json's "
+                         "\"pcsx2\": never the user's PCSX2")
+    CONFIG = os.path.dirname(WINDOWS_PCSX2)
+else:
+    CONFIG = os.path.expanduser("~/Library/Application Support/PCSX2" if MACOS else "~/.var/app/net.pcsx2.PCSX2/config/PCSX2")
 SLOT = 28112
 RETAIL_CRC = 0x1510E1D1
 SNAPSHOT_SLOT = 9
@@ -82,11 +100,21 @@ def crc(path):
 
 
 def map_symbols(path, names):
+    # A linker map's "  0xADDRESS  name" lines, or symbol_addrs.txt's "name = 0xADDRESS; // ..." (the retail executable's)
     found = {}
     for line in open(path):
         match = re.match(r"\s+0x([0-9a-f]{8,16})\s+(\w+)\s*$", line)
         if match and match.group(2) in names:
             found[match.group(2)] = int(match.group(1), 16)
+        match = re.match(r"(\w+)\s*=\s*0x([0-9A-Fa-f]+);", line)
+        if match and match.group(1) in names:
+            found[match.group(1)] = int(match.group(2), 16)
+
+    # splat's own labels (D_0031B4B8) are named after their retail address, which symbol_addrs.txt doesn't list
+    for name in set(names) - set(found):
+        match = re.fullmatch(r"D_([0-9A-F]{8})", name)
+        if match and path.endswith("symbol_addrs.txt"):
+            found[name] = int(match.group(1), 16)
 
     missing = set(names) - set(found)
     if missing:
@@ -98,8 +126,8 @@ def map_symbols(path, names):
 @contextlib.contextmanager
 def saved_state(pine, elf_crc, when):
     """Saves a state (PCSX2 names it after the CRC and the slot) and yields its path, deleting it afterwards (None when PCSX2
-    saved none). Never for the retail executable, whose states are the user's"""
-    if elf_crc == RETAIL_CRC:
+    saved none). Never for the retail executable, whose states are the user's (on Windows the tests' own PCSX2's are the run's)"""
+    if elf_crc == RETAIL_CRC and not WINDOWS:
         raise SystemExit("No save states of the retail executable: its states are the user's")
     states = f"{CONFIG}/sstates"
     before = set(os.listdir(states)) if os.path.isdir(states) else set()
@@ -139,6 +167,9 @@ def take_snapshot(pine, elf_crc, when, folder, name=None):
 
 
 def pine_socket(child):
+    if WINDOWS:
+        return ("127.0.0.1", SLOT)
+
     if MACOS:
         # PCSX2 puts it in $TMPDIR, launchd's per-user temporary folder (not this shell's, which may differ)
         folder = subprocess.run(["getconf", "DARWIN_USER_TEMP_DIR"], capture_output=True, text=True).stdout.strip() or "/tmp"
@@ -148,6 +179,10 @@ def pine_socket(child):
 
 
 def descendant(ancestor):
+    if WINDOWS:
+        # The executable itself was started: it is the PCSX2
+        return ancestor
+
     if MACOS:
         # PCSX2 is started through open(1) so it doesn't take the focus: it's no child of ours. It's the PCSX2 that wasn't
         # running before the launch, never just the newest PCSX2: other PCSX2 windows the user has open must never be touched
@@ -327,7 +362,7 @@ def main():
     parser.add_argument("--press", action="append", default=[], metavar="T:BUTTONS[:SECONDS]",
                         help="hold pad 1's buttons T seconds after the start")
     parser.add_argument("--monitor", help="the monitor PCSX2's window goes to, below other windows and without the focus (KWin's "
-                                          f"output name; default $PCSX2_MONITOR or {kwin.DEFAULT_MONITOR}, empty for anywhere)")
+                                          f"output name; default $PCSX2_MONITOR or {DEFAULT_MONITOR}, empty for anywhere)")
     args = parser.parse_args()
 
     # debug.h's DebugInput table: frame, kind (1 a state, 2 buttons), value, length
@@ -371,6 +406,13 @@ def main():
         where, count = part.rsplit(":", 1)
         symbol, offset = (where.split("+")[0], int(where.split("+")[1], 0)) if "+" in where else (where, 0)
         dumps.append((where, symbol, offset, int(count, 0)))
+    # "retail": the disc's own executable, its symbols symbol_addrs.txt's; the PS2 build's debug hooks aren't in it
+    retail = args.elf == "retail"
+    if retail:
+        if args.map == "build/SLES_525.68.map":
+            args.map = "symbol_addrs.txt"
+        if presses or args.at_frame or args.backtrace:
+            raise SystemExit("--press, --at-frame and --backtrace need the PS2 build's debug hooks: not with the retail executable")
     symbols = map_symbols(args.map, {"G_GameController", "G_ChunkManager", "G_GamePadController", "D_0031B4B8",
                                      *(["G_ChunkLoadingManager_"] if args.loaders else []),
                                      *(["g_TestPadButtons"] if presses else []),
@@ -380,12 +422,14 @@ def main():
                                      *(symbol for _, symbol, _, _ in dumps),
                                      *(part.split(":")[0].lstrip("*").split("+")[0] for part in args.freeze_dump)})
     snapshots = sorted(args.snapshot)
-    if snapshots and crc(args.elf) == RETAIL_CRC:
+    elf = None if retail else os.path.abspath(args.elf)
+    elf_crc = RETAIL_CRC if retail else crc(elf)
+    if snapshots and elf_crc == RETAIL_CRC and not WINDOWS:
         raise SystemExit("No snapshots of the retail executable: its save states are the user's")
     watched = {}
-    elf = os.path.abspath(args.elf)
     iso = os.path.abspath(args.iso)
-    settings = f"{CONFIG}/gamesettings/{crc(elf):08X}.ini"
+    # PCSX2 names a disc's game settings after its serial and CRC, an overridden executable's after its CRC
+    settings = f"{CONFIG}/gamesettings/" + (f"SLES-52568_{RETAIL_CRC:08X}.ini" if retail else f"{elf_crc:08X}.ini")
     backup = settings + ".before_decomp_run"
     had_settings = os.path.exists(settings)
     if had_settings:
@@ -393,19 +437,25 @@ def main():
 
     os.makedirs(os.path.dirname(settings), exist_ok=True)
     cards = f"{CONFIG}/memcards"
+    os.makedirs(cards, exist_ok=True)
     user_cards = {name: os.path.getmtime(f"{cards}/{name}") for name in os.listdir(cards) if name != RUN_CARD}
     if args.card and os.path.realpath(os.path.dirname(os.path.abspath(args.card))) == os.path.realpath(cards):
         raise SystemExit("--card has to be a copy outside PCSX2's memory card folder")
-    shutil.copy2(args.card if args.card else f"{cards}/Mcd001.ps2", f"{cards}/{RUN_CARD}")
+    # A copy of slot 1's card (none in a fresh portable copy: PCSX2 makes the run's card itself, formatted)
+    if args.card or os.path.exists(f"{cards}/Mcd001.ps2"):
+        shutil.copy2(args.card if args.card else f"{cards}/Mcd001.ps2", f"{cards}/{RUN_CARD}")
     with open(settings, "w") as file:
         file.write(f"[EmuCore]\nEnablePINE = true\nPINESlot = {SLOT}\n\n"
                    f"[MemoryCards]\nSlot1_Enable = true\nSlot1_Filename = {RUN_CARD}\nSlot2_Enable = false\n"
                    # A test run is silent: nothing plays over whatever the machine's user is doing
                    f"\n[SPU2/Output]\nOutputMuted = true\n")
 
-    placement = contextlib.nullcontext() if MACOS else kwin.windows_on(kwin.monitor_from(args.monitor))
+    placement = contextlib.nullcontext() if MACOS or WINDOWS else kwin.windows_on(kwin.monitor_from(args.monitor))
     placement.__enter__()
-    if MACOS:
+    boot = ["-nogui", "-fastboot"] + ([] if retail else ["-elf", elf]) + ["--", iso]
+    if WINDOWS:
+        launcher = subprocess.Popen([WINDOWS_PCSX2] + boot, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    elif MACOS:
         global MACOS_PCSX2_BEFORE
         MACOS_PCSX2_BEFORE = macos_pcsx2_pids()
         import local_config
@@ -414,12 +464,11 @@ def main():
         if app is None:
             raise SystemExit("Put PCSX2's executable (…/PCSX2.app/Contents/MacOS/PCSX2) in local.json's \"pcsx2\"")
         # -g: in the background, without taking the focus; -n: a new instance
-        launcher = subprocess.Popen(["open", "-g", "-n", "-W", "-a", app, "--args", "-nogui", "-fastboot", "-elf", elf, "--", iso],
+        launcher = subprocess.Popen(["open", "-g", "-n", "-W", "-a", app, "--args"] + boot,
                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
-        launcher = subprocess.Popen(["flatpak", "run", f"--filesystem={os.path.dirname(elf)}:ro",
-                                     f"--filesystem={os.path.dirname(iso)}:ro",
-                                     "net.pcsx2.PCSX2", "-nogui", "-fastboot", "-elf", elf, "--", iso],
+        launcher = subprocess.Popen(["flatpak", "run"] + ([] if retail else [f"--filesystem={os.path.dirname(elf)}:ro"]) +
+                                    [f"--filesystem={os.path.dirname(iso)}:ro", "net.pcsx2.PCSX2"] + boot,
                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     start = time.time()
     seen = []
@@ -477,7 +526,7 @@ def main():
                 inputs_written = True
 
             if snapshots and time.time() - start >= snapshots[0]:
-                take_snapshot(pine, crc(args.elf), snapshots.pop(0), args.snapshots)
+                take_snapshot(pine, elf_crc, snapshots.pop(0), args.snapshots)
 
             if presses:
                 # A press starts at the first look past its time (a snapshot can take a second) and lasts its time from there
@@ -514,7 +563,7 @@ def main():
 
             if args.keep_state and time.time() - start >= float(args.keep_state[0].split(":", 1)[0]):
                 copy = args.keep_state.pop(0).split(":", 1)[1]
-                with saved_state(pine, crc(args.elf), time.time() - start) as path:
+                with saved_state(pine, elf_crc, time.time() - start) as path:
                     if path is not None:
                         shutil.copy2(path, copy)
                         print(f"{time.time() - start:6.1f}s state kept as {copy}", flush=True)
@@ -546,7 +595,7 @@ def main():
             if freeze_frame is not None and pine.read32(symbols["g_DebugFrame"]) == freeze_frame:
                 # The frame's drawing finishes while the game waits
                 time.sleep(1)
-                take_snapshot(pine, crc(args.elf), time.time() - start, args.snapshots, f"frame_{freeze_frame}")
+                take_snapshot(pine, elf_crc, time.time() - start, args.snapshots, f"frame_{freeze_frame}")
                 for part in args.freeze_dump:
                     name, count, path = part.split(":", 2)
                     # "*SYMBOL+OFFSET": the words where the pointer there points
@@ -622,7 +671,7 @@ def main():
                         print(f"pad 1: setup state {pine.read32(info + 0x508)}, mode {pine.read32(info + 0x50C):#x}, "
                               f"flags {pine.read64(info + 0x568) >> 32:#x}, report mode {pine.read8(info + 0x575):#x}")
                     if args.playing_snapshot:
-                        take_snapshot(pine, crc(args.elf), time.time() - start, args.snapshots, "playing")
+                        take_snapshot(pine, elf_crc, time.time() - start, args.snapshots, "playing")
                     result = "PLAYING"
                     break
 
@@ -641,7 +690,9 @@ def main():
     finally:
         if not (args.stay and result == "PLAYING"):
             for pid in (descendant(launcher.pid), launcher.pid):
-                if pid:
+                if pid and WINDOWS:
+                    subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                elif pid:
                     try:
                         os.kill(pid, signal.SIGKILL)
                     except OSError:
