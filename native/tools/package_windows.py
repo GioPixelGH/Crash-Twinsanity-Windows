@@ -5,7 +5,9 @@ build/native/dist/Crash Twinsanity/ and build/native/dist/Crash-Twinsanity-Windo
     .venv\\Scripts\\python.exe native\\tools\\package_windows.py [--build build/native/cmake]
 
 The folder holds CrashTwinsanity.exe, SDL's and FFmpeg's DLLs, the UI's fonts, the libraries' licences and the player's guide
-(native/PLAYING_WINDOWS.md as README.txt). Nothing of the game's: the player picks their own disc image.
+(native/PLAYING_WINDOWS.md as README.txt). Nothing of the game's: the player picks their own disc image. Nothing of a player's
+either: the folder can be played from, and portable mode's portable.txt and User folder there (or a disc image) are left where
+they are and never zipped.
 """
 import argparse
 import shutil
@@ -29,9 +31,17 @@ def main():
 
     dist = HERE / "build" / "native" / "dist"
     folder = dist / "Crash Twinsanity"
-    if folder.exists():
-        shutil.rmtree(folder)
-    folder.mkdir(parents=True)
+    # What's made here is made again; a player's own files (the folder played from: portable mode's, a disc image beside the
+    # program) stay where they are, and never go in the zip
+    folder.mkdir(parents=True, exist_ok=True)
+    kept = sorted(path.name for path in folder.iterdir() if players(path))
+    for path in folder.iterdir():
+        if players(path):
+            continue
+        if path.is_dir():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
 
     shutil.copy2(exe, folder / exe.name)
     dlls = sorted(build.glob("*.dll"))
@@ -73,10 +83,20 @@ def main():
         archive.unlink()
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         for path in sorted(folder.rglob("*")):
-            z.write(path, Path("Crash Twinsanity") / path.relative_to(folder))
+            if not players(folder / path.relative_to(folder).parts[0]):
+                z.write(path, Path("Crash Twinsanity") / path.relative_to(folder))
 
     size = archive.stat().st_size / (1024 * 1024)
-    print(f"{folder} ({len(dlls)} DLLs), {archive} ({size:.0f} MB)")
+    print(f"{folder} ({len(dlls)} DLLs), {archive} ({size:.0f} MB)" +
+          (f"; the player's own left in the folder, not zipped: {', '.join(kept)}" if kept else ""))
+
+
+def players(path):
+    """Whether a file or folder beside the program is a player's: portable mode's (portable.txt, the User folder, its backups and a
+    copy left half way) or a disc image"""
+    name = path.name
+    return (name in ("portable.txt", "User", "User.copying") or name.startswith("User (backup ") or
+            path.suffix.lower() in (".iso", ".bin", ".img"))
 
 
 if __name__ == "__main__":

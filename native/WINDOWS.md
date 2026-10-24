@@ -28,7 +28,8 @@ working folder), the one picked before, or asked for with a file dialog.
 It's a windowed program: its log goes to the terminal it was started from, or to whatever its output was given (a pipe, a
 file), else to `log.txt` in the settings folder. `-DTWIN_WINDOWS_CONSOLE=ON` makes a console program instead.
 
-The settings, saves (`memorycard/`), bindings and texture packs are in `%APPDATA%\Crash Twinsanity\`.
+The settings, saves (`memorycard/`), bindings and texture packs are in `%APPDATA%\Crash Twinsanity\`, or in portable mode in
+the `User` folder beside the program (below).
 
 ## What Windows needed
 
@@ -109,6 +110,46 @@ disc file's mod is given a place past 16 GB (a GB each, its sectors still 32 bit
 past the image's end within 4 GB of the archive's start (filestream.cpp's `FileStreamOpen` takes its start and size), and
 `Native::Disc::Read` reads them from the files. The game's own code does what it would with the original (a file it doesn't
 ask for can't be added: the archive's table is the game's list).
+
+## Portable mode
+
+Issue #11's request: the settings folder in the game's folder, to carry the game on a USB stick. `portable.txt` beside
+`CrashTwinsanity.exe` makes it so (src/platform/native/portable.cpp), as PCSX2's, DuckStation's and Dolphin's portable modes:
+a file and not an option of options.txt, since the folder has to be known before anything reads the settings. Then
+`Native::SettingsFolder()`, which everything the game keeps goes through (options.txt, resolution.txt, bindings.txt,
+disc_image.txt, xbox_disc.txt, `memorycard/`, `mods/`, `textures/`, the log), is the `User` folder beside the program, laid out as
+`%APPDATA%\Crash Twinsanity\` is. Nothing else reads `%APPDATA%` (no `SDL_GetPrefPath`; the self-test's resolution check sets
+`APPDATA` to a folder of its own). Without the file nothing changes: the default stays `%APPDATA%`.
+
+- **At start-up** (`Native::StartPortable`, the first thing `main` does, before the log): portable.txt there and the folder
+  usable (a file can be made in it, `FILE_FLAG_DELETE_ON_CLOSE`; its path is one the settings' strings can hold: they're in
+  Windows' code page, as `getenv("APPDATA")`'s are) is portable mode. A folder that isn't (C:\Program Files, without an
+  administrator's rights) keeps `%APPDATA%`, a message box says why. A first portable start with no `User` folder (portable.txt
+  made by hand) copies `%APPDATA%\Crash Twinsanity`'s data there, with the shell's progress dialog (`IProgressDialog`, ole32
+  looked up, not imported; it closes only while the thread that opened it takes its window messages, so they're pumped). The
+  dialog stays, "starting the game", till the game's window is there, so the window opens while the game is the app in front;
+  a message box or the disc image's file dialog closes it first. The log's lines after the version: what the start found, then
+  "settings and saves in %APPDATA%\Crash Twinsanity" or "in the User folder beside the program" (named, not spelt out: the
+  logs go to bug reports, and `%APPDATA%`'s path has the user's name).
+- **Options > Gameplay > Portable mode** (yes/no, ui/settings.cpp; shown only on Windows) is the mode in use. Stepping it asks
+  (a dialog over the settings, the controller's or the mouse's), refused at once when the folder can't be written to, then
+  `Native::StartPortableSwitch` copies on a thread of its own from the folder in use to the other, the dialog showing a bar and
+  the megabytes (texture packs and mods can be hundreds). The copy never moves anything: it's made whole beside the destination
+  (`User.copying`, `Crash Twinsanity.copying`) and only then put in its place; what the destination held is set aside whole
+  beside it (renamed: `User (backup 2026-10-24)`, `Crash Twinsanity (backup 2026-10-24)`, " 2" after the date for a second
+  one the same day), an empty one removed. A failure (a full disk, a file of the old folder open) undoes it: nothing changed,
+  the reason under the dialog's and in the log. Then portable.txt is made (it says what it's for) or removed, and from then on
+  what the game writes goes to the new folder; the dialog says done, where the old folder went, and the game closes (on select,
+  or by itself after 10 s), so nothing more is written to the old one. The next start uses the new folder.
+- **The disc image** (system.cpp): in portable mode, with none remembered or the one remembered gone or wrong, the program's
+  folder is looked in first (`.iso`, `.bin`, `.img` by name, each checked as the PAL disc) and the first right one is used
+  without asking. An image inside the program's folder is remembered relative to it (`disc_image.txt`: `Crash Twinsanity.ISO`),
+  so the folder can move and a USB stick change its letter; one outside is remembered as before, its whole path. A relative
+  line is read as the program's folder's in either mode (one copied back by the switch still works). `--iso`,
+  `$TWINSANITY_ISO` and local.json's are given images, as before.
+- **Packaging**: `package_windows.py` remakes only what it makes in `build/native/dist/Crash Twinsanity/` (a folder played from
+  can be portable): portable.txt, `User`, its backups and disc images are left there and never zipped, and `release_windows.py
+  check` fails a zip with any.
 
 ## Frame rates past 60
 
@@ -212,13 +253,21 @@ a Nintendo pad's and the keyboard's prompts, and the bar), each shown as the men
 clicked with the mouse (`$TWIN_HINTS_TEST`, below); the camera turned by the mouse (`$TWIN_LOOK_TEST`, below); the physics past
 60 Hz (its `PHYSICS_RATES`, `$TWIN_PHYSICS_TEST`, below): the beach's jumps and Crash stepping off Cavern Catastrophe's lift with
 Cortex tied, at a 144 Hz and a 240 Hz screen's uneven frames, against 60 Hz's (a jump's distance within 6%, its height within 2%,
-its time in the air within 0.05 s, the lift's hop within 0.15); the beach's
+its time in the air within 0.05 s, the lift's hop within 0.15); portable mode (`portable()`, `$TWIN_PORTABLE_TEST`, below): the
+program copied to a folder of its own with a settings folder of its own as `%APPDATA%`, started as Explorer starts it (through
+pythonw, with no console and no output handles, so its log goes to log.txt), six cases in turn: a first start with portable.txt
+made by hand (`%APPDATA%`'s data copied to User, the log there, `%APPDATA%` untouched), turned on in the options over an older
+User folder (set aside whole), turned off after playing portable (`%APPDATA%` set aside whole: nothing was written to it
+meanwhile), a disc image found in the folder past a decoy and remembered relative, the folder renamed and the image still
+found, and a folder no file can be made in (icacls's deny of `WD,AD`, as Program Files is: the settings stay in `%APPDATA%`, the
+switch refused); the beach's
 first 2,500 frames at a fixed time, every 100th picture compared byte for byte with the last packaged build's
 (`build/native/dist/`, or `--reference PROGRAM`); with `--sweep`, every level chunk, its outcome
 against `native/sweep/results_windows.json` (a run that went on and one that ended in a game over count alike: the scripted
-input decides which). Some 4 minutes, 25 more with the sweep. Each run has a settings folder of its own; the disc image is
+input decides which). Some 5 minutes, 25 more with the sweep. Each run has a settings folder of its own; the disc image is
 local.json's. `--hints-shots FOLDER` runs only the hints' check, with a window, and saves the pause menu's pictures there;
-`--physics` only the physics' (a minute or so); `--fps-shots FOLDER` only the FPS counter's (its `FPS_CASES`, `$TWIN_FPS_TEST`,
+`--physics` only the physics' (a minute or so); `--portable` only portable mode's (under a minute; the dialog's pictures in
+`build/native/check/portable/shots/`); `--fps-shots FOLDER` only the FPS counter's (its `FPS_CASES`, `$TWIN_FPS_TEST`,
 below: at 60 Hz, 50 Hz, 144 Hz without v-sync, and off; a minute or so), with a window, as the counter counts the pictures shown
 (the self-test checks its sums and its place without one), and saves the window's pictures there.
 
@@ -325,6 +374,11 @@ below: at 60 Hz, 50 Hz, 144 Hz without v-sync, and off; a minute or so), with a 
   (`$TWIN_SWEEP_LEVEL`, `$TWIN_SWEEP_IDLE`), `$TWIN_PHYSICS_ON=NAME` (the player put on an instance 2 s in: `cavern_lift17`),
   `$TWIN_PHYSICS_TIED` (Cortex tied to it) and `$TWIN_PHYSICS_SECONDS` (the watch's end). `$TWIN_PHYSICS_TRACE=FILE`: every
   frame's place, velocity, ground and movement node's velocity as CSV.
+- `$TWIN_PORTABLE_TEST=1` or `=FOLDER` (with `--headless`, ui/portabletest.cpp): from the main menu the settings opened,
+  Gameplay's portable mode row stepped and its dialog followed with its own input: asked, select copies, done, select closes the
+  game as a player's would (exit 0; the folders are check_windows.py's to look at); refused (the folder can't be written to),
+  select, "portable test: pass (refused ...)" and exit 0. With a folder the screen is saved there at each step
+  (portable_ask.png, portable_copying.png, portable_done.png, portable_refused.png).
 
 ### The PS2 game beside the port (PCSX2)
 
@@ -354,7 +408,8 @@ In a clone of the public repository with no changes of its own (a new script in 
 `check` pulls (and runs again when that brought a commit, so its checks are the pulled commit's), builds afresh
 (`build_windows.py --configure`), packages (`package_windows.py`) and checks the zip, unpacked: the program's version against
 native/CMakeLists.txt's; its company and copyright (Properties > Details) against native/windows.rc.in's (only our program has
-them: the DLLs keep their authors'); the DLLs it imports (Windows', SDL's and FFmpeg's only); its files against the last release's;
+them: the DLLs keep their authors'); nothing of a player's (portable.txt, a User folder, a disc image); the DLLs it imports
+(Windows', SDL's and FFmpeg's only); its files against the last release's;
 check_windows.py's checks, with the pictures compared with the last release's program; and that the program has no 32-byte block
 of the game executable's data or VU microcode the last release's didn't (version 1.0.5 has 23 of the 3,832 that aren't
 repetitive, none of the microcode: runs of small integers, the standard library's tables, powers of ten and digits, and file
@@ -364,7 +419,8 @@ with `--preview` a preview, GitHub's pre-release, as every release before 1.0.8 
 checked, once that commit is on GitHub. GitHub's token is git's (`git credential fill`), never printed or kept.
 
 `package_windows.py` makes `build/native/dist/Crash Twinsanity/` and `Crash-Twinsanity-Windows.zip`: the program, the
-DLLs, the fonts, the licences and native/PLAYING_WINDOWS.md as README.txt. The program's icon is native/icon/AppIcon.ico
+DLLs, the fonts, the licences and native/PLAYING_WINDOWS.md as README.txt (a player's own files there, portable mode's and disc
+images, are left alone and never zipped: "Portable mode", above). The program's icon is native/icon/AppIcon.ico
 (16 to 256 pixels), our own drawing: two spiral eyes on an orange tile, drawn from shapes alone by `native/tools/draw_icon.py`
 (`--preview sheet.png` shows every size; under 64 pixels the spirals become pupils). CMake rebuilds the resource when the icon
 changes. `native/tools/make_icon.py` still makes one from the HUD's Crash head for the Mac build.

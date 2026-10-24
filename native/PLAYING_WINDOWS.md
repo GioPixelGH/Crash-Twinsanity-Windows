@@ -26,7 +26,8 @@ Nothing else: the folder carries the libraries the game needs.
 
 ## Where things are
 
-Everything the game keeps is in **%APPDATA%\Crash Twinsanity\** (paste that in the Explorer's address bar):
+Everything the game keeps is in **%APPDATA%\Crash Twinsanity\** (paste that in the Explorer's address bar), or in portable mode
+in the **User** folder beside the game (below):
 
 | What | Where |
 | --- | --- |
@@ -40,6 +41,27 @@ Everything the game keeps is in **%APPDATA%\Crash Twinsanity\** (paste that in t
 
 Saving works like a PC game: no memory card screens. Save from the pause menu or at the game's save points; load from the
 main menu.
+
+### Portable mode
+
+To keep everything in the game's own folder instead (to carry it on a USB stick, or keep it all in one place), turn on
+**Options > Gameplay > Portable mode**. The game copies your settings, saves, mods and texture packs from
+`%APPDATA%\Crash Twinsanity\` into a **`User`** folder beside `CrashTwinsanity.exe` (same files as in the table above), makes a
+`portable.txt` file there, and closes: start it again and it uses the `User` folder from then on. Nothing is moved or deleted:
+the copy in `%APPDATA%` stays as it was, and if a `User` folder was already there it's kept as `User (backup DATE)`.
+Turning the option off copies the `User` folder back to `%APPDATA%` the same way (the old `%APPDATA%` folder is kept as
+`Crash Twinsanity (backup DATE)`) and removes `portable.txt`.
+
+- The game's folder must be one you can write to: not `C:\Program Files`. If it isn't, the game says so and stays on
+  `%APPDATA%`.
+- Your disc image can go in the game's folder too: in portable mode, if the game has no disc image yet (or the one it had
+  isn't there any more), it looks for an `.iso`, `.bin` or `.img` in its folder and uses it without asking. One inside the
+  folder is remembered by its name, so the folder still works after moving it or on a USB stick that gets another drive letter.
+- You can also make an empty `portable.txt` beside `CrashTwinsanity.exe` yourself: if there's no `User` folder yet, the next
+  start copies `%APPDATA%`'s data into it first, showing its progress.
+- **Updating the game in portable mode**: unzip the new version over the old folder, or into a new folder and then move your
+  `User` folder, `portable.txt` (and your disc image, if it's there) into it. Everything else is the game's and can be
+  replaced; `User` and `portable.txt` are never in the zip.
 
 ## Controls
 

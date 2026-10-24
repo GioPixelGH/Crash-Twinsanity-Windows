@@ -225,6 +225,17 @@ enum NativeText : u32
     TextHintsBar,
     TextShowFps,
     TextDescShowFps,
+    // Portable mode (settings.cpp's switch and its dialog)
+    TextPortable,
+    TextDescPortable,
+    TextPortableAskOn,
+    TextPortableAskOff,
+    TextPortableCopying,
+    TextPortableDone,
+    TextPortableBackup,
+    TextPortableRefused,
+    TextPortableFailed,
+    TextOk,
     NativeTextEnd,
 };
 
@@ -460,6 +471,9 @@ void SettingsCursorForTest(f32 x, f32 y);
 bool MouseOverAnyMenuLine();
 u32 SettingsTabForTest();
 s32 SettingsRowForTest();
+// Portable mode's dialog shown (settingsmodel.h's PortableDialog), and its test ($TWIN_PORTABLE_TEST: portabletest.cpp)
+u32 PortableDialogForTest();
+void PortableTestFrame();
 bool ScriptMouseToLine(u32 index, bool click);
 bool MouseOverLineForTest(const MenuPage* page);
 

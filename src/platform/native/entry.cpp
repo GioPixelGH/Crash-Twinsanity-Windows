@@ -156,6 +156,14 @@ void SetUpLog()
 
 int main(int argc, char** argv)
 {
+    // Where the settings are (portable mode or not: portable.cpp) before anything reads or writes them, the log first
+    bool headless = false;
+    for (int i = 1; i < argc; i++)
+    {
+        headless = headless || std::string_view(argv[i]) == "--headless";
+    }
+
+    Native::StartPortable(headless);
 #if defined(_WIN32)
     SetUpLog();
     Native::StartProfiler();
@@ -196,6 +204,7 @@ int main(int argc, char** argv)
 
     // The port's version first (native/CMakeLists.txt's), for the bug reports' logs
     Native::Log("Crash Twinsanity %s", TWIN_PORT_VERSION);
+    Native::LogPortableStart();
     Native::OpenDiscImage();
     NativeApplyDataFixups();
     // $TWIN_FIXED_TIME: the test runs' time (debug.h's g_DebugFixedTime): every frame takes exactly a frame's time and reads

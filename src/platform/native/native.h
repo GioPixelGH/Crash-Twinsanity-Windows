@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <ctime>
 #include <string>
+#include <vector>
 
 namespace Native
 {
@@ -24,6 +25,40 @@ void ParseArguments(int& argc, char** argv);
 // Where the app keeps its settings and saves, and the disc image asked for with the system's file dialog (remembered there)
 std::string SettingsFolder();
 std::string PickDiscImage();
+
+// The portable install (portable.cpp; Windows only): portable.txt beside the program keeps the settings folder's data in the User
+// folder beside it rather than in %APPDATA%\Crash Twinsanity. Decided at start-up before anything reads the settings (headless: no
+// message boxes or progress dialog), where a first portable start with no User folder copies %APPDATA%'s data there; what it found
+// logged once the log is there
+bool PortableSupported();
+bool PortableMode();
+void StartPortable(bool headless);
+void LogPortableStart();
+// The first start's progress dialog closed: once the game's window is there, or before a message box or the file dialog shows
+void EndPortableStart();
+// The settings folders: %APPDATA%\Crash Twinsanity, and portable mode's User folder (forward slashes, the system's code page)
+std::string AppDataSettingsFolder();
+std::string PortableUserFolder();
+// Whether the program's folder can hold portable mode's User folder (written to, its path one the settings can use), and why not
+bool PortableFolderUsable(std::string* why);
+// Options > Gameplay > Portable mode (ui/settings.cpp): the data copied on a thread of its own from the folder in use to the other
+// (what that held set aside in a backup folder beside it), then portable.txt made or removed; where it's at (the bytes copied of
+// the bytes there are, the backup folder's name, what went wrong); and the game closed once it's done
+enum PortableSwitch : u32
+{
+    PortableSwitchIdle,
+    PortableSwitchCopying,
+    PortableSwitchDone,
+    PortableSwitchFailed,
+};
+void StartPortableSwitch(bool portable);
+PortableSwitch PortableSwitchState(u64* done, u64* total, std::string* backup, std::string* reason);
+[[noreturn]] void QuitAfterPortableSwitch();
+// disc_image.txt's line: a remembered disc image as it's kept (portable mode: relative to the program's folder when it's inside
+// it), and as it's opened (a relative one is the program's folder's); the disc images in the program's folder (.iso, .bin, .img)
+std::string DiscImageSetting(const std::string& image);
+std::string DiscImageFromSetting(const std::string& line);
+std::vector<std::string> DiscImagesBesideProgram();
 // The disc image (--iso, $TWINSANITY_ISO, local.json's, the one picked before, or one picked now) opened and checked to be the
 // PAL disc, and the retail executable's data read from its SLES_525.68 (build/native/data.cpp's NativeLoadRetailData: the build
 // has none of the game's bytes), once, before NativeApplyDataFixups. A remembered or picked image that's gone or wrong is asked

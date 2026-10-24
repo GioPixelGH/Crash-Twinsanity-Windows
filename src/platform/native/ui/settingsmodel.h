@@ -62,6 +62,18 @@ enum BindingColumn : u32
     BindingColumns,
 };
 
+// Portable mode's dialog (settings.cpp): none, the switch asked about, refused (the program's folder can't be written to), copying,
+// done (the game closes) or failed
+enum PortableDialog : u32
+{
+    DialogNone,
+    DialogAsk,
+    DialogRefused,
+    DialogCopying,
+    DialogDone,
+    DialogFailed,
+};
+
 // What the view draws this frame
 struct SettingsView
 {
@@ -71,6 +83,15 @@ struct SettingsView
     bool capturing;
     bool keeping;
     s32 keepSecondsLeft;
+    // Portable mode's dialog: which, whether it's turning portable mode on, the copy's bytes done of the bytes there are, the backup
+    // folder's name, what went wrong (English), the seconds left before the game closes
+    PortableDialog dialog;
+    bool dialogPortable;
+    u64 copied;
+    u64 copyTotal;
+    std::string backup;
+    std::string failure;
+    s32 closeSecondsLeft;
     // The rows swapped by a binding just made, while they flash (-1 none)
     s32 flashRows[2];
     bool flashOn;

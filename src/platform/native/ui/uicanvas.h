@@ -22,6 +22,9 @@ enum class HitKind : u32
     FooterClear,
     KeepYes,
     KeepNo,
+    // Portable mode's dialog: yes (or its one button, OK) and no
+    DialogYes,
+    DialogNo,
 };
 
 struct HitRegion

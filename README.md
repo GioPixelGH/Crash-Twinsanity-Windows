@@ -72,6 +72,8 @@ mouse and controller, saves, cutscene skipping, community fixes):
 - **Language option:** English, French, German, Italian or Spanish texts, voices and movies, chosen in Options.
 - **Mods:** files in `%APPDATA%\Crash Twinsanity\mods` replace the disc's, including files inside the game's archive.
   `--list-files` and `--extract` help to start one.
+- **Portable mode** (Options > Gameplay, off by default): settings, saves and mods in a `User` folder beside the game, and the
+  disc image found in the game's folder, to carry it on a USB stick.
 - **Fixes:**
   - The crash entering the first boss's area (a level title picture read wrongly).
   - The crash during the Mecha-Bandicoot fight (a float argument on Windows).

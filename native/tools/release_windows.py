@@ -7,8 +7,8 @@ clone of the public repository with no changes of its own, so nothing local gets
 
 check: pulls (fast-forward only), configures and builds afresh (build_windows.py --configure), packages (package_windows.py),
 then checks the zip, unpacked: the program's version against native/CMakeLists.txt's, its company and copyright against
-native/windows.rc.in's, the DLLs it imports, its files against the
-last release's, that the program has no 32-byte block of the game executable's data or VU microcode the last release's didn't,
+native/windows.rc.in's, that it has nothing of a player's (portable mode's portable.txt or User folder, a disc image), the DLLs
+it imports, its files against the last release's, that the program has no 32-byte block of the game executable's data or VU microcode the last release's didn't,
 and check_windows.py's checks with the pictures compared with the last release's program. It prints the commit, the version and
 the zip's SHA-256, and keeps them for publish (build/native/release/release.json).
 
@@ -35,6 +35,7 @@ TOOLS = HERE / "native" / "tools"
 sys.path.insert(0, str(TOOLS))
 import build_windows  # noqa: E402
 import check_windows  # noqa: E402
+import package_windows  # noqa: E402
 
 WORK = HERE / "build" / "native" / "release"
 ZIP_NAME = "Crash-Twinsanity-Windows.zip"
@@ -193,6 +194,10 @@ def check(arguments):
     wrong = [key for key, value in declared_details().items() if not value or resource_string(exe, key) != value]
     print(f"details         {'company and copyright as native/windows.rc.in has them' if not wrong else 'FAILED: ' + ', '.join(wrong)}")
     failed |= bool(wrong)
+    # Nothing of a player's (the folder packaged can be one played from: package_windows.py leaves their files out of the zip)
+    theirs = [name for name in files if package_windows.players(Path(*Path(name).parts[:2]))]
+    print(f"player's files  {'none (no portable.txt, User folder or disc image)' if not theirs else 'FAILED: ' + ', '.join(theirs[:5])}")
+    failed |= bool(theirs)
     stray = [name for name in imports(exe) if not ALLOWED_IMPORTS.match(name)]
     print(f"imports         {'Windows, SDL and FFmpeg only' if not stray else 'FAILED, also: ' + ', '.join(stray)}")
     failed |= bool(stray)

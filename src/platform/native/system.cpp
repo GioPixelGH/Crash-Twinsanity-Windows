@@ -38,7 +38,22 @@ std::string SavedDiscImage()
     std::ifstream file(Native::SettingsFolder() + "/disc_image.txt");
     std::string path;
     std::getline(file, path);
-    return path;
+    // Portable mode keeps an image in the program's folder relative to it (portable.cpp)
+    return Native::DiscImageFromSetting(path);
+}
+
+// disc_image.txt written (an image in the program's folder relative to it in portable mode), unless it says that already
+void RememberDiscImage(const std::string& image)
+{
+    std::string setting = Native::DiscImageSetting(image);
+    std::string saved;
+    std::getline(std::ifstream(Native::SettingsFolder() + "/disc_image.txt"), saved);
+    if (saved != setting)
+    {
+        std::error_code ignored;
+        std::filesystem::create_directories(Native::SettingsFolder(), ignored);
+        std::ofstream(Native::SettingsFolder() + "/disc_image.txt") << setting << '\n';
+    }
 }
 
 // local.json's "disc_image" (the decomp's own settings file, in the working folder)
@@ -124,14 +139,8 @@ void Native::ParseArguments(int& argc, char** argv)
 std::string Native::SettingsFolder()
 {
 #if defined(_WIN32)
-    // Windows: %APPDATA%\Crash Twinsanity (the roaming settings, as SDL_GetPrefPath has them), forward slashes like the rest
-    const char* appData = std::getenv("APPDATA");
-    std::string folder = std::string(appData != nullptr ? appData : ".") + "/Crash Twinsanity";
-    for (char& c : folder)
-    {
-        c = c == '\\' ? '/' : c;
-    }
-    return folder;
+    // Windows: %APPDATA%\Crash Twinsanity, or in portable mode the User folder beside the program (portable.cpp)
+    return PortableMode() ? PortableUserFolder() : AppDataSettingsFolder();
 #elif defined(__APPLE__)
     const char* home = std::getenv("HOME");
     return std::string(home != nullptr ? home : ".") + "/Library/Application Support/Crash Twinsanity";
@@ -164,6 +173,7 @@ std::string Native::PickDiscImage()
     static const SDL_DialogFileFilter filters[] = {{"PS2 disc image", "iso;bin;img"}, {"Any file", "*"}};
     if (!pick.done)
     {
+        EndPortableStart();
         SDL_ShowOpenFileDialog(
             [](void* user, const char* const* files, int)
             {
@@ -185,9 +195,7 @@ std::string Native::PickDiscImage()
 
     if (!pick.path.empty())
     {
-        std::error_code ignored;
-        std::filesystem::create_directories(SettingsFolder(), ignored);
-        std::ofstream(SettingsFolder() + "/disc_image.txt") << pick.path << '\n';
+        RememberDiscImage(pick.path);
     }
 
     return pick.path;
@@ -266,6 +274,7 @@ void Tell(SDL_MessageBoxFlags kind, const std::string& message)
 {
     if (!g_Settings.headless)
     {
+        Native::EndPortableStart();
         SDL_ShowSimpleMessageBox(kind, "Crash Twinsanity", message.c_str(), nullptr);
     }
 }
@@ -320,6 +329,25 @@ std::string CheckDiscImage(const std::string& image)
         return Format("The game's data read from %s isn't what this program was built for.", image.c_str());
     }
 }
+
+// Portable mode: the first disc image in the program's folder (.iso, .bin, .img, by name) that's the PAL disc, checked and open; ""
+// when there's none
+std::string FindDiscImageBesideProgram()
+{
+    for (const std::string& image : Native::DiscImagesBesideProgram())
+    {
+        std::string problem = CheckDiscImage(image);
+        if (problem.empty())
+        {
+            Native::Log("portable mode: the disc image found in the program's folder: %s", image.c_str());
+            return image;
+        }
+
+        Native::Log("portable mode: not the game's disc image: %s", problem.c_str());
+    }
+
+    return {};
+}
 }
 
 void Native::OpenDiscImage()
@@ -334,9 +362,22 @@ void Native::OpenDiscImage()
     const char* given = GetSettings().discImage;
     std::string image = given != nullptr ? given : "";
     bool askable = given == nullptr || g_DiscImageRemembered;
+    // Portable mode: with none remembered (or the one remembered gone or wrong) the program's folder is looked in first, and an image
+    // found there is used without asking
+    bool searchable = askable && PortableMode();
     std::string problem;
     for (;;)
     {
+        if (image.empty() && searchable)
+        {
+            searchable = false;
+            image = FindDiscImageBesideProgram();
+            if (!image.empty())
+            {
+                break;
+            }
+        }
+
         if (image.empty())
         {
             if (!problem.empty())
@@ -372,6 +413,12 @@ void Native::OpenDiscImage()
         image.clear();
     }
 
+    // Portable mode remembers it as it keeps it (an image in the program's folder relative to it), one found or remembered before
+    if (askable && PortableMode())
+    {
+        RememberDiscImage(image);
+    }
+
     g_DiscImage = image;
     Log("disc image %s", image.c_str());
 }
@@ -400,6 +447,8 @@ void Platform::System::Initialise()
         }
 
         NativeGraphicsAttachWindow(window);
+        // Portable mode's first start: its progress dialog goes once the window is there
+        Native::EndPortableStart();
     }
 }
 

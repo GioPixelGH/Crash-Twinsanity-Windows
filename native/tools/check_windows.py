@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """The checks a change needs before it's committed (native/WINDOWS.md, "Checking a change"), each summed up in a line: the
 self-tests, the places that once crashed played again, the pause menu's hints, the camera turned by the mouse, the physics past
-60 Hz against 60 Hz's, the pictures against another build's and, with --sweep, every level chunk against the last sweep's results.
+60 Hz against 60 Hz's, portable mode's cases, the pictures against another build's and, with --sweep, every level chunk against
+the last sweep's results.
 The runs' logs and pictures go to build/native/check/.
 
     .venv\\Scripts\\python.exe native\\tools\\check_windows.py [--build] [--exe PATH] [--reference PATH] [--sweep]
@@ -9,9 +10,11 @@ The runs' logs and pictures go to build/native/check/.
 --build builds first (build_windows.py). The program checked is build/native/cmake/CrashTwinsanity.exe unless --exe says;
 the pictures are compared with --reference's (by default the last packaged build's, build/native/dist/). Every run has a
 settings folder of its own (none of the player's), and the disc image is local.json's. Exits 1 when a check fails. --physics
-runs only the physics' check; --fps-shots FOLDER only the FPS counter's, with a window (the counter counts the pictures shown).
+runs only the physics' check; --portable only portable mode's; --fps-shots FOLDER only the FPS counter's, with a window (the
+counter counts the pictures shown).
 """
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -52,6 +55,21 @@ PHYSICS_RATES = [("60 Hz", "60", 1), ("144 Hz uneven", "144,144,60", 4), ("240 H
 # time in the air (seconds: 60 Hz's frames measure it in 60ths), and the lift's hop (its height)
 PHYSICS_TOLERANCE = {"along": (0.06, 0.2), "high": (0.02, 0.05), "air": (0.0, 0.05), "hop": (0.0, 0.15)}
 LIFT_CHUNK = "Levels\\Earth\\Cavern\\nitrocav"
+# Portable mode (native/WINDOWS.md, "Portable mode"): the program copied to a folder of its own with a settings folder of its own as
+# %APPDATA% (never the player's), started as Explorer starts it (no console, no output: its log goes to log.txt in the settings
+# folder in use). The chunk a run plays a few seconds of, and the data the settings folder starts with (a save, a mod of 20 MB)
+PORTABLE_CHUNK = "Levels\\Earth\\Hub\\beach"
+PORTABLE_DATA = {"options.txt": (b"# a test's\nshow_fps=1\npause_on_focus_loss=0\n", 1),
+                 "memorycard/BESLES-52568CRASH/TEST.DAT": (bytes(range(256)), 32),
+                 "mods/test/mod.bin": (bytes(range(255, -1, -1)), 80 * 1024)}
+# What starts it as Explorer does, run by pythonw (no console: python.exe made detached gets a console of its own, which the
+# program would attach to): the program started with no output handles and no console of its parent's (entry.cpp's SetUpLog)
+PORTABLE_LAUNCHER = ("import subprocess, sys\n"
+                     "none = subprocess.STARTUPINFO(dwFlags=subprocess.STARTF_USESTDHANDLES, hStdInput=0, hStdOutput=0, hStdError=0)\n"
+                     "try:\n"
+                     "    sys.exit(subprocess.run(sys.argv[2:], startupinfo=none, timeout=float(sys.argv[1])).returncode)\n"
+                     "except subprocess.TimeoutExpired:\n"
+                     "    sys.exit(99)\n")
 
 
 def disc_image(root=HERE):
@@ -238,6 +256,165 @@ def physics(exe, work):
     return results
 
 
+def snapshot(folder, logs=True):
+    """A folder's files (relative paths) and their SHA-1s; without the logs if logs is False"""
+    folder = Path(folder)
+    if not folder.is_dir():
+        return {}
+    return {path.relative_to(folder).as_posix(): hashlib.sha1(path.read_bytes()).hexdigest()
+            for path in folder.rglob("*") if path.is_file() and (logs or path.name not in ("log.txt", "log.previous.txt"))}
+
+
+def portable(exe, work):
+    """Portable mode's cases, played in turn on a copy of the program (portable.cpp; portabletest.cpp drives the options' switch
+    as a player would): [(name, passed, what happened)]"""
+    root = work / "portable"
+    user_name = f"{os.environ.get('USERDOMAIN', '')}\\{os.environ.get('USERNAME', '')}"
+    locked = root / "locked"
+    if locked.exists():
+        subprocess.run(["icacls", str(locked), "/remove:d", user_name, "/t", "/q"], capture_output=True)
+    if root.exists():
+        shutil.rmtree(root)
+    appdata = root / "appdata"
+    settings = appdata / "Crash Twinsanity"
+    shots = root / "shots"
+    play = {"TWIN_SWEEP_LEVEL": PORTABLE_CHUNK, "TWIN_SWEEP_SECONDS": "3", "TWIN_SWEEP_TIMEOUT": "120"}
+
+    def program(folder):
+        """The program with what it needs beside it (the DLLs, the fonts) copied to folder"""
+        folder.mkdir(parents=True)
+        shutil.copy2(exe, folder / exe.name)
+        for dll in exe.parent.glob("*.dll"):
+            shutil.copy2(dll, folder / dll.name)
+        (folder / "fonts").mkdir()
+        for font in (HERE / "native" / "third_party" / "fonts").glob("*.ttf"):
+            shutil.copy2(font, folder / "fonts" / font.name)
+        return folder
+
+    def run(game, environment, timeout=300):
+        """The copy in game run headless with appdata as %APPDATA%: its exit status (99: timed out)"""
+        env = dict(os.environ, APPDATA=str(appdata), HOME=str(appdata), TWINSANITY_AUDIO="off", **environment)
+        env.pop("TWINSANITY_ISO", None)
+        return subprocess.run([str(Path(sys.executable).with_name("pythonw.exe")), "-c", PORTABLE_LAUNCHER, str(timeout),
+                               str(game / exe.name), "--headless", "--quiet-stubs"], env=env, cwd=game,
+                              timeout=timeout + 60).returncode
+
+    def log_of(folder):
+        path = folder / "log.txt"
+        return path.read_text(errors="replace") if path.exists() else ""
+
+    def result(name, problems, fine):
+        return name, not problems, "; ".join(problems) if problems else fine
+
+    results = []
+    game = program(root / "Crash Twinsanity")
+    user = game / "User"
+    for name, (pattern, times) in PORTABLE_DATA.items():
+        (settings / name).parent.mkdir(parents=True, exist_ok=True)
+        (settings / name).write_bytes(pattern * times)
+    (settings / "disc_image.txt").write_text(disc_image() + "\n")
+
+    # 1. A portable.txt made by hand and no User folder: the first start copies %APPDATA%'s data there and writes nothing to it
+    (game / "portable.txt").write_text("")
+    before = snapshot(settings)
+    status = run(game, play)
+    log, copied, problems = log_of(user), snapshot(user), []
+    if status != 0:
+        problems.append(f"exit {status}")
+    if any(copied.get(name) != digest for name, digest in before.items()):
+        problems.append("User isn't %APPDATA%'s data")
+    if snapshot(settings) != before:
+        problems.append("%APPDATA% written to")
+    if "portable mode's first start" not in log or "settings and saves in the User folder" not in log or "sweep: " not in log:
+        problems.append("User\\log.txt doesn't say it")
+    results.append(result("first start", problems, f"{len(before)} files copied to User, the log there, %APPDATA% untouched"))
+
+    # 2. Turned on in the options (portable.txt gone, an older User folder there): %APPDATA%'s data copied, the old User folder
+    # set aside, portable.txt made, the game closed
+    (game / "portable.txt").unlink()
+    (user / "old.txt").write_text("the User folder before\n")
+    old_user = snapshot(user)
+    status = run(game, {"TWIN_PORTABLE_TEST": str(shots / "on")})
+    log, problems = log_of(settings), []
+    backups = sorted(game.glob("User (backup *)"))
+    if status != 0 or "portable test: done" not in log or "portable mode on: the game closes" not in log:
+        problems.append(f"exit {status}, {'the switch done' if 'portable test: done' in log else 'no switch'}")
+    if not (game / "portable.txt").exists():
+        problems.append("no portable.txt")
+    if not backups or snapshot(backups[-1]) != old_user:
+        problems.append("the old User folder not set aside whole")
+    if snapshot(user, logs=False) != snapshot(settings, logs=False):
+        problems.append("User isn't %APPDATA%'s data")
+    results.append(result("turned on", problems, f"copied, the old User folder kept as \"{backups[-1].name if backups else ''}\""))
+
+    # 3. Played portable, then turned off: nothing written to %APPDATA% meanwhile (what it held is set aside whole), User's data
+    # copied there, portable.txt removed
+    appdata_before = snapshot(settings)
+    status = run(game, {"TWIN_PORTABLE_TEST": str(shots / "off")})
+    log, problems = log_of(user), []
+    backups = sorted(appdata.glob("Crash Twinsanity (backup *)"))
+    if status != 0 or "portable test: done" not in log or "portable mode off: the game closes" not in log:
+        problems.append(f"exit {status}, {'the switch done' if 'portable test: done' in log else 'no switch'}")
+    if (game / "portable.txt").exists():
+        problems.append("portable.txt still there")
+    if not backups or snapshot(backups[-1]) != appdata_before:
+        problems.append("%APPDATA% written to while portable, or not set aside whole")
+    if snapshot(settings, logs=False) != snapshot(user, logs=False):
+        problems.append("%APPDATA% isn't User's data")
+    results.append(result("turned off", problems, f"copied back, %APPDATA%'s old folder kept as \"{backups[-1].name if backups else ''}\""))
+
+    # 4. Portable with no disc image remembered: the one in the program's folder found (not the decoy before it), remembered relative
+    (game / "portable.txt").write_text("")
+    (user / "disc_image.txt").unlink(missing_ok=True)
+    (game / "A decoy.iso").write_bytes(b"not a disc image\n" * 1024)
+    try:
+        os.link(disc_image(), game / "Crash Twinsanity.ISO")
+    except OSError as error:
+        results.append(("disc image found", False, f"the disc image can't be linked into the work folder: {error}"))
+        return results
+    status = run(game, play)
+    log, problems = log_of(user), []
+    remembered = (user / "disc_image.txt").read_text().strip() if (user / "disc_image.txt").exists() else ""
+    if status != 0 or "sweep: " not in log:
+        problems.append(f"exit {status}")
+    if "the disc image found in the program's folder" not in log or "A decoy.iso" not in log:
+        problems.append("not found in the folder")
+    if remembered != "Crash Twinsanity.ISO":
+        problems.append(f"remembered as \"{remembered}\"")
+    results.append(result("disc image found", problems, "the decoy passed over, remembered as \"Crash Twinsanity.ISO\""))
+
+    # 5. The folder moved (renamed): the image remembered relative is still there
+    moved = game.with_name("Crash Twinsanity moved")
+    game.rename(moved)
+    status = run(moved, play)
+    log, problems = log_of(moved / "User"), []
+    opened = next((line for line in log.splitlines() if "] disc image " in line), "")
+    if status != 0 or "sweep: " not in log:
+        problems.append(f"exit {status}")
+    if "Crash Twinsanity moved" not in opened:
+        problems.append(f"opened: {opened or 'nothing'}")
+    results.append(result("folder moved", problems, "the image opened from the moved folder"))
+
+    # 6. A folder that can't be written to with portable.txt: the settings stay in %APPDATA%, the options' switch refuses. As
+    # C:\Program Files is to a user: no files or folders can be made in it (the files' own rights as they were, so it runs)
+    program(locked)
+    (locked / "portable.txt").write_text("")
+    subprocess.run(["icacls", str(locked), "/deny", f"{user_name}:(WD,AD)", "/q"], capture_output=True, check=True)
+    try:
+        status = run(locked, {"TWIN_PORTABLE_TEST": str(shots / "locked")})
+    finally:
+        subprocess.run(["icacls", str(locked), "/remove:d", user_name, "/t", "/q"], capture_output=True)
+    log, problems = log_of(settings), []
+    if status != 0 or "portable test: pass (refused" not in log:
+        problems.append(f"exit {status}, {'refused' if 'portable test: refused' in log else 'not refused'}")
+    if "its folder can't be used for portable mode" not in log:
+        problems.append("the start didn't say portable.txt can't be used")
+    if (locked / "User").exists():
+        problems.append("a User folder made")
+    results.append(result("folder not writable", problems, "the settings kept in %APPDATA%, the switch refused"))
+    return results
+
+
 def pictures(exe, reference, work, last=2500, every=100):
     """The beach from the start (--quick) at a fixed time with the sound made frame by frame, every 100th picture of both
     programs compared byte for byte: (pictures the same, [different or missing ones])"""
@@ -315,6 +492,7 @@ def main():
     parser.add_argument("--sweep", action="store_true", help="every level chunk too (some 20 minutes)")
     parser.add_argument("--work", default=str(HERE / "build/native/check"))
     parser.add_argument("--physics", action="store_true", help="only the physics' check (past 60 Hz against 60 Hz's)")
+    parser.add_argument("--portable", action="store_true", help="only portable mode's check")
     parser.add_argument("--hints-shots", metavar="FOLDER",
                         help="only the menu hints' check, with a window: the pause menu's pictures saved in FOLDER")
     parser.add_argument("--fps-shots", metavar="FOLDER",
@@ -336,6 +514,11 @@ def main():
         results = physics(exe, work)
         for name, ok, what in results:
             print(f"physics         {'ok' if ok else 'FAILED'} {name} as 60 Hz: {what}")
+        sys.exit(0 if all(ok for _, ok, _ in results) else 1)
+    if arguments.portable:
+        results = portable(exe, work)
+        for name, ok, what in results:
+            print(f"portable        {'ok' if ok else 'FAILED'} {name}: {what}")
         sys.exit(0 if all(ok for _, ok, _ in results) else 1)
     if arguments.hints_shots:
         results = menu_hints(exe, work, arguments.hints_shots)
@@ -385,6 +568,14 @@ def report(exe, reference, work, with_sweep, reference_name=None):
     for name, ok, what in physics(exe, work):
         print(f"physics         {'ok' if ok else 'FAILED'} {name} as 60 Hz: {what}")
         failed |= not ok
+
+    cases = portable(exe, work)
+    print(f"portable        {sum(ok for _, ok, _ in cases)}/{len(cases)} cases as they should be "
+          f"({', '.join(name for name, _, _ in cases)})")
+    for name, ok, what in cases:
+        if not ok:
+            failed = True
+            print(f"  FAILED {name}: {what}")
 
     if reference and reference.exists():
         same, different = pictures(exe, reference, work)

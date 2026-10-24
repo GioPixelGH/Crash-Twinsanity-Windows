@@ -78,6 +78,8 @@ std::string ProperWords(const std::string& text)
         {"v-sync", "V-sync"},   {"esc", "Esc"},         {"fxaa", "FXAA"},   {"msaa", "MSAA"},         {"smaa", "SMAA"},
         {"crash", "Crash"},     {"cortex", "Cortex"},   {"nina", "Nina"},   {"wumpa", "Wumpa"},       {"tv", "TV"},
         {"hud", "HUD"},         {"ui", "UI"},           {"pc", "PC"},       {"fps", "FPS"},
+        // Portable mode's: the folders' names, the stick, the dialog's button
+        {"appdata", "AppData"}, {"user", "User"},       {"usb", "USB"},     {"program files", "Program Files"}, {"ok", "OK"},
     };
     auto letter = [](unsigned char c) { return std::isalnum(c) != 0 || c >= 0xC0; };
     std::string out = text;
@@ -378,6 +380,150 @@ void DescriptionLine(OverlayFrame& frame, const std::string& text, f32 x, f32 mi
         x += Prompt(frame, GlyphPrompt(c), x, middle) + 4.0f;
     }
     flush();
+}
+
+// A text broken into lines no wider than width, at its spaces (a lone "?", ":", "!" or ";", French's spaced punctuation, stays with
+// the word before it)
+std::vector<std::string> Wrapped(const std::string& text, f32 width, const TextStyle& style)
+{
+    std::vector<std::string> lines;
+    std::string line;
+    size_t at = 0;
+    while (at < text.size())
+    {
+        size_t space = text.find(' ', at);
+        std::string word = text.substr(at, space == std::string::npos ? std::string::npos : space - at);
+        at = space == std::string::npos ? text.size() : space + 1;
+        bool punctuation = word.size() == 1 && std::strchr("?:!;", word[0]) != nullptr;
+        std::string longer = line.empty() ? word : line + " " + word;
+        if (!line.empty() && !punctuation && OverlayTextWidth(longer, style) > width)
+        {
+            lines.push_back(line);
+            line = word;
+        }
+        else
+        {
+            line = longer;
+        }
+    }
+
+    if (!line.empty())
+    {
+        lines.push_back(line);
+    }
+
+    return lines;
+}
+
+// A button of a dialog: orange (its yes) or the pill's blue (its no), its word, its region
+void DialogButton(OverlayFrame& frame, f32 x, f32 y, u32 text, bool primary, HitKind kind, std::vector<HitRegion>& regions)
+{
+    constexpr f32 Width = 140.0f;
+    constexpr f32 Height = 42.0f;
+    BoxStyle button;
+    button.fill = primary ? Orange : PillFill;
+    button.radius = 20.0f;
+    frame.Box(x, y, Width, Height, button);
+    frame.Text(Sentence(Text(text)), x + Width * 0.5f, y + Height * 0.5f, Body(21.0f, primary ? White : PillBlue), OverlayAlign::Centre);
+    regions.push_back({kind, x, y, Width, Height, -1, -1, -1});
+}
+
+// Portable mode's dialog (settings.cpp) over the screen: its title and message, then yes and no (asked), OK (refused, failed, done:
+// the game closes, by itself after a few seconds) or the copy's bar and its megabytes. Done says where the old folder went, failed
+// what went wrong (in English, as the log has it)
+void DrawPortableDialog(OverlayFrame& frame, const SettingsView& view, const BoxStyle& panel, std::vector<HitRegion>& regions)
+{
+    constexpr f32 Width = 660.0f;
+    constexpr f32 Left = (ReferenceWidth - Width) * 0.5f;
+    constexpr f32 Pad = 40.0f;
+    constexpr f32 LineHeight = 28.0f;
+    constexpr f32 NoteHeight = 22.0f;
+    constexpr f32 Bottom = 42.0f;
+    TextStyle title = Body(24.0f, Ink, true);
+    TextStyle body = Body(20.0f, Ink);
+    TextStyle note = Body(16.0f, Hex(0x6b86a8));
+    u32 message = view.dialog == DialogAsk       ? (view.dialogPortable ? TextPortableAskOn : TextPortableAskOff)
+                  : view.dialog == DialogRefused ? TextPortableRefused
+                  : view.dialog == DialogCopying ? TextPortableCopying
+                  : view.dialog == DialogDone    ? TextPortableDone
+                                                 : TextPortableFailed;
+    std::string text = Sentence(Text(message));
+    if (view.dialog == DialogDone)
+    {
+        char seconds[16];
+        std::snprintf(seconds, sizeof(seconds), " (%d)", view.closeSecondsLeft < 0 ? 0 : view.closeSecondsLeft);
+        text += seconds;
+    }
+
+    f32 textWidth = Width - Pad * 2.0f;
+    std::vector<std::string> lines = Wrapped(text, textWidth, body);
+    std::vector<std::string> notes;
+    if (view.dialog == DialogDone && !view.backup.empty())
+    {
+        lines.push_back(Sentence(Text(TextPortableBackup)));
+        lines.push_back("\"" + view.backup + "\"");
+    }
+    else if (view.dialog == DialogFailed && !view.failure.empty())
+    {
+        notes = Wrapped(view.failure, textWidth, note);
+    }
+
+    f32 height = 32.0f + 36.0f + 10.0f + static_cast<f32>(lines.size()) * LineHeight + static_cast<f32>(notes.size()) * NoteHeight +
+                 24.0f + Bottom + 30.0f;
+    f32 top = (ReferenceHeight - height) * 0.5f;
+    BoxStyle dim;
+    dim.fill = Hex(0x000000, 0.35f);
+    frame.Box(0.0f, 0.0f, ReferenceWidth, ReferenceHeight, dim);
+    frame.Box(Left, top, Width, height, panel);
+    f32 y = top + 32.0f + 18.0f;
+    frame.Text(Sentence(Text(TextPortable)), ReferenceWidth * 0.5f, y, title, OverlayAlign::Centre);
+    y += 18.0f + 10.0f + LineHeight * 0.5f;
+    for (const std::string& line : lines)
+    {
+        frame.Text(line, ReferenceWidth * 0.5f, y, body, OverlayAlign::Centre);
+        y += LineHeight;
+    }
+
+    y += NoteHeight * 0.5f - LineHeight * 0.5f;
+    for (const std::string& line : notes)
+    {
+        frame.Text(line, ReferenceWidth * 0.5f, y, note, OverlayAlign::Centre);
+        y += NoteHeight;
+    }
+
+    f32 bottomTop = top + height - 30.0f - Bottom;
+    switch (view.dialog)
+    {
+    case DialogAsk:
+        DialogButton(frame, ReferenceWidth * 0.5f - 170.0f, bottomTop, GameTextYes, true, HitKind::DialogYes, regions);
+        DialogButton(frame, ReferenceWidth * 0.5f + 30.0f, bottomTop, GameTextNo, false, HitKind::DialogNo, regions);
+        break;
+    case DialogCopying:
+    {
+        // The bar, and the megabytes copied of the megabytes there are under it
+        BoxStyle track;
+        track.fill = PillFill;
+        track.radius = 8.0f;
+        frame.Box(Left + Pad, bottomTop, textWidth, 16.0f, track);
+        f32 share = view.copyTotal != 0 ? std::min(1.0f, static_cast<f32>(view.copied) / static_cast<f32>(view.copyTotal)) : 0.0f;
+        if (share > 0.0f)
+        {
+            BoxStyle fill;
+            fill.fill = Orange;
+            fill.radius = 8.0f;
+            frame.Box(Left + Pad, bottomTop, std::max(16.0f, textWidth * share), 16.0f, fill);
+        }
+
+        char megabytes[48];
+        std::snprintf(megabytes, sizeof(megabytes), "%.1f / %.1f MB", static_cast<double>(view.copied) / (1024.0 * 1024.0),
+                      static_cast<double>(view.copyTotal) / (1024.0 * 1024.0));
+        frame.Text(megabytes, ReferenceWidth * 0.5f, bottomTop + 16.0f + 16.0f, note, OverlayAlign::Centre);
+        break;
+    }
+    default:
+        DialogButton(frame, ReferenceWidth * 0.5f - 70.0f, bottomTop, TextOk, true, HitKind::DialogYes, regions);
+        break;
+    }
 }
 
 struct FooterItem
@@ -851,6 +997,11 @@ void DrawSettingsView(OverlayFrame& frame, std::vector<HitRegion>& regions)
         frame.Text(Sentence(Text(GameTextNo)), 740.0f, 391.0f, Body(21.0f, PillBlue), OverlayAlign::Centre);
         regions.push_back({HitKind::KeepYes, 470.0f, 370.0f, 140.0f, 42.0f, -1, -1, -1});
         regions.push_back({HitKind::KeepNo, 670.0f, 370.0f, 140.0f, 42.0f, -1, -1, -1});
+    }
+
+    if (view.dialog != DialogNone)
+    {
+        DrawPortableDialog(frame, view, panel, regions);
     }
 
     // The bar of prompts for the device in use

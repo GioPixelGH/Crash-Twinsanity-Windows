@@ -155,6 +155,7 @@ void SetVibration(s32 value)
 
 void OpenScreenPosition();
 void SelectTab(u32 tab);
+void AskPortable(bool portable);
 
 // The display mode (window or fullscreen) and the window's size: the windows' sizes are the display choices but the last
 s32 WindowSizeChoice()
@@ -188,6 +189,13 @@ void Build()
     gameplay.push_back(Toggle(TextBugFixes, TextDescBugFixes, OptionRetailFixes));
     gameplay.push_back(Toggle(TextPauseInactive, TextDescPauseInactive, OptionPauseOnFocusLoss));
     gameplay.push_back(Toggle(TextDetailedLog, TextDescDetailedLog, OptionDetailedLog));
+    // Portable mode (portable.cpp; not an option of options.txt, which is in the folder it chooses): the mode in use, and stepping
+    // it asks to switch (the dialog), the switch taking effect from the next start
+    Row portable = Choice(
+        TextPortable, TextDescPortable, [] { return Native::PortableMode() ? 1 : 0; }, [](s32 value) { AskPortable(value != 0); }, 1,
+        [](s32 value) { return Text(value != 0 ? GameTextYes : GameTextNo); });
+    portable.shown = [] { return Native::PortableSupported(); };
+    gameplay.push_back(portable);
 
     std::vector<Row>& display = g_Rows[TabDisplay];
     Row mode = Choice(
@@ -340,6 +348,11 @@ bool g_Keeping = false;
 Resolution g_KeepPrevious = {};
 std::chrono::steady_clock::time_point g_KeepStart;
 constexpr f32 KeepSeconds = 15.0f;
+// Portable mode's dialog, whether it's turning it on, and when the copy was done (the game closes on select, or by itself)
+PortableDialog g_Dialog = DialogNone;
+bool g_DialogPortable = false;
+std::chrono::steady_clock::time_point g_DoneAt;
+constexpr f32 CloseSeconds = 10.0f;
 
 // Input since the last frame
 enum UiAction : u32
@@ -984,6 +997,77 @@ void Back()
     Close();
 }
 
+// ------------------------------------------------------------------------------------------------------------- portable mode
+// The switch asked about (Gameplay's row stepped), or refused at once when the program's folder can't be written to
+void AskPortable(bool portable)
+{
+    g_DialogPortable = portable;
+    g_Dialog = DialogAsk;
+    std::string why;
+    if (portable && !Native::PortableFolderUsable(&why))
+    {
+        Native::Log("portable mode can't be turned on: the program's folder %s", why.c_str());
+        g_Dialog = DialogRefused;
+    }
+}
+
+// The dialog's input (select or its yes, back or its no) and the copy followed: asked, yes copies; refused and failed go away on
+// either; done closes the game on either, or by itself after a few seconds (the old folder gets nothing more either way)
+void TakeDialogInput()
+{
+    Hit hit = HitTest();
+    bool clicked = g_MouseClicked && hit.region != nullptr;
+    bool yes = Took(UiConfirm) || (clicked && hit.region->kind == HitKind::DialogYes);
+    bool no = Took(UiBack) || g_MouseRightClicked || (clicked && hit.region->kind == HitKind::DialogNo);
+    switch (g_Dialog)
+    {
+    case DialogAsk:
+        if (yes)
+        {
+            Native::StartPortableSwitch(g_DialogPortable);
+            g_Dialog = DialogCopying;
+        }
+        else if (no)
+        {
+            g_Dialog = DialogNone;
+        }
+
+        break;
+    case DialogCopying:
+        switch (Native::PortableSwitchState(nullptr, nullptr, nullptr, nullptr))
+        {
+        case Native::PortableSwitchDone:
+            g_Dialog = DialogDone;
+            g_DoneAt = std::chrono::steady_clock::now();
+            break;
+        case Native::PortableSwitchFailed:
+            g_Dialog = DialogFailed;
+            break;
+        default:
+            break;
+        }
+
+        break;
+    case DialogDone:
+        if (yes || no || std::chrono::duration<f32>(std::chrono::steady_clock::now() - g_DoneAt).count() >= CloseSeconds)
+        {
+            Native::QuitAfterPortableSwitch();
+        }
+
+        break;
+    case DialogRefused:
+    case DialogFailed:
+        if (yes || no)
+        {
+            g_Dialog = DialogNone;
+        }
+
+        break;
+    default:
+        break;
+    }
+}
+
 void TakeInput()
 {
     std::vector<Row>& rows = g_Rows[g_Tab];
@@ -1016,6 +1100,18 @@ void TakeInput()
             EndKeeping(false);
         }
 
+        g_Actions = 0;
+        g_MouseClicked = false;
+        g_MouseRightClicked = false;
+        g_MouseMoved = false;
+        g_Wheel = 0;
+        return;
+    }
+
+    // Portable mode's dialog: the list takes nothing meanwhile
+    if (g_Dialog != DialogNone)
+    {
+        TakeDialogInput();
         g_Actions = 0;
         g_MouseClicked = false;
         g_MouseRightClicked = false;
@@ -1216,6 +1312,15 @@ SettingsView CurrentSettingsView()
     view.flashRows[1] = g_FlashRows[1];
     view.flashOn = flash < 0.6f && (static_cast<s32>(flash * 10.0f) & 1) == 0;
     view.pageChanges = g_PageChanges;
+    view.dialog = g_Dialog;
+    view.dialogPortable = g_DialogPortable;
+    if (g_Dialog != DialogNone)
+    {
+        Native::PortableSwitchState(&view.copied, &view.copyTotal, &view.backup, &view.failure);
+    }
+
+    f32 done = std::chrono::duration<f32>(std::chrono::steady_clock::now() - g_DoneAt).count();
+    view.closeSecondsLeft = g_Dialog == DialogDone ? static_cast<s32>(CloseSeconds - done + 0.999f) : 0;
     return view;
 }
 
@@ -1436,5 +1541,10 @@ u32 SettingsTabForTest()
 s32 SettingsRowForTest()
 {
     return g_Row;
+}
+
+u32 PortableDialogForTest()
+{
+    return g_Dialog;
 }
 }
