@@ -132,7 +132,9 @@ disc_image.txt, xbox_disc.txt, `memorycard/`, `mods/`, `textures/`, the log), is
   "settings and saves in %APPDATA%\Crash Twinsanity" or "in the User folder beside the program" (named, not spelt out: the
   logs go to bug reports, and `%APPDATA%`'s path has the user's name).
 - **Options > Gameplay > Portable mode** (yes/no, ui/settings.cpp; shown only on Windows) is the mode in use. Stepping it asks
-  (a dialog over the settings, the controller's or the mouse's), refused at once when the folder can't be written to, then
+  (a dialog over the settings, the controller's or the mouse's: left and right or the mouse over a button choose yes or no,
+  no at first so a press by chance doesn't switch, select takes the chosen one, back is no), refused at once when the folder
+  can't be written to, then
   `Native::StartPortableSwitch` copies on a thread of its own from the folder in use to the other, the dialog showing a bar and
   the megabytes (texture packs and mods can be hundreds). The copy never moves anything: it's made whole beside the destination
   (`User.copying`, `Crash Twinsanity.copying`) and only then put in its place; what the destination held is set aside whole
@@ -375,8 +377,8 @@ below: at 60 Hz, 50 Hz, 144 Hz without v-sync, and off; a minute or so), with a 
   `$TWIN_PHYSICS_TIED` (Cortex tied to it) and `$TWIN_PHYSICS_SECONDS` (the watch's end). `$TWIN_PHYSICS_TRACE=FILE`: every
   frame's place, velocity, ground and movement node's velocity as CSV.
 - `$TWIN_PORTABLE_TEST=1` or `=FOLDER` (with `--headless`, ui/portabletest.cpp): from the main menu the settings opened,
-  Gameplay's portable mode row stepped and its dialog followed with its own input: asked, select copies, done, select closes the
-  game as a player's would (exit 0; the folders are check_windows.py's to look at); refused (the folder can't be written to),
+  Gameplay's portable mode row stepped and its dialog followed with its own input: asked, left to yes and select copies,
+  done, select closes the game as a player's would (exit 0; the folders are check_windows.py's to look at); refused (the folder can't be written to),
   select, "portable test: pass (refused ...)" and exit 0. With a folder the screen is saved there at each step
   (portable_ask.png, portable_copying.png, portable_done.png, portable_refused.png).
 

@@ -87,6 +87,8 @@ struct SettingsView
     // folder's name, what went wrong (English), the seconds left before the game closes
     PortableDialog dialog;
     bool dialogPortable;
+    // The asked dialog's chosen button (yes, else no)
+    bool dialogOnYes;
     u64 copied;
     u64 copyTotal;
     std::string backup;

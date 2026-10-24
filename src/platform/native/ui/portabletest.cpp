@@ -28,6 +28,7 @@ using Clock = std::chrono::steady_clock;
 enum : u32
 {
     Down = 1,
+    Left = 2,
     Right = 3,
     Confirm = 4,
     TabNext = 7,
@@ -189,7 +190,8 @@ void PortableTestFrame()
         if (dialog == DialogAsk)
         {
             Shot("portable_ask");
-            Native::Log("portable test: asked; select");
+            Native::Log("portable test: asked (no chosen at first); left to yes, select");
+            SettingsActForTest(Left);
             SettingsActForTest(Confirm);
             Next(Phase::Copying);
         }

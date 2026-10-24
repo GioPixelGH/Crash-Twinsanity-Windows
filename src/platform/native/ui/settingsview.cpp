@@ -495,8 +495,9 @@ void DrawPortableDialog(OverlayFrame& frame, const SettingsView& view, const Box
     switch (view.dialog)
     {
     case DialogAsk:
-        DialogButton(frame, ReferenceWidth * 0.5f - 170.0f, bottomTop, GameTextYes, true, HitKind::DialogYes, regions);
-        DialogButton(frame, ReferenceWidth * 0.5f + 30.0f, bottomTop, GameTextNo, false, HitKind::DialogNo, regions);
+        // The chosen one lit (left and right, or the mouse, choose it)
+        DialogButton(frame, ReferenceWidth * 0.5f - 170.0f, bottomTop, GameTextYes, view.dialogOnYes, HitKind::DialogYes, regions);
+        DialogButton(frame, ReferenceWidth * 0.5f + 30.0f, bottomTop, GameTextNo, !view.dialogOnYes, HitKind::DialogNo, regions);
         break;
     case DialogCopying:
     {

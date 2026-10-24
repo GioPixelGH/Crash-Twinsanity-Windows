@@ -351,6 +351,9 @@ constexpr f32 KeepSeconds = 15.0f;
 // Portable mode's dialog, whether it's turning it on, and when the copy was done (the game closes on select, or by itself)
 PortableDialog g_Dialog = DialogNone;
 bool g_DialogPortable = false;
+// The asked dialog's button the keys and the controller are on (left yes, right no): no at first, so a press by chance
+// doesn't switch
+bool g_DialogOnYes = false;
 std::chrono::steady_clock::time_point g_DoneAt;
 constexpr f32 CloseSeconds = 10.0f;
 
@@ -1003,6 +1006,7 @@ void AskPortable(bool portable)
 {
     g_DialogPortable = portable;
     g_Dialog = DialogAsk;
+    g_DialogOnYes = false;
     std::string why;
     if (portable && !Native::PortableFolderUsable(&why))
     {
@@ -1011,14 +1015,29 @@ void AskPortable(bool portable)
     }
 }
 
-// The dialog's input (select or its yes, back or its no) and the copy followed: asked, yes copies; refused and failed go away on
-// either; done closes the game on either, or by itself after a few seconds (the old folder gets nothing more either way)
+// The dialog's input and the copy followed. Asked: left and right (or the mouse over a button) choose yes or no, select takes the
+// chosen one, back is no, a click takes its button; yes copies. Refused and failed go away on select or back; done closes the
+// game on either, or by itself after a few seconds (the old folder gets nothing more either way)
 void TakeDialogInput()
 {
     Hit hit = HitTest();
+    bool asked = g_Dialog == DialogAsk;
+    if (asked && hit.region != nullptr && (g_MouseMoved || g_MouseClicked) &&
+        (hit.region->kind == HitKind::DialogYes || hit.region->kind == HitKind::DialogNo))
+    {
+        g_DialogOnYes = hit.region->kind == HitKind::DialogYes;
+    }
+
+    if (asked && (Took(UiLeft) || Took(UiRight)))
+    {
+        g_DialogOnYes = Took(UiLeft);
+    }
+
     bool clicked = g_MouseClicked && hit.region != nullptr;
-    bool yes = Took(UiConfirm) || (clicked && hit.region->kind == HitKind::DialogYes);
-    bool no = Took(UiBack) || g_MouseRightClicked || (clicked && hit.region->kind == HitKind::DialogNo);
+    bool selected = Took(UiConfirm);
+    bool yes = (selected && (!asked || g_DialogOnYes)) || (clicked && hit.region->kind == HitKind::DialogYes);
+    bool no = (selected && asked && !g_DialogOnYes) || Took(UiBack) || g_MouseRightClicked ||
+              (clicked && hit.region->kind == HitKind::DialogNo);
     switch (g_Dialog)
     {
     case DialogAsk:
@@ -1108,9 +1127,10 @@ void TakeInput()
         return;
     }
 
-    // Portable mode's dialog: the list takes nothing meanwhile
+    // Portable mode's dialog: the list takes nothing meanwhile (the stick's left and right choose its button)
     if (g_Dialog != DialogNone)
     {
+        PollHeldDirections();
         TakeDialogInput();
         g_Actions = 0;
         g_MouseClicked = false;
@@ -1314,6 +1334,7 @@ SettingsView CurrentSettingsView()
     view.pageChanges = g_PageChanges;
     view.dialog = g_Dialog;
     view.dialogPortable = g_DialogPortable;
+    view.dialogOnYes = g_DialogOnYes;
     if (g_Dialog != DialogNone)
     {
         Native::PortableSwitchState(&view.copied, &view.copyTotal, &view.backup, &view.failure);
