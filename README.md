@@ -1,11 +1,19 @@
+<div align="center">
+
 # Crash Twinsanity for Windows
 
 Crash Twinsanity (PlayStation 2, PAL) running natively on 64-bit Windows, without an emulator.
 
+![Latest release](https://img.shields.io/github/v/release/GioPixelGH/Crash-Twinsanity-Windows?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-Windows%20x64-blue?style=flat-square)
+
+
 This is a Windows port of [HAB3X's Crash Twinsanity for Mac](https://github.com/HAB3X/Crash-Twinsanity-Mac). The Mac port runs
 [Smartkin's complete C++ decompilation of the game](https://github.com/Smartkin/twinsanity-reversed) on a native platform layer
-(SDL3, an OpenGL renderer for the PS2's graphics, sound, movies, saves and a new options screen). This repository adds what
+(SDL3, an OpenGL renderer for the PS2's graphics, sound, movies, saves and a new options screen).This repository adds what
 Windows needs, makes it run at a steady 60 fps, and fixes the crashes found by playing it.
+
+</div>
 
 ![Title](docs/screenshots/title.jpg)
 
