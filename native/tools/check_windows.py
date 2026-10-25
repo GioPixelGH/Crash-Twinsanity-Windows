@@ -10,8 +10,8 @@ The runs' logs and pictures go to build/native/check/.
 --build builds first (build_windows.py). The program checked is build/native/cmake/CrashTwinsanity.exe unless --exe says;
 the pictures are compared with --reference's (by default the last packaged build's, build/native/dist/). Every run has a
 settings folder of its own (none of the player's), and the disc image is local.json's. Exits 1 when a check fails. --physics
-runs only the physics' check; --portable only portable mode's; --fps-shots FOLDER only the FPS counter's, with a window (the
-counter counts the pictures shown).
+runs only the physics' check; --portable only portable mode's; --scenarios only the scenarios; --fps-shots FOLDER only the FPS
+counter's, with a window (the counter counts the pictures shown).
 """
 import argparse
 import hashlib
@@ -29,12 +29,33 @@ HERE = Path(__file__).resolve().parents[2]
 TOOLS = HERE / "native" / "tools"
 SELF_TESTS = ["abi", "lowmemory", "saves", "ui"]
 # Places that crashed once, played again: a name, the chunk the sweep starts in, the seconds played and the hops
-# (native/WINDOWS.md, "Debugging")
+# (native/WINDOWS.md, "Debugging"), and for some what else the run is: options.txt's lines (the cutscene skip on), the run's
+# variables, and what its log must and mustn't have (regular expressions)
+SKIPPING = {"options": "skip_cutscenes=1\n"}
 SCENARIOS = [
     ("Slip Slide's mine cradles (1.0.5)", "Levels\\Ice\\SlipSlide\\l05start", 60,
      "wait34,idle,wait4,bring:mine_cradle,wait6,bring:mine_cradle,wait6"),
     ("Dingodile beaten, the boiler room's lock and the Academy (1.0.7)", "Levels\\school\\Boiler\\boiler_6", 65,
      "wait20,state:dingodile_bossfight_director_activated:3,wait12,boil2lck,wait5,sch_hub,wait8"),
+    # Issue #9: the angry skunk's scene skipped, then the skunk attacked at once, while it still plays the scene's behaviour (left
+    # taking its object from the scene's director it was drawn as Crash, or crashed on an "OGI" read past the director's models)
+    ("The skunk's scene skipped, the skunk attacked at once (#9)", "Levels\\Earth\\Hub\\highpath", 30,
+     "idle,goto:-9:-4:-50,input,on:skunk:0,wait3,on:skunk:0,wait3,on:skunk:0,wait3",
+     dict(SKIPPING, env={"TWIN_SKIP_TEST": "0.2"},
+          expect=[r"skip: .*COM_ANGRY_SKUNK_CUSCENE_MAIN skipped: .*given back as they finish: .*act_GLOBAL_SKUNK"])),
+    # ... and given back its own object once it's done (the training scene before it too: Coco's creature, Crash), as the scene
+    # played out leaves them
+    ("The skunk's scene skipped, the skunk given back (#9)", "Levels\\Earth\\Hub\\highpath", 30, "idle,goto:-9:-4:-50,wait15",
+     dict(SKIPPING, env={"TWIN_SKIP_TEST": "0.2", "TWIN_SCENE_STATE": "10"},
+          expect=[r"skip: .* after the skip, actors given their own object back: .*act_GLOBAL_SKUNK",
+                  r"scene state: the player \|Highpath\|act_CRASH, inputs locked 00000000"],
+          forbid=[r"scene state: .* takes its object from", r"inputs locked ffffffff"])),
+    # Issue #9: Cortex chased by the bear (Doc Amok), the scene skipped: the controls stayed locked
+    ("The bear's scene skipped, the controls given back (#9)", "Levels\\Earth\\DocAmok\\docamok3", 12, "",
+     dict(SKIPPING, env={"TWIN_SKIP_TEST": "0.2", "TWIN_SCENE_STATE": "1"},
+          expect=[r"skip: .*COM_DOCAMOK_BEAR_CUTSCENE skipped: .*the inputs given back",
+                  r"scene state: the player .*inputs locked 00000000"],
+          forbid=[r"inputs locked ffffffff"])),
 ]
 # The pause menu's hints checked for each controller's prompts and the menu hints option (hintstest.cpp): the prompts' style
 # ($TWIN_UI_PROMPTS) and the option (options.txt's menu_hints: 0 the game's own hints, 1 the bar). The pause on the window's focus
@@ -119,21 +140,29 @@ def self_tests(exe, work):
 def scenarios(exe, work):
     """Each scenario's result: [(name, passed, what happened)]"""
     def one(scenario):
-        name, chunk, seconds, hops = scenario
+        name, chunk, seconds, hops, *more = scenario
+        more = more[0] if more else {}
         folder = work / ("scenario-" + "".join(c if c.isalnum() else "_" for c in name))
-        status, log = run_game(exe, folder, ["--headless", "--quiet-stubs"],
-                               {"TWIN_SWEEP_LEVEL": chunk, "TWIN_SWEEP_SECONDS": str(seconds), "TWIN_SWEEP_TIMEOUT": "180",
-                                "TWIN_HOP": hops, "TWIN_DETAILED_LOG": "1"}, timeout=seconds * 6 + 300)
+        environment = {"TWIN_SWEEP_LEVEL": chunk, "TWIN_SWEEP_SECONDS": str(seconds), "TWIN_SWEEP_TIMEOUT": "180",
+                       "TWIN_HOP": hops, "TWIN_DETAILED_LOG": "1", **more.get("env", {})}
+        status, log = run_game(exe, folder, ["--headless", "--quiet-stubs"], environment, timeout=seconds * 6 + 300,
+                               options=more.get("options"))
         fatal = [line for line in log.splitlines() if line.startswith("[native] fatal")]
         played = any("sweep:" in line and (": ran (" in line or ": game over (" in line) for line in log.splitlines())
         problems = [line for line in log.splitlines() if any(problem in line for problem in MEMORY_PROBLEMS)]
+        missing = [pattern for pattern in more.get("expect", []) if not re.search(pattern, log)]
+        found = [line for pattern in more.get("forbid", []) for line in log.splitlines() if re.search(pattern, line)]
         if fatal:
             return name, False, fatal[0].replace("[native] ", "")
         if problems:
             return name, False, f"{len(problems)} memory problems, the first: {problems[0].replace('[native] ', '')}"
         if status != 0 or not played:
             return name, False, f"exit {status}, played: {played}"
-        return name, True, "no crash, no memory problem"
+        if missing:
+            return name, False, f"nothing in the log like {missing[0]!r}"
+        if found:
+            return name, False, f"the log has {found[0].replace('[native] ', '')!r}"
+        return name, True, "no crash, no memory problem" + (", the skips' ends as expected" if more else "")
     with ThreadPoolExecutor(3) as pool:
         return list(pool.map(one, SCENARIOS))
 
@@ -415,6 +444,31 @@ def portable(exe, work):
     return results
 
 
+# The disc images a player may keep beside the program (portable mode looks for them there)
+DISC_SUFFIXES = (".iso", ".bin", ".img")
+
+
+def playable_copy(program, folder):
+    """The program to run for a check: itself, or, when its folder is a player's portable one (a portable.txt or a User folder
+    beside it: build/native/dist/ is the user's), a copy of its own files in folder (never the player's settings, saves or disc
+    images), so the run can't read or write them"""
+    program = Path(program)
+    home = program.parent
+    if not (home / "portable.txt").exists() and not (home / "User").exists():
+        return program
+    if folder.exists():
+        shutil.rmtree(folder)
+    for item in home.iterdir():
+        if item.name in ("User", "portable.txt") or item.name.startswith("User (") or item.suffix.lower() in DISC_SUFFIXES:
+            continue
+        if item.is_dir():
+            shutil.copytree(item, folder / item.name)
+        else:
+            folder.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(item, folder / item.name)
+    return folder / program.name
+
+
 def pictures(exe, reference, work, last=2500, every=100):
     """The beach from the start (--quick) at a fixed time with the sound made frame by frame, every 100th picture of both
     programs compared byte for byte: (pictures the same, [different or missing ones])"""
@@ -422,6 +476,7 @@ def pictures(exe, reference, work, last=2500, every=100):
         folder = work / f"pictures-{name}"
         if folder.exists():
             shutil.rmtree(folder)
+        program = playable_copy(program, work / f"program-{name}")
         frames = folder / "frames"
         frames.mkdir(parents=True)
         settings = folder / "settings" / "Crash Twinsanity"
@@ -493,6 +548,7 @@ def main():
     parser.add_argument("--work", default=str(HERE / "build/native/check"))
     parser.add_argument("--physics", action="store_true", help="only the physics' check (past 60 Hz against 60 Hz's)")
     parser.add_argument("--portable", action="store_true", help="only portable mode's check")
+    parser.add_argument("--scenarios", action="store_true", help="only the scenarios (the places that once crashed)")
     parser.add_argument("--hints-shots", metavar="FOLDER",
                         help="only the menu hints' check, with a window: the pause menu's pictures saved in FOLDER")
     parser.add_argument("--fps-shots", metavar="FOLDER",
@@ -514,6 +570,11 @@ def main():
         results = physics(exe, work)
         for name, ok, what in results:
             print(f"physics         {'ok' if ok else 'FAILED'} {name} as 60 Hz: {what}")
+        sys.exit(0 if all(ok for _, ok, _ in results) else 1)
+    if arguments.scenarios:
+        results = scenarios(exe, work)
+        for name, ok, what in results:
+            print(f"scenario        {'ok' if ok else 'FAILED'} {name}: {what}")
         sys.exit(0 if all(ok for _, ok, _ in results) else 1)
     if arguments.portable:
         results = portable(exe, work)
@@ -548,7 +609,7 @@ def report(exe, reference, work, with_sweep, reference_name=None):
             print(f"  FAILED {name}: {last}")
 
     played = scenarios(exe, work)
-    print(f"scenarios       {sum(ok for _, ok, _ in played)}/{len(played)} without a crash or a memory problem")
+    print(f"scenarios       {sum(ok for _, ok, _ in played)}/{len(played)} without a crash or a memory problem (and as expected)")
     for name, ok, what in played:
         if not ok:
             failed = True

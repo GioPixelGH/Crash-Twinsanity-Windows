@@ -1,10 +1,15 @@
 #include "game/objects.h"
 
+#include "game/animation.h"
 #include "game/layout.h"
 #include "game/memory.h"
 #include "game/resources.h"
 #include "game/sound.h"
 #include "game/stream.h"
+
+#ifdef TWIN_NATIVE
+#include "native.h"
+#endif
 
 extern "C"
 {
@@ -165,14 +170,52 @@ void GameObject::Destroy(u32 destroyFlags)
     }
 }
 
+#ifdef TWIN_NATIVE
+namespace
+{
+// A slot past an object's models or animations, logged the first times
+void NativeSlotPast(const GameObject* object, u32 slot, u32 count, const char* what)
+{
+    static u32 logged = 0;
+    if (logged < 20)
+    {
+        logged++;
+        Native::Log("objects: slot %u of %s past its %u %s: none", slot,
+                    object->name.string != nullptr ? object->name.string : "an object", count, what);
+    }
+}
+}
+#endif
+
 u16* GetObjectModelId(u16* id, const GameObject* object, u32 slot)
 {
+#ifdef TWIN_NATIVE
+    // A slot past the object's: none. Retail reads past its array whatever the heap has there, an ID of any model or past the
+    // models' table (a pointer of anything, read as an OGI): the skunk a skipped scene left taking its object from the director's
+    // (4 models) played its own slots 13 and 4, drawn as Crash or crashing on the "OGI"'s box (native/WINDOWS.md, "What Windows
+    // needed")
+    if (slot >= object->models.count)
+    {
+        NativeSlotPast(object, slot, object->models.count, "models");
+        *id = NoModelId;
+        return id;
+    }
+#endif
     *id = object->models.items[slot];
     return id;
 }
 
 u16* GetObjectAnimationId(u16* id, const GameObject* object, u32 slot)
 {
+#ifdef TWIN_NATIVE
+    // A slot past the object's: none (as the models')
+    if (slot >= object->animations.count)
+    {
+        NativeSlotPast(object, slot, object->animations.count, "animations");
+        *id = NoAnimationId;
+        return id;
+    }
+#endif
     *id = object->animations.items[slot];
     return id;
 }

@@ -40,6 +40,7 @@ the `User` folder beside the program (below).
 | Mixed float and integer arguments (abi.h's `TWIN_EABI_CC`) | The retail code passes integers and floats each in their own registers in their order (GCC's EABI), and the C++ declares the functions it calls through its pointers with the floats wherever the EABI lets them be (`PushNode(f32 strength, ObjectNode* node, ...)` called as `(node, 0.0f, other)`). AAPCS64 and System V do the same, so macOS and Linux need nothing; Windows' x64 convention gives an argument the register of its position whatever its kind | `RETAIL_N32`'s functions (the 434 the PS2 build thunks) take the System V convention (`__attribute__((sysv_abi))`). A call through the retail vtables and pointers (`Abi::CallEabi`) goes the way of the function behind it: a vtable's slot can hold one taking the float and one leaving it out (`Agent::Launch`'s, called with the gravity, the velocity and the target: `BasicAgent::Launch` takes only the velocity, and crashed the first boss), which the EABI passes alike. native/tools/sysv_functions.py lists `RETAIL_N32`'s functions for a table of their addresses (src/platform/native/abi_win32.cpp); one of them is called the System V way, any other Windows' own with a mixed call's floats left out. native/tools/check_conventions.py (in the build) checks every function taking floats with its integers is `RETAIL_N32`'s; `--selftest-abi` tries the three cases, `$TWIN_ABI_TRACE` logs each function called across |
 | Data alignment (convert_data.py) | x86-64's ABI gives a global array of 16 bytes or more 16 byte alignment and clang uses aligned SSE stores on one the C++ declares (`g_MsStreamStates`: `movdqa`); the converter's `alignas` of less lowered it | Objects of 16 bytes or more are 16 byte aligned |
 | Script commands' four floats (game/math.h) | A command's vtable pointer is 8 bytes natively, so the four floats some commands keep (an offset, a velocity, a rotation, an impulse) start at 0x1C or 0x2C; read as a `Vector4` (16 byte aligned) they gave `movaps` 12 bytes past a 16 byte boundary, a fault Windows reports at 0xFFFFFFFFFFFFFFFF (a mine's cradle in Slip Slide Icecapades: `Cmd193_LaunchAtTarget_Execute`) | `VectorFrom` and `VectorTo` copy them a float at a time |
+| An object's slots past its own (objects.cpp's `GetObjectModelId`, `GetObjectAnimationId`) | The retail code reads the model or animation ID of any slot it's asked, past the object's array too: whatever the heap has there, another model's ID or one past the models' table (whose items past it are any pointer). The angry skunk a skipped cutscene left taking its object from the scene's director (4 models) played its own slots 13 and 4 through it: drawn as Crash, or a crash setting its collision box from the "OGI" read (a heap pointer 8 bytes off 16: `movaps 0x20(%rdx)` in `SetCollisionOgi`, `FUN_001eb400`+0xd, issue #4's log; not a GameOGI's alignment: one is 192 bytes natively, an entry of the small allocations' size class of 192, 16-byte aligned). On the PS2 the read is as wrong but no aligned load faults; the skip, which the PS2 game never had, was the cause (NATIVE.md, "What a skip leaves") | A slot past the object's array is none (no model change, no animation), as its sound slots already are; logged the first times ("objects: slot N of ... past its M models") |
 | `long` (convert_data.py) | 32 bits on Windows (LLP64): pointer-sized integers are `long long` there | The converter's table knows it, and takes a scalar's written type (`uiptr`) before its canonical one |
 | The retail code's null pointers (`src/platform/native/lowmemory_win32.cpp`) | Windows never maps the first 64 KB | A vectored exception handler runs a copy of the faulting load or store with its displacement moved by `g_NativeLowMemory`'s address, then jumps back past it (no single step: debuggers see nothing). The executable is linked below 2 GB at a fixed base so that address fits a displacement. Also the crash report (registers, the stack's return addresses as module+offset) |
 | Frame pacing (display.cpp, entry.cpp) | Windows' sleeps are as coarse as its timer (up to 15.6 ms late): 50 Hz came out at about 40 | `SDL_DelayPrecise` for the vertical blank's wait, `timeBeginPeriod(1)` at start-up |
@@ -249,8 +250,10 @@ repetitive); of its 16-byte blocks, two are, which are text of the program's own
 
 A line a check, the logs and pictures in `build/native/check/`, exit 1 when one fails: the four self-tests; the places that
 once crashed played again (its `SCENARIOS`: Slip Slide's mine cradles; Dingodile beaten, then the boiler room's lock and the
-Academy's hub), each failing on a crash and on the log's signs of memory gone wrong (the disk manager's pool out of room, DMA
-reading memory that isn't there); the pause menu's hints (its `HINTS`: the game's own with a PlayStation pad's, an Xbox pad's,
+Academy's hub; with the cutscene skip on, issue #9's: the angry skunk's scene skipped and the skunk attacked at once, the same
+scene skipped and the skunk given back its own object, Cortex chased by the bear skipped and the controls given back), each
+failing on a crash and on the log's signs of memory gone wrong (the disk manager's pool out of room, DMA reading memory that
+isn't there), the skip's ones also on what their logs must and mustn't say (`$TWIN_SCENE_STATE`, below); the pause menu's hints (its `HINTS`: the game's own with a PlayStation pad's, an Xbox pad's,
 a Nintendo pad's and the keyboard's prompts, and the bar), each shown as the menu hints option has them and the game's own
 clicked with the mouse (`$TWIN_HINTS_TEST`, below); the camera turned by the mouse (`$TWIN_LOOK_TEST`, below); the physics past
 60 Hz (its `PHYSICS_RATES`, `$TWIN_PHYSICS_TEST`, below): the beach's jumps and Crash stepping off Cavern Catastrophe's lift with
@@ -264,14 +267,17 @@ meanwhile), a disc image found in the folder past a decoy and remembered relativ
 found, and a folder no file can be made in (icacls's deny of `WD,AD`, as Program Files is: the settings stay in `%APPDATA%`, the
 switch refused); the beach's
 first 2,500 frames at a fixed time, every 100th picture compared byte for byte with the last packaged build's
-(`build/native/dist/`, or `--reference PROGRAM`); with `--sweep`, every level chunk, its outcome
+(`build/native/dist/`, or `--reference PROGRAM`; a program whose folder is a player's portable one, with a `portable.txt` or
+a `User` folder, runs from a copy of its own files, never with the player's settings and saves); with `--sweep`, every level
+chunk, its outcome
 against `native/sweep/results_windows.json` (a run that went on and one that ended in a game over count alike: the scripted
 input decides which). Some 5 minutes, 25 more with the sweep. Each run has a settings folder of its own; the disc image is
 local.json's. `--hints-shots FOLDER` runs only the hints' check, with a window, and saves the pause menu's pictures there;
-`--physics` only the physics' (a minute or so); `--portable` only portable mode's (under a minute; the dialog's pictures in
-`build/native/check/portable/shots/`); `--fps-shots FOLDER` only the FPS counter's (its `FPS_CASES`, `$TWIN_FPS_TEST`,
-below: at 60 Hz, 50 Hz, 144 Hz without v-sync, and off; a minute or so), with a window, as the counter counts the pictures shown
-(the self-test checks its sums and its place without one), and saves the window's pictures there.
+`--physics` only the physics' (a minute or so); `--scenarios` only the scenarios (two minutes or so); `--portable` only
+portable mode's (under a minute; the dialog's pictures in `build/native/check/portable/shots/`); `--fps-shots FOLDER` only the
+FPS counter's (its `FPS_CASES`, `$TWIN_FPS_TEST`, below: at 60 Hz, 50 Hz, 144 Hz without v-sync, and off; a minute or so), with
+a window, as the counter counts the pictures shown (the self-test checks its sums and its place without one), and saves the
+window's pictures there.
 
 ## Debugging
 
@@ -340,7 +346,8 @@ below: at 60 Hz, 50 Hz, 144 Hz without v-sync, and off; a minute or so), with a 
   `$TWIN_TRIGGER_PLAN=list` lists the message triggers of the player's chunk (index, place, box, the clock units between two
   checks of its box and whether it's polled at all), then its camera triggers (the same, and the kinds of nodes their events go
   to; not steps of a plan); a list of steps (`4,die,4`)
-  puts the player in a trigger or drops it to its death every 8 s, the lives kept up. `$TWIN_SWEEP_IDLE` gives no scripted
+  puts the player in a trigger or drops it to its death every 8 s of play (`$TWIN_TRIGGER_EVERY=SECONDS`; a cutscene a step
+  starts plays out first), the lives kept up. `$TWIN_SWEEP_IDLE` gives no scripted
   input (cutscenes play out). `$TWIN_TEST_PICK=PATH` is the disc image dialog's pick (empty: cancelled).
   `$TWIN_SWEEP_SHOTS=FOLDER:SECONDS` (with a window, not `--headless`) saves the window every SECONDS of play as it's shown
   (`shot_000.png` on): the README's pictures came from it, a run's `resolution.txt` saying `scale=4`, `window=1600x900` and
@@ -350,7 +357,21 @@ below: at 60 Hz, 50 Hz, 144 Hz without v-sync, and off; a minute or so), with a 
   more; each skip logged with the scene's polls and the longest gap between two, each scene that wasn't skipped as the next
   begins. A level start plays none (the player starts in play): with `$TWIN_SWEEP_IDLE` and a trigger plan (`0,1,2,...`) the
   triggers start them. The hold is lost when the polls stop for more than 0.25 s (a new scene), so a gap near that is the thing
-  to look for.
+  to look for. What a skip does to end the scene is logged too ("skip: ...": NATIVE.md, "What a skip leaves");
+  `$TWIN_SKIP_ACTOR_SECONDS` changes how long an actor may go on with the scene's behaviour (8 s).
+- `$TWIN_SCENE_STATE` (ui/sweep.cpp, with the sweep): what a cutscene leaves behind, 1.5 s into the play after it
+  (`=SECONDS`: that long): the player's locked inputs (`ffffffff` all), place and behaviours (each runner's levels' graphs and
+  states), every instance whose object node takes its object from another's (an actor a scene didn't give back), every instance
+  running a scene's graph (CUTSCENE or _CS in its name). A scene played out against the same skipped tells what the skip leaves
+  undone; the angry skunk, played out, matches the PS2 game's memory after it (PCSX2 below).
+- `$TWIN_SCRIPT_DUMP=6147,6149` (or `all`; levelrecipes.cpp): those behaviour scripts logged as the game reads them and as the
+  level recipes edit them: each state (the start marked, its bits: the child script in the top half), each body's condition (its
+  ID and parameter, ! inverted, its interval) and jump, each command's ID and argument words. commands.h and conditions.h name the
+  IDs (their classes' `// N` comments).
+- `$TWIN_FIXES_TEST=skips` (with `--headless --quick`; the skip option on): every level's scripts as the skip option has them,
+  each skip's rule in a state that runs a scene (572 with a player, or Triangle) with what the scene does that the skip's path
+  doesn't (inputs given back, actors given their own object, messages sent, the cutscene ended, warps, the playing character),
+  and every scene no rule skips ("unskippable": not its runner's state, not its own states, not the state that runs its runner).
 - `$TWIN_HINTS_TEST=1` (with `--quick`, ui/hintstest.cpp): the beach played a few seconds, then the pause menu: its hints
   checked as the menu hints option has them and logged as the prompts label them (`$TWIN_UI_PROMPTS=playstation|xbox|switch|
   keyboard` picks the controller), then the mouse clicks the pages' right and left arrows and back; "hints test: pass" and exit 0.
@@ -399,6 +420,19 @@ its cards and states are the run's, never the user's. PINE is a TCP port on Wind
 and its map, not byte for byte the retail one: its debug hooks move the addresses) adds `--press`, `--at-frame` and
 `--backtrace`. The script's own docstring has every switch. Checked 2026-10-24: the retail game to the beach in 33 s through
 PINE, its chunks read and a snapshot kept; the PS2 build's pad pressed through `g_TestPadButtons`.
+
+To play a place of the retail game with no saved game, `--start-chunk 'Levels\Earth\Hub\highpath'` starts in that chunk as a new
+game, as `$TWIN_START_CHUNK` does: at the logos the path is written below the executable (0xFF000, where nothing of the game
+lives), the progress's start chunk made it with room for any later copy, the entry a new game's and the next state the level's
+loading. `--write WHEN:SYMBOL[+OFFSET][>OFFSET...]:WORDS` writes words there (hex, or floats `-9f`; `>` follows a pointer;
+WHEN `pN` is N seconds after the game first plays): the player moved into a trigger is
+`--write 'p20:G_UnkInstanceContextRefCounter>0>8>0x30:-9f,-4f,-50f,1f,-9f,-4f,-50f,1f' --write 'p20:G_UnkInstanceContextRefCounter>0>8>0x60:0'`
+(its place's matrix row and position, the place marked in step). `--dump-ram WHEN:FILE` keeps the EE's 32 MB, to read
+afterwards (game structures by their PS2 offsets: the `CHECK_OFFSET`s). Checked 2026-10-25 (issue #9): Cortex chased by the bear
+(`--start-chunk 'Levels\Earth\DocAmok\docamok3'`, its scene at the start, `--watch 'G_UnkPlayableCharObjInstCxt2>0xF0'`: the
+player's locked inputs) has them all locked through the scene and none after it; the angry skunk (high path, the player moved
+into its trigger, the memory kept after the scene, the skunk's object node found by its object's name) takes its own object
+again (source node 0) with no behaviour running, as the port leaves it played out, and as the skip now leaves it.
 
 ## Releasing
 

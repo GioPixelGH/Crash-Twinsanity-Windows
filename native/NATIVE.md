@@ -104,6 +104,44 @@ button to skip" in the five languages; the level recipes show it, "Bug fixes (op
 overlay draws a bar under it that fills over the second. The game's own skippable scenes (a Triangle rule,
 `IsTrianglePressedCondition`) still answer triangle as on the PS2.
 
+What a skip leaves (`src/platform/native/sceneskip.cpp`, issue #9). A skip's rule jumps the director's level out of the state
+that runs the scene, and the scene's levels are dropped where they are: the retail game never took these jumps (572 returned
+0), and the developers' skip paths go to the director's ending without what the rest of the scene does. Three things of it broke
+the game, so as the rule jumps (`NativeFixes::SceneSkipped`, called from `ExecuteState` and `ExecuteInterrupt` before the
+levels are unwound) the rest of the scene, each of its levels from the state it's in, is read for them:
+
+- the player's inputs it gives back (its last `SetPlayerInput` giving them all) and the character it gives the player (its last
+  `SwitchCharacter`): given back, switched (Rooftop Rampage from roofcor2 left Cortex locked). Cortex chased by the bear (Doc
+  Amok) kept them locked, the bear catching him every time; the PS2 game in PCSX2 has them locked during the scene and all given
+  back at its end.
+- the user messages 207 it sends ("it's over": what the actors' scene behaviours wait for last): its bodies that send one run
+  their designators' commands and their sends, and an actor still playing the scene is sent another whenever it waits for one.
+- the actors it gives back their own object (its `StopTargetBehaviour` and `RestoreOwnObject`, their designators read after
+  those commands; the actors a director made run its object's behaviours, `RunSlotBehaviourOnLinked`'s source): given back
+  (`GiveBackFrame`, each frame) once each runs none of the director's behaviours, or 8 s on (the player's own character 1 s on)
+  with the scene's behaviours it still runs stopped as when one finishes and no longer busy. The angry skunk (Jungle Bungle's
+  high path) stayed the director: its own slots read the director's object's 4 models and past them, so it was drawn as Crash, or
+  the game crashed on what was read as an OGI ("What Windows needed" in WINDOWS.md); the PS2 game leaves it with its own object
+  and its behaviour finished. Crash in the Iceberg Lab's scene (labext) stayed in its last animation with no controls for some
+  10 s; now the scene's 207s warp him to his end mark, where the scene played out leaves him, and he's given back.
+
+What the scene leaves as it is stays so (the original leaves some actors taking the director's object, or a behaviour running:
+the Dingodile hut's Cortex), and the skip path's own steps run as before (the developers' skip scripts, the level recipes' 244
+handlers: Crash in the walrus chase gives himself the controls back on 244); an actor the skip path takes over and leaves doing
+nothing is given back after 1 s (the training skunk of N. Sanity's spin lesson, left by the developers' skip script). Every skip
+logs what it did ("skip: ..."). Checked with check_windows.py's scenarios (the skunk attacked at once, the skunk given back, the
+bear) and the skippable scenes of the 16 levels whose scenes the triggers start, each played out and skipped, what each left
+10 s on compared (`$TWIN_SCENE_STATE`, WINDOWS.md).
+
+The scenes no rule skips (`TWIN_FIXES_TEST=skips` lists them): the developers wrote no skip for them (no condition 572 or
+Triangle rule in the scene, the state that runs it or the one that runs that), so the mod's way of restoring skips, and the skip
+here, can't reach them: Cavern Catastrophe's five (COM_CAVERN_CUTSCENE_A, B, C, L02D_A, L02D_B), the training scene F (Jungle
+Bungle), the Tiki Mon's entrance (N. Sanity hub), Henchmania's intro and N. Brio's and N. Tropy's wins, the Mecha-Bandicoot
+training scene (E3), Totem Hokum's scene E, Dingodile's victory, the Slip Slide shed (COM_MOULIN_CUTSCENE_L05B), the Iceberg
+Lab's inside (H02B, which never plays), the boiler room's Cortex pipe scene, the Psychetron's Evil Crash cuddle (H04A), the bus
+chase, Evil Crash's house (H04C), the blimp leaving the Iceberg Lab, and the final boss's four (intro, two rounds' ends, end);
+and the two the mod leaves unskippable on purpose (the party arena, the totem's fall). The movies all skip.
+
 ## Native bugs found by the level sweep
 
 The level sweep (native/LEVEL_SWEEP.md, `native/tools/level_sweep.py`) starts every level chunk headless and plays it. What it

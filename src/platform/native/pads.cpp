@@ -270,6 +270,7 @@ s32 Platform::Pads::Read(s32 port, s32 slot, u8* data)
     Native::SnapshotFrame();
     Native::QuickStartFrame();
     NativeFixes::Frame();
+    NativeFixes::GiveBackFrame();
     // The level sweep's frame here too: GameController::Update (its other caller) doesn't run while some cutscenes play, the pads'
     // reads do (their skip polls them)
     NativeUi::SweepFrame(true);

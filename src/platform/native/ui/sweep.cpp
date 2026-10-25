@@ -9,6 +9,7 @@
 #include "native.h"
 
 #include "game/agentlab.h"
+#include "game/agents.h"
 #include "game/behaviours.h"
 #include "game/chunkdata.h"
 #include "game/gamecontroller.h"
@@ -676,6 +677,146 @@ void HopFrame()
     }
 }
 
+// $TWIN_SCENE_STATE (testing): what a cutscene leaves behind, logged 1.5 s into the play that follows it (=SECONDS: that long), to
+// compare a scene skipped with the same played out: the player's locked inputs, place and runners; every instance that takes its
+// object from another's node (a scene's actor not given its own back); every instance that runs a scene's script (a graph named
+// CUTSCENE or _CS). The game's states are the sweep's log
+namespace
+{
+InstanceContext* ScenePlayer()
+{
+    return g_PlayerInstance != nullptr ? static_cast<InstanceContext*>(g_PlayerInstance->object) : nullptr;
+}
+
+CharacterAgent* ScenePlayerAgent()
+{
+    InstanceContext* instance = ScenePlayer();
+    auto* node = instance != nullptr ? static_cast<AgentNode*>(GetGameNode(&instance->nodes, NodeCharacter)) : nullptr;
+    return node != nullptr ? static_cast<CharacterAgent*>(node->agent) : nullptr;
+}
+
+// Whether an instance's object node is an object node (ObjectNodeBase: runners, a source node), not the smaller node of a pickup of
+// subtype 16 or 17 (instancefactory.cpp's MakeAgentObjectNode)
+bool IsSceneObjectNode(InstanceContext* instance)
+{
+    auto* node = static_cast<ObjectNodeBase*>(GetGameNode(&instance->nodes, NodeObject));
+    const GameObject* object = node != nullptr ? node->object : nullptr;
+    return node != nullptr && !(object != nullptr && object->header.type == GameObject::TypePickup && object->header.subtype >= 0x10 &&
+                                object->header.subtype < 0x12);
+}
+
+std::string OwnNameOf(InstanceContext* instance)
+{
+    auto* node = static_cast<ObjectNodeBase*>(GetGameNode(&instance->nodes, NodeObject));
+    GameObject* object = node != nullptr ? node->object : nullptr;
+    return object != nullptr && object->name.string != nullptr ? object->name.string : "";
+}
+
+// An instance's runners' graphs and states ("" none)
+std::string RunnersOf(InstanceContext* instance, bool* scene)
+{
+    std::string text;
+    auto* node = static_cast<ObjectNodeBase*>(GetGameNode(&instance->nodes, NodeObject));
+    for (u32 slot = 0; node != nullptr && slot < 2; slot++)
+    {
+        BehaviourRunner* runner = node->runners[slot];
+        for (u32 at = 0; runner != nullptr && at < BehaviourRunner::Levels && at <= runner->depth; at++)
+        {
+            BehaviourLevel* level = runner->levels[at];
+            GraphData* graph = level != nullptr ? level->graph : nullptr;
+            if (graph == nullptr || graph->name.string == nullptr)
+            {
+                continue;
+            }
+
+            std::string name(graph->name.string, graph->name.length);
+            *scene = *scene || name.find("CUTSCENE") != std::string::npos || name.find("_CS") != std::string::npos;
+            char part[160];
+            std::snprintf(part, sizeof(part), " [%u.%u %s %d%s]", slot, at, name.c_str(), StateIndex(graph, level->state),
+                          level->bits.finished != 0 ? " finished" : "");
+            text += part;
+        }
+    }
+
+    return text;
+}
+
+void LogSceneInstance(InstanceContext* instance, void*)
+{
+    auto* node = static_cast<ObjectNodeBase*>(GetGameNode(&instance->nodes, NodeObject));
+    if (!IsSceneObjectNode(instance) || instance == ScenePlayer())
+    {
+        return;
+    }
+
+    bool scene = false;
+    std::string runners = RunnersOf(instance, &scene);
+    if (node->sourceNode != nullptr)
+    {
+        Native::Log("scene state: %s takes its object from %s:%s", OwnNameOf(instance).c_str(), ObjectNameOf(instance),
+                    runners.c_str());
+    }
+    else if (scene)
+    {
+        Native::Log("scene state: %s runs a scene:%s", OwnNameOf(instance).c_str(), runners.c_str());
+    }
+}
+}
+
+void SceneStateFrame()
+{
+    // $TWIN_SCENE_STATE=SECONDS: that long into the play after it (1.5 s by default)
+    static const char* setting = std::getenv("TWIN_SCENE_STATE");
+    static const bool wanted = setting != nullptr;
+    static const f32 after = setting != nullptr && std::atof(setting) > 0.0 ? static_cast<f32>(std::atof(setting)) : 1.5f;
+    static bool inScene = false;
+    static bool pending = false;
+    static Clock::time_point ended;
+    GameController* controller = G_GameController;
+    if (!wanted || controller == nullptr)
+    {
+        return;
+    }
+
+    u32 state = controller->State();
+    Clock::time_point now = Clock::now();
+    if (state == GameController::StateWatching)
+    {
+        inScene = true;
+        pending = false;
+        return;
+    }
+
+    if (inScene && state == GameController::StatePlaying)
+    {
+        inScene = false;
+        pending = true;
+        ended = now;
+    }
+
+    InstanceContext* player = ScenePlayer();
+    if (!pending || state != GameController::StatePlaying || std::chrono::duration<f32>(now - ended).count() < after ||
+        player == nullptr)
+    {
+        return;
+    }
+
+    pending = false;
+    CharacterAgent* agent = ScenePlayerAgent();
+    ObjectPlace* place = player->place;
+    place->SyncPosition();
+    bool scene = false;
+    std::string runners = RunnersOf(player, &scene);
+    auto* node = static_cast<ObjectNodeBase*>(GetGameNode(&player->nodes, NodeObject));
+    Native::Log("scene state: the player %s%s%s, inputs locked %08x, at (%.1f, %.1f, %.1f):%s", OwnNameOf(player).c_str(),
+                node != nullptr && node->sourceNode != nullptr ? " taking its object from " : "",
+                node != nullptr && node->sourceNode != nullptr ? ObjectNameOf(player) : "",
+                agent != nullptr ? agent->buttons.locked.value : 0u, place->position.x, place->position.y, place->position.z,
+                runners.c_str());
+    ForEachLiveInstance(LogSceneInstance, nullptr);
+    Native::Log("scene state: end");
+}
+
 // The player put at a position (the tests' tools), as the game's warps put an instance
 void PutPlayer(InstanceContext* player, const Vector4& position)
 {
@@ -688,7 +829,7 @@ void PutPlayer(InstanceContext* player, const Vector4& position)
 }
 
 // $TWIN_TRIGGER_PLAN=list or a list of steps (5,die,5): the message triggers of the player's chunk listed once play starts in
-// it (by position: their index, place and box), then a step every 8 s: a number puts the player in that trigger, "die" drops
+// it (by position: their index, place and box), then a step every 8 s of play: a number puts the player in that trigger, "die" drops
 // it 200 units below where it is (it falls to its death). The game's states are the sweep's log
 void TriggerPlanFrame()
 {
@@ -698,6 +839,12 @@ void TriggerPlanFrame()
     static std::string listedChunk;
     static std::vector<InstanceContext*> triggers;
     static Clock::time_point lastStep = Clock::now();
+    if (plan != nullptr && G_GameController != nullptr && G_GameController->State() != GameController::StatePlaying)
+    {
+        // 8 s of play between two steps: a cutscene (or a death's restart) a step started plays out first
+        lastStep = Clock::now();
+    }
+
     if (plan == nullptr || G_GameController == nullptr || G_GameController->State() != GameController::StatePlaying ||
         g_PlayerInstance == nullptr || g_PlayerInstance->object == nullptr)
     {
@@ -803,7 +950,10 @@ void TriggerPlanFrame()
     }
 
     Clock::time_point now = Clock::now();
-    if (next >= steps.size() || now - lastStep < std::chrono::seconds(8))
+    // $TWIN_TRIGGER_EVERY=SECONDS of play between two steps (8 by default)
+    static const char* every = std::getenv("TWIN_TRIGGER_EVERY");
+    static const f32 stepSeconds = every != nullptr && std::atof(every) > 0.0 ? static_cast<f32>(std::atof(every)) : 8.0f;
+    if (next >= steps.size() || std::chrono::duration<f32>(now - lastStep).count() < stepSeconds)
     {
         return;
     }
@@ -885,6 +1035,7 @@ void SweepFrame(bool fromPads)
     {
         HopFrame();
         TriggerPlanFrame();
+        SceneStateFrame();
         // $TWIN_TEST_HANG=SECONDS: the game's thread stopped that long once play starts (the hang watch's test)
         static const char* hang = std::getenv("TWIN_TEST_HANG");
         static bool hung = false;

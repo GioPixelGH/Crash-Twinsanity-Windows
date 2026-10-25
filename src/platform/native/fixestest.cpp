@@ -3,6 +3,7 @@
 // the one expected for the bug fixes option as it is: fixed with it on, retail's with it off). $TWIN_RETAIL_FIXES sets the option
 // for the run.
 //   recipes   the level recipes' self-test (SelfTestRecipes)
+//   skips     the skippable scenes and what their skips leave undone (SurveySkips)
 //   aku       an invincible Crash hit by an explosion (TNT's 100 damage), then by a generic instant death
 //   reset     a Crash blinking after a hit (hidden at that moment) reset as a cutscene does
 //   prompt    the cutscene skip's prompt (its BottomTextDisplay, the AgentLab texts' line 0x18) shown in a cutscene's letterbox
@@ -197,6 +198,10 @@ void Frame()
     if (std::strcmp(test, "recipes") == 0)
     {
         status = SelfTestRecipes();
+    }
+    else if (std::strcmp(test, "skips") == 0)
+    {
+        status = SurveySkips();
     }
     else if (std::strcmp(test, "units") == 0)
     {

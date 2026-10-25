@@ -18,6 +18,7 @@
 #include "game/stream.h"
 #include "game/string.h"
 
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <map>
@@ -813,6 +814,104 @@ bool Tracing()
     return tracing;
 }
 
+// $TWIN_SCRIPT_DUMP=6147,6149 (or "all"; testing): those scripts logged as the game reads them, and again as the recipes edit
+// them: every state (its index, the start marked, its child slot and packet), each body's condition (its ID, parameter and
+// interval, ! inverted), its jump and its commands (each one's ID and argument words)
+bool DumpWanted(u32 id)
+{
+    static const char* wanted = std::getenv("TWIN_SCRIPT_DUMP");
+    if (wanted == nullptr)
+    {
+        return false;
+    }
+
+    if (std::strcmp(wanted, "all") == 0)
+    {
+        return true;
+    }
+
+    for (const char* at = wanted; *at != '\0';)
+    {
+        char* end = nullptr;
+        unsigned long number = std::strtoul(at, &end, 10);
+        if (end == at)
+        {
+            break;
+        }
+
+        if (number == id)
+        {
+            return true;
+        }
+
+        at = *end == ',' ? end + 1 : end;
+    }
+
+    return false;
+}
+
+void Dump(const char* what, u32 id, const u8* data, u32 size)
+{
+    Script script;
+    if (!Parse(data, size, &script))
+    {
+        Native::Log("script dump: %u (%s) can't be taken apart", id, what);
+        return;
+    }
+
+    Native::Log("script dump: %u %.*s (%s), %zu states, the start %d", id, static_cast<int>(script.name.size()),
+                reinterpret_cast<const char*>(script.name.data()), what, script.states.size(), script.start);
+    for (size_t index = 0; index < script.states.size(); index++)
+    {
+        const State& state = script.states[index];
+        std::string line;
+        char part[96];
+        std::snprintf(part, sizeof(part), "  state %zu%s bits %08x%s", index, static_cast<s32>(index) == script.start ? " (start)" : "",
+                      state.bits, state.packet.empty() ? "" : " packet");
+        line = part;
+        Native::Log("script dump: %s", line.c_str());
+        for (size_t number = 0; number < state.bodies.size(); number++)
+        {
+            const Body& body = state.bodies[number];
+            line.clear();
+            if ((body.bits & BodyCondition) != 0)
+            {
+                u32 condition = body.condition.bits;
+                std::snprintf(part, sizeof(part), "if %s%u(%u) every %g", (condition & 0x10000) != 0 ? "!" : "", condition & 0xFFFF,
+                              condition >> 17, static_cast<double>(body.condition.values[0]));
+                line += part;
+            }
+            else
+            {
+                line += "always";
+            }
+
+            if ((body.bits & BodyJump) != 0)
+            {
+                std::snprintf(part, sizeof(part), " -> %d", body.jump);
+                line += part;
+            }
+
+            Native::Log("script dump:    body %zu bits %08x: %s", number, body.bits, line.c_str());
+            for (const Command& command : body.commands)
+            {
+                u32 word;
+                std::memcpy(&word, command.bytes.data(), 4);
+                line.clear();
+                for (size_t at = 4; at + 4 <= command.bytes.size(); at += 4)
+                {
+                    u32 argument;
+                    std::memcpy(&argument, command.bytes.data() + at, 4);
+                    std::snprintf(part, sizeof(part), " %08x", argument);
+                    line += part;
+                }
+
+                Native::Log("script dump:      command %u:%s", word & CommandIdMask, line.c_str());
+            }
+        }
+    }
+}
+
 // Whether a graph as the game read it might want the prompt: a state that runs a script and has a Triangle rule (SkipStates then
 // looks at what's reachable)
 bool MightPrompt(const GraphData* graph)
@@ -969,6 +1068,11 @@ Outcome EditGraph(ScriptGraph* graph, u32 id, const u8* data, u32 size)
     switch (outcome)
     {
     case Outcome::Edited:
+        if (DumpWanted(id))
+        {
+            Dump("as the recipes edit it", id, edited.data(), static_cast<u32>(edited.size()));
+        }
+
         ReadAgain(graph, edited);
         if (Tracing())
         {
@@ -998,6 +1102,11 @@ void ScriptRead(ScriptGraph* graph, u32 id, const u8* data, u32 size)
     if (graph == nullptr || graph->data == nullptr)
     {
         return;
+    }
+
+    if (DumpWanted(id))
+    {
+        Dump("as the disc has it", id, data, size);
     }
 
     const Recipes& recipes = AllRecipes();
@@ -1372,5 +1481,399 @@ int SelfTestRecipes()
                 ok ? "passed" : "FAILED", levels, scripts, edited, editFailures, missing, promptsListed, promptsOther,
                 sourceCopies.size(), crateShaders, crateFiles);
     return ok ? 0 : 1;
+}
+
+namespace
+{
+// The skip survey's commands and conditions by ID
+constexpr u32 TriangleCondition = 575;
+constexpr u32 NextCondition = 0;
+constexpr u32 SendUserMessage = 54;
+constexpr u32 SendUserMessageToo = 65;
+constexpr u32 RunSlotBehaviourOnLinked = 171;
+constexpr u32 StopTargetBehaviour = 172;
+constexpr u32 SetTargetOwnerToSelf = 183;
+constexpr u32 RestoreOwnObject = 184;
+constexpr u32 SetAgent = 515;
+constexpr u32 SetPlayerInput = 521;
+constexpr u32 SetFocusToGameActor = 576;
+constexpr u32 CutsceneStart = 589;
+constexpr u32 CutsceneEnd = 590;
+constexpr u32 CutsceneCameraMove = 591;
+constexpr u32 ToggleCutsceneCamera = 594;
+constexpr u32 PositionWarp = 3;
+constexpr u32 PositionWarpToo = 105;
+// RunSlotBehaviourOnLinked's slot word: the node it runs on takes its object from the agent's
+constexpr u32 GivesSourceBit = 1u << 18;
+// SetPlayerInput's settings word: all the inputs given (low half) and on (high half)
+constexpr u32 AllInputsBit = 1u << 6;
+
+// A command's argument word (its ID's word: index -1)
+u32 Word(const Command& command, s32 index)
+{
+    u32 word = 0;
+    size_t at = static_cast<size_t>(4 + index * 4);
+    if (at + 4 <= command.bytes.size())
+    {
+        std::memcpy(&word, command.bytes.data() + at, 4);
+    }
+
+    return word;
+}
+
+// What a run of commands does that a skip has to do too: the player's inputs given back or taken, an actor made to run the
+// director's object's scripts and given its own back, the user messages sent, the cutscene started and ended, the warps and the
+// playing character changed
+struct Effects
+{
+    bool inputsBack = false;
+    bool inputsTaken = false;
+    bool sourceGiven = false;
+    bool sourceBack = false;
+    std::set<u32> messages;
+    bool cutsceneStart = false;
+    bool cutsceneEnd = false;
+    bool cutsceneCamera = false;
+    bool warps = false;
+    bool agent = false;
+
+    void Add(const std::vector<Command>& commands)
+    {
+        for (const Command& command : commands)
+        {
+            switch (Word(command, -1) & CommandIdMask)
+            {
+            case SetPlayerInput:
+                if ((Word(command, 0) & AllInputsBit) != 0)
+                {
+                    bool on = ((Word(command, 0) >> 16) & AllInputsBit) != 0;
+                    inputsBack = inputsBack || on;
+                    inputsTaken = inputsTaken || !on;
+                }
+                break;
+            case RunSlotBehaviourOnLinked:
+                sourceGiven = sourceGiven || (Word(command, 1) & GivesSourceBit) != 0;
+                break;
+            case SetTargetOwnerToSelf:
+                sourceGiven = true;
+                break;
+            case StopTargetBehaviour:
+            case RestoreOwnObject:
+                sourceBack = true;
+                break;
+            case SendUserMessage:
+            case SendUserMessageToo:
+                messages.insert(Word(command, 0) & 0xFFFF);
+                break;
+            case CutsceneStart:
+                cutsceneStart = true;
+                break;
+            case CutsceneEnd:
+                cutsceneEnd = true;
+                break;
+            case CutsceneCameraMove:
+            case ToggleCutsceneCamera:
+                cutsceneCamera = true;
+                break;
+            case PositionWarp:
+            case PositionWarpToo:
+                warps = true;
+                break;
+            case SetAgent:
+            case SetFocusToGameActor:
+                agent = true;
+                break;
+            default:
+                break;
+            }
+        }
+    }
+};
+
+// The script a state runs (-1 none, or a behaviour slot's)
+s32 ChildOf(const State& state)
+{
+    s16 child = static_cast<s16>(state.bits >> 16);
+    return child < 0 || (state.bits & StateChildSlot) != 0 ? -1 : child;
+}
+
+// A skip's rule: condition 572 with a player (the restored skips) or the game's own Triangle (575), not inverted
+bool IsSkip(const Body& body)
+{
+    if ((body.bits & BodyCondition) == 0 || (body.condition.bits & 0x10000) != 0)
+    {
+        return false;
+    }
+
+    u32 id = body.condition.bits & 0xFFFF;
+    return (id == SkipCondition && (body.condition.bits >> 17) != 0) || id == TriangleCondition;
+}
+
+// Every command of a script's reachable states and of the scripts they run (to a depth)
+void SceneEffects(const std::map<u32, Script>& scripts, u32 id, Effects* effects, std::set<u32>* seen, s32 depth)
+{
+    auto found = scripts.find(id);
+    if (found == scripts.end() || depth > 3 || !seen->insert(id).second)
+    {
+        return;
+    }
+
+    for (s32 index : Reachable(found->second))
+    {
+        const State& state = found->second.states[index];
+        for (const Body& body : state.bodies)
+        {
+            effects->Add(body.commands);
+        }
+
+        if (ChildOf(state) >= 0)
+        {
+            SceneEffects(scripts, static_cast<u32>(ChildOf(state)), effects, seen, depth + 1);
+        }
+    }
+}
+
+// The skip's path: its body's commands, then the states its jump goes through while each one's first body is a Next (an
+// instant step), and the scripts those run
+void SkipEffects(const std::map<u32, Script>& scripts, const Script& script, const Body& skip, Effects* effects)
+{
+    effects->Add(skip.commands);
+    std::set<s32> visited;
+    s32 index = (skip.bits & BodyJump) != 0 ? skip.jump : -1;
+    while (index >= 0 && index < static_cast<s32>(script.states.size()) && visited.insert(index).second)
+    {
+        const State& state = script.states[index];
+        if (ChildOf(state) >= 0)
+        {
+            std::set<u32> seen;
+            SceneEffects(scripts, static_cast<u32>(ChildOf(state)), effects, &seen, 1);
+        }
+
+        const Body* first = state.bodies.empty() ? nullptr : &state.bodies[0];
+        if (first == nullptr || (first->bits & BodyCondition) == 0 || (first->condition.bits & 0xFFFF) != NextCondition)
+        {
+            break;
+        }
+
+        effects->Add(first->commands);
+        index = (first->bits & BodyJump) != 0 ? first->jump : -1;
+    }
+}
+
+std::string Name(const Script& script)
+{
+    return std::string(reinterpret_cast<const char*>(script.name.data()), script.name.size());
+}
+}
+
+// $TWIN_FIXES_TEST=skips: every scene the cutscene skip can skip, with the option on (the disc's scripts as the recipes and the
+// prompt edit them): a state that runs a scene (a script) and has a skip's rule (condition 572, or the game's own Triangle, 575),
+// what the scene does that the skip's path doesn't (the player's inputs given back, an actor's own object given back, user
+// messages sent, the cutscene ended, warps, the playing character), and the scenes no rule skips (a state that runs a script that
+// starts a cutscene, without one)
+int SurveySkips()
+{
+    std::vector<u8> header;
+    if (!ReadDiscFile("CRASH6/CRASH.BH", &header))
+    {
+        Native::Log("skip survey: FAILED (no CRASH.BH)");
+        return 1;
+    }
+
+    Native::Disc::Entry archive;
+    Native::Disc::Find("CRASH6/CRASH.BD", &archive);
+    u32 sites = 0;
+    u32 flagged = 0;
+    u32 unskippable = 0;
+    for (const ArchiveFile& entry : ArchiveFiles(header))
+    {
+        std::string name = Lower(entry.name);
+        if (name.size() < 4 || name.compare(name.size() - 4, 4, ".rm2") != 0)
+        {
+            continue;
+        }
+
+        std::vector<u8> file(entry.size);
+        u32 base;
+        u32 size;
+        if (Native::Disc::Read(archive.offset + entry.offset, file.data(), entry.size) != entry.size ||
+            !Locate(file, {10, 1}, &base, &size))
+        {
+            continue;
+        }
+
+        std::vector<Item> items = SectionItems(file, base);
+        g_Kept.clear();
+        for (const Item& item : items)
+        {
+            if (AllRecipes().sources.count(item.id) != 0)
+            {
+                g_Kept[item.id].bytes.assign(file.begin() + item.offset, file.begin() + item.offset + item.size);
+            }
+        }
+
+        // The level's scripts as the game has them with the skip option on (the bug fixes off)
+        std::map<u32, Script> scripts;
+        std::set<u32> recipeEdited;
+        for (const Item& item : items)
+        {
+            if ((item.id & 1) == 0)
+            {
+                continue;
+            }
+
+            const u8* data = file.data() + item.offset;
+            std::vector<u8> result;
+            std::string why;
+            Script script;
+            if (Edit(item.id, data, item.size, &result, true, false, true, &why) == Outcome::Edited &&
+                Parse(result.data(), static_cast<u32>(result.size()), &script))
+            {
+                if (AllRecipes().targets.count(item.id) != 0)
+                {
+                    recipeEdited.insert(item.id);
+                }
+            }
+            else if (!Parse(data, item.size, &script))
+            {
+                continue;
+            }
+
+            scripts[item.id] = std::move(script);
+        }
+
+        // The scripts a skip's rule is in (a reachable state's body), and the states that run each script with one there
+        std::set<u32> withSkip;
+        std::map<u32, bool> runBySkipping;
+        for (const auto& [id, script] : scripts)
+        {
+            for (s32 index : Reachable(script))
+            {
+                for (const Body& body : script.states[index].bodies)
+                {
+                    if (IsSkip(body))
+                    {
+                        withSkip.insert(id);
+                    }
+                }
+            }
+        }
+
+        for (const auto& [id, script] : scripts)
+        {
+            for (s32 index : Reachable(script))
+            {
+                const State& state = script.states[index];
+                if (ChildOf(state) < 0)
+                {
+                    continue;
+                }
+
+                bool skips = false;
+                for (const Body& body : state.bodies)
+                {
+                    skips = skips || IsSkip(body);
+                }
+
+                bool& run = runBySkipping[static_cast<u32>(ChildOf(state))];
+                run = run || skips;
+            }
+        }
+
+        for (const auto& [id, script] : scripts)
+        {
+            for (s32 index : Reachable(script))
+            {
+                const State& state = script.states[index];
+                s32 child = ChildOf(state);
+                if (child < 0)
+                {
+                    continue;
+                }
+
+                Effects scene;
+                std::set<u32> seen;
+                SceneEffects(scripts, static_cast<u32>(child), &scene, &seen, 1);
+                const Body* skip = nullptr;
+                for (const Body& body : state.bodies)
+                {
+                    skip = skip == nullptr && IsSkip(body) ? &body : skip;
+                }
+
+                auto childScript = scripts.find(static_cast<u32>(child));
+                std::string childName = childScript != scripts.end() ? Name(childScript->second) : "?";
+                if (skip == nullptr)
+                {
+                    // A scene (a cutscene camera or a cutscene started; not the generic begin and end every director runs) no
+                    // rule skips: not its runner's state, not its own states, not a state that runs its runner
+                    bool generic = childName.find("GENERIC_CUTSCENE") != std::string::npos;
+                    bool ownRule = withSkip.count(static_cast<u32>(child)) != 0;
+                    auto parent = runBySkipping.find(id);
+                    bool parentRule = parent != runBySkipping.end() && parent->second;
+                    if ((scene.cutsceneStart || scene.cutsceneCamera) && !generic && !ownRule && !parentRule)
+                    {
+                        unskippable++;
+                        Native::Log("skip survey: unskippable: %s %u %s state %d runs %d %s", entry.name.c_str(), id,
+                                    Name(script).c_str(), index, child, childName.c_str());
+                    }
+                    else if ((scene.cutsceneStart || scene.cutsceneCamera) && !generic)
+                    {
+                        Native::Log("skip survey: skippable by %s: %s %u %s state %d runs %d %s", ownRule ? "its own rule" : "its runner's runner",
+                                    entry.name.c_str(), id, Name(script).c_str(), index, child, childName.c_str());
+                    }
+
+                    continue;
+                }
+
+                sites++;
+                Effects path;
+                SkipEffects(scripts, script, *skip, &path);
+                std::string missing;
+                if (scene.inputsBack && !path.inputsBack)
+                {
+                    missing += " inputs";
+                }
+
+                if (scene.sourceGiven && scene.sourceBack && !path.sourceBack)
+                {
+                    missing += " own-object";
+                }
+
+                for (u32 message : scene.messages)
+                {
+                    if (path.messages.count(message) == 0)
+                    {
+                        missing += " message:" + std::to_string(message);
+                    }
+                }
+
+                if (scene.cutsceneEnd && !path.cutsceneEnd)
+                {
+                    missing += " cutscene-end";
+                }
+
+                if (scene.warps && !path.warps)
+                {
+                    missing += " warps";
+                }
+
+                if (scene.agent && !path.agent)
+                {
+                    missing += " character";
+                }
+
+                u32 condition = skip->condition.bits & 0xFFFF;
+                flagged += !missing.empty();
+                Native::Log("skip survey: %s %u %s state %d -> %d (%s%s), runs %d %s:%s", entry.name.c_str(), id, Name(script).c_str(),
+                            index, (skip->bits & BodyJump) != 0 ? skip->jump : -1, condition == SkipCondition ? "572" : "triangle",
+                            recipeEdited.count(id) != 0 ? ", a recipe's" : "", child, childName.c_str(),
+                            missing.empty() ? " nothing missed" : missing.c_str());
+            }
+        }
+    }
+
+    g_Kept.clear();
+    Native::Log("skip survey: %u skips, %u missing something the scene does; %u scenes with no skip", sites, flagged, unskippable);
+    return sites > 0 ? 0 : 1;
 }
 }

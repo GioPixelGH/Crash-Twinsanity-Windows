@@ -11,7 +11,13 @@ its own, and whatever the run put into PCSX2's config goes again afterwards.
     tools/run_pcsx2.py <elf> <disc image> [--map build/SLES_525.68.map] [--timeout 240] [--quick] [--title-wait 16] [--stay]
                        [--watch symbol[+offset][>offset]...]... [--snapshot T]... [--pad] [--manual] [--press T:BUTTONS[:SECONDS]]...
                        [--goto T:STATE]... [--card FILE] [--chunks] [--loaders] [--string SYMBOL>OFFSET]...
-                       [--keep-state T:FILE]... [--backtrace T]... [--monitor NAME]
+                       [--keep-state T:FILE]... [--backtrace T]... [--monitor NAME] [--start-chunk PATH]
+                       [--write WHEN:SYMBOL[+OFFSET][>OFFSET...]:WORDS]... [--dump-ram WHEN:FILE]...
+
+--start-chunk starts in that chunk (Levels\\Earth\\DocAmok\\docamok3) as a new game from the logos, as the port's $TWIN_START_CHUNK
+does: the path written below the executable (0xFF000), the progress's start chunk made it, the next state the level's loading.
+--write writes words (hex, or floats with an f: -9f) at the symbol's address and its hops (each >offset follows the pointer
+found), WHEN seconds after the start or, pN, N seconds after the game first plays; --dump-ram keeps the EE's 32 MB in a file then.
 
 --watch prints a word of the map's symbol whenever it changes (a breadcrumb the code under test writes, say; every >offset
 follows the pointer found so far: G_GameReadersStorages>0x18>0x4 is storage 0's current reader's vtable). --snapshot T saves
@@ -84,6 +90,9 @@ RETAIL_CRC = 0x1510E1D1
 SNAPSHOT_SLOT = 9
 RUN_CARD = "TwinsanityDecompRun.ps2"
 LOGOS, LOAD_START_CHUNK, TITLE, NEW_GAME, START_PLAYING, PLAYING, MOVIE = 4, 6, 7, 10, 11, 12, 14
+LOADING_LEVEL = 9
+# --start-chunk's path: below the executable (loaded at 0x100000), where nothing of the game lives, with room for any chunk's path
+START_CHUNK_TEXT, START_CHUNK_ROOM = 0x000FF000, 0x80
 # The report's button word as the game reads it (src/platform/ps2/pads.cpp)
 BUTTONS = {"select": 0x100, "l3": 0x200, "r3": 0x400, "start": 0x800, "up": 0x1000, "right": 0x2000, "down": 0x4000,
            "left": 0x8000, "l2": 0x1, "r2": 0x2, "l1": 0x4, "r1": 0x8, "triangle": 0x10, "circle": 0x20, "cross": 0x40,
@@ -355,6 +364,14 @@ def main():
                         help="at an --at-frame freeze, the bytes of EE memory from the address (hex, 8-byte aligned) into the file")
     parser.add_argument("--loaders", action="store_true",
                         help="print the chunk loading manager's loaders (path, bits, RM2 and SM2 states) whenever they change")
+    parser.add_argument("--start-chunk", metavar="PATH",
+                        help="start in that chunk (Levels\\Earth\\Hub\\highpath) as a new game, past the logos, as the port's "
+                             "$TWIN_START_CHUNK does: the path written below the executable, the progress's start chunk made it")
+    parser.add_argument("--write", action="append", default=[], metavar="WHEN:SYMBOL[+OFFSET][>OFFSET...]:WORDS",
+                        help="write words (hex, or floats with an f: -9f) at the address the symbol and its hops give, WHEN seconds "
+                             "after the start (pN: N seconds after the game first plays): moving the player, say")
+    parser.add_argument("--dump-ram", action="append", default=[], metavar="WHEN:FILE",
+                        help="the EE's 32 MB of memory into the file WHEN seconds after the start (pN: after the game first plays)")
     parser.add_argument("--goto", action="append", default=[], metavar="T:STATE",
                         help="ask the game controller for the state T seconds after the start (with --manual)")
     parser.add_argument("--string", action="append", default=[], metavar="SYMBOL>OFFSET",
@@ -420,7 +437,8 @@ def main():
                                      *(part.partition(">")[0] for part in args.string),
                                      *(symbol for _, symbol, _, _ in watches),
                                      *(symbol for _, symbol, _, _ in dumps),
-                                     *(part.split(":")[0].lstrip("*").split("+")[0] for part in args.freeze_dump)})
+                                     *(part.split(":")[0].lstrip("*").split("+")[0] for part in args.freeze_dump),
+                                     *(part.split(":")[1].split(">")[0].split("+")[0] for part in args.write)})
     snapshots = sorted(args.snapshot)
     elf = None if retail else os.path.abspath(args.elf)
     elf_crc = RETAIL_CRC if retail else crc(elf)
@@ -506,12 +524,59 @@ def main():
         chunks_seen = None
         loaders_seen = None
         gotos = sorted((float(part.split(":")[0]), int(part.split(":")[1], 0)) for part in args.goto)
+        # --write and --dump-ram: [when, after play, what]
+        def when_of(text):
+            return (float(text[1:]), True) if text.startswith("p") else (float(text), False)
+        writes = [[*when_of(part.split(":")[0]), part.split(":", 1)[1]] for part in args.write]
+        ram_dumps = [[*when_of(part.split(":")[0]), part.split(":", 1)[1]] for part in args.dump_ram]
+        first_played = None
+        start_chunk_written = False
         while time.time() - start < args.timeout:
             try:
                 controller = pine.read32(symbols["G_GameController"])
                 state = pine.read32(controller + 0xC) >> 12 & 0x3F if controller else 0
             except Exception:
                 time.sleep(0.2)
+                continue
+
+            if state == PLAYING and first_played is None:
+                first_played = time.time()
+            now = time.time()
+            due = lambda item: (now - first_played >= item[0]) if item[1] else (now - start >= item[0])
+            for item in [item for item in writes if (first_played or not item[1]) and due(item)]:
+                writes.remove(item)
+                target, values = item[2].rsplit(":", 1)
+                where, *hops = target.split(">")
+                symbol, _, at = where.partition("+")
+                address = symbols[symbol] + int(at or "0", 0)
+                for hop in hops:
+                    address = pine.read32(address) + int(hop, 0)
+                for index, value in enumerate(values.split(",")):
+                    word = struct.unpack("<I", struct.pack("<f", float(value[:-1])))[0] if value.endswith("f") else int(value, 0)
+                    pine.write32(address + 4 * index, word)
+                print(f"{now - start:6.1f}s wrote {values} at {address:#x} ({target})", flush=True)
+            for item in [item for item in ram_dumps if (first_played or not item[1]) and due(item)]:
+                ram_dumps.remove(item)
+                with open(item[2], "wb") as out:
+                    out.write(pine.read_block(0, 32 * 1024 * 1024))
+                print(f"{time.time() - start:6.1f}s EE memory written to {item[2]}", flush=True)
+
+            if args.start_chunk and controller and state in (LOGOS, LOGOS + 1) and not start_chunk_written:
+                # The path where nothing lives (below the executable's 0x100000), the progress's start chunk (its String at
+                # 0x500 + 0x10: the text, its length, a capacity that keeps any later copy in place) made it, a new game's entry
+                # (states' bits 23-26) and the next state loading the level (as LoadingLevel loads the start chunk)
+                text = args.start_chunk.encode() + b"\0"
+                for at in range(0, len(text), 1):
+                    pine.write8(START_CHUNK_TEXT + at, text[at])
+                pine.write32(controller + 0x510, START_CHUNK_TEXT)
+                pine.write32(controller + 0x514, len(text) - 1)
+                pine.write32(controller + 0x518, START_CHUNK_ROOM)
+                low = pine.read32(controller + 0x8)
+                pine.write32(controller + 0x8, low & ~(0xF << 23))
+                high = pine.read32(controller + 0xC)
+                pine.write32(controller + 0xC, high & ~(0x3F << 18) | LOADING_LEVEL << 18)
+                start_chunk_written = True
+                print(f"{time.time() - start:6.1f}s starting in {args.start_chunk}", flush=True)
                 continue
 
             if not inputs_written and controller:
@@ -641,7 +706,7 @@ def main():
                     high = pine.read32(controller + 0xC)
                     pine.write32(controller + 0xC, high & ~(0x3F << 18) | wanted << 18)
                     print(f"{time.time() - start:6.1f}s asked for state {wanted}", flush=True)
-            elif args.quick and state in NEXT:
+            elif args.quick and state in NEXT and not (args.start_chunk and state == LOGOS):
                 high = pine.read32(controller + 0xC)
                 pine.write32(controller + 0xC, high & ~(0x3F << 18) | NEXT[state] << 18)
             elif state == TITLE and time.time() - title_since >= args.title_wait:

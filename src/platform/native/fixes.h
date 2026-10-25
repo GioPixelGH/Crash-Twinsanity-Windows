@@ -6,6 +6,10 @@
 #include "common.h"
 
 struct ScriptGraph;
+struct StateBody;
+struct BehaviourRunner;
+struct BehaviourLevel;
+struct TimeClock;
 
 namespace NativeFixes
 {
@@ -21,6 +25,17 @@ void ScriptDestroyed(ScriptGraph* graph);
 // --selftest-recipes (in the game, once it's started): every script of every level on the disc read back unchanged, and every
 // recipe made on its level's scripts. 0 when it passed
 int SelfTestRecipes();
+// $TWIN_FIXES_TEST=skips: every skippable scene of every level and what its skip leaves undone (levelrecipes.cpp). 0 when it ran
+int SurveySkips();
+
+// The cutscene skip's end of a scene (sceneskip.cpp): whether a body that passed is a skip's rule (condition 572 with a player)
+// with the skip option on; and, as it jumps a director's level out of the state that runs the scene, what the rest of the scene
+// would have done: the player's inputs given back, its "over" messages (207) sent, the actors it gives back noted
+bool IsSkipRule(const StateBody* body);
+void SceneSkipped(BehaviourRunner* runner, BehaviourLevel* level, TimeClock* clock);
+// Once a frame: the skips' actors given back their own object as they finish the scene's behaviour (sent 207 when they wait for
+// it), or stopped past a time
+void GiveBackFrame();
 
 // Once a frame (the pads' read): the checks of $TWIN_FIXES_TEST (fixestest.cpp)
 void Frame();

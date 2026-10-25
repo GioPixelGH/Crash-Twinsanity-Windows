@@ -10,6 +10,10 @@
 #include "game/reference.h"
 #include "game/resources.h"
 
+#ifdef TWIN_NATIVE
+#include "fixes.h"
+#endif
+
 namespace
 {
 // The best score of no body
@@ -285,6 +289,14 @@ GraphState* ExecuteState(GraphState* state, BehaviourRunner* runner, BehaviourLe
         {
             if (state->bits.child != NoScriptId)
             {
+#ifdef TWIN_NATIVE
+                // The cutscene skip: what the rest of the scene would have done, done before its levels are dropped
+                // (sceneskip.cpp)
+                if (NativeFixes::IsSkipRule(best))
+                {
+                    NativeFixes::SceneSkipped(runner, level, clock);
+                }
+#endif
                 runner->Unwind(level);
             }
             else
@@ -357,6 +369,12 @@ u32 ExecuteInterrupt(GraphState* state, BehaviourRunner* runner, BehaviourLevel*
 
     if (state->bits.child != NoScriptId)
     {
+#ifdef TWIN_NATIVE
+        if (NativeFixes::IsSkipRule(best))
+        {
+            NativeFixes::SceneSkipped(runner, level, clock);
+        }
+#endif
         runner->Unwind(level);
     }
 
