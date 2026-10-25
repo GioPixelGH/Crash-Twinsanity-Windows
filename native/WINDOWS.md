@@ -251,7 +251,8 @@ repetitive); of its 16-byte blocks, two are, which are text of the program's own
 A line a check, the logs and pictures in `build/native/check/`, exit 1 when one fails: the four self-tests; the places that
 once crashed played again (its `SCENARIOS`: Slip Slide's mine cradles; Dingodile beaten, then the boiler room's lock and the
 Academy's hub; with the cutscene skip on, issue #9's: the angry skunk's scene skipped and the skunk attacked at once, the same
-scene skipped and the skunk given back its own object, Cortex chased by the bear skipped and the controls given back), each
+scene skipped and the skunk given back its own object, Cortex chased by the bear skipped and the controls given back, Rooftop
+Rampage's scene in roofcor2 reached as Nina through the bus chase, skipped, and Cortex moved by the scripted input), each
 failing on a crash and on the log's signs of memory gone wrong (the disk manager's pool out of room, DMA reading memory that
 isn't there), the skip's ones also on what their logs must and mustn't say (`$TWIN_SCENE_STATE`, below); the pause menu's hints (its `HINTS`: the game's own with a PlayStation pad's, an Xbox pad's,
 a Nintendo pad's and the keyboard's prompts, and the bar), each shown as the menu hints option has them and the game's own
@@ -334,7 +335,13 @@ window's pictures there.
   (`$TWIN_TEST_SOUND_DELAY`: from so many seconds).
 - The level sweep's tools for places it can't start in or reach: `$TWIN_HOP=cryscave,escape` takes the player through its
   chunk's link to each of those chunks in turn, as the game's WarpToChunkLinkTowardsPlayer places an instance (half a unit in
-  front of the link's load wall, where the link takes it). Other steps: `goto:X:Y:Z` puts the player there; `objects` logs the
+  front of the link's load wall, where the link takes it). Other steps: `goto:X:Y:Z` puts the player there (its physics then
+  move it from its last place: a wall on a long way stops it, a gap drops it); `fly:X:Y:Z[:SPEED]` takes it there in a straight
+  line, a little further each frame (10 units a second), so it doesn't fall on the way and the chunk's triggers and links see it
+  go by: a cutscene it starts plays, a link takes it into the next chunk (the flight ends there, or when the player is another),
+  as check_windows.py's Rooftop Rampage scenario crosses the bus chase from its start into roofcor2 as Nina; `moved:N` logs how
+  far the player went since the last step and whether that's N units or more ("NOT": a player the scripted input doesn't
+  move); `objects` logs the
   instances of its chunk (their objects' names and places); `on:mine` puts it 2 units above the nearest instance whose
   object's name holds "mine" (`on:mine:5`: 5 units) and `bring:mine` puts that instance where the player is instead; `idle`
   stops the scripted input and `input` starts it again; `wait5` waits 5 s; `die` drops it to its death; `scripts:director`

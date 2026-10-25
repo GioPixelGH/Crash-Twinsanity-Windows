@@ -29,6 +29,10 @@
 
 #include <cstdint>
 
+#ifdef TWIN_NATIVE
+#include "fixes.h"
+#endif
+
 // The commands that work on the agents' parts, the characters, the instances' linked objects and the follow camera
 
 extern "C"
@@ -646,6 +650,11 @@ void CacheLinkedInstanceCommand::Execute(TimeClock*, BehaviourRunner* runner, Be
 void RunScriptSlotCommand::Execute(TimeClock*, BehaviourRunner* runner, BehaviourLevel*)
 {
     ObjectNode* node = NodeOf(runner);
+#ifdef TWIN_NATIVE
+    // An actor of a skipped scene asking for its slot at its scene behaviour's end: given its own object back first, as the scene
+    // played out has by then (sceneskip.cpp)
+    NativeFixes::SlotAsked(node, request.slot);
+#endif
     u16 id;
     GetObjectBehaviourId(&id, ObjectOf(node), request.slot);
     ResourceTable* scripts = G_GameResourcesObjectPointer->scripts;

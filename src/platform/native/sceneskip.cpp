@@ -11,7 +11,10 @@
 //   director's object's behaviours, their object node taking its object from the director's): given back once each has finished
 //   the scene's behaviour, or past ActorSeconds (the player's own character past PlayerSeconds) with it stopped as when it
 //   finishes (the skunk stayed the director: its own slots read past the director's models, drawn as Crash or a crash on what was
-//   read as an OGI; Crash in the Iceberg Lab's scene stayed in its animations without controls).
+//   read as an OGI; Crash in the Iceberg Lab's scene stayed in its animations without controls). One that asks for a slot of its
+//   object as its scene behaviour ends (RunScriptSlot: its idle) is given back then, so it gets its own object's: the scene played
+//   out has given it back by then (Cortex after Rooftop Rampage's scene got the director's slot 12, Nina's scene behaviour, which
+//   left him driven by its animations, unable to move).
 // The actors the scene leaves as they are (the original leaves some taking the director's object, or running a behaviour on) are
 // left so; the skip path's own steps (the developers' skip scripts, the level recipes' 244 handlers) run as they did, and an
 // actor they take over and leave doing nothing is given back
@@ -210,6 +213,18 @@ void Walk(GraphState* from, void* object, const CommandClasses& classes, Ending*
 std::string NameOf(const GameObject* object)
 {
     return object != nullptr && object->name.string != nullptr ? object->name.string : "?";
+}
+
+// The name of the graph an object's behaviour slot starts ("none")
+std::string SlotNameOf(const GameObject* object, u32 slot)
+{
+    u16 id = object != nullptr && slot < object->behaviours.count ? object->behaviours.items[slot] : NoScriptId;
+    ResourceTable* scripts = g_ScriptTable;
+    auto* starter = id != NoScriptId && (id & ResourceIndexMask) < scripts->bits.capacity
+                        ? static_cast<const ScriptStarter*>(scripts->items[id & ResourceIndexMask])
+                        : nullptr;
+    const GraphData* graph = starter != nullptr && starter->assigners[0] != nullptr ? starter->assigners[0]->graph : nullptr;
+    return graph != nullptr && graph->name.string != nullptr ? std::string(graph->name.string, graph->name.length) : "none";
 }
 
 // Whether an instance's object node is an object node (ObjectNodeBase: runners, a source node), not the smaller node of a pickup of
@@ -562,5 +577,29 @@ void GiveBackFrame()
                                    [now](const Takeover& takeover)
                                    { return std::chrono::duration<f32>(now - takeover.when).count() >= PendingSeconds; }),
                     g_Pending.end());
+}
+
+void SlotAsked(ObjectNodeBase* node, u32 slot)
+{
+    // An actor taken at a skip that the rest of the scene gives back (the skip path's own steps, RunSlotBehaviourOnLinked's, are
+    // the director's asking, never this), when its own object has the slot
+    const InstanceContext* actor = node->owner;
+    const GameObject* own = node->object;
+    for (const Takeover& takeover : g_Pending)
+    {
+        if (node->sourceNode == nullptr || node->sourceNode != takeover.director || takeover.givenBack.count(actor) == 0 ||
+            takeover.takenAtSkip.count(actor) == 0 || own == nullptr || slot >= own->behaviours.count)
+        {
+            continue;
+        }
+
+        auto* director = static_cast<const GameObject*>(SourceObject(node->sourceNode));
+        node->sourceNode = nullptr;
+        Native::Log("skip: %.1f s after the skip, %s asked for its slot %u, given its own object back: its own %s, not the director's "
+                    "%s",
+                    std::chrono::duration<f32>(SkipClock::now() - takeover.when).count(), NameOf(own).c_str(), slot,
+                    SlotNameOf(own, slot).c_str(), SlotNameOf(director, slot).c_str());
+        return;
+    }
 }
 }

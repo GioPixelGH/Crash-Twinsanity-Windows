@@ -10,6 +10,7 @@ struct StateBody;
 struct BehaviourRunner;
 struct BehaviourLevel;
 struct TimeClock;
+struct ObjectNodeBase;
 
 namespace NativeFixes
 {
@@ -36,6 +37,9 @@ void SceneSkipped(BehaviourRunner* runner, BehaviourLevel* level, TimeClock* clo
 // Once a frame: the skips' actors given back their own object as they finish the scene's behaviour (sent 207 when they wait for
 // it), or stopped past a time
 void GiveBackFrame();
+// An object node asking for a slot of its object's behaviours (RunScriptSlot): a skipped scene's actor it gives back is given its
+// own object back then, so the slot is its own object's
+void SlotAsked(ObjectNodeBase* node, u32 slot);
 
 // Once a frame (the pads' read): the checks of $TWIN_FIXES_TEST (fixestest.cpp)
 void Frame();

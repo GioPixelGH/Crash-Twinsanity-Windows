@@ -406,9 +406,109 @@ void HopFrame()
         return;
     }
 
+    // A "fly" step under way: the player put a little further along its line each frame (at most a tenth of a second's way: after a
+    // cutscene or a restart it goes on from where it was), until it's there, its chunk changes (a link took it: the next chunk's
+    // places are its own) or the player is another (a cutscene switched the character)
+    static bool flying = false;
+    static Vector4 flyAt;
+    static Vector4 flyTo;
+    static f32 flySpeed = 10.0f;
+    static Clock::time_point flyLast;
+    static std::string flyChunk;
+    static const InstanceContext* flyPlayer = nullptr;
     Clock::time_point now = Clock::now();
+    if (flying)
+    {
+        f32 step = flySpeed * std::min(std::chrono::duration<f32>(now - flyLast).count(), 0.1f);
+        flyLast = now;
+        f32 dx = flyTo.x - flyAt.x;
+        f32 dy = flyTo.y - flyAt.y;
+        f32 dz = flyTo.z - flyAt.z;
+        f32 left = std::sqrt(dx * dx + dy * dy + dz * dz);
+        bool stopped = name != flyChunk || player != flyPlayer;
+        bool there = stopped || left <= step;
+        if (!there)
+        {
+            flyAt.x += dx * step / left;
+            flyAt.y += dy * step / left;
+            flyAt.z += dz * step / left;
+        }
+        else if (!stopped)
+        {
+            flyAt = flyTo;
+        }
+
+        ObjectPlace* place = player->place;
+        place->SyncPosition();
+        if (!stopped && place->MoveTo(&flyAt))
+        {
+            QueueObject(player);
+        }
+
+        if (there)
+        {
+            flying = false;
+            Native::Log("hop: the player %s at (%.1f, %.1f, %.1f) in %s", stopped ? "stopped flying" : "flown", place->position.x,
+                        place->position.y, place->position.z, name.c_str());
+            next++;
+            lastHop = now;
+        }
+
+        return;
+    }
+
     if (next >= targets.size() || now - lastHop < std::chrono::seconds(2))
     {
+        return;
+    }
+
+    // Where the player was as the last step was taken, the player then and its chunk
+    static Vector4 stepAt;
+    static const InstanceContext* stepPlayer = nullptr;
+    static std::string stepChunk;
+    ObjectPlace* here = player->place;
+    here->SyncPosition();
+    Vector4 from = stepAt;
+    bool same = stepPlayer == player && stepChunk == name;
+    stepAt = here->position;
+    stepPlayer = player;
+    stepChunk = name;
+
+    // "moved:N": how far the player went since the last step (in its chunk), logged with whether that's N units or more (a player
+    // the scripted input moves is a player that can move: Cortex after Rooftop Rampage's scene skipped)
+    if (targets[next].rfind("moved:", 0) == 0)
+    {
+        f32 least = static_cast<f32>(std::atof(targets[next].c_str() + 6));
+        f32 dx = stepAt.x - from.x;
+        f32 dz = stepAt.z - from.z;
+        f32 moved = std::sqrt(dx * dx + dz * dz);
+        Native::Log("hop: the player %s moved %.1f units since the last step, %s %.1f, to (%.1f, %.1f, %.1f) in %s",
+                    ObjectNameOf(player), moved, same && moved >= least ? "at least" : "NOT", least, stepAt.x, stepAt.y,
+                    stepAt.z, name.c_str());
+        next++;
+        lastHop = now;
+        return;
+    }
+
+    // "fly:X:Y:Z" (or "fly:X:Y:Z:SPEED", 10 units a second): the player taken there in a straight line, a little further each frame.
+    // A goto's long way is undone by the player's physics (they move it from its last place: a wall on the way stops it, a gap
+    // drops it); flown, it doesn't fall on its way, and the chunk's triggers and links see it go by as they would a player's
+    if (targets[next].rfind("fly:", 0) == 0)
+    {
+        flyTo = {0.0f, 0.0f, 0.0f, 1.0f};
+        flySpeed = 10.0f;
+        std::sscanf(targets[next].c_str() + 4, "%f:%f:%f:%f", &flyTo.x, &flyTo.y, &flyTo.z, &flySpeed);
+        ObjectPlace* place = player->place;
+        place->SyncPosition();
+        flyAt = place->position;
+        flyAt.w = 1.0f;
+        flyChunk = name;
+        flyPlayer = player;
+        flyLast = now;
+        flying = flySpeed > 0.0f;
+        Native::Log("hop: the player flying from (%.1f, %.1f, %.1f) to (%.1f, %.1f, %.1f) in %s", flyAt.x, flyAt.y, flyAt.z,
+                    flyTo.x, flyTo.y, flyTo.z, name.c_str());
+        next += flying ? 0 : 1;
         return;
     }
 

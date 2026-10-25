@@ -124,14 +124,27 @@ levels are unwound) the rest of the scene, each of its levels from the state it'
   the game crashed on what was read as an OGI ("What Windows needed" in WINDOWS.md); the PS2 game leaves it with its own object
   and its behaviour finished. Crash in the Iceberg Lab's scene (labext) stayed in its last animation with no controls for some
   10 s; now the scene's 207s warp him to his end mark, where the scene played out leaves him, and he's given back.
+  An actor that asks for a slot of its object (`RunScriptSlot`, at its scene behaviour's end: a character's idle is slot 12) is
+  given back then (`NativeFixes::SlotAsked`), so the slot is its own object's: the scene played out has given it back by then,
+  and taking the director's object it got the director's. Rooftop Rampage's scene in roofcor2 (COM_CUTSCENE_H03D, 1.0.17): its
+  207 makes Cortex draw his gun and ask for slot 12, the director's being Nina's scene behaviour (COM_NINA_CS_H03D), which
+  warped him to Nina's mark and made his controls follow its animations (`SetPlayerInput`'s motion driven: no pad read); 1 s on
+  the skip stopped it there, and Cortex couldn't move. As a player reaches it, Nina arrives from the bus chase and the scene
+  makes Cortex the player; started in roofcor2 he's the player already, and it was the same. Now he runs his own idle
+  (COM_CORTEX_IDLE) at once with his own object, the controls on the pad, as the scene played out leaves him and as the PS2 game
+  does (PCSX2: the player Cortex with his own object and COM_CORTEX_IDLE, the controls reading the pad, nothing locked; Nina with
+  her own object). The skip paths' own behaviours, which the director starts on its actors (`RunSlotBehaviourOnLinked`: Crash's
+  skip script on Jungle Bungle's high path), aren't the actor's asking and run as before.
 
 What the scene leaves as it is stays so (the original leaves some actors taking the director's object, or a behaviour running:
 the Dingodile hut's Cortex), and the skip path's own steps run as before (the developers' skip scripts, the level recipes' 244
 handlers: Crash in the walrus chase gives himself the controls back on 244); an actor the skip path takes over and leaves doing
 nothing is given back after 1 s (the training skunk of N. Sanity's spin lesson, left by the developers' skip script). Every skip
 logs what it did ("skip: ..."). Checked with check_windows.py's scenarios (the skunk attacked at once, the skunk given back, the
-bear) and the skippable scenes of the 16 levels whose scenes the triggers start, each played out and skipped, what each left
-10 s on compared (`$TWIN_SCENE_STATE`, WINDOWS.md).
+bear, Rooftop Rampage's scene reached as Nina with Cortex moving after it) and the skippable scenes of the 16 levels whose scenes
+the triggers start, each played out and skipped, what each left 10 s on compared (`$TWIN_SCENE_STATE`, WINDOWS.md). A test that
+starts in the middle of the story may not have a played game's state: started in roofcor2, the player is Cortex already, and
+the scene's switch from Nina is never seen; the scenario reaches it through the bus chase as a player does (`fly` steps).
 
 The scenes no rule skips (`TWIN_FIXES_TEST=skips` lists them): the developers wrote no skip for them (no condition 572 or
 Triangle rule in the scene, the state that runs it or the one that runs that), so the mod's way of restoring skips, and the skip
