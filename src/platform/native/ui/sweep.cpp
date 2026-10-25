@@ -179,12 +179,25 @@ struct InstanceList
     std::vector<InstanceContext*> found;
 };
 
+// Whether an instance's object node is an object node (ObjectNodeBase: runners, a source node), not the smaller node of a pickup of
+// subtype 16 or 17, nor a projectile's, whose base part's runners aren't its own (instancefactory.cpp's MakeAgentObjectNode;
+// projectiles.cpp: on the PS2 its members overlay them)
+bool IsSceneObjectNode(InstanceContext* instance)
+{
+    auto* node = static_cast<ObjectNodeBase*>(GetGameNode(&instance->nodes, NodeObject));
+    const GameObject* object = node != nullptr ? node->object : nullptr;
+    return node != nullptr && !(object != nullptr && object->header.type == GameObject::TypePickup && object->header.subtype >= 0x10 &&
+                                object->header.subtype < 0x12) &&
+           !(object != nullptr && object->header.type == GameObject::TypeProjectile);
+}
+
+// (Only those with an object node whose runners are its own: the steps read them)
 void ListInstance(InstanceContext* instance, void* user)
 {
     auto* list = static_cast<InstanceList*>(user);
     std::string lower = ObjectNameOf(instance);
     std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });
-    if (instance->chunk == list->chunk && lower.find(list->name) != std::string::npos)
+    if (instance->chunk == list->chunk && lower.find(list->name) != std::string::npos && IsSceneObjectNode(instance))
     {
         list->found.push_back(instance);
     }
@@ -490,9 +503,9 @@ void HopFrame()
         return;
     }
 
-    // "fly:X:Y:Z" (or "fly:X:Y:Z:SPEED", 10 units a second): the player taken there in a straight line, a little further each frame.
-    // A goto's long way is undone by the player's physics (they move it from its last place: a wall on the way stops it, a gap
-    // drops it); flown, it doesn't fall on its way, and the chunk's triggers and links see it go by as they would a player's
+    // "fly:X:Y:Z" (or "fly:X:Y:Z:SPEED", 10 units a second): the player taken there in a straight line, a little further each
+    // frame. A goto's long way is undone by the player's physics (they move it from its last place: a wall on the way stops it, a
+    // gap drops it); flown, it doesn't fall on its way, and the chunk's triggers and links see it go by as they would a player's
     if (targets[next].rfind("fly:", 0) == 0)
     {
         flyTo = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -793,16 +806,6 @@ CharacterAgent* ScenePlayerAgent()
     InstanceContext* instance = ScenePlayer();
     auto* node = instance != nullptr ? static_cast<AgentNode*>(GetGameNode(&instance->nodes, NodeCharacter)) : nullptr;
     return node != nullptr ? static_cast<CharacterAgent*>(node->agent) : nullptr;
-}
-
-// Whether an instance's object node is an object node (ObjectNodeBase: runners, a source node), not the smaller node of a pickup of
-// subtype 16 or 17 (instancefactory.cpp's MakeAgentObjectNode)
-bool IsSceneObjectNode(InstanceContext* instance)
-{
-    auto* node = static_cast<ObjectNodeBase*>(GetGameNode(&instance->nodes, NodeObject));
-    const GameObject* object = node != nullptr ? node->object : nullptr;
-    return node != nullptr && !(object != nullptr && object->header.type == GameObject::TypePickup && object->header.subtype >= 0x10 &&
-                                object->header.subtype < 0x12);
 }
 
 std::string OwnNameOf(InstanceContext* instance)

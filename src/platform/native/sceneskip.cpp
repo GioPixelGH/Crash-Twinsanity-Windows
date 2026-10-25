@@ -7,6 +7,8 @@
 //   from roofcor2 stayed locked);
 // - its user messages 207 ("it's over", what the actors' scene behaviours wait for last): sent as it skips, and sent again to
 //   an actor of the scene whenever it waits for one (the skunk reaches its wait after its animation);
+// - its messages to the director's linked objects (the scene's props): sent as it skips (the Academy's staircase never extended,
+//   so the Boiler Room couldn't be reached; Rooftop Rampage's drones never came for Cortex);
 // - the actors it gives back their own object (its StopTargetBehaviour and RestoreOwnObject: the actors made to run the
 //   director's object's behaviours, their object node taking its object from the director's): given back once each has finished
 //   the scene's behaviour, or past ActorSeconds (the player's own character past PlayerSeconds) with it stopped as when it
@@ -131,6 +133,21 @@ bool SendsSceneOver(const ScriptCommand* command, const CommandClasses& classes)
            static_cast<const SendUserMessageCommand*>(command)->target.message == SceneOverMessage;
 }
 
+// A message to the director's linked objects (SendUserMessage's forms but a designator's: every one, those a field picks, those of
+// an object, the one of an index), not a 207
+bool SendsToLinked(const ScriptCommand* command, const CommandClasses& classes)
+{
+    if (command->vtable != classes.send)
+    {
+        return false;
+    }
+
+    auto* send = static_cast<const SendUserMessageCommand*>(command);
+    const UserMessageFlags& flags = send->flags;
+    return send->target.message != SceneOverMessage &&
+           (flags.everyLinked != 0 || flags.byField != 0 || flags.object != NoLinkedObjectId || flags.byIndex != 0);
+}
+
 bool GivesInputsBack(const ScriptCommand* command, const CommandClasses& classes)
 {
     if (command->vtable != classes.input)
@@ -148,7 +165,8 @@ bool GivesObjectBack(const ScriptCommand* command, const CommandClasses& classes
     return command->vtable == classes.stopTarget || command->vtable == classes.restoreOwn;
 }
 
-// The rest of a scene: its bodies that send 207 or give actors back their own object, in the order the scene would reach them,
+// The rest of a scene: its bodies that send 207 or messages to the linked objects, or give actors back their own object, in the
+// order the scene would reach them,
 // its last SetPlayerInput giving the inputs back and its last SwitchCharacter (the character the player has after it)
 struct Ending
 {
@@ -185,7 +203,8 @@ void Walk(GraphState* from, void* object, const CommandClasses& classes, Ending*
             bool wanted = false;
             for (ScriptCommand* command = body->commands; command != nullptr; command = command->next)
             {
-                wanted = wanted || SendsSceneOver(command, classes) || GivesObjectBack(command, classes);
+                wanted = wanted || SendsSceneOver(command, classes) || SendsToLinked(command, classes) ||
+                         GivesObjectBack(command, classes);
                 if (GivesInputsBack(command, classes))
                 {
                     ending->inputs = command;
@@ -228,13 +247,15 @@ std::string SlotNameOf(const GameObject* object, u32 slot)
 }
 
 // Whether an instance's object node is an object node (ObjectNodeBase: runners, a source node), not the smaller node of a pickup of
-// subtype 16 or 17 (instancefactory.cpp's MakeAgentObjectNode)
+// subtype 16 or 17, nor a projectile's, whose base part's runners aren't its own (instancefactory.cpp's MakeAgentObjectNode;
+// projectiles.cpp: on the PS2 its members overlay them)
 bool IsObjectNode(InstanceContext* instance)
 {
     auto* node = static_cast<ObjectNodeBase*>(GetGameNode(&instance->nodes, NodeObject));
     const GameObject* object = node != nullptr ? node->object : nullptr;
     return node != nullptr && !(object != nullptr && object->header.type == GameObject::TypePickup && object->header.subtype >= 0x10 &&
-                                object->header.subtype < 0x12);
+                                object->header.subtype < 0x12) &&
+           !(object != nullptr && object->header.type == GameObject::TypeProjectile);
 }
 
 // The instances a give-back command of the director's would give back: its designator's, else every linked instance's when
@@ -455,17 +476,23 @@ void SceneSkipped(BehaviourRunner* runner, BehaviourLevel* level, TimeClock* clo
         }
     }
 
-    // Its bodies in turn: the designators they set, its 207s sent, the actors its give-backs name kept for later
+    // Its bodies in turn: the designators they set, its 207s and its messages to the linked objects sent, the actors its
+    // give-backs name kept for later
     Takeover takeover = {director, director->owner, {}, SkipClock::now(), {}, {}, {}, {}};
     BehaviourLevel* deepest = runner->levels[runner->depth];
     u32 sends = 0;
+    std::string linkedSends;
     for (const StateBody* body : ending.bodies)
     {
         for (ScriptCommand* command = body->commands; command != nullptr; command = command->next)
         {
-            if (classes->designators.count(command->vtable) != 0 || SendsSceneOver(command, *classes))
+            bool toLinked = SendsToLinked(command, *classes);
+            if (classes->designators.count(command->vtable) != 0 || SendsSceneOver(command, *classes) || toLinked)
             {
                 sends += SendsSceneOver(command, *classes) ? 1 : 0;
+                linkedSends += toLinked ? (linkedSends.empty() ? "" : ", ") +
+                                              std::to_string(static_cast<const SendUserMessageCommand*>(command)->target.message)
+                                        : "";
                 CallVirtual<void>(command, command->vtable, ScriptCommand::ExecuteSlot, clock, runner, deepest);
             }
             else if (GivesObjectBack(command, *classes))
@@ -530,10 +557,11 @@ void SceneSkipped(BehaviourRunner* runner, BehaviourLevel* level, TimeClock* clo
     }
 
     g_Pending.push_back(std::move(takeover));
-    Native::Log("skip: %s's scene %.*s skipped: %u \"over\" messages sent, %s%s; its actors given back as they finish: %s; "
+    std::string objects = linkedSends.empty() ? "none to its linked objects" : "messages " + linkedSends + " to its linked objects";
+    Native::Log("skip: %s's scene %.*s skipped: %u \"over\" messages sent, %s, %s%s; its actors given back as they finish: %s; "
                 "left as it leaves them: %s",
                 NameOf(directorObject).c_str(), scene != nullptr ? static_cast<int>(scene->name.length) : 1,
-                scene != nullptr && scene->name.string != nullptr ? scene->name.string : "?", sends,
+                scene != nullptr && scene->name.string != nullptr ? scene->name.string : "?", sends, objects.c_str(),
                 ending.inputs != nullptr ? "the inputs given back" : "no inputs to give back",
                 ending.character != nullptr ? ", the character switched as it ends" : "", kept.empty() ? "none" : kept.c_str(),
                 left.empty() ? "none" : left.c_str());
@@ -595,8 +623,8 @@ void SlotAsked(ObjectNodeBase* node, u32 slot)
 
         auto* director = static_cast<const GameObject*>(SourceObject(node->sourceNode));
         node->sourceNode = nullptr;
-        Native::Log("skip: %.1f s after the skip, %s asked for its slot %u, given its own object back: its own %s, not the director's "
-                    "%s",
+        Native::Log("skip: %.1f s after the skip, %s asked for its slot %u, given its own object back: its own %s, not the "
+                    "director's %s",
                     std::chrono::duration<f32>(SkipClock::now() - takeover.when).count(), NameOf(own).c_str(), slot,
                     SlotNameOf(own, slot).c_str(), SlotNameOf(director, slot).c_str());
         return;

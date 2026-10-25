@@ -106,7 +106,7 @@ overlay draws a bar under it that fills over the second. The game's own skippabl
 
 What a skip leaves (`src/platform/native/sceneskip.cpp`, issue #9). A skip's rule jumps the director's level out of the state
 that runs the scene, and the scene's levels are dropped where they are: the retail game never took these jumps (572 returned
-0), and the developers' skip paths go to the director's ending without what the rest of the scene does. Three things of it broke
+0), and the developers' skip paths go to the director's ending without what the rest of the scene does. Four things of it broke
 the game, so as the rule jumps (`NativeFixes::SceneSkipped`, called from `ExecuteState` and `ExecuteInterrupt` before the
 levels are unwound) the rest of the scene, each of its levels from the state it's in, is read for them:
 
@@ -116,6 +116,12 @@ levels are unwound) the rest of the scene, each of its levels from the state it'
   back at its end.
 - the user messages 207 it sends ("it's over": what the actors' scene behaviours wait for last): its bodies that send one run
   their designators' commands and their sends, and an actor still playing the scene is sent another whenever it waits for one.
+- its messages to the director's linked objects (`SendUserMessage` to every linked object, a field's, an object's or an
+  index's: the scene's props), sent as it skips, in the scene's order. The Academy hub's first scene (sch_hub,
+  COM_SCHOOL_HUB_CUTSCENE_H03A) extends its spiral staircase with message 4: skipped, it stayed down and the Boiler Room
+  couldn't be reached till a death reloaded the hub (NitorikoSkye on #9, 1.0.17). Rooftop Rampage's scene sends its three
+  drones 87 and 287: skipped, two of them never came for Cortex. Played out and skipped, they now run the same behaviours
+  after it (the staircase its own, the drones theirs).
 - the actors it gives back their own object (its `StopTargetBehaviour` and `RestoreOwnObject`, their designators read after
   those commands; the actors a director made run its object's behaviours, `RunSlotBehaviourOnLinked`'s source): given back
   (`GiveBackFrame`, each frame) once each runs none of the director's behaviours, or 8 s on (the player's own character 1 s on)
@@ -141,10 +147,12 @@ the Dingodile hut's Cortex), and the skip path's own steps run as before (the de
 handlers: Crash in the walrus chase gives himself the controls back on 244); an actor the skip path takes over and leaves doing
 nothing is given back after 1 s (the training skunk of N. Sanity's spin lesson, left by the developers' skip script). Every skip
 logs what it did ("skip: ..."). Checked with check_windows.py's scenarios (the skunk attacked at once, the skunk given back, the
-bear, Rooftop Rampage's scene reached as Nina with Cortex moving after it) and the skippable scenes of the 16 levels whose scenes
-the triggers start, each played out and skipped, what each left 10 s on compared (`$TWIN_SCENE_STATE`, WINDOWS.md). A test that
-starts in the middle of the story may not have a played game's state: started in roofcor2, the player is Cortex already, and
-the scene's switch from Nina is never seen; the scenario reaches it through the bus chase as a player does (`fly` steps).
+bear, Rooftop Rampage's scene reached as Nina with Cortex moving after it, the Academy's staircase extended) and the skippable
+scenes of the 16 levels whose scenes the triggers start, each played out and skipped, what each left 10 s on compared
+(`$TWIN_SCENE_STATE`, WINDOWS.md; the comparison drops the states' numbers, so it can't see a prop that never moved: the
+staircase was found by a player). A test that starts in the middle of the story may not have a played game's state: started in
+roofcor2, the player is Cortex already, and the scene's switch from Nina is never seen; the scenario reaches it through the bus
+chase as a player does (`fly` steps).
 
 The scenes no rule skips (`TWIN_FIXES_TEST=skips` lists them): the developers wrote no skip for them (no condition 572 or
 Triangle rule in the scene, the state that runs it or the one that runs that), so the mod's way of restoring skips, and the skip

@@ -252,7 +252,8 @@ A line a check, the logs and pictures in `build/native/check/`, exit 1 when one 
 once crashed played again (its `SCENARIOS`: Slip Slide's mine cradles; Dingodile beaten, then the boiler room's lock and the
 Academy's hub; with the cutscene skip on, issue #9's: the angry skunk's scene skipped and the skunk attacked at once, the same
 scene skipped and the skunk given back its own object, Cortex chased by the bear skipped and the controls given back, Rooftop
-Rampage's scene in roofcor2 reached as Nina through the bus chase, skipped, and Cortex moved by the scripted input), each
+Rampage's scene in roofcor2 reached as Nina through the bus chase, skipped, and Cortex moved by the scripted input, the Academy
+hub's first scene skipped and its staircase extended), each
 failing on a crash and on the log's signs of memory gone wrong (the disk manager's pool out of room, DMA reading memory that
 isn't there), the skip's ones also on what their logs must and mustn't say (`$TWIN_SCENE_STATE`, below); the pause menu's hints (its `HINTS`: the game's own with a PlayStation pad's, an Xbox pad's,
 a Nintendo pad's and the keyboard's prompts, and the bar), each shown as the menu hints option has them and the game's own

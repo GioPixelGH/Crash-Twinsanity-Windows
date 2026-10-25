@@ -58,15 +58,24 @@ SCENARIOS = [
           forbid=[r"inputs locked ffffffff"])),
     # Issue #9: Rooftop Rampage's scene in roofcor2 skipped as a player reaches it, as Nina (flown through the bus chase from its
     # start, into roofcor2 by its link): the scene makes Cortex the player, whose idle after it was the director's slot, Nina's
-    # scene behaviour, which left him driven by its animations, unable to move (started in roofcor2 he's the player already)
+    # scene behaviour, which left him driven by its animations, unable to move (started in roofcor2 he's the player already); and
+    # its drones, the director's linked objects, never got the scene's messages that send them at Cortex
     ("Rooftop Rampage's scene skipped arriving as Nina, Cortex moves (#9)", "Levels\\school\\RoofTop\\buschase", 80,
      "idle,wait2,fly:1.2:-3:160:25,fly:11:-3:167:25,fly:26.6:-4:168.5:15,wait2,fly:37.6:-0.5:47:10,roofcor2,wait3,"
-     "fly:-9:-1:1:10,fly:5.5:-1:0:5,wait3,input,wait4,moved:2",
+     "fly:-9:-1:1:10,fly:5.5:-1:0:5,input,wait3,moved:2",
      dict(SKIPPING, env={"TWIN_SKIP_TEST": "0.2", "TWIN_SCENE_STATE": "3", "TWIN_TRIGGER_PLAN": "list"},
-          expect=[r"skip: .*COM_CUTSCENE_H03D skipped: .*the character switched as it ends; .*\|BusChase\|act_NINA1",
+          expect=[r"skip: .*COM_CUTSCENE_H03D skipped: .*messages [\d, ]*287 to its linked objects, .*the character switched as "
+                  r"it ends; .*\|BusChase\|act_NINA1",
                   r"\|RoofCor2\|act_CORTEX asked for its slot 12, given its own object back: its own COM_CORTEX_IDLE",
-                  r"scene state: the player \|RoofCor2\|act_CORTEX, inputs locked 00000000, .*COM_CORTEX_IDLE",
+                  r"scene state: the player \|RoofCor2\|act_CORTEX, inputs locked 00000000",
                   r"hop: the player \S+act_CORTEX moved [\d.]+ units since the last step, at least"])),
+    # Issue #9: the Academy hub's first scene skipped (its triggers stepped into): its staircase, the director's linked object,
+    # never got the scene's message that extends it, so the Boiler Room couldn't be reached
+    ("The Academy's first scene skipped, its staircase extended (#9)", "Levels\\school\\Sch_Hub\\sch_hub", 45,
+     "idle,wait40,scripts:staircase",
+     dict(SKIPPING, env={"TWIN_SKIP_TEST": "1", "TWIN_TRIGGER_PLAN": "0,1", "TWIN_TRIGGER_EVERY": "14"},
+          expect=[r"skip: .*COM_SCHOOL_HUB_CUTSCENE_H03A skipped: .*messages 4 to its linked objects",
+                  r"act_EXTENDING_SPIRAL_STAIRCASE's runner 0"])),
 ]
 # The pause menu's hints checked for each controller's prompts and the menu hints option (hintstest.cpp): the prompts' style
 # ($TWIN_UI_PROMPTS) and the option (options.txt's menu_hints: 0 the game's own hints, 1 the bar). The pause on the window's focus
