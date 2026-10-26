@@ -58,7 +58,25 @@ void RenderWaitFrame(u64 frame);
 bool RenderThreadRunsVu1();
 void RenderQueueVif1(const u32* words, u32 count);
 
-// Statistics: nanoseconds the render thread has worked (not waited) since it started, and the game's thread has waited for it
+// Statistics: nanoseconds the render thread has worked (not waited) since it started, and the game's thread has waited for it;
+// the VU stage's thread's work (VIF1's and VU1's) with three stages
 u64 RenderBusyNanoseconds();
 u64 RenderWaitNanoseconds();
+u64 VuStageBusyNanoseconds();
+
+// The threads the frames are made on: as $TWIN_RENDER_THREAD asks (for the log's start: "three: ... (the default)"), and as they
+// run now (the render thread may not have started)
+const char* ThreadsAskedText();
+enum class Threads
+{
+    // Everything on the game's thread
+    One,
+    // The render thread, VIF1 and VU1 on the game's thread ($TWIN_RENDER_THREAD=gs)
+    TwoVuOnGame,
+    // The render thread with VIF1 and VU1 ($TWIN_RENDER_THREAD=vif)
+    TwoVuOnRender,
+    // The game's, the VU stage's and the render thread
+    Three,
+};
+Threads ThreadsNow();
 }

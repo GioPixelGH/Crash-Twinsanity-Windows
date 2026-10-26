@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """The checks a change needs before it's committed (native/WINDOWS.md, "Checking a change"), each summed up in a line: the
 self-tests, the places that once crashed played again, the pause menu's hints, the camera turned by the mouse, the physics past
-60 Hz against 60 Hz's, portable mode's cases, the pictures against another build's and, with --sweep, every level chunk against
-the last sweep's results.
+60 Hz against 60 Hz's, the log a player's start writes, portable mode's cases, the pictures against another build's and, with
+--sweep, every level chunk against the last sweep's results.
 The runs' logs and pictures go to build/native/check/.
 
     .venv\\Scripts\\python.exe native\\tools\\check_windows.py [--build] [--exe PATH] [--reference PATH] [--sweep]
@@ -10,8 +10,8 @@ The runs' logs and pictures go to build/native/check/.
 --build builds first (build_windows.py). The program checked is build/native/cmake/CrashTwinsanity.exe unless --exe says;
 the pictures are compared with --reference's (by default the last packaged build's, build/native/dist/). Every run has a
 settings folder of its own (none of the player's), and the disc image is local.json's. Exits 1 when a check fails. --physics
-runs only the physics' check; --portable only portable mode's; --scenarios only the scenarios; --fps-shots FOLDER only the FPS
-counter's, with a window (the counter counts the pictures shown).
+runs only the physics' check; --portable only portable mode's; --scenarios only the scenarios; --log only the log's; --fps-shots
+FOLDER only the FPS counter's, with a window (the counter counts the pictures shown).
 """
 import argparse
 import hashlib
@@ -103,6 +103,46 @@ PORTABLE_CHUNK = "Levels\\Earth\\Hub\\beach"
 PORTABLE_DATA = {"options.txt": (b"# a test's\nshow_fps=1\npause_on_focus_loss=0\n", 1),
                  "memorycard/BESLES-52568CRASH/TEST.DAT": (bytes(range(256)), 32),
                  "mods/test/mod.bin": (bytes(range(255, -1, -1)), 80 * 1024)}
+# The log a player's start writes (sessionlog.cpp; native/WINDOWS.md, "The log"), started as Explorer starts it (its own log.txt
+# in the settings folder): the last session's log a 1.0.18 one that crashed, a path in the profile folder in its last line; a mod,
+# a few options. What the start's log must have (regular expressions, in its order), played on the beach for LOG_SECONDS with a
+# performance line every 10 s of play; then a start that ends on an error (a disc image that isn't there), its last lines
+LOG_PREVIOUS = ("[native] [   0.000] Crash Twinsanity 1.0.18\n"
+                "[native] [ 812.500] disc image {profile}\\Desktop\\Crash Twinsanity.ISO\n"
+                "[native] fatal exception 0xc0000005 at 0xffffffffffffffff (pc CrashTwinsanity.exe+0x1eb40d), in {profile}\\x\n"
+                "  #0  CrashTwinsanity.exe+0x1eb40d FUN_001eb400+0xd\n")
+LOG_OPTIONS = "crt_filter=1\nanti_aliasing=1\nshow_fps=1\npause_on_focus_loss=0\n"
+LOG_SECONDS = 25
+# A duration as the log writes it: "45 s", "16 min 05 s", "2 h 03 min"
+DURATION = r"\d+ (?:h \d+ min|min \d+ s|s)"
+LOG_START = [
+    r"^\[native\] \[ *[\d.]+\] Crash Twinsanity \d+\.\d+\.\d+\n\[native\] \[ *[\d.]+\] started \d{4}-\d\d-\d\d \d\d:\d\d:\d\d",
+    r"\] system: Windows \d+ \(\d+\.\d+\.\d+\)",
+    r"\] command line: --headless --quiet-stubs --iso ",
+    r"\] processor: .+, \d+ threads, [^;]+; memory [\d.]+ GB",
+    r"\] options \(options\.txt's\): skip_cutscenes=0 .*crt_filter=1 .*anti_aliasing=1 ",
+    r"\] options, the rest: .*show_fps=1",
+    r"\] resolution \(the defaults: no resolution\.txt yet\): 2x the PS2's picture, a 1280x720 window",
+    r"\] threads: three, .*\(the default\)",
+    r"\] variables: .*TWIN_PERFORMANCE_EVERY=10",
+    r"\] mods: 1 file in the mods folder: test/mod\.bin",
+    r"\] texture pack: on, none installed",
+    r"\] the last session \(log\.previous\.txt\): 1\.0\.18 for 13 min 33 s, ended in a crash: \"fatal exception 0xc0000005 .*"
+    r"in %USERPROFILE%\\x\"",
+    r"\] display: none",
+    r"\] audio: none",
+    r"\] game: Levels\\Earth\\Hub\\beach loaded in [\d.]+ s",
+    r"\] performance: [\d.]+ fps over \d+ s of play, the slowest frame \d+ ms; a frame's work: the game [\d.]+ ms .*"
+    r"VU1 [\d.]+ ms, the render thread [\d.]+ ms; the player in levels\\earth\\hub\\beach",
+    rf"\] session: {DURATION}, {DURATION} of it played at [\d.]+ fps on average, \d+% of it below 57 fps .*"
+    r"the slowest frame \d+ ms",
+    rf"\] exit: the level sweep's run ended \(status 0\) after {DURATION}; the game's state ",
+]
+LOG_ERROR = [
+    rf"\] the last session \(log\.previous\.txt\): \d+\.\d+\.\d+ for {DURATION}, ended: "
+    r"\"exit: the level sweep's run ended \(status 0\)",
+    rf"\] session: {DURATION}, none of it played\n\[native\] fatal: The disc image isn't where it was: .*missing image\.iso.*\n*$",
+]
 # What starts it as Explorer does, run by pythonw (no console: python.exe made detached gets a console of its own, which the
 # program would attach to): the program started with no output handles and no console of its parent's (entry.cpp's SetUpLog)
 PORTABLE_LAUNCHER = ("import subprocess, sys\n"
@@ -464,6 +504,75 @@ def portable(exe, work):
     return results
 
 
+def private_names(log):
+    """What a log names that it mustn't (they're attached to public issues): the profile folder's name anywhere, the user's as a
+    path's part, the computer's as a word"""
+    found = []
+    profile = Path.home().name
+    if profile and profile.lower() in log.lower():
+        found.append(f"the profile folder's name ({profile})")
+    user = os.environ.get("USERNAME", "")
+    if user and re.search(r"[\\/]" + re.escape(user) + r"(?=[\\/\s\"']|$)", log, re.I | re.M):
+        found.append(f"the user's name in a path ({user})")
+    computer = os.environ.get("COMPUTERNAME", "")
+    if computer and re.search(r"\b" + re.escape(computer) + r"\b", log, re.I):
+        found.append(f"the computer's name ({computer})")
+    return found
+
+
+def session_log(exe, work):
+    """The log a player's start writes (sessionlog.cpp), started as Explorer starts it: a start played on the beach (the last
+    session's log one that crashed), then a start that ends on an error (a disc image that isn't there), each log's lines against
+    LOG_START's and LOG_ERROR's, and nothing private in them: [(name, passed, what happened)]"""
+    root = work / "log"
+    if root.exists():
+        shutil.rmtree(root)
+    appdata = root / "appdata"
+    settings = appdata / "Crash Twinsanity"
+    (settings / "mods" / "test").mkdir(parents=True)
+    (settings / "mods" / "test" / "mod.bin").write_bytes(b"a mod's file\n")
+    (settings / "disc_image.txt").write_text(disc_image() + "\n")
+    (settings / "options.txt").write_text(LOG_OPTIONS)
+    (settings / "log.txt").write_text(LOG_PREVIOUS.format(profile=Path.home()))
+
+    def run(name, arguments, environment, timeout):
+        """The program started headless as Explorer starts it: its exit status (99: timed out) and log.txt, kept as root/name"""
+        env = dict(os.environ, APPDATA=str(appdata), HOME=str(appdata), TWINSANITY_AUDIO="off", **environment)
+        env.pop("TWINSANITY_ISO", None)
+        status = subprocess.run([str(Path(sys.executable).with_name("pythonw.exe")), "-c", PORTABLE_LAUNCHER, str(timeout),
+                                 str(exe), "--headless", "--quiet-stubs", *arguments], env=env, cwd=root,
+                                timeout=timeout + 60).returncode
+        log = (settings / "log.txt").read_text(errors="replace") if (settings / "log.txt").exists() else ""
+        (root / name).write_text(log)
+        return status, log
+
+    def result(name, status, expected_status, log, patterns):
+        # Each pattern found after the one before it
+        at, missing = 0, None
+        for pattern in patterns:
+            found = re.compile(pattern, re.M).search(log, at)
+            if not found:
+                missing = pattern
+                break
+            at = found.end()
+        private = private_names(log)
+        if status != expected_status:
+            return name, False, f"exit {status}"
+        if missing:
+            return name, False, f"nothing in the log like {missing!r} (after the lines before it)"
+        if private:
+            return name, False, f"the log names {private[0]}"
+        return name, True, f"its {len(patterns)} kinds of lines there, nothing private"
+
+    status, log = run("start.txt", ["--iso", disc_image()],
+                      {"TWIN_SWEEP_LEVEL": PORTABLE_CHUNK, "TWIN_SWEEP_SECONDS": str(LOG_SECONDS), "TWIN_SWEEP_TIMEOUT": "120",
+                       "TWIN_PERFORMANCE_EVERY": "10"}, 300)
+    results = [result("a start played", status, 0, log, LOG_START)]
+    status, log = run("error.txt", ["--iso", str(root / "missing image.iso")], {}, 60)
+    results.append(result("a start ending on an error", status, 1, log, LOG_ERROR))
+    return results
+
+
 # The disc images a player may keep beside the program (portable mode looks for them there)
 DISC_SUFFIXES = (".iso", ".bin", ".img")
 
@@ -569,6 +678,7 @@ def main():
     parser.add_argument("--physics", action="store_true", help="only the physics' check (past 60 Hz against 60 Hz's)")
     parser.add_argument("--portable", action="store_true", help="only portable mode's check")
     parser.add_argument("--scenarios", action="store_true", help="only the scenarios (the places that once crashed)")
+    parser.add_argument("--log", action="store_true", help="only the log's check (what a player's start writes in it)")
     parser.add_argument("--hints-shots", metavar="FOLDER",
                         help="only the menu hints' check, with a window: the pause menu's pictures saved in FOLDER")
     parser.add_argument("--fps-shots", metavar="FOLDER",
@@ -595,6 +705,11 @@ def main():
         results = scenarios(exe, work)
         for name, ok, what in results:
             print(f"scenario        {'ok' if ok else 'FAILED'} {name}: {what}")
+        sys.exit(0 if all(ok for _, ok, _ in results) else 1)
+    if arguments.log:
+        results = session_log(exe, work)
+        for name, ok, what in results:
+            print(f"log             {'ok' if ok else 'FAILED'} {name}: {what}")
         sys.exit(0 if all(ok for _, ok, _ in results) else 1)
     if arguments.portable:
         results = portable(exe, work)
@@ -649,6 +764,14 @@ def report(exe, reference, work, with_sweep, reference_name=None):
     for name, ok, what in physics(exe, work):
         print(f"physics         {'ok' if ok else 'FAILED'} {name} as 60 Hz: {what}")
         failed |= not ok
+
+    logs = session_log(exe, work)
+    print(f"log             {sum(ok for _, ok, _ in logs)}/{len(logs)} as a report needs it, nothing private "
+          f"({', '.join(name for name, _, _ in logs)})")
+    for name, ok, what in logs:
+        if not ok:
+            failed = True
+            print(f"  FAILED {name}: {what}")
 
     cases = portable(exe, work)
     print(f"portable        {sum(ok for _, ok, _ in cases)}/{len(cases)} cases as they should be "

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <vector>
 
 // The native build's own UI changes, called from the game's code under TWIN_NATIVE: the PC wording of the language files' console
@@ -377,8 +378,15 @@ bool IsOn(Option option);
 void SetFpsCounterShown(bool shown);
 void CountShownFrame(double seconds);
 s32 FpsCounterValue();
-// The game's trail in the log, a frame at a time (trail.cpp)
+// The game's trail in the log, a frame at a time (trail.cpp); the chunk the player was last seen in (nullptr: none yet), and where
+// the game is now ("the game's state playing (12), the player in levels\earth\hub\beach at (x, y, z)"), for the log's end lines
 void TrailFrame();
+const char* TrailChunk();
+std::string TrailNow();
+// The log's start (sessionlog.cpp): every option as options.txt names it, and whether they're options.txt's or the defaults (a
+// first start), in two lines (options.cpp); the saved resolution or the defaults (resolution.cpp)
+void LogOptions();
+void LogResolution();
 // Sets an option (kept, and applied at once where it applies at once)
 void SetOption(Option option, s32 value);
 // Applies what an option changes once it's set, and every option's start-up effect (features.cpp)

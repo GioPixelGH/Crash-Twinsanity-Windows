@@ -227,26 +227,61 @@ void Native::SetEnvironment(const char* name, const char* value)
 #endif
 }
 
+namespace
+{
+// The program's start, the log's seconds' zero
+const std::chrono::steady_clock::time_point g_Started = std::chrono::steady_clock::now();
+
+// A message formatted, the profile folder in its paths written %USERPROFILE% (the logs go to public issues)
+std::string LogText(const char* format, va_list arguments)
+{
+    char text[1024];
+    va_list again;
+    va_copy(again, arguments);
+    int length = std::vsnprintf(text, sizeof(text), format, arguments);
+    std::string message;
+    if (length >= static_cast<int>(sizeof(text)))
+    {
+        message.resize(static_cast<size_t>(length) + 1);
+        std::vsnprintf(message.data(), message.size(), format, again);
+        message.resize(static_cast<size_t>(length));
+    }
+    else if (length > 0)
+    {
+        message = text;
+    }
+
+    va_end(again);
+    return Native::WithoutProfile(message);
+}
+}
+
+double Native::SessionSeconds()
+{
+    return std::chrono::duration<double>(std::chrono::steady_clock::now() - g_Started).count();
+}
+
 void Native::Log(const char* format, ...)
 {
-    static const auto started = std::chrono::steady_clock::now();
-    double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+    double seconds = SessionSeconds();
     va_list arguments;
     va_start(arguments, format);
-    std::fprintf(stderr, "[native] [%8.3f] ", seconds);
-    std::vfprintf(stderr, format, arguments);
-    std::fputc('\n', stderr);
+    std::string message = LogText(format, arguments);
     va_end(arguments);
+    // A line in one write (the threads' lines don't mix)
+    std::fprintf(stderr, "[native] [%8.3f] %s\n", seconds, message.c_str());
 }
 
 void Native::Fatal(const char* format, ...)
 {
     va_list arguments;
     va_start(arguments, format);
-    std::fputs("[native] fatal: ", stderr);
-    std::vfprintf(stderr, format, arguments);
-    std::fputc('\n', stderr);
+    std::string message = LogText(format, arguments);
     va_end(arguments);
+    // The session's summary, then the error as the session's last line
+    EndSessionSummary();
+    std::fprintf(stderr, "[native] fatal: %s\n", message.c_str());
+    std::fflush(stderr);
     std::exit(1);
 }
 
@@ -459,6 +494,7 @@ void Platform::System::StartServices()
 
 void Platform::System::Exit(s32 status)
 {
+    Native::EndSession("exit: the program ended (status %d)", status);
     // The render thread's work done and its context let go before SDL goes
     NativeGraphics::StopRenderThread();
     SDL_Quit();
@@ -633,6 +669,14 @@ extern "C"
 {
     [[noreturn]] void ProgramExit(int status)
     {
+        // The game never exits itself: its C library's abort, a pure virtual call or an exception nothing caught (gcc2.cpp's
+        // Terminate) end here. Where from, in the log
+        Native::EndSession("exit: the game's C library ended the program (status %d: its abort, a pure virtual call or an "
+                           "uncaught exception)",
+                           status);
+#if defined(_WIN32)
+        Native::LogBacktraceHere();
+#endif
         Platform::System::Exit(status);
     }
 

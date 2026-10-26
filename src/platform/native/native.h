@@ -94,9 +94,41 @@ inline void StartHangWatch()
 // Whether the detailed log is on (Options > Gameplay's, or $TWIN_DETAILED_LOG): more of what the game does logged (ui/trail.cpp)
 bool DetailedLog();
 
-// The log (stderr): the platform's messages, prefixed (and the seconds since the start)
+// The log (stderr): the platform's messages, prefixed (and the seconds since the start), the profile folder in their paths
+// written %USERPROFILE% (WithoutProfile). Fatal ends the session's log (its summary) before its line
 void Log(const char* format, ...) __attribute__((format(printf, 1, 2)));
 [[noreturn]] void Fatal(const char* format, ...) __attribute__((format(printf, 1, 2)));
+// The seconds since the program started (the log's)
+double SessionSeconds();
+
+// The session in the log (sessionlog.cpp), for the bug reports: logs go to public issues, so the paths in it name the profile
+// folder %USERPROFILE% (and a folder named as the user or the computer %USERNAME%, %COMPUTERNAME%): text with them replaced. Ready
+// once StartLogPrivacy has run (the first thing main does)
+void StartLogPrivacy();
+std::string WithoutProfile(const std::string& text);
+// A device's name as the log gives it: a person's name in it ("Headphones (Ann's AirPods)") left out
+std::string DeviceNameForLog(const char* name);
+// Where the log goes (entry.cpp's SetUpLog): the settings folder's log.txt (the last session's log is log.previous.txt then), or
+// what started the program gave it (a console, a file: the settings folder's log.txt is then the last session's that had one)
+void SetLogToFile(bool toFile);
+// The start's lines after the version's: the date, Windows (and Wine), the command line, the processor and memory; then, once the
+// settings folder is said, the options, the resolution, the threads, the TWIN_ variables, the mods, the texture pack and how the
+// last session ended
+void LogSessionStart(int argc, char** argv);
+void LogSessionSettings();
+// A frame of the game's (the wait for the vertical blank, the game's thread; the game's thread's work so far): the frames timed
+// while the game is played, a line of performance a minute of play ($TWIN_PERFORMANCE_EVERY seconds)
+void SessionFrame(u64 gameWorkNanoseconds);
+// The session's end, once whichever way it ends: its summary (its time, its play's frame rate) and the line saying how it ended
+// (format: "quit: the window closed", "exit: ..."), with its time and where the game was; EndSessionSummary only the summary
+// (Fatal's line follows it). Crashes: the summary written as the crash report is (no locks, no memory)
+void EndSession(const char* format, ...) __attribute__((format(printf, 1, 2)));
+void EndSessionSummary();
+void WriteCrashSessionEnd(void (*write)(const char* text));
+#if defined(_WIN32)
+// The stack where it's called, written to the log as a crash's is (lowmemory_win32.cpp)
+void LogBacktraceHere();
+#endif
 
 // The movies' decoder (movie/movie.cpp): FFmpeg's version and its libraries' licences, logged once at start-up
 void LogMovieLibraries();

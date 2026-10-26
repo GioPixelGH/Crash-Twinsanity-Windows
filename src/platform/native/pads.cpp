@@ -263,7 +263,7 @@ s32 Platform::Pads::Read(s32 port, s32 slot, u8* data)
     {
         // Quitting: the saves and settings are written as they're made, so nothing is left to keep
         // Straight out: SDL's shutdown under the sound thread still feeding its stream crashed on the way out
-        Native::Log("quit");
+        Native::EndSession("quit: the window closed");
         std::_Exit(0);
     }
 

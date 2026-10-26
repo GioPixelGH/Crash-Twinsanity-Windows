@@ -264,11 +264,32 @@ void ApplySavedResolution()
 
     g_Current = saved;
     g_Known = true;
-    if (Native::GetSettings().headless || !g_ResolutionToGraphics)
+    if (!g_ResolutionToGraphics)
     {
         return;
     }
 
-    NativeGraphicsSetResolution(saved.scale, saved.windowWidth, saved.windowHeight, saved.fullscreen);
+    if (!Native::GetSettings().headless)
+    {
+        NativeGraphicsSetResolution(saved.scale, saved.windowWidth, saved.windowHeight, saved.fullscreen);
+    }
+
+    // The screen the window is on, for the log
+    NativeGraphicsLogDisplay();
+}
+
+void LogResolution()
+{
+    Resolution saved;
+    bool there = ReadSaved(&saved);
+    if (!there)
+    {
+        saved = Defaults;
+    }
+
+    char window[48];
+    std::snprintf(window, sizeof(window), "a %dx%d window", saved.windowWidth, saved.windowHeight);
+    Native::Log("resolution (%s): %dx the PS2's picture, %s%s%s", there ? "resolution.txt's" : "the defaults: no resolution.txt yet",
+                saved.scale, saved.fullscreen ? "fullscreen (" : "", window, saved.fullscreen ? " when windowed)" : "");
 }
 }

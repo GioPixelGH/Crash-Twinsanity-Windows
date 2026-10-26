@@ -162,8 +162,27 @@ void StartOutput()
             else
             {
                 SDL_ResumeAudioStreamDevice(g_Stream);
+                // The device the sound goes to, for the log: its name, its rate, channels and buffer (SDL converts the game's)
+                SDL_AudioDeviceID device = SDL_GetAudioStreamDevice(g_Stream);
+                SDL_AudioSpec format = {};
+                int frames = 0;
+                if (!SDL_GetAudioDeviceFormat(device, &format, &frames))
+                {
+                    format = {};
+                }
+
+                Native::Log("audio: %s (%s), %d Hz, %d channels, a %d-frame buffer; the game's sound %u Hz stereo",
+                            Native::DeviceNameForLog(SDL_GetAudioDeviceName(device)).c_str(),
+                            SDL_GetCurrentAudioDriver() != nullptr ? SDL_GetCurrentAudioDriver() : "?", format.freq, format.channels,
+                            frames, static_cast<unsigned>(SampleRate));
             }
         }
+    }
+    else
+    {
+        Native::Log("audio: none (%s)", g_FrameLocked ? "$TWINSANITY_AUDIO=frames: the tests' sound made with the frames"
+                                        : setting != nullptr && std::strcmp(setting, "off") == 0 ? "$TWINSANITY_AUDIO=off"
+                                                                                                 : "a test's run, no window");
     }
 
     if (g_FrameLocked)

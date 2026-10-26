@@ -658,6 +658,8 @@ LONG CALLBACK OnUnhandled(EXCEPTION_POINTERS* exception)
 
     WriteBacktrace(*context, 48);
     WriteGameContext();
+    // The session's summary (its time, its play's frame rate) as its last line
+    Native::WriteCrashSessionEnd(WriteError);
     return EXCEPTION_CONTINUE_SEARCH;
 }
 }
@@ -703,6 +705,14 @@ void ReportHang(u32 seconds)
 
 namespace Native
 {
+void LogBacktraceHere()
+{
+    std::fflush(stderr);
+    CONTEXT context = {};
+    RtlCaptureContext(&context);
+    WriteBacktrace(context, 24);
+}
+
 void GameFrameDone()
 {
     g_GameFrames.fetch_add(1, std::memory_order_relaxed);

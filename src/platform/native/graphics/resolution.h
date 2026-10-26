@@ -18,3 +18,5 @@ void NativeGraphicsSetResolution(int internalScale, int windowWidth, int windowH
 // What they are now (the window's size as it is, the user may have resized it)
 void NativeGraphicsGetResolution(int* internalScale, int* windowWidth, int* windowHeight, bool* fullscreen);
 NativeGraphicsResolution NativeGraphicsCurrentResolution();
+// The screen the window is on in the log, once at start-up (its name, size, refresh rate, scale and HDR; "none" without a window)
+void NativeGraphicsLogDisplay();

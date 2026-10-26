@@ -635,4 +635,37 @@ u64 RenderWaitNanoseconds()
 {
     return Producing().waitNanoseconds.load(std::memory_order_relaxed);
 }
+
+u64 VuStageBusyNanoseconds()
+{
+    return g_VuThread.busyNanoseconds.load(std::memory_order_relaxed);
+}
+
+const char* ThreadsAskedText()
+{
+    const char* setting = std::getenv("TWIN_RENDER_THREAD");
+    if (!RenderThreadWanted())
+    {
+        return "one, everything on the game's thread ($TWIN_RENDER_THREAD=0)";
+    }
+
+    if (ThreeStagesWanted())
+    {
+        return setting == nullptr ? "three, the game's, VU1's and the render thread (the default)"
+                                  : "three, the game's, VU1's and the render thread ($TWIN_RENDER_THREAD)";
+    }
+
+    return std::strcmp(RenderThreadSetting(), "vif") == 0 ? "two, the game's and the render thread with VU1 ($TWIN_RENDER_THREAD=vif)"
+                                                          : "two, the game's with VU1 and the render thread ($TWIN_RENDER_THREAD)";
+}
+
+Threads ThreadsNow()
+{
+    if (!RenderThreadActive())
+    {
+        return Threads::One;
+    }
+
+    return g_ThreeStages ? Threads::Three : RenderThreadRunsVu1() ? Threads::TwoVuOnRender : Threads::TwoVuOnGame;
+}
 }

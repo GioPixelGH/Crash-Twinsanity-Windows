@@ -72,6 +72,8 @@ constexpr OptionInfo Infos[OptionCount] = {
 
 s32 g_Values[OptionCount];
 bool g_Read = false;
+// Whether options.txt was there when they were read (else the defaults: a first start)
+bool g_FromFile = false;
 bool g_Saving = true;
 
 std::atomic<bool> g_FocusLost{false};
@@ -102,6 +104,7 @@ void Read()
     }
 
     std::ifstream file(SettingsPath());
+    g_FromFile = file.is_open();
     std::string line;
     while (std::getline(file, line))
     {
@@ -231,6 +234,21 @@ void SetOption(Option option, s32 value)
     g_Values[option] = value;
     Save();
     ApplyOption(option);
+}
+
+void LogOptions()
+{
+    Read();
+    // Two lines of options.txt's names and values, in its order
+    std::string halves[2];
+    for (u32 i = 0; i < OptionCount; i++)
+    {
+        std::string& half = halves[i < OptionCount / 2 ? 0 : 1];
+        half += (half.empty() ? "" : " ") + std::string(Infos[i].name) + "=" + std::to_string(g_Values[Infos[i].option]);
+    }
+
+    Native::Log("options (%s): %s", g_FromFile ? "options.txt's" : "the defaults: no options.txt yet", halves[0].c_str());
+    Native::Log("options, the rest: %s", halves[1].c_str());
 }
 
 void SetOptionSaving(bool saving)

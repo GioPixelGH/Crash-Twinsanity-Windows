@@ -1,6 +1,7 @@
 // The game's trail in the log, for bug reports: always the game's states as they change (by name, with where the player is), the
-// chunk the player is in and the chunk a level loads at; with the detailed log (Options > Gameplay, or $TWIN_DETAILED_LOG) also
-// where the player is every 5 s of play, every sound played (game/sound.cpp) and every file looked up on the disc (disc.cpp)
+// chunk the player is in, the chunk a level loads at and how long the loading took; with the detailed log (Options > Gameplay, or
+// $TWIN_DETAILED_LOG) also where the player is every 5 s of play, every sound played (game/sound.cpp) and every file looked up on
+// the disc (disc.cpp)
 #include "ui/bindings.h"
 #include "ui/nativeui.h"
 
@@ -66,6 +67,9 @@ std::string Where(InstanceContext* player)
     std::snprintf(text, sizeof(text), " at (%.1f, %.1f, %.1f)", position.x, position.y, position.z);
     return text;
 }
+
+// The chunk the player was last seen in (the game's thread's)
+std::string g_LastChunk;
 }
 
 bool Native::DetailedLog()
@@ -83,16 +87,33 @@ void NativeUi::TrailFrame()
     }
 
     static u32 lastState = ~0u;
-    static std::string lastChunk;
     static Clock::time_point lastPlace = Clock::now();
+    // A loading's start (the title's, a level's) and what it loads
+    static Clock::time_point loadingFrom{};
+    static std::string loading;
     u32 state = controller->State();
     InstanceContext* player = Player();
+    Clock::time_point now = Clock::now();
     if (state != lastState)
     {
+        if ((lastState == GameController::StateLoadingTitle || lastState == GameController::StateLoadingLevel) &&
+            loadingFrom != Clock::time_point{})
+        {
+            Native::Log("game: %s loaded in %.2f s", loading.c_str(), std::chrono::duration<double>(now - loadingFrom).count());
+            loadingFrom = {};
+        }
+
         Native::Log("game: %s (state %u)%s", StateName(state), state, Where(player).c_str());
         if (state == GameController::StateLoadingLevel && controller->progress.startChunk.string != nullptr)
         {
             Native::Log("game: loading at %s", controller->progress.startChunk.string);
+        }
+
+        if (state == GameController::StateLoadingTitle || state == GameController::StateLoadingLevel)
+        {
+            loadingFrom = now;
+            const char* chunk = controller->progress.startChunk.string;
+            loading = state == GameController::StateLoadingTitle ? "the title" : chunk != nullptr ? chunk : "a level";
         }
 
         lastState = state;
@@ -100,13 +121,12 @@ void NativeUi::TrailFrame()
 
     ChunkData* chunk = player != nullptr ? player->chunk : nullptr;
     const char* name = chunk != nullptr ? chunk->name.string : nullptr;
-    if (name != nullptr && lastChunk != name)
+    if (name != nullptr && g_LastChunk != name)
     {
-        lastChunk = name;
+        g_LastChunk = name;
         Native::Log("game: the player in %s%s", name, Where(player).c_str());
     }
 
-    Clock::time_point now = Clock::now();
     // $TWIN_TEST_SOUND=0xae,0x63: those sounds played (as the game plays one, unplaced) every 3 s of play from 5 s in (the
     // sound's tests)
     static const char* testSounds = std::getenv("TWIN_TEST_SOUND");
@@ -145,4 +165,26 @@ void NativeUi::TrailFrame()
         lastPlace = now;
         Native::Log("game: the player%s in %s", Where(player).c_str(), name != nullptr ? name : "?");
     }
+}
+
+const char* NativeUi::TrailChunk()
+{
+    return g_LastChunk.empty() ? nullptr : g_LastChunk.c_str();
+}
+
+std::string NativeUi::TrailNow()
+{
+    GameController* controller = G_GameController;
+    if (controller == nullptr)
+    {
+        return "the game not started";
+    }
+
+    u32 state = controller->State();
+    InstanceContext* player = Player();
+    ChunkData* chunk = player != nullptr ? player->chunk : nullptr;
+    char text[256];
+    std::snprintf(text, sizeof(text), "the game's state %s (%u), the player in %s%s", StateName(state), state,
+                  chunk != nullptr && chunk->name.string != nullptr ? chunk->name.string : "no chunk", Where(player).c_str());
+    return text;
 }

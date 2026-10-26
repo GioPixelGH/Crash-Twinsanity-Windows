@@ -892,6 +892,8 @@ void WaitForVBlank()
         g_GameWorkNanoseconds += static_cast<u64>(std::chrono::duration_cast<std::chrono::nanoseconds>(arrived - g_GameWorkFrom).count());
     }
 
+    // The log's frame counts (sessionlog.cpp: the performance lines)
+    Native::SessionFrame(g_GameWorkNanoseconds.load(std::memory_order_relaxed));
     struct Restart
     {
         ~Restart()
@@ -1318,4 +1320,39 @@ NativeGraphicsResolution NativeGraphicsCurrentResolution()
     }
 
     return resolution;
+}
+
+void NativeGraphicsLogDisplay()
+{
+    SDL_Window* window = g_Presenter.window;
+    if (window == nullptr)
+    {
+        Native::Log("display: none (no window: a test's run)");
+        return;
+    }
+
+    // The screen the window is on (its number among the screens), its desktop mode in pixels, the desktop's scale, HDR
+    SDL_DisplayID display = SDL_GetDisplayForWindow(window);
+    int count = 0;
+    int number = 0;
+    SDL_DisplayID* displays = SDL_GetDisplays(&count);
+    for (int i = 0; displays != nullptr && i < count; i++)
+    {
+        number = displays[i] == display ? i + 1 : number;
+    }
+
+    SDL_free(displays);
+    const SDL_DisplayMode* mode = SDL_GetDesktopDisplayMode(display);
+    const char* name = SDL_GetDisplayName(display);
+    bool hdr = SDL_GetBooleanProperty(SDL_GetDisplayProperties(display), SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN, false);
+    if (mode == nullptr)
+    {
+        Native::Log("display: screen %d of %d, its mode unknown (%s)", number, count, SDL_GetError());
+        return;
+    }
+
+    Native::Log("display: screen %d of %d (%s), %dx%d at %.2f Hz, scale %.0f%%, HDR %s", number, count, name != nullptr ? name : "?",
+                static_cast<int>(mode->w * mode->pixel_density + 0.5f), static_cast<int>(mode->h * mode->pixel_density + 0.5f),
+                static_cast<double>(mode->refresh_rate), static_cast<double>(SDL_GetDisplayContentScale(display) * 100.0f),
+                hdr ? "on" : "off");
 }

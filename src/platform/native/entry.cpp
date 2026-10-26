@@ -13,6 +13,7 @@
 #include <cstring>
 #include <filesystem>
 #include <string_view>
+#include <vector>
 
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
@@ -146,6 +147,7 @@ void SetUpLog()
         std::freopen(log.c_str(), "w", stderr);
         std::freopen(log.c_str(), "a", stdout);
         std::setvbuf(stdout, nullptr, _IONBF, 0);
+        Native::SetLogToFile(true);
     }
 
     // The crash report writes to the handle itself (lowmemory_win32.cpp)
@@ -156,6 +158,8 @@ void SetUpLog()
 
 int main(int argc, char** argv)
 {
+    // What the log leaves out of its paths (the profile folder), before its first line
+    Native::StartLogPrivacy();
     // Where the settings are (portable mode or not: portable.cpp) before anything reads or writes them, the log first
     bool headless = false;
     for (int i = 1; i < argc; i++)
@@ -170,6 +174,8 @@ int main(int argc, char** argv)
     // The system timer at 1 ms: the threads' waits (the renderer's, the audio's, the disc's) are as coarse as it otherwise
     timeBeginPeriod(1);
 #endif
+    // The command line as it was given, for the log (ParseArguments takes the native build's own out)
+    std::vector<char*> given(argv, argv + argc);
     Native::ParseArguments(argc, argv);
     if (Native::GetSettings().headless)
     {
@@ -202,9 +208,13 @@ int main(int argc, char** argv)
         }
     }
 
-    // The port's version first (native/CMakeLists.txt's), for the bug reports' logs
+    // The port's version first (native/CMakeLists.txt's), for the bug reports' logs, then what a report asks (sessionlog.cpp): the
+    // date, the system, the command line, the processor; the settings folder; the options, the resolution, the threads, the
+    // variables, the mods, the texture pack, how the last session ended
     Native::Log("Crash Twinsanity %s", TWIN_PORT_VERSION);
+    Native::LogSessionStart(static_cast<int>(given.size()), given.data());
     Native::LogPortableStart();
+    Native::LogSessionSettings();
     Native::OpenDiscImage();
     NativeApplyDataFixups();
     // $TWIN_FIXED_TIME: the test runs' time (debug.h's g_DebugFixedTime): every frame takes exactly a frame's time and reads

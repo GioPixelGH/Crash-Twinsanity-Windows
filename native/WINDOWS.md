@@ -279,7 +279,65 @@ local.json's. `--hints-shots FOLDER` runs only the hints' check, with a window, 
 portable mode's (under a minute; the dialog's pictures in `build/native/check/portable/shots/`); `--fps-shots FOLDER` only the
 FPS counter's (its `FPS_CASES`, `$TWIN_FPS_TEST`, below: at 60 Hz, 50 Hz, 144 Hz without v-sync, and off; a minute or so), with
 a window, as the counter counts the pictures shown (the self-test checks its sums and its place without one), and saves the
-window's pictures there.
+window's pictures there. The log's check (`session_log()`, `--log` alone, under a minute) starts the program as Explorer does
+(its own log.txt) twice: a start played on the beach for 25 s, the last session's log a 1.0.18 one that crashed with a path in
+the profile folder in its last line, a mod and a few options; then a start that ends on an error (a disc image that isn't
+there). Each log must have its kinds of lines in their order (`LOG_START`, `LOG_ERROR`: below, "The log") and nothing private:
+not the profile folder's name anywhere, nor the user's in a path, nor the computer's.
+
+## The log
+
+What an issue's first questions ask, the log says itself (src/platform/native/sessionlog.cpp), short enough to attach: a line
+for each thing, none a frame. Each line is `[native] [SECONDS]` from the start.
+
+At the start, after the version's line (`Crash Twinsanity 1.0.19`: native/CMakeLists.txt's, only entry.cpp is compiled with it):
+
+- `started`: the local date and time.
+- `system:` Windows' name and version (RtlGetVersion's: build 22000 on is Windows 11), "the program emulated on Arm64" on an Arm64
+  Windows, and Wine's version and host (ntdll's `wine_get_version`: Proton is Wine) or "not under Wine".
+- `command line:` the arguments (not the program's own path), or none.
+- `processor:` its name (CPUID's), its cores (a hybrid's performance cores: the highest efficiency class) and threads, AVX2 or
+  not; the memory and how much of it is free.
+- `settings and saves in` (portable.cpp's).
+- `options (...)`: two lines of every option by its name in options.txt, and whether they're options.txt's or the defaults (no
+  options.txt yet: a first start).
+- `resolution (...)`: the render scale, the window's size or fullscreen, resolution.txt's or the defaults.
+- `threads:` the threads asked for: three by default, one with `$TWIN_RENDER_THREAD=0` (the one-thread .bat's).
+- `variables:` every `TWIN_` and `TWINSANITY_` variable set, with its value.
+- `mods:` the mods folder's files (their paths in it, the first 20, then how many more), or none.
+- `texture pack:` on or off and whether there's a textures folder (once it's read, `texture pack: N replacement textures in`).
+- `the last session (log.previous.txt): VERSION for TIME, ...`: how the session before ended, from its log's end: its window
+  closed (`quit`), another way out (`exit: ...`), an error (`fatal: ...`), a crash (`fatal exception ...`), a hang the hang watch
+  saw with nothing after it, or no last line (closed from the Task Manager, a hang, the computer turned off). When the log goes
+  to a terminal or a file, the settings folder's `log.txt` is the one read (the last start that wrote one).
+
+Then, as each is there: the disc image, FFmpeg's version, the graphics card (OpenGL's renderer and Windows' adapters, under
+"Debugging"), `display:` the screen the window is on (its number of the screens, its name as Windows has it, its desktop's size
+in pixels, refresh rate and scale, HDR on or off; "none" headless), `audio:` the device the sound goes to (SDL's name of it, a
+person's name in it left out: "Headphones (someone's AirPods)"; the driver, its rate, channels and buffer) or why there's none.
+
+While it runs, besides the game's trail (under "Debugging"): `game: LEVEL loaded in N s` for each loading (the title's and a
+level's, from the loading state to the next), and `performance:` a line a minute of play (play and the cutscenes, not the menus,
+the pause, the loadings or the movies): the frames a second, the slowest frame, a frame's work on each thread (the game's own
+and its waits for the others, VU1's, the render thread's; with fewer threads, which one has VU1 and the GS) and the player's
+chunk. Its counters are those the threads keep anyway (graphics/display.cpp's game work, renderthread.cpp's busy and wait times),
+a clock read and a few sums a frame: nothing is profiled. `$TWIN_PERFORMANCE_EVERY=SECONDS` sets the minute (the check's 10).
+
+At the end, whichever way it ends: `session:` its time, its time played, the frames a second on average, the share of the
+played seconds below 95% of the rate chosen (the refresh option's 50, 60, 120 or 144; none when unlimited), the slowest frame
+and a frame's work; then how it ended, with its time and where the game was: `quit: the window closed`; `exit: the program
+ended (status N)` (Main's return, a test's end); `exit: the game's C library ended the program` (ProgramExit: the retail C
+library's abort, a pure virtual call, gcc2.cpp's Terminate: the game never exits itself, so it's a bug), with the stack after
+it; `exit: portable mode turned on`; `exit: the level sweep's run ended`. An error (Native::Fatal: the disc image, SDL's video,
+the sound modules) writes the summary, then `[native] fatal: ...` as the last line (the message box shows it first); a crash's
+report (lowmemory_win32.cpp) ends with the summary ("it ended there"); `abort()` (a shader that doesn't compile, a failed
+check) writes `[native] fatal: the program aborted itself` and the summary.
+
+Logs end up in public issues, so the profile folder in any path (the disc image's, the settings folder's, the mods', the
+command line's) is written `%USERPROFILE%`: as the system's code page has it and as UTF-8, its short form too, in any case and
+with either slash. A folder named as the user or the computer is `%USERNAME%`, `%COMPUTERNAME%`. Native::Log and Native::Fatal
+do it for every line; a crash's report names only modules and functions. Nothing names the computer, the user, a serial number
+or an address.
 
 ## Debugging
 
@@ -308,8 +366,8 @@ window's pictures there.
   `$TWIN_FIXED_TIME=144,144,60`: the frames' rates in turn instead (a 144 Hz screen's with a slow frame now and then: the uneven
   frames past 60 Hz, the same every run).
 - `$TWIN_FRAME_STATS`: each frame's time, VU1's work, the primitives, the render thread's time and the GPU renderer's batches, texture decodes, uploads, downloads and copies.
-- The log: each line `[native] [SECONDS]` from the start. The first names the version (`Crash Twinsanity 1.0.12`, from
-  native/CMakeLists.txt: only entry.cpp is compiled with it). Once the window is there it names the graphics card and its driver:
+- The log (what a report needs is under "The log", above): each line `[native] [SECONDS]` from the start, the first the
+  version's. Once the window is there it names the graphics card and its driver:
   OpenGL's renderer, vendor and version (the driver's own number in it: NVIDIA's "3.3.0 NVIDIA 617.14", AMD's "... Core Profile
   Context 24.10.1...", Intel's "... Build 31.0.101..."), then each adapter Windows has (graphics/adapters_win32.cpp, DXGI's: its
   name, PCI vendor and device, its driver's version as Device Manager shows it and its video memory). The game's trail (ui/trail.cpp) is always in it: the game controller's

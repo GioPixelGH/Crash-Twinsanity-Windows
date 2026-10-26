@@ -180,7 +180,7 @@ void Scan()
         }
     }
 
-    std::fprintf(stderr, "graphics: %zu replacement textures in %s\n", g_Files.size(), root.string().c_str());
+    Native::Log("texture pack: %zu replacement textures in %s", g_Files.size(), root.string().c_str());
 }
 
 // A block's size in texels by format
@@ -331,7 +331,7 @@ bool LoadDds(const std::string& path, ReplacementImage* image)
             format = (dxgi == 71 || dxgi == 72) ? 1 : (dxgi == 74 || dxgi == 75) ? 2 : (dxgi == 77 || dxgi == 78) ? 3 : 0;
             if (format == 0)
             {
-                std::fprintf(stderr, "graphics: %s: a DDS format not read yet (DXGI %u)\n", path.c_str(), dxgi);
+                Native::Log("texture pack: %s: a DDS format not read yet (DXGI %u)", path.c_str(), dxgi);
                 return false;
             }
         }
@@ -621,7 +621,7 @@ const ReplacementImage* FindReplacement(const ReplacementKey& key)
                                                                            : LoadPng(file->second, image.get());
     if (!ok)
     {
-        std::fprintf(stderr, "graphics: the replacement %s can't be read\n", file->second.c_str());
+        Native::Log("texture pack: the replacement %s can't be read", file->second.c_str());
         image.reset();
     }
 

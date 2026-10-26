@@ -1091,6 +1091,7 @@ void TriggerPlanFrame()
 [[noreturn]] void Finish(int status, const char* why)
 {
     Native::Log("sweep: %s: %s (%.1f s played, %u frames)", g_Level.c_str(), why, g_Played, g_Frames);
+    Native::EndSession("exit: the level sweep's run ended (status %d)", status);
     std::fflush(stdout);
     std::fflush(stderr);
     std::_Exit(status);

@@ -761,6 +761,7 @@ void Native::QuitAfterPortableSwitch()
     // As the window's close button does (pads.cpp): the saves and settings are written as they're made
     Log("portable mode %s: the game closes, to start again with the settings in %s", g_SwitchTo ? "on" : "off",
         SettingsFolder().c_str());
+    EndSession("exit: portable mode turned %s", g_SwitchTo ? "on" : "off");
     std::_Exit(0);
 }
 
