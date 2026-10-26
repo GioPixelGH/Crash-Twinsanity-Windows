@@ -259,8 +259,9 @@ def publish(arguments):
     notes = Path(arguments.notes).read_text(encoding="utf-8")
     notes = notes.replace("{commit}", checked["commit"][:7]).replace("{sha256}", checked["sha256"])
     name = f"Crash Twinsanity for Windows {checked['version']}" + (" (preview)" if arguments.preview else "")
+    # The release opens its own discussion (Discussions > Announcements), where players can talk about it
     body = {"tag_name": tag, "target_commitish": checked["commit"], "name": name, "body": notes,
-            "prerelease": arguments.preview, "draft": False}
+            "prerelease": arguments.preview, "draft": False, "discussion_category_name": "Announcements"}
     release = api(f"https://api.github.com/repos/{slug}/releases", secret, json.dumps(body).encode(), method="POST")
     upload = release["upload_url"].split("{")[0] + f"?name={ZIP_NAME}"
     asset = api(upload, secret, ZIP.read_bytes(), "application/zip", method="POST")

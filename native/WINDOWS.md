@@ -459,8 +459,13 @@ of the game executable's data or VU microcode the last release's didn't (version
 repetitive, none of the microcode: runs of small integers, the standard library's tables, powers of ten and digits, and file
 names the decompilation's C++ spells out). It prints the commit and the zip's SHA-256. `publish` makes the release (`vVERSION`;
 with `--preview` a preview, GitHub's pre-release, as every release before 1.0.8 was) from NOTES.md with `{commit}` and
-`{sha256}` filled in, uploads the zip, downloads it back and compares its SHA-256: only with the commit and the zip `check`
-checked, once that commit is on GitHub. GitHub's token is git's (`git credential fill`), never printed or kept.
+`{sha256}` filled in, opens its discussion (Discussions > Announcements, where players can talk about it), uploads the zip,
+downloads it back and compares its SHA-256: only with the commit and the zip `check` checked, once that commit is on GitHub.
+GitHub's token is git's (`git credential fill`), never printed or kept.
+
+No commit has the game's files: `native/tools/check_game_data.py` refuses the executable, the disc's and the archive's files,
+disc images, splat's output, texture packs and PCSX2's states, cards and BIOS, by name, folder, first bytes or size, and
+the workflow `.github/workflows/game-data.yml` runs it on every push and pull request.
 
 `package_windows.py` makes `build/native/dist/Crash Twinsanity/` and `Crash-Twinsanity-Windows.zip`: the program, the
 DLLs, the fonts, the licences and native/PLAYING_WINDOWS.md as README.txt (a player's own files there, portable mode's and disc

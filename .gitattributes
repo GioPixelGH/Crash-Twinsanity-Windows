@@ -1,2 +1,6 @@
 # LF in the repository and in every checkout: the tools write LF, so files read and written on Windows stay the same
 * text=auto eol=lf
+
+# GitHub's language bar: the level recipes are C++ and splat's include files assembler macros (read as PHP and BitBake)
+src/platform/native/levelrecipes.inc linguist-language=C++
+include/*.inc linguist-language=Assembly

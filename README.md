@@ -4,14 +4,14 @@
 
 Crash Twinsanity (PlayStation 2, PAL) running natively on 64-bit Windows, without an emulator.
 
-![Latest release](https://img.shields.io/github/v/release/GioPixelGH/Crash-Twinsanity-Windows?style=flat-square)
-![License](https://img.shields.io/github/license/GioPixelGH/Crash-Twinsanity-Windows?style=flat-square)
+[![Latest release](https://img.shields.io/github/v/release/GioPixelGH/Crash-Twinsanity-Windows?style=flat-square)](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases/latest)
+[![Licence: MIT for the port's changes](https://img.shields.io/badge/licence-MIT%20%28the%20port%27s%20changes%29-blue?style=flat-square)](#licence)
 ![Platform](https://img.shields.io/badge/platform-Windows%20x64-blue?style=flat-square)
 
 
 This is a Windows port of [HAB3X's Crash Twinsanity for Mac](https://github.com/HAB3X/Crash-Twinsanity-Mac). The Mac port runs
 [Smartkin's complete C++ decompilation of the game](https://github.com/Smartkin/twinsanity-reversed) on a native platform layer
-(SDL3, an OpenGL renderer for the PS2's graphics, sound, movies, saves and a new options screen).This repository adds what
+(SDL3, an OpenGL renderer for the PS2's graphics, sound, movies, saves and a new options screen). This repository adds what
 Windows needs, makes it run at a steady 60 fps, and fixes the crashes found by playing it.
 
 </div>
@@ -21,7 +21,8 @@ Windows needs, makes it run at a steady 60 fps, and fixes the crashes found by p
 > [!IMPORTANT]
 > **No game data is included.** You need your own copy of the PAL game (Europe/Australia, SLES-52568) as a disc image.
 > Crash Twinsanity and Crash Bandicoot are trademarks of Activision. PlayStation is a trademark of Sony Interactive
-> Entertainment. This is a fan project, not affiliated with or endorsed by either.
+> Entertainment. This is a fan project, not affiliated with or endorsed by either. Please don't ask for the game's files or
+> disc images in the issues: such requests are closed.
 
 ## Download
 
@@ -30,6 +31,13 @@ The [latest release](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/rele
 `Crash Twinsanity` folder and pick your disc image. Version 1.0.8 is the first full release, now that the game has been
 played from the start to the credits; the ones before were previews. Linux has no download yet: build it yourself
 ([native/LINUX.md](native/LINUX.md)).
+
+### Requirements
+
+- 64-bit Windows 10 or 11.
+- A graphics card with OpenGL 3.3 (any from the last ten years).
+- A disc image of **your own** PAL copy of the game (Europe/Australia, SLES-52568), as an `.iso` (or `.bin`/`.img`).
+- A keyboard and mouse, or a controller: Xbox, PlayStation, Switch and most others work out of the box.
 
 ![Menu](docs/screenshots/menu.jpg)
 
@@ -67,7 +75,7 @@ More in [SECURITY.md](.github/SECURITY.md), including how to report a security p
 
 ## What this port adds
 
-On top of HAB3X's port (GPU renderer up to 8x the PS2's resolution, widescreen and 21:9, HD texture packs, remappable keyboard,
+On top of HAB3X's port (GPU renderer up to 4x the PS2's resolution, widescreen and 21:9, HD texture packs, remappable keyboard,
 mouse and controller, saves, cutscene skipping, community fixes):
 
 - **Windows support:**
@@ -96,6 +104,44 @@ mouse and controller, saves, cutscene skipping, community fixes):
 [native/PLAYING_WINDOWS.md](native/PLAYING_WINDOWS.md) is the player's guide: options, controls, saves, mods.
 
 ![cortexdimension](docs/screenshots/cortexdimension.jpg)
+
+## Roadmap
+
+What comes next, roughly from the quickest job to the longest. The game stays the original by default: new game options are
+off until you turn them on.
+
+- [ ] 6x and 8x the PS2's resolution in the options ([#19]), and a safe fallback when the graphics card refuses one of the
+  renderer's buffers.
+- [ ] A Credits page in the PC options, with everyone behind the Windows version.
+- [ ] A modding guide: the game's files, the community's tools for them, and how to share a mod.
+- [ ] Anti-aliasing by supersampling (2x, 4x).
+- [ ] Eight save slots.
+- [ ] The slide's long jump at any moment, as a game option ([#11]).
+- [ ] Render distance as a PC option.
+- [ ] Level select, as a game option.
+- [ ] Frame rates other than 60 checked through the game: the seal chase at 240 fps ([#17]), the cannon's bombs below 60 fps
+  ([#12]).
+- [ ] Achievements in the game, kept on your PC (RetroAchievements doesn't award them for ports).
+- [ ] The masks' bugs ([#10], [#18]): the PS2 game's own become fixes under the bug fixes option, the port's are fixed.
+- [ ] HD texture packs in BC7, and texture upscaling.
+- [ ] A landing shadow ([#11]).
+- [ ] Patches drawn wrong on Crash's and Cortex's models on some PCs ([#15]).
+- [ ] The black screen at start on some AMD PCs ([#16]).
+
+Maybe later: fast-forwarding cutscenes as well as skipping them ([#9]), subtitles ([#11]), two-player co-op, some of the
+NTSC-U release's differences as options on the PAL game ([#14]), and character packs from the other Crash games (a mod: it
+needs those games' discs).
+
+[#9]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/9
+[#10]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/10
+[#11]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/11
+[#12]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/12
+[#14]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/14
+[#15]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/15
+[#16]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/16
+[#17]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/17
+[#18]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/18
+[#19]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/19
 
 ## Building on Windows
 

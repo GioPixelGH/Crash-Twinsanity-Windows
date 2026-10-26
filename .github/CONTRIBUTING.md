@@ -1,6 +1,8 @@
 # Contributing
 
 Thanks for helping. This is a fan port of a PlayStation 2 game, and reports from people playing it are what improves it most.
+Questions, help and showing what you made go in [Discussions](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/discussions);
+bugs and suggestions in the issues.
 
 ## Reporting a bug
 
@@ -33,7 +35,8 @@ Pull requests are welcome.
 - Keep Windows-only code apart (`_WIN32`), so the Mac and Linux builds keep working.
 - Explain the change in the document of the part you changed (native/WINDOWS.md for Windows), and anything players notice in
   native/PLAYING_WINDOWS.md.
-- Never commit the game's files: its executable (`SLES_525.68`), its data, files taken from the disc, or disc images.
+- Never commit the game's files: its executable (`SLES_525.68`), its data, files taken from the disc, or disc images. A check
+  on every push and pull request refuses them; run it yourself with `.venv\Scripts\python.exe native\tools\check_game_data.py`.
 - Fixes to the decompilation itself help upstream too:
   [Smartkin's twinsanity-reversed](https://github.com/Smartkin/twinsanity-reversed).
 - What you contribute is under this repository's licence ([LICENSE](../LICENSE): MIT for this repository's own changes).

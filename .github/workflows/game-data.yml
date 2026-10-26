@@ -1,0 +1,17 @@
+# Refuses the game's files (its executable, data, disc images, texture packs) in a push or a pull request:
+# native/tools/check_game_data.py says which and why
+name: No game files
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: python3 native/tools/check_game_data.py
