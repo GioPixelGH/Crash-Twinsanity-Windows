@@ -5,6 +5,7 @@
 Crash Twinsanity (PlayStation 2, PAL) running natively on 64-bit Windows, without an emulator.
 
 ![Latest release](https://img.shields.io/github/v/release/GioPixelGH/Crash-Twinsanity-Windows?style=flat-square)
+![License](https://img.shields.io/github/license/GioPixelGH/Crash-Twinsanity-Windows?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows%20x64-blue?style=flat-square)
 
 
