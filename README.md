@@ -243,7 +243,7 @@ Bug reports, suggestions and pull requests are welcome: see [CONTRIBUTING.md](.g
   [rabbitizer](https://github.com/Decompollaborate/rabbitizer): split the executable.
 - [ps2dev](https://github.com/ps2dev/ps2dev): the PS2 toolchain, GCC 15.2 with PS2SDK.
 - Ghidra: used upstream for the decompilation's symbols.
-- [LLVM-MinGW](https://github.com/mstorsjo/llvm-mingw) by Martin Storsjö (clang 22, UCRT), [CMake](https://cmake.org/) and
+- [LLVM-MinGW](https://github.com/mstorsjo/llvm-mingw) by Martin Storsjö (clang 23, UCRT), [CMake](https://cmake.org/) and
   [Ninja](https://ninja-build.org/): build the Windows program.
 - [Python](https://www.python.org/) 3.13 and [Pillow](https://python-pillow.org/): build tools and test scripts.
 - [Git for Windows](https://gitforwindows.org/), MSYS2's `make` and [winget](https://github.com/microsoft/winget-cli): build

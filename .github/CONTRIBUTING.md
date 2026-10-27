@@ -36,7 +36,8 @@ Pull requests are welcome.
 - Explain the change in the document of the part you changed (native/WINDOWS.md for Windows), and anything players notice in
   native/PLAYING_WINDOWS.md.
 - Never commit the game's files: its executable (`SLES_525.68`), its data, files taken from the disc, or disc images. A check
-  on every push and pull request refuses them; run it yourself with `.venv\Scripts\python.exe native\tools\check_game_data.py`.
+  on every push and pull request refuses them. Turn on the same check before each commit, once per clone, with
+  `git config core.hooksPath .githooks`; or run it yourself with `.venv\Scripts\python.exe native\tools\check_game_data.py`.
 - Fixes to the decompilation itself help upstream too:
   [Smartkin's twinsanity-reversed](https://github.com/Smartkin/twinsanity-reversed).
 - What you contribute is under this repository's licence ([LICENSE](../LICENSE): MIT for this repository's own changes).

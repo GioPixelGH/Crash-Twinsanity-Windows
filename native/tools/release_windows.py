@@ -176,6 +176,11 @@ def check(arguments):
         sys.exit(subprocess.run([sys.executable] + sys.argv).returncode)
     commit = git("rev-parse", "HEAD")
     print(f"commit          {commit[:7]} {git('log', '-1', '--format=%s')}")
+    # None of the game's files in the repository released from (the pushes' workflow and the pre-commit hook run it too)
+    gameFiles = subprocess.run([sys.executable, str(TOOLS / "check_game_data.py")], cwd=HERE, capture_output=True, text=True)
+    if gameFiles.returncode != 0:
+        sys.exit("game files      FAILED: " + gameFiles.stdout.strip().replace("\n", "; "))
+    print(f"game files      {gameFiles.stdout.strip()}")
     WORK.mkdir(parents=True, exist_ok=True)
     for step, command in (("build", [sys.executable, str(TOOLS / "build_windows.py"), "--configure"]),
                           ("package", [sys.executable, str(TOOLS / "package_windows.py")])):

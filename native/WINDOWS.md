@@ -522,8 +522,11 @@ downloads it back and compares its SHA-256: only with the commit and the zip `ch
 GitHub's token is git's (`git credential fill`), never printed or kept.
 
 No commit has the game's files: `native/tools/check_game_data.py` refuses the executable, the disc's and the archive's files,
-disc images, splat's output, texture packs and PCSX2's states, cards and BIOS, by name, folder, first bytes or size, and
-the workflow `.github/workflows/game-data.yml` runs it on every push and pull request.
+disc images, splat's output, texture packs and PCSX2's states, cards and BIOS, by name, folder, first bytes or size. The
+hook `.githooks/pre-commit` runs it on the files a commit adds or changes, before the commit is made (turned on once per clone
+with `git config core.hooksPath .githooks`); the workflow `.github/workflows/game-data.yml` runs it on every push and pull
+request, its action pinned by commit and kept up to date by Dependabot (`.github/dependabot.yml`); `release_windows.py check`
+runs it on the clone first and stops if it finds one.
 
 `package_windows.py` makes `build/native/dist/Crash Twinsanity/` and `Crash-Twinsanity-Windows.zip`: the program, the
 DLLs, the fonts, the licences and native/PLAYING_WINDOWS.md as README.txt (a player's own files there, portable mode's and disc
