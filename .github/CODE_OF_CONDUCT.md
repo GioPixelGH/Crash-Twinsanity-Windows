@@ -36,7 +36,7 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement: the maintainer, [GioPixelGH](https://github.com/GioPixelGH), through GitHub's **Report content** on the comment or issue (in its ... menu: only the maintainer sees the report). All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement: the maintainer, [GioPixelGH](https://github.com/GioPixelGH), by email at 99fegi@gmail.com (only the maintainer reads it). They can also be reported to GitHub with **Report content** on the comment or issue (in its ... menu), which GitHub's staff review. All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the reporter of any incident.
 
