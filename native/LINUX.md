@@ -50,6 +50,12 @@ You need about 3 GB of disk space, your PAL disc image (SLES-52568) and an inter
    (`data_types.py`, `convert_data.py`) run it for its record layouts, the PS2's target's included. The C++ runtime is linked
    in (`-static-libstdc++`), so the program doesn't depend on the system's libstdc++.
 
+   Distributions other than Debian keep the system's libraries elsewhere, and the build finds them: the stand-ins' script
+   (native/tools/make_stubs.py, native/NATIVE.md) asks the compiler where `libc.so.6`, `libm.so.6` and `libstdc++.so.6` are
+   (`-print-file-name`), else looks in Debian's `/lib/x86_64-linux-gnu`, Fedora's and openSUSE's `/usr/lib64` and Arch's
+   `/usr/lib`, and prints which it read. Without the C library it stops and says where it looked (issue #27: on Arch it used to
+   stand in for `strlen` and the program crashed at start).
+
 5. **Play**:
 
    ```sh

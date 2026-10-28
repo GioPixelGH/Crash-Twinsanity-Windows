@@ -6,7 +6,7 @@ what the game reached that isn't there yet; nothing pretends to work.
 
     native/tools/make_stubs.py <out.cpp> <objects...>
 """
-import json, os, subprocess, sys
+import json, os, platform, subprocess, sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parents[2]
@@ -63,6 +63,48 @@ def defined_by_ps2(name):
         re.search(r"\b" + re.escape(bare) + r"\s*\(", ps2_sources) is not None
         or re.search(r"RETAIL(?:_N32)?\(" + re.escape(bare) + r"\)", ps2_sources) is not None)
 
+# The C library's functions, never stood in for whatever system_symbols() found: a stand-in takes the real function's place at
+# link time (issue #27: on Arch the libraries weren't found, strlen's stand-in logged, the log called strlen, and the program
+# crashed at start)
+C_LIBRARY = set("""
+    memchr memcmp memcpy memmove memset strcasecmp strcat strchr strcmp strcoll strcpy strcspn strdup strerror strlen strncasecmp
+    strncat strncmp strncpy strndup strnlen strpbrk strrchr strspn strstr strtok strxfrm
+    abort abs aligned_alloc atexit atof atoi atol atoll bsearch calloc div exit free getenv labs llabs malloc posix_memalign
+    qsort rand realloc srand strtod strtof strtol strtold strtoll strtoul strtoull _Exit
+    fclose feof ferror fflush fgetc fgets fopen fprintf fputc fputs fread fscanf fseek ftell fwrite getc getchar perror printf
+    putc putchar puts remove rename rewind scanf setvbuf snprintf sprintf sscanf vfprintf vprintf vsnprintf vsprintf vsscanf
+    isalnum isalpha isdigit islower isspace isupper isxdigit tolower toupper clock difftime gmtime localtime mktime strftime time
+    acos acosf asin asinf atan atan2 atan2f atanf ceil ceilf cos cosf cosh exp expf fabs fabsf floor floorf fmod fmodf frexp
+    ldexp log log10 log10f logf modf modff pow powf round roundf sin sinf sinh sqrt sqrtf tan tanf tanh trunc truncf
+    close lseek open read sleep usleep write
+""".split())
+
+def c_library_function(name):
+    bare = name[1:] if sys.platform == "darwin" and name.startswith("_") else name
+    # glibc's headers call scanf's and strtol's family by other names (__isoc23_strtol), _FORTIFY_SOURCE's checked ones too
+    return (bare in C_LIBRARY or bare.startswith(("__isoc99_", "__isoc23_"))
+            or (bare.startswith("__") and bare.endswith("_chk") and bare[2:-4] in C_LIBRARY))
+
+# Linux's C library (glibc's libc and libm) and C++ library are in different folders on each distribution: Debian's
+# /lib/x86_64-linux-gnu, Arch's /usr/lib, Fedora's and openSUSE's /usr/lib64. The 64-bit folders come before /usr/lib, which
+# holds the 32-bit libraries on Fedora
+LINUX_MULTIARCH = platform.machine() + "-linux-gnu"
+LINUX_FOLDERS = (f"/lib/{LINUX_MULTIARCH}", f"/usr/lib/{LINUX_MULTIARCH}", "/lib64", "/usr/lib64", "/lib", "/usr/lib")
+
+def linux_library(name):
+    """name's path (libc.so.6): where the build's compiler finds it, else the first of LINUX_FOLDERS holding it; None"""
+    try:
+        # A compiler that doesn't find it says the name back
+        answer = subprocess.run([host.CLANG, "-print-file-name=" + name], capture_output=True, text=True).stdout.strip()
+    except OSError:
+        answer = ""
+    if os.path.isabs(answer) and os.path.isfile(answer):
+        return os.path.normpath(answer)
+    for folder in LINUX_FOLDERS:
+        if os.path.isfile(os.path.join(folder, name)):
+            return os.path.join(folder, name)
+    return None
+
 # What the system's libraries define (the C library, libc++, SDL): never stood in for, the linker finds them there
 def system_symbols():
     found = set()
@@ -90,11 +132,23 @@ def system_symbols():
                 if len(parts) >= 2 and not l.endswith(":"):
                     found.add(parts[-1])
     else:
-        for library in ("/lib/x86_64-linux-gnu/libc.so.6", "/lib/x86_64-linux-gnu/libm.so.6",
-                        "/lib/x86_64-linux-gnu/libstdc++.so.6"):
-            if Path(library).exists():
-                found.update(l.split()[-1].split("@")[0] for l in subprocess.run(
-                    ["nm", "-D", "--defined-only", library], capture_output=True, text=True).stdout.splitlines() if l.strip())
+        libraries = []
+        for name in ("libc.so.6", "libm.so.6", "libstdc++.so.6"):
+            library = linux_library(name)
+            if library is None and name != "libstdc++.so.6":
+                sys.exit(f"make_stubs.py: the C library's {name} isn't found: {host.CLANG} -print-file-name={name} doesn't "
+                         f"give it, and it isn't in {', '.join(LINUX_FOLDERS)}. Without it the C library's functions would be "
+                         "stood in for and the program would crash at start: open an issue saying where your distribution "
+                         "keeps it")
+            if library is not None:
+                libraries.append(library)
+        print("make_stubs.py: the system's libraries: " + ", ".join(libraries), file=sys.stderr)
+        for library in libraries:
+            symbols = {l.split()[-1].split("@")[0] for l in subprocess.run(
+                ["nm", "-D", "--defined-only", library], capture_output=True, text=True).stdout.splitlines() if l.strip()}
+            if not symbols:
+                sys.exit(f"make_stubs.py: nm -D read nothing in {library}")
+            found |= symbols
     return found
 
 system = system_symbols()
@@ -110,6 +164,10 @@ for name in names:
         variables.append(pretty)
     elif name in retail_functions or pretty.startswith("Platform::") or "Pool" in pretty or defined_by_ps2(name):
         stubs.append((name, pretty))
+c_functions = [pretty for name, pretty in stubs if c_library_function(name)]
+if c_functions:
+    sys.exit("make_stubs.py: the C library's " + ", ".join(c_functions) + " would be stood in for: the system's libraries "
+             "weren't read (system_symbols())")
 
 lines = ["// Generated by native/tools/make_stubs.py: what the native platform layer doesn't do yet. Don't edit",
          '#include "native.h"', "", "#include <atomic>", "#include <cstdint>", "", "namespace", "{",
