@@ -112,28 +112,33 @@ off until you turn them on.
 
 - [ ] 6x and 8x the PS2's resolution in the options ([#19]), and a safe fallback when the graphics card refuses one of the
   renderer's buffers.
+- [ ] A Dithering option ([#24]): the PS2 game shows its picture in 16-bit colour with a fine pattern to hide the steps, and
+  the port reproduces it; turned off, the picture would keep its full colour.
 - [ ] A Credits page in the PC options, with everyone behind the Windows version.
+- [ ] The game closing after the end credits instead of going back to the Iceberg Lab, as reported in [#20].
 - [ ] A modding guide: the game's files, the community's tools for them, and how to share a mod.
-- [ ] Anti-aliasing by supersampling (2x, 4x).
-- [ ] Eight save slots.
+- [ ] The two cutscenes that still end a little differently when skipped than when played ([#9]).
 - [ ] The slide's long jump at any moment, as a game option ([#11]).
 - [ ] Render distance as a PC option.
 - [ ] Level select, as a game option.
+- [ ] Anti-aliasing by supersampling (2x, 4x).
+- [ ] Eight save slots.
 - [ ] Frame rates other than 60 checked through the game: the seal chase at 240 fps ([#17]), the cannon's bombs below 60 fps
   ([#12]).
-- [ ] Achievements in the game, kept on your PC (RetroAchievements doesn't award them for ports).
-- [ ] The masks' bugs ([#10], [#18]): the PS2 game's own become fixes under the bug fixes option, the port's are fixed.
+- [ ] The black screen at start on some AMD PCs ([#16]).
+- [ ] The masks' bugs ([#18]): those the PS2 game has too become fixes under the bug fixes option.
 - [ ] HD texture packs in BC7, and texture upscaling.
 - [ ] A landing shadow ([#11]).
 - [ ] Patches drawn wrong on Crash's and Cortex's models on some PCs ([#15]).
-- [ ] The black screen at start on some AMD PCs ([#16]).
+- [ ] Better speed on older PCs ([#23], [#12]), starting with the port's render thread, measured as the limit on one of them.
+- [ ] Achievements in the game, kept on your PC (RetroAchievements doesn't award them for ports).
+- [ ] Subtitles for the cutscenes ([#11]).
 
-Maybe later: fast-forwarding cutscenes as well as skipping them ([#9]), subtitles ([#11]), two-player co-op, some of the
-NTSC-U release's differences as options on the PAL game ([#14]), and character packs from the other Crash games (a mod: it
-needs those games' discs).
+Maybe later: fast-forwarding cutscenes as well as skipping them ([#9]), two-player co-op, some of the NTSC-U release's
+differences as options on the PAL game ([#14]), the port's own texts in Brazilian Portuguese if someone translates them
+([#25]), and character packs from the other Crash games (a mod: it needs those games' discs).
 
 [#9]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/9
-[#10]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/10
 [#11]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/11
 [#12]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/12
 [#14]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/14
@@ -142,6 +147,10 @@ needs those games' discs).
 [#17]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/17
 [#18]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/18
 [#19]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/19
+[#20]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/20
+[#23]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/23
+[#24]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/24
+[#25]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/25
 
 ## Building on Windows
 
