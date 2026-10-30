@@ -228,6 +228,9 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1B7 | the game's folder can't be written to (is it in program files?). move the game's folder somewhere else first. | impossible d'écrire dans le dossier du jeu (est-il dans program files ?). déplace d'abord le dossier du jeu ailleurs. | in den ordner des spiels kann nicht geschrieben werden (liegt er in program files?). verschiebe ihn zuerst woandershin. | no se puede escribir en la carpeta del juego (¿está en program files?). mueve antes la carpeta del juego a otro sitio. | nella cartella del gioco non si può scrivere (è in program files?). sposta prima la cartella del gioco altrove. |
 | 0x1B8 | the copy didn't work, so nothing changed: the reason is in log.txt. | la copie n'a pas marché, rien n'a changé : la raison est dans log.txt. | das kopieren hat nicht geklappt, nichts wurde geändert: der grund steht in log.txt. | la copia no ha funcionado y nada ha cambiado: el motivo está en log.txt. | la copia non è riuscita e non è cambiato nulla: il motivo è in log.txt. |
 | 0x1B9 | ok | ok | ok | aceptar | ok |
+| 0x1BA | dithering | tramage | dithering | tramado | dithering |
+| 0x1BB | the ps2 shows the picture in 16-bit colour with a fine pattern. off keeps its full colour. | la ps2 affiche l'image en couleurs 16 bits avec une fine trame. désactivé garde toutes ses couleurs. | die ps2 zeigt das bild in 16-bit-farben mit feinem muster. aus behält die vollen farben. | la ps2 muestra la imagen en color de 16 bits con una trama fina. desactivado mantiene todo el color. | la ps2 mostra l'immagine a colori a 16 bit con una trama fine. disattivato mantiene tutti i colori. |
+| 0x1BC | as the ps2 | comme la ps2 | wie die ps2 | como la ps2 | come la ps2 |
 
 ## English (29 lines)
 

@@ -334,6 +334,8 @@ enum ProgramBits : u32
     BitFrame24 = 1u << 21,
     BitWrapAdd = 1u << 22,
     BitNativeDepth = 1u << 23,
+    // A 16 bit frame's dithered draw kept in full colour (the PC option Dithering off: neither dithered nor truncated)
+    BitFullColour = 1u << 24,
 };
 
 constexpr const char* VertexSource = R"(#version 330 core
@@ -574,7 +576,9 @@ void main()
     // The destination (a copy of the target from before the batch) and the GS's own blend, mask and tests on it
     vec4 d = floor(texelFetch(destination, ivec2(gl_FragCoord.xy), 0) * 255.0 + 0.5);
 #if FRAME16
+#if !FULLCOLOUR
     d.rgb = floor(d.rgb / 8.0) * 8.0;
+#endif
     d.a = d.a >= 128.0 ? 128.0 : 0.0;
 #endif
     float da = d.a;
@@ -600,7 +604,7 @@ void main()
 #endif
 #endif
     rgb = colclamp != 0 ? clamp(rgb, 0.0, 255.0) : mod(rgb, 256.0);
-#if FRAME16
+#if FRAME16 && !FULLCOLOUR
     rgb = floor(rgb / 8.0) * 8.0;
 #endif
     float written = a;
@@ -1518,6 +1522,7 @@ const Program& HwGs::ProgramFor(u32 bits)
     define("TEXALPHA", (bits >> BitTexAlphaShift) & 3);
     define("FRAME16", (bits & BitFrame16) ? 1 : 0);
     define("DITHER", (bits & BitDither) ? 1 : 0);
+    define("FULLCOLOUR", (bits & BitFullColour) ? 1 : 0);
     header += "#define SAMPLE_SHIFT " + std::to_string(-VertexNudge()) + "\n";
     define("FBA", (bits & BitFba) ? 1 : 0);
     define("MIPMAP", (bits & BitMipmap) ? 1 : 0);
@@ -4346,7 +4351,14 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
     if (frame16)
     {
         program |= BitFrame16;
-        if (state.dither && g_DitherMode != 0)
+        // Dithering off (the PC option, g_DitherMode 3): the dithered draws (the frame's copy into the 16 bit buffer shown, frame.cpp)
+        // keep their 8 bits a channel, so the picture shown is the 24 bit frame's; the undithered ones (the shadows' counting) stay
+        // the GS's 5 bits
+        if (state.dither && g_DitherMode == 3)
+        {
+            program |= BitFullColour;
+        }
+        else if (state.dither && g_DitherMode != 0)
         {
             program |= BitDither;
             key.dimx = gs_.dimx();
@@ -5536,7 +5548,7 @@ void HardwareSetDither(int mode)
         g_Hw->Flush();
     }
 
-    g_DitherMode = std::clamp(mode, 0, 2);
+    g_DitherMode = std::clamp(mode, 0, 3);
 }
 
 void HardwareSetFiltering(int mode)

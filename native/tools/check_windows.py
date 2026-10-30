@@ -22,6 +22,7 @@ import shutil
 import subprocess
 import sys
 import time
+import zlib
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -641,6 +642,65 @@ def playable_copy(program, folder):
     return folder / program.name
 
 
+def frame_colours(path, step=4):
+    """A dumped frame's (png.cpp: RGBA, stored, no filter) colour bytes, every step-th row: bytes"""
+    data = Path(path).read_bytes()
+    width, height = int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
+    at, compressed = 8, b""
+    while at < len(data):
+        size = int.from_bytes(data[at:at + 4], "big")
+        if data[at + 4:at + 8] == b"IDAT":
+            compressed += data[at + 8:at + 8 + size]
+        at += 12 + size
+    raw = zlib.decompress(compressed)
+    row = 1 + width * 4
+    colours = bytearray()
+    for y in range(0, height, step):
+        pixels = raw[y * row + 1:(y + 1) * row]
+        colours += pixels[0::4] + pixels[1::4] + pixels[2::4]
+    return bytes(colours)
+
+
+def dithering(exe, work, frame=300):
+    """The Dithering option off (hwgs.cpp's full colour dithered draws): the beach's frame at a fixed time against the pictures
+    check's, made as the PS2 (the default): that one 5 bits a channel (no low three bits), this one the frame's full colour (most
+    channels' low bits set) and a little brighter (the truncation's floor gone): (passed, what happened)"""
+    ps2 = work / "pictures-checked" / "frames" / f"frame_{frame:06d}.png"
+    folder = work / "dithering"
+    if folder.exists():
+        shutil.rmtree(folder)
+    frames = folder / "frames"
+    frames.mkdir(parents=True)
+    settings = folder / "settings" / "Crash Twinsanity"
+    settings.mkdir(parents=True)
+    (settings / "disc_image.txt").write_text(disc_image() + "\n")
+    (settings / "options.txt").write_text("dithering=1\n")
+    env = dict(os.environ, HOME=str(folder / "settings"), APPDATA=str(folder / "settings"), TWIN_FIXED_TIME="1",
+               TWINSANITY_AUDIO="frames", TWIN_DUMP_FRAMES=f"{frames}:{frame}")
+    with open(folder / "log.txt", "w") as log:
+        process = subprocess.Popen([str(exe), "--quick", "--headless"], env=env, stdout=log, stderr=subprocess.STDOUT, cwd=folder)
+        beyond = frames / f"frame_{frame * 2:06d}.png"
+        started = time.time()
+        while not beyond.exists() and process.poll() is None and time.time() - started < 600:
+            time.sleep(1)
+        process.kill()
+        process.wait()
+    full = frames / f"frame_{frame:06d}.png"
+    if not ps2.exists() or not full.exists():
+        return False, f"no frame {frame} ({'as the PS2' if not ps2.exists() else 'off'})"
+    # (the channels lit, 16 and up, off: half the frame is the dark sky's or black)
+    a, b = frame_colours(ps2), frame_colours(full)
+    lit = [(x, y) for x, y in zip(a, b) if y >= 16]
+    if not lit:
+        return False, f"frame {frame} is dark"
+    low_a = sum(1 for x in a if x & 7) / len(a)
+    low_b = sum(1 for _, y in lit if y & 7) / len(lit)
+    brighter = sum(y - x for x, y in lit) / len(lit)
+    what = (f"off keeps the full colour ({low_b:.0%} of the lit channels past 5 bits, {brighter:+.1f} brighter on average), as "
+            f"the PS2 5 bits a channel ({low_a:.0%} past them)")
+    return low_a == 0 and low_b > 0.5 and 1.0 < brighter < 8.0, what
+
+
 def pictures(exe, reference, work, last=2500, every=100):
     """The beach from the start (--quick) at a fixed time with the sound made frame by frame, every 100th picture of both
     programs compared byte for byte: (pictures the same, [different or missing ones])"""
@@ -831,6 +891,9 @@ def report(exe, reference, work, with_sweep, reference_name=None):
         print(f"pictures        {same}/{same + len(different)} the same as {reference_name or reference}'s"
               f"{'' if not different else ': not ' + ', '.join(different[:5])}")
         failed |= bool(different)
+        ok, what = dithering(exe, work)
+        print(f"dithering       {'ok' if ok else 'FAILED'}: {what}")
+        failed |= not ok
     else:
         print("pictures        not compared (no reference program)")
 

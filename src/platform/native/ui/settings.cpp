@@ -247,6 +247,7 @@ void Build()
     // anti-aliasing is FXAA on the shown picture; there's no MSAA: PCSX2 dropped its own, and the render scale is the
     // supersampling
     display.push_back(OptionChoice(TextAntiAliasing, TextDescAntiAliasing, OptionAntiAliasing, {0, TextFxaa}));
+    display.push_back(OptionChoice(TextDithering, TextDescDithering, OptionDithering, {TextDitherPs2, 0}));
     display.push_back(Toggle(TextVSync, TextDescVSync, OptionVSync));
     display.push_back(Toggle(TextShowFps, TextDescShowFps, OptionShowFps));
     display.push_back(Action(GameTextCentreScreen, TextDescScreenPosition, [] { OpenScreenPosition(); }));

@@ -70,6 +70,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionDetailedLog, "detailed_log", 0, 1},
     {OptionMenuHints, "menu_hints", 0, 1},
     {OptionShowFps, "show_fps", 0, 1},
+    {OptionDithering, "dithering", 0, 1},
 };
 
 s32 g_Values[OptionCount];
@@ -143,6 +144,7 @@ const char* ValueMeaning(const OptionInfo& info, s32 value)
     static constexpr const char* Hints[] = {"original", "bar"};
     static constexpr const char* AntiAliasing[] = {"off", "FXAA"};
     static constexpr const char* Layouts[] = {"by the places", "Nintendo's"};
+    static constexpr const char* Dithering[] = {"as the PS2", "off"};
     static constexpr const char* Toggle[] = {"off", "on"};
     auto pick = [value](const auto& words) -> const char*
     { return value >= 0 && static_cast<size_t>(value) < std::size(words) ? words[value] : nullptr; };
@@ -162,6 +164,8 @@ const char* ValueMeaning(const OptionInfo& info, s32 value)
         return pick(AntiAliasing);
     case OptionNintendoLayout:
         return pick(Layouts);
+    case OptionDithering:
+        return pick(Dithering);
     default:
         return info.maximum == 1 ? pick(Toggle) : nullptr;
     }

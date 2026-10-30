@@ -86,6 +86,8 @@ mouse and controller, saves, cutscene skipping, community fixes):
 - **Speed:** a steady 60 fps everywhere tested. The game, the PS2's vector unit (VU1) and the graphics now run on three
   threads, and the renderer's hot paths are faster.
 - **Frame rates:** 50, 60, 120 and 144 Hz, or unlimited, at the same game speed.
+- **Dithering option:** as the PS2 (its 16-bit picture with a fine pattern, the default) or off, for the picture's full
+  colour.
 - **Resolution:** 1x to 8x the PS2's (6x and 8x added); a buffer the graphics card can't hold at the chosen scale is drawn
   by the software renderer instead of failing.
 - **Language option:** English, French, German, Italian or Spanish texts, voices and movies, chosen in Options.
@@ -114,7 +116,7 @@ off until you turn them on.
 
 - [x] 6x and 8x the PS2's resolution in the options ([#19]), and a safe fallback when the graphics card refuses one of the
   renderer's buffers.
-- [ ] A Dithering option ([#24]): the PS2 game shows its picture in 16-bit colour with a fine pattern to hide the steps, and
+- [x] A Dithering option ([#24]): the PS2 game shows its picture in 16-bit colour with a fine pattern to hide the steps, and
   the port reproduces it; turned off, the picture would keep its full colour.
 - [ ] A Credits page in the PC options, with everyone behind the Windows version.
 - [ ] The game closing after the end credits instead of going back to the Iceberg Lab, as reported in [#20].

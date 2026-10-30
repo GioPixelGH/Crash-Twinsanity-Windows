@@ -27,6 +27,7 @@ void NativeGraphicsSetTextureUpscale(int);
 void NativeGraphicsSetTexturePack(bool);
 void NativeGraphicsSetAntiAliasing(int);
 void NativeGraphicsSetVSync(bool);
+void NativeGraphicsSetDither(int);
 
 namespace NativeUi
 {
@@ -78,6 +79,10 @@ void ApplyOption(Option option)
     case OptionShowFps:
         SetFpsCounterShown(IsOn(OptionShowFps));
         break;
+    case OptionDithering:
+        // The hardware renderer's modes: 2 the GS's dither at each of the scale's pixels (the PS2's), 3 none and full colour
+        NativeGraphicsSetDither(IsOn(OptionDithering) ? 3 : 2);
+        break;
     case OptionVoiceVolume:
         ApplyVolumes();
         break;
@@ -103,6 +108,7 @@ void ApplyStartOptions()
     ApplyOption(OptionAntiAliasing);
     ApplyOption(OptionVSync);
     ApplyOption(OptionShowFps);
+    ApplyOption(OptionDithering);
     ApplyVolumes();
 }
 

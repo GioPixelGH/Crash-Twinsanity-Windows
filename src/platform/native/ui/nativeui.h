@@ -237,6 +237,10 @@ enum NativeText : u32
     TextPortableRefused,
     TextPortableFailed,
     TextOk,
+    // The dithering option (settings.cpp's Display page)
+    TextDithering,
+    TextDescDithering,
+    TextDitherPs2,
     NativeTextEnd,
 };
 
@@ -369,6 +373,10 @@ enum Option : u32
     OptionMenuHints,
     // A frames per second counter in the window's top left corner (fpscounter.cpp)
     OptionShowFps,
+    // The picture shown: the PS2's (0: the frame copied into a 16 bit buffer with the GS's 4x4 dither, 5 bits a channel), or
+    // the frame's own full colour (1: the hardware renderer's dithered copy neither dithered nor truncated; the software
+    // renderer draws into the PS2's 16 bits either way)
+    OptionDithering,
     OptionCount,
 };
 
