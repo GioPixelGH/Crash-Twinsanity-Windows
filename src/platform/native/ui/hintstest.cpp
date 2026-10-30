@@ -40,7 +40,7 @@ std::string g_Folder;
 Phase g_Phase = Phase::Playing;
 bool g_Playing = false;
 bool g_PressStart = false;
-bool g_Clicked = false;
+u32 g_Clicks = 0;
 Clock::time_point g_StepStart;
 
 f32 Since(Clock::time_point start)
@@ -75,8 +75,31 @@ bool Active()
 void Next(Phase phase)
 {
     g_Phase = phase;
-    g_Clicked = false;
+    g_Clicks = 0;
     g_StepStart = Clock::now();
+}
+
+// The step's hint clicked half a second into it, and once more 5 s into it when what it does hasn't happened (done: a press
+// the game didn't take, as the pause doesn't read L1 and R1 while a save's result is to come or a menu appears; the log says
+// it, so a click the menus lose shows there): whether it has been clicked
+bool ClickHint(u32 text, bool done, const char* missing)
+{
+    if ((g_Clicks == 0 && Since(g_StepStart) > 0.5f) || (g_Clicks == 1 && !done && Since(g_StepStart) > 5.0f))
+    {
+        if (!ScriptMouseToHint(text, true))
+        {
+            Finish(1, missing);
+        }
+
+        if (g_Clicks == 1)
+        {
+            Native::Log("hints test: clicked again, the first click not taken in 5 s");
+        }
+
+        g_Clicks++;
+    }
+
+    return g_Clicks > 0;
 }
 
 void Shoot(const char* name)
@@ -216,16 +239,8 @@ void HintsTestFrame()
             Finish(0, "pass (the bar: nothing to click)");
         }
 
-        if (!g_Clicked && Since(g_StepStart) > 0.5f)
-        {
-            if (!ScriptMouseToHint(0x1F, true))
-            {
-                Finish(1, "no right arrow drawn");
-            }
-
-            g_Clicked = true;
-        }
-        else if (g_Clicked && reason == GameController::ReasonFirstLevels && Since(g_StepStart) > 2.5f)
+        if (ClickHint(0x1F, reason == GameController::ReasonFirstLevels, "no right arrow drawn") &&
+            reason == GameController::ReasonFirstLevels && Since(g_StepStart) > 2.5f)
         {
             Native::Log("hints test: the right arrow clicked, the levels' page");
             Shoot("hints_levels.png");
@@ -234,16 +249,8 @@ void HintsTestFrame()
 
         break;
     case Phase::PageLeft:
-        if (!g_Clicked && Since(g_StepStart) > 0.5f)
-        {
-            if (!ScriptMouseToHint(0x1E, true))
-            {
-                Finish(1, "no left arrow drawn");
-            }
-
-            g_Clicked = true;
-        }
-        else if (g_Clicked && reason == GameController::ReasonStart && Since(g_StepStart) > 2.0f)
+        if (ClickHint(0x1E, reason == GameController::ReasonStart, "no left arrow drawn") &&
+            reason == GameController::ReasonStart && Since(g_StepStart) > 2.0f)
         {
             Native::Log("hints test: the left arrow clicked, the pause menu again");
             Next(Phase::Back);
@@ -251,16 +258,8 @@ void HintsTestFrame()
 
         break;
     case Phase::Back:
-        if (!g_Clicked && Since(g_StepStart) > 0.5f)
-        {
-            if (!ScriptMouseToHint(0x1D, true))
-            {
-                Finish(1, "no back hint drawn");
-            }
-
-            g_Clicked = true;
-        }
-        else if (g_Clicked && state == GameController::StatePlaying)
+        if (ClickHint(0x1D, state == GameController::StatePlaying, "no back hint drawn") &&
+            state == GameController::StatePlaying)
         {
             Finish(0, "pass (back clicked: playing again)");
         }

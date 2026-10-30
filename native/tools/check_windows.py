@@ -260,7 +260,9 @@ def menu_hints(exe, work, shots=None):
         hints = next((line for line in lines if line.startswith(("original, the hints", "bar, the hints"))), "")
         hints = hints.split(", the hints ", 1)[1].rsplit(" (", 1)[0] if hints else ""
         last = lines[-1] if lines else f"exit {status}, no result"
-        return name, status == 0 and last.startswith("pass"), f"{last}; {hints}"
+        # (a click the game didn't take, clicked again by the test: passes, said)
+        again = sum(line.startswith("clicked again") for line in lines)
+        return name, status == 0 and last.startswith("pass"), f"{last}; {hints}" + (f"; clicked again {again}" if again else "")
     with ThreadPoolExecutor(1 if shots else 2) as pool:
         return list(pool.map(one, HINTS))
 
@@ -782,7 +784,9 @@ def report(exe, reference, work, with_sweep, reference_name=None):
             print(f"  FAILED {name}: {what}")
 
     hints = menu_hints(exe, work)
-    print(f"menu hints      {sum(ok for _, ok, _ in hints)}/{len(hints)} as the option and the controller have them")
+    again = [name for name, ok, what in hints if ok and "clicked again" in what]
+    print(f"menu hints      {sum(ok for _, ok, _ in hints)}/{len(hints)} as the option and the controller have them"
+          + (f" (a click taken only the second time: {', '.join(again)})" if again else ""))
     for name, ok, what in hints:
         if not ok:
             failed = True

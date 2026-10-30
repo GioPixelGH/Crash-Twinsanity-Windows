@@ -484,8 +484,12 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
 - `$TWIN_HINTS_TEST=1` (with `--quick`, ui/hintstest.cpp): the beach played a few seconds, then the pause menu: its hints
   checked as the menu hints option has them and logged as the prompts label them (`$TWIN_UI_PROMPTS=playstation|xbox|switch|
   keyboard` picks the controller), then the mouse clicks the pages' right and left arrows and back; "hints test: pass" and exit 0.
+  A click whose step hasn't happened 5 s on is clicked again, once, and logged ("hints test: clicked again"; check_windows.py's
+  line names such cases: a press the pause didn't take while a save's result was due or a menu appeared, or a click lost).
   `$TWIN_HINTS_TEST=FOLDER` without `--headless` also saves the window as it's shown (the picture and the overlay:
   `NativeGraphicsShootWindow`) there: hints_pause.png and hints_levels.png.
+- `$TWIN_MOUSE_TRACE`: each click a menu takes, logged with how many lines and hints the frame before drew and how many are
+  under it (mouse.cpp; a click after a frame that drew none of the menu waits up to half a second for one that does).
 - `$TWIN_FPS_TEST=1` or `=FOLDER` (with `--quick` and a window, ui/fpstest.cpp): the beach played a few seconds, then the status
   button held (the HUD shows) and the FPS counter checked, then the pause menu and again: with the show FPS option on, what it
   shows has to be the game's own frames a second (counted by the test over the same 2 s, within 8%), and at 50 and 60 Hz the

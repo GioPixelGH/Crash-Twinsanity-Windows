@@ -22,6 +22,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdlib>
 #include <cstring>
 #include <vector>
 
@@ -83,6 +84,9 @@ f32 g_MouseX = -1.0f;
 f32 g_MouseY = -1.0f;
 bool g_Moved = false;
 bool g_LeftClick = false;
+// When the left click came: a click after a frame that drew none of the menu waits for one that does, so long
+std::chrono::steady_clock::time_point g_LeftClickAt;
+constexpr f32 ClickWaitSeconds = 0.5f;
 bool g_RightClick = false;
 // Enter and Escape pressed since the last menu step: a computer's select and back in every menu (as well as their bindings)
 bool g_EnterKey = false;
@@ -208,6 +212,7 @@ bool WatchMouse(void*, SDL_Event* event)
         if (event->button.button == SDL_BUTTON_LEFT)
         {
             g_LeftClick = true;
+            g_LeftClickAt = std::chrono::steady_clock::now();
         }
         else if (event->button.button == SDL_BUTTON_RIGHT)
         {
@@ -515,8 +520,27 @@ void MouseMenuStep(MenuPage* page, MenuInput* input, MenuSounds* sounds, u32 pla
 
     g_Moved = false;
 
-    if (g_LeftClick)
+    // A click after a frame that drew none of the menu (no line, no hint: a frame the game didn't draw) waits for one that does,
+    // half a second at most: taken now it would land on nothing and be lost (the menu hints check's one-off "stuck")
+    bool nothingDrawn = g_Lines.empty() && g_Footers.empty();
+    bool waits = g_LeftClick && hovered < 0 && nothingDrawn &&
+                 std::chrono::duration<f32>(std::chrono::steady_clock::now() - g_LeftClickAt).count() < ClickWaitSeconds;
+    if (g_LeftClick && !waits)
     {
+        // $TWIN_MOUSE_TRACE: each click a menu takes, with what the last frame drew under it
+        static const bool trace = std::getenv("TWIN_MOUSE_TRACE") != nullptr;
+        if (trace)
+        {
+            u32 under = 0;
+            for (const Footer& footer : g_Footers)
+            {
+                under += Inside(footer.left, footer.top, footer.right, footer.bottom) ? 1 : 0;
+            }
+
+            Native::Log("mouse: a click at (%.3f, %.3f): line %d, %zu lines and %zu hints drawn last frame, %u hints under it",
+                        g_MouseX, g_MouseY, hovered, g_Lines.size(), g_Footers.size(), under);
+        }
+
         g_LeftClick = false;
         if (hovered >= 0)
         {
@@ -575,6 +599,7 @@ void ScriptMouse(f32 x, f32 y, bool click)
     g_MouseY = y;
     g_Moved = true;
     g_LeftClick = click;
+    g_LeftClickAt = std::chrono::steady_clock::now();
 }
 
 // The shots' script: the mouse moved onto the middle of the n-th line drawn last frame (of the page drawn last), clicked or not
