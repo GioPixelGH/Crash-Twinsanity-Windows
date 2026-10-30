@@ -241,6 +241,9 @@ enum NativeText : u32
     TextDithering,
     TextDescDithering,
     TextDitherPs2,
+    // Anti-aliasing's supersampling (settings.cpp's Display page)
+    TextSsaa2,
+    TextSsaa4,
     NativeTextEnd,
 };
 
@@ -338,7 +341,7 @@ enum Option : u32
     // The mouse in the menus (hover selects, click picks, right click goes back)
     OptionMouse,
     // The settings screen's display and audio settings the game doesn't keep itself (the graphics' texture upscale 0-2, not on
-    // the screen until the graphics have it; the texture pack; anti-aliasing 0 off or 1 FXAA; v-sync; the music and effects volumes
+    // the screen until the graphics have it; the texture pack; anti-aliasing 0 off, 1 FXAA, 2 and 3 SSAA 2x and 4x; v-sync; the music and effects volumes
     // 0-10, the output type, vibration, given to the game at start-up)
     OptionTextureUpscale,
     OptionTexturePack,

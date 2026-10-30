@@ -244,9 +244,10 @@ void Build()
     display.push_back(Toggle(TextCrt, TextDescCrt, OptionCrtFilter));
     display.push_back(Toggle(TextTexturePack, TextDescTexturePack, OptionTexturePack));
     // (The texture upscale isn't shown until the graphics have it: NativeGraphicsSetTextureUpscale takes only off.) The
-    // anti-aliasing is FXAA on the shown picture; there's no MSAA: PCSX2 dropped its own, and the render scale is the
-    // supersampling
-    display.push_back(OptionChoice(TextAntiAliasing, TextDescAntiAliasing, OptionAntiAliasing, {0, TextFxaa}));
+    // anti-aliasing is FXAA on the shown picture, or supersampling (the render scale 2 or 4 times the resolution's, up to 8x
+    // the PS2's, the picture made smaller as it's shown); there's no MSAA: PCSX2 dropped its own
+    display.push_back(
+        OptionChoice(TextAntiAliasing, TextDescAntiAliasing, OptionAntiAliasing, {0, TextFxaa, TextSsaa2, TextSsaa4}));
     display.push_back(OptionChoice(TextDithering, TextDescDithering, OptionDithering, {TextDitherPs2, 0}));
     display.push_back(Toggle(TextVSync, TextDescVSync, OptionVSync));
     display.push_back(Toggle(TextShowFps, TextDescShowFps, OptionShowFps));

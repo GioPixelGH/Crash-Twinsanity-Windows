@@ -83,6 +83,9 @@ SCENARIOS = [
      dict(env={"TWIN_SCALE": "6"}, expect=[r"hardware renderer: drawing at 6x"], forbid=[r"can't be drawn into"])),
     ("The beach at 8x (#19)", "Levels\\Earth\\Hub\\beach", 12, "idle",
      dict(env={"TWIN_SCALE": "8"}, expect=[r"hardware renderer: drawing at 8x"], forbid=[r"can't be drawn into"])),
+    # Supersampling (the anti-aliasing option's SSAA 4x): the internal scale 4 times the headless 4x, up to 8
+    ("The beach with supersampling (SSAA 4x)", "Levels\\Earth\\Hub\\beach", 12, "idle",
+     dict(options="anti_aliasing=3\n", expect=[r"hardware renderer: drawing at 8x"], forbid=[r"can't be drawn into"])),
     ("A buffer the graphics card can't hold drawn by the software GS", "Levels\\Earth\\Hub\\beach", 12, "idle",
      dict(env={"TWIN_SCALE": "4", "TWIN_HW_MAX_TARGET": "1024"},
           expect=[r"hardware renderer: drawing at 4x", r"the target \w+/8 class \d+ \(2048x\d+ at the scale\) can't be drawn into",

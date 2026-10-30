@@ -23,6 +23,7 @@
 #include <SDL3/SDL.h>
 
 #include <algorithm>
+#include <cmath>
 #include <atomic>
 #include <chrono>
 #include <cstdio>
@@ -127,8 +128,10 @@ struct Presenter
     int postFilter = 0;
     int madePostFilter = 0;
     GLuint postProgram = 0;
-    // FXAA's program (made when it's first wanted), anti-aliasing (0 off, 1 FXAA), V-sync
+    // FXAA's and supersampling's programs (made when they're first wanted), anti-aliasing (0 off, 1 FXAA, 2 and 3 SSAA 2x and
+    // 4x), V-sync
     GLuint fxaaProgram = 0;
+    GLuint downsampleProgram = 0;
     int antiAliasing = 0;
     bool vsync = false;
     bool vsyncSet = false;
@@ -312,6 +315,28 @@ void main()
 }
 )";
 
+// Supersampling's (the anti-aliasing option's SSAA): the picture drawn 2 or 4 times larger made the window's size, each pixel the
+// mean of the texels it covers: taps x taps bilinear reads spread over its footprint (one between four texels is their mean)
+constexpr const char* DownsampleSource = R"(#version 330 core
+in vec2 place;
+out vec4 colour;
+uniform sampler2D picture;
+uniform vec2 footprint;
+uniform int taps;
+void main()
+{
+    vec3 sum = vec3(0.0);
+    for (int y = 0; y < taps; y++)
+    {
+        for (int x = 0; x < taps; x++)
+        {
+            sum += texture(picture, place + ((vec2(x, y) + 0.5) / float(taps) - 0.5) * footprint).rgb;
+        }
+    }
+    colour = vec4(sum / float(taps * taps), 1.0);
+}
+)";
+
 // The window as it's about to be shown (the picture and the overlay over it) written as the PNG asked for, if one is
 void WriteWindowShot(s32 width, s32 height)
 {
@@ -386,15 +411,42 @@ void PresentTexture(GLuint texture, f32 u0, f32 v0, f32 u1, f32 v1, u32 pictureW
         gl.LinkProgram(p.fxaaProgram);
     }
 
+    // Supersampling: the picture's texels an output pixel covers, the larger way; past 1.25 the mean of them (taps x taps
+    // bilinear reads, each the mean of four texels: up to 8 a side), whatever the filtering option
+    const f32 covered = std::max(static_cast<f32>(pictureWidth) / static_cast<f32>(std::max(p.viewWidth, 1)),
+                                 static_cast<f32>(pictureHeight) / static_cast<f32>(std::max(p.viewHeight, 1)));
+    const bool downsampled = p.antiAliasing >= 2 && covered > 1.25f;
+    if (downsampled && p.downsampleProgram == 0)
+    {
+        GLuint vertex = Compile(gl, GL_VERTEX_SHADER, VertexSource);
+        GLuint fragment = Compile(gl, GL_FRAGMENT_SHADER, DownsampleSource);
+        p.downsampleProgram = gl.CreateProgram();
+        gl.AttachShader(p.downsampleProgram, vertex);
+        gl.AttachShader(p.downsampleProgram, fragment);
+        gl.LinkProgram(p.downsampleProgram);
+    }
+
     if (!p.vsyncSet)
     {
         SDL_GL_SetSwapInterval(p.vsync ? 1 : 0);
         p.vsyncSet = true;
     }
 
-    GLuint program = p.postProgram != 0 ? p.postProgram : (p.antiAliasing == 1 && p.fxaaProgram != 0) ? p.fxaaProgram : p.program;
+    GLuint program = p.postProgram != 0                            ? p.postProgram
+                     : (p.antiAliasing == 1 && p.fxaaProgram != 0) ? p.fxaaProgram
+                     : downsampled                                 ? p.downsampleProgram
+                                                                   : p.program;
     gl.UseProgram(program);
     gl.Uniform4f(gl.GetUniformLocation(program, "uvRect"), u0, v0, u1, v1);
+    if (program == p.downsampleProgram)
+    {
+        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, static_cast<GLint>(GL_LINEAR));
+        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, static_cast<GLint>(GL_LINEAR));
+        gl.Uniform1i(gl.GetUniformLocation(program, "picture"), 0);
+        gl.Uniform2f(gl.GetUniformLocation(program, "footprint"), (u1 - u0) / static_cast<f32>(std::max(p.viewWidth, 1)),
+                     (v1 - v0) / static_cast<f32>(std::max(p.viewHeight, 1)));
+        gl.Uniform1i(gl.GetUniformLocation(program, "taps"), std::clamp(static_cast<s32>(std::ceil(covered / 2.0f)), 1, 4));
+    }
     if (program == p.fxaaProgram)
     {
         gl.Uniform1i(gl.GetUniformLocation(program, "picture"), 0);
@@ -613,6 +665,9 @@ namespace
 std::atomic<int> g_RendererWanted{-1};
 // The internal resolution: 4x by default (the UI's resolution setting sets it at start-up), sharp as the overlay's menus
 std::atomic<int> g_ScaleSetting{4};
+// The supersampling the anti-aliasing option asks for (1, 2 or 4: HAB3X's 90d3287): the internal scale is that many times the
+// setting's, up to 8 (the picture shown is the larger one made smaller: PresentTexture's DownsampleSource)
+std::atomic<int> g_Supersample{1};
 // The window's height in pixels, as the main thread last saw it (the scale setting 0 goes by it)
 std::atomic<int> g_WindowPixelHeight{0};
 }
@@ -664,6 +719,8 @@ void ApplyGraphicsSettings()
         s32 height = g_WindowPixelHeight;
         scale = static_cast<u32>(std::clamp((height + 256) / 512, 1, 8));
     }
+
+    scale = std::min<u32>(scale * static_cast<u32>(g_Supersample.load()), 8);
 
     if (wanted == 1 && !HardwareRendererActive())
     {
@@ -733,12 +790,20 @@ bool NativeGraphicsSetTexturePack(bool on)
 
 bool NativeGraphicsSetAntiAliasing(int mode)
 {
-    if (mode < 0 || mode > 1)
+    // 0 off, 1 FXAA on the shown picture, 2 and 3 supersampling (the internal scale 2 and 4 times the setting's, up to 8: every
+    // target is read as a texture as well, so multisampled ones would have to be resolved at each read)
+    if (mode < 0 || mode > 3)
     {
         return false;
     }
 
     g_Presenter.antiAliasing = mode;
+    const int supersample = mode == 2 ? 2 : mode == 3 ? 4 : 1;
+    if (supersample != g_Supersample.exchange(supersample))
+    {
+        NativeGraphics::RenderCall([] { NativeGraphics::ApplyGraphicsSettings(); });
+    }
+
     return true;
 }
 

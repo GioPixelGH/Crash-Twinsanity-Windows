@@ -86,6 +86,8 @@ mouse and controller, saves, cutscene skipping, community fixes):
 - **Speed:** a steady 60 fps everywhere tested. The game, the PS2's vector unit (VU1) and the graphics now run on three
   threads, and the renderer's hot paths are faster.
 - **Frame rates:** 50, 60, 120 and 144 Hz, or unlimited, at the same game speed.
+- **Anti-aliasing by supersampling:** SSAA 2x and 4x (Options > Display > Anti-aliasing) draw the picture 2 or 4 times
+  larger, up to 8x the PS2's, and shrink it to the window: smoother edges, more work for the graphics card.
 - **Dithering option:** as the PS2 (its 16-bit picture with a fine pattern, the default) or off, for the picture's full
   colour.
 - **Resolution:** 1x to 8x the PS2's (6x and 8x added); a buffer the graphics card can't hold at the chosen scale is drawn
@@ -126,7 +128,7 @@ off until you turn them on.
 - [ ] The slide's long jump at any moment, as a game option ([#11]).
 - [ ] Render distance as a PC option.
 - [ ] Level select, as a game option.
-- [ ] Anti-aliasing by supersampling (2x, 4x).
+- [x] Anti-aliasing by supersampling (2x, 4x).
 - [ ] Eight save slots.
 - [ ] Frame rates other than 60 checked through the game: the seal chase at 240 fps ([#17]), the cannon's bombs below 60 fps
   ([#12]).

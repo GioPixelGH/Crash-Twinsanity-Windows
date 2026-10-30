@@ -133,7 +133,7 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x158 | smooth or sharp pixels when the picture is scaled. | pixels lissés ou nets à l'agrandissement. | weiche oder scharfe pixel beim skalieren. | píxeles suaves o nítidos al escalar. | pixel morbidi o nitidi nel ridimensionamento. |
 | 0x159 | smooth the game's textures at a larger size. | textures lissées en plus grand. | texturen größer und glatter. | texturas suavizadas a mayor tamaño. | texture levigate più grandi. |
 | 0x15A | use the textures of a texture pack. | utiliser un pack de textures. | texturen eines texturpakets nutzen. | usar un pack de texturas. | usa un pacchetto di texture. |
-| 0x15B | fxaa smooths the edges on the picture. a higher resolution smooths them better. | fxaa lisse les bords de l'image. une résolution plus haute les lisse mieux. | fxaa glättet die kanten im bild. eine höhere auflösung glättet besser. | fxaa suaviza los bordes de la imagen. más resolución los suaviza mejor. | fxaa leviga i bordi dell'immagine. una risoluzione più alta li leviga meglio. |
+| 0x15B | fxaa smooths the picture's edges. ssaa draws it 2 or 4 times larger and shrinks it: smoother, slower. | fxaa lisse les bords de l'image. ssaa la dessine 2 ou 4 fois plus grande puis la réduit : plus lisse, plus lent. | fxaa glättet die kanten im bild. ssaa zeichnet es 2- oder 4-mal größer und verkleinert es: glatter, langsamer. | fxaa suaviza los bordes de la imagen. ssaa la dibuja 2 o 4 veces más grande y la reduce: más suave, más lento. | fxaa leviga i bordi dell'immagine. ssaa la disegna 2 o 4 volte più grande e la riduce: più liscia, più lento. |
 | 0x15C | wait for the screen's refresh: no tearing. | synchronisé à l'écran: pas de déchirure. | auf den bildschirm warten: kein tearing. | sincronizar con la pantalla: sin cortes. | sincronizza con lo schermo: niente tearing. |
 | 0x15D | the look of an old crt television. | l'aspect d'une vieille télévision. | wie ein alter röhrenfernseher. | el aspecto de una tele antigua. | l'aspetto di un vecchio televisore. |
 | 0x15E | 50 hz is the original timing. above 60 needs a fast pc. | 50 hz est la cadence d'origine. au-delà de 60, un pc rapide. | 50 hz ist das original. über 60 braucht einen schnellen pc. | 50 hz es el ritmo original. más de 60 pide un pc rápido. | 50 hz è la frequenza originale. oltre 60 serve un pc veloce. |
@@ -231,6 +231,8 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1BA | dithering | tramage | dithering | tramado | dithering |
 | 0x1BB | the ps2 shows the picture in 16-bit colour with a fine pattern. off keeps its full colour. | la ps2 affiche l'image en couleurs 16 bits avec une fine trame. désactivé garde toutes ses couleurs. | die ps2 zeigt das bild in 16-bit-farben mit feinem muster. aus behält die vollen farben. | la ps2 muestra la imagen en color de 16 bits con una trama fina. desactivado mantiene todo el color. | la ps2 mostra l'immagine a colori a 16 bit con una trama fine. disattivato mantiene tutti i colori. |
 | 0x1BC | as the ps2 | comme la ps2 | wie die ps2 | como la ps2 | come la ps2 |
+| 0x1BD | ssaa 2x | ssaa 2x | ssaa 2x | ssaa 2x | ssaa 2x |
+| 0x1BE | ssaa 4x | ssaa 4x | ssaa 4x | ssaa 4x | ssaa 4x |
 
 ## English (29 lines)
 
