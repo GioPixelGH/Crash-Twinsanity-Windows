@@ -103,8 +103,17 @@ int SelfTestSaves()
         data[i] = static_cast<char>(i * 7);
     }
 
+    s32 freeBefore = info.freeKilobytes;
     bool created = CreateSave(0, 0, save) && run(Operation::CreateSave).succeeded == 1;
     bool written = Write(0, 0, save, file, data, sizeof(data)) && run(Operation::Write).succeeded == 1;
+    // The card's free space as the save manager polls it, the save's directory and file taken (memorycard.cpp counts it once
+    // and again after a change)
+    for (int i = 0; i < 3; i++)
+    {
+        Update(0, 0, &info);
+    }
+
+    bool spaceTaken = info.freeKilobytes < freeBefore;
     s32 size = -2;
     bool found = FindFile(0, 0, file, save, &size, nullptr) && run(Operation::FindFile).succeeded == 1;
     char back[300] = {};
@@ -112,9 +121,11 @@ int SelfTestSaves()
     bool same = std::memcmp(data, back, sizeof(data)) == 0;
     std::error_code ignored;
     std::filesystem::remove_all(std::filesystem::path(Native::SettingsFolder()) / "memorycard" / "BESLES-52568SELFTEST", ignored);
-    bool ok = ready && info.type == StorageMemoryCard && created && written && found && size == sizeof(data) && read && same;
-    Native::Log("saves self-test: %s (card type %d, %d KB free, created %d, written %d, found %d size %d, read %d, same %d)",
-                ok ? "passed" : "FAILED", info.type, info.freeKilobytes, created, written, found, size, read, same);
+    bool ok = ready && info.type == StorageMemoryCard && created && written && spaceTaken && found && size == sizeof(data) && read &&
+              same;
+    Native::Log("saves self-test: %s (card type %d, %d KB free, %d before the save, created %d, written %d, found %d size %d, read "
+                "%d, same %d)",
+                ok ? "passed" : "FAILED", info.type, info.freeKilobytes, freeBefore, created, written, found, size, read, same);
     return ok ? 0 : 1;
 }
 

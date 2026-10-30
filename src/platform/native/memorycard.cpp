@@ -120,8 +120,17 @@ fs::path HostPath(const char* name)
     return result;
 }
 
+// What the card's files take, counted once and again only after the card's files change (-1: to count): the save manager asks
+// GetInfo every frame it has nothing else to do, and walking the folder each time cost the game's thread 0.2-0.4 ms a frame
+s32 g_UsedClusters = -1;
+
 s32 UsedClusters()
 {
+    if (g_UsedClusters >= 0)
+    {
+        return g_UsedClusters;
+    }
+
     std::error_code error;
     s32 clusters = 0;
     for (auto it = fs::recursive_directory_iterator(Root(), error); !error && it != fs::recursive_directory_iterator();
@@ -131,7 +140,15 @@ s32 UsedClusters()
         clusters += it->is_directory() ? 2 : static_cast<s32>((it->file_size() + 1023) / 1024);
     }
 
+    g_UsedClusters = clusters;
     return clusters;
+}
+
+// After a call that may have changed what the card's files take (a file made, emptied or written, a directory made, an entry
+// deleted): the next GetInfo counts them again
+void CardChanged()
+{
+    g_UsedClusters = -1;
 }
 
 // The PS2's directory entry time: a reserved byte, then second, minute, hour, day, month and the year in 16 bits
@@ -253,6 +270,11 @@ s32 Platform::MemoryCard::Open(s32 port, s32 slot, const char* name, s32 flags)
         std::ofstream(path, std::ios::binary).close();
     }
 
+    if ((mode & std::ios::trunc) != 0 || !exists)
+    {
+        CardChanged();
+    }
+
     file.stream.open(path, mode);
     if (!file.stream)
     {
@@ -306,6 +328,7 @@ s32 Platform::MemoryCard::Write(s32 file, const void* buffer, s32 size)
 
     found->second.stream.write(static_cast<const char*>(buffer), size);
     found->second.stream.flush();
+    CardChanged();
     Native::Log("memory card: %d bytes written to %s", size, found->second.path.filename().string().c_str());
     return Finish(FunctionWrite, found->second.stream ? size : ResultFull);
 }
@@ -324,6 +347,7 @@ s32 Platform::MemoryCard::MakeDirectory(s32 port, s32 slot, const char* name)
         return Finish(FunctionMakeDirectory, ResultNoEntry);
     }
 
+    CardChanged();
     return Finish(FunctionMakeDirectory, fs::create_directory(path, error) ? ResultSucceeded : ResultNoEntry);
 }
 
@@ -411,6 +435,7 @@ s32 Platform::MemoryCard::Delete(s32 port, s32 slot, const char* name)
         return Finish(FunctionDelete, ResultNotEmpty);
     }
 
+    CardChanged();
     return Finish(FunctionDelete, fs::remove(path, error) ? ResultSucceeded : ResultNoEntry);
 }
 
