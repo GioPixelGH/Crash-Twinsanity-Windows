@@ -136,7 +136,6 @@ off until you turn them on.
 - [ ] The masks' bugs ([#18]): those the PS2 game has too become fixes under the bug fixes option.
 - [ ] HD texture packs in BC7, and texture upscaling.
 - [ ] A landing shadow ([#11]).
-- [ ] Patches drawn wrong on Crash's and Cortex's models on some PCs ([#15]).
 - [ ] Better speed on older PCs ([#23], [#12]), starting with the port's render thread, measured as the limit on one of them.
 - [ ] Achievements in the game, kept on your PC (RetroAchievements doesn't award them for ports).
 - [ ] Subtitles for the cutscenes ([#11]).
@@ -149,7 +148,6 @@ differences as options on the PAL game ([#14]), the port's own texts in Brazilia
 [#11]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/11
 [#12]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/12
 [#14]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/14
-[#15]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/15
 [#16]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/16
 [#17]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/17
 [#18]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/18

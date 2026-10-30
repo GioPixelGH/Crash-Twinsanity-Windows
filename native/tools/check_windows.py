@@ -645,8 +645,8 @@ def playable_copy(program, folder):
     return folder / program.name
 
 
-def frame_colours(path, step=4):
-    """A dumped frame's (png.cpp: RGBA, stored, no filter) colour bytes, every step-th row: bytes"""
+def frame_rgba(path):
+    """A dumped frame (png.cpp: RGBA, stored, no filter): (width, height, its rows' bytes, each after its filter byte)"""
     data = Path(path).read_bytes()
     width, height = int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
     at, compressed = 8, b""
@@ -655,7 +655,57 @@ def frame_colours(path, step=4):
         if data[at + 4:at + 8] == b"IDAT":
             compressed += data[at + 8:at + 8 + size]
         at += 12 + size
-    raw = zlib.decompress(compressed)
+    return width, height, zlib.decompress(compressed)
+
+
+def skinned_light(exe, work, frame=1770):
+    """#15: Crash at the Iceberg Lab's start (levels\\ice\\hub\\labext) looks round in his idle, his chin lit pale green by the
+    level's lights as the retail game lights it (its executable in PCSX2 2.9, the same pose: the patch's mean colour 124, 190,
+    148): the frame at a fixed time, 1x, 4:3, the patch's mean colour within 10 of the retail's: (passed, what happened)"""
+    folder = work / "skinned-light"
+    if folder.exists():
+        shutil.rmtree(folder)
+    frames = folder / "frames"
+    frames.mkdir(parents=True)
+    settings = folder / "settings" / "Crash Twinsanity"
+    settings.mkdir(parents=True)
+    (settings / "disc_image.txt").write_text(disc_image() + "\n")
+    (settings / "options.txt").write_text("widescreen=0\n")
+    env = dict(os.environ, HOME=str(folder / "settings"), APPDATA=str(folder / "settings"), TWIN_FIXED_TIME="1",
+               TWINSANITY_AUDIO="frames", TWIN_DUMP_FRAMES=f"{frames}:30", TWIN_SCALE="1",
+               TWIN_START_CHUNK="Levels\\Ice\\Hub\\labext")
+    with open(folder / "log.txt", "w") as log:
+        process = subprocess.Popen([str(exe), "--quick", "--headless"], env=env, stdout=log, stderr=subprocess.STDOUT, cwd=folder)
+        beyond = frames / f"frame_{frame + 30:06d}.png"
+        started = time.time()
+        while not beyond.exists() and process.poll() is None and time.time() - started < 600:
+            time.sleep(1)
+        process.kill()
+        process.wait()
+    shot = frames / f"frame_{frame:06d}.png"
+    if not shot.exists():
+        return False, f"no frame {frame}"
+    width, height, raw = frame_rgba(shot)
+    row = 1 + width * 4
+    # Crash's head and chest (the PS2's 512 x 512 picture), the pixels far greener than red and bright
+    patch = []
+    for y in range(299, 459):
+        for x in range(192, 288):
+            r, g, b = raw[y * row + 1 + x * 4:y * row + 4 + x * 4]
+            if g > r + 30 and g > 150:
+                patch.append((r, g, b))
+    if len(patch) < 50:
+        return False, f"no pale green patch on Crash's chin ({len(patch)} pixels)"
+    mean = [sum(p[c] for p in patch) / len(patch) for c in range(3)]
+    retail = (124, 190, 148)
+    off = max(abs(m - e) for m, e in zip(mean, retail))
+    return off <= 10, (f"Crash's chin in the Iceberg Lab's light {round(mean[0])}, {round(mean[1])}, {round(mean[2])} on "
+                       f"{len(patch)} pixels, the retail game's 124, 190, 148")
+
+
+def frame_colours(path, step=4):
+    """A dumped frame's (png.cpp: RGBA, stored, no filter) colour bytes, every step-th row: bytes"""
+    width, height, raw = frame_rgba(path)
     row = 1 + width * 4
     colours = bytearray()
     for y in range(0, height, step):
@@ -896,6 +946,9 @@ def report(exe, reference, work, with_sweep, reference_name=None):
         failed |= bool(different)
         ok, what = dithering(exe, work)
         print(f"dithering       {'ok' if ok else 'FAILED'}: {what}")
+        failed |= not ok
+        ok, what = skinned_light(exe, work)
+        print(f"skinned light   {'ok' if ok else 'FAILED'}: {what}")
         failed |= not ok
     else:
         print("pictures        not compared (no reference program)")

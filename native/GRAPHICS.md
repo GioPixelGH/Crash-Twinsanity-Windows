@@ -166,6 +166,10 @@ picture at the PS2's resolution, and `replayNNN_gpu.png`, the GPU's at the scale
   (a palette lookup of the depth's copy) drew a bright line where the depth crosses its threshold: a circle around Crash.
 - Known differences: GL's float blending and filtering (1/255 steps against the GS's truncations); 16 bit frames blended under a
   stencil DATE keep 8 bits until they're read.
+- Not a difference: the Iceberg Lab's coloured lights tint the characters' bright parts, Crash's chin and chest pale green
+  (levels\ice\hub\labext) and Cortex's face green (psycho's cutscene), as the retail game does (#15: its executable in
+  PCSX2 2.9, Crash in the same idle pose, the patch's mean colour 124, 190, 148 against the port's 123, 191, 149; the PS2
+  build's Cortex at least as green). check_windows.py's "skinned light" keeps it so.
 
 Replays (beach, flyover; 1x GPU picture against the software GS, mean per channel): beach 0.87-0.92, flyover 1.1.
 
