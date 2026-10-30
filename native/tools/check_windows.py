@@ -76,6 +76,16 @@ SCENARIOS = [
      dict(SKIPPING, env={"TWIN_SKIP_TEST": "1", "TWIN_TRIGGER_PLAN": "0,1", "TWIN_TRIGGER_EVERY": "14"},
           expect=[r"skip: .*COM_SCHOOL_HUB_CUTSCENE_H03A skipped: .*messages 4 to its linked objects",
                   r"act_EXTENDING_SPIRAL_STAIRCASE's runner 0"])),
+    # Issue #19: the options' 6x and 8x drawn by the hardware renderer whole (its targets fit this PC's graphics card); and a
+    # target the card can't hold ($TWIN_HW_MAX_TARGET makes the 4x frame one) drawn by the software GS instead (HAB3X's 148af1e)
+    ("The beach at 6x (#19)", "Levels\\Earth\\Hub\\beach", 12, "idle",
+     dict(env={"TWIN_SCALE": "6"}, expect=[r"hardware renderer: drawing at 6x"], forbid=[r"can't be drawn into"])),
+    ("The beach at 8x (#19)", "Levels\\Earth\\Hub\\beach", 12, "idle",
+     dict(env={"TWIN_SCALE": "8"}, expect=[r"hardware renderer: drawing at 8x"], forbid=[r"can't be drawn into"])),
+    ("A buffer the graphics card can't hold drawn by the software GS", "Levels\\Earth\\Hub\\beach", 12, "idle",
+     dict(env={"TWIN_SCALE": "4", "TWIN_HW_MAX_TARGET": "1024"},
+          expect=[r"hardware renderer: drawing at 4x", r"the target \w+/8 class \d+ \(2048x\d+ at the scale\) can't be drawn into",
+                  r"left to the software GS: a target the graphics card can't hold at this scale"])),
 ]
 # The pause menu's hints checked for each controller's prompts and the menu hints option (hintstest.cpp): the prompts' style
 # ($TWIN_UI_PROMPTS) and the option (options.txt's menu_hints: 0 the game's own hints, 1 the bar). The pause on the window's focus

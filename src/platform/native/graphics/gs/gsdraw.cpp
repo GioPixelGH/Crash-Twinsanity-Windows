@@ -1187,9 +1187,7 @@ void Gs::DecodeTextures(DrawState& state, const Vertex* vertexes, u32 count)
     s32 regionRight = 0;
     s32 regionBottom = 0;
     bool regional = TexelRegion(state, vertexes, count, &regionLeft, &regionTop, &regionRight, &regionBottom);
-    for (u32 index = 0; index < state.levelCount; index++)
-    {
-        TextureLevel& level = state.levels[index];
+    auto keyOf = [&](const TextureLevel& level) {
         TextureKey key = {level.bp, level.bw, level.psm, level.width, level.height, 0, 0, 0, 0};
         if (Indexed(level.psm))
         {
@@ -1199,17 +1197,34 @@ void Gs::DecodeTextures(DrawState& state, const Vertex* vertexes, u32 count)
         }
 
         key.texa = texa_.value & 0x000000FF000080FFull;
-        // The same texture as the last draw's at this level, nothing written since (the same generation): its decode as it was
-        static TextureKey memoKey[7];
-        static DecodedTexture* memoDecoded[7] = {};
-        static u32 memoGeneration[7] = {};
-        const bool memoHit = memoDecoded[index] != nullptr && memoGeneration[index] == generation_ && memoKey[index] == key;
-        if (!memoHit && g_TextureCache.find(key) == g_TextureCache.end() && g_TextureCache.size() >= MostCachedTextures)
+        return key;
+    };
+    // The same texture as the last draw's at a level, nothing written since (the same generation): its decode as it was
+    static TextureKey memoKey[7];
+    static DecodedTexture* memoDecoded[7] = {};
+    static u32 memoGeneration[7] = {};
+    // A full cache emptied before the draw's levels are decoded, never between them: a mipmapped draw's first levels' texels,
+    // taken already, went with it, and the rasteriser read freed memory (the software GS drawing for the hardware renderer, which
+    // fills the same cache, crashed so in SampleLevel)
+    {
+        size_t missing = 0;
+        for (u32 index = 0; index < state.levelCount; index++)
+        {
+            missing += g_TextureCache.find(keyOf(state.levels[index])) == g_TextureCache.end() ? 1 : 0;
+        }
+
+        if (missing > 0 && g_TextureCache.size() + missing > MostCachedTextures)
         {
             g_TextureCache.clear();
             std::fill(std::begin(memoDecoded), std::end(memoDecoded), nullptr);
         }
+    }
 
+    for (u32 index = 0; index < state.levelCount; index++)
+    {
+        TextureLevel& level = state.levels[index];
+        const TextureKey key = keyOf(level);
+        const bool memoHit = memoDecoded[index] != nullptr && memoGeneration[index] == generation_ && memoKey[index] == key;
         DecodedTexture& decoded = memoHit ? *memoDecoded[index] : g_TextureCache[key];
         const u32 tilesWide = (level.width + TileTexels - 1) / TileTexels;
         const u32 tilesHigh = (level.height + TileTexels - 1) / TileTexels;

@@ -136,6 +136,7 @@ bool LoadGl()
     ok &= Load(g_Gl.DrawArrays, "glDrawArrays");
     ok &= Load(g_Gl.Finish, "glFinish");
     ok &= Load(g_Gl.GetError, "glGetError");
+    ok &= Load(g_Gl.GetIntegerv, "glGetIntegerv");
     ok &= Load(g_Gl.PointSize, "glPointSize");
     ok &= Load(g_Gl.LineWidth, "glLineWidth");
     ok &= Load(g_Gl.Uniform4ui, "glUniform4ui");

@@ -7,6 +7,7 @@
 #include "graphics/resolution.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -78,7 +79,7 @@ bool ReadSaved(Resolution* resolution)
         int b = 0;
         if (std::sscanf(line.c_str(), "scale=%d", &a) == 1)
         {
-            read.scale = Clamp(a, 1, ScaleChoices);
+            read.scale = ChoiceScale(a);
             any = true;
         }
         else if (std::sscanf(line.c_str(), "window=%dx%d", &a, &b) == 2 && a > 0 && b > 0)
@@ -146,7 +147,7 @@ Resolution CurrentResolution()
                 NativeGraphicsGetResolution(&scale, &width, &height, &fullscreen);
             }
 
-            g_Current = {Clamp(scale, 1, ScaleChoices), width > 0 ? width : Defaults.windowWidth,
+            g_Current = {ChoiceScale(scale), width > 0 ? width : Defaults.windowWidth,
                          height > 0 ? height : Defaults.windowHeight, fullscreen};
         }
 
@@ -169,9 +170,29 @@ Resolution CurrentResolution()
     return g_Current;
 }
 
+s32 ChoiceScale(s32 scale)
+{
+    s32 chosen = Scales[0];
+    for (s32 choice : Scales)
+    {
+        chosen = choice <= scale ? choice : chosen;
+    }
+
+    return chosen;
+}
+
 s32 ScaleChoice(const Resolution& resolution)
 {
-    return Clamp(resolution.scale, 1, ScaleChoices) - 1;
+    s32 scale = ChoiceScale(resolution.scale);
+    for (s32 choice = 0; choice < ScaleChoices; choice++)
+    {
+        if (Scales[choice] == scale)
+        {
+            return choice;
+        }
+    }
+
+    return 0;
 }
 
 s32 DisplayChoice(const Resolution& resolution)
@@ -203,7 +224,7 @@ Resolution FromChoices(s32 scaleChoice, s32 displayChoice)
 {
     Resolution current = CurrentResolution();
     Resolution resolution = current;
-    resolution.scale = Clamp(scaleChoice, 0, ScaleChoices - 1) + 1;
+    resolution.scale = Scales[Clamp(scaleChoice, 0, ScaleChoices - 1)];
     displayChoice = Clamp(displayChoice, 0, FullscreenChoice);
     if (displayChoice == FullscreenChoice)
     {
@@ -290,6 +311,11 @@ void ApplySavedResolution()
     if (!Native::GetSettings().headless)
     {
         NativeGraphicsSetResolution(saved.scale, saved.windowWidth, saved.windowHeight, saved.fullscreen);
+    }
+    else if (const char* scale = std::getenv("TWIN_SCALE"); scale != nullptr)
+    {
+        // $TWIN_SCALE: a headless run's internal scale (the checks' 6x and 8x; headless runs draw at the graphics' default)
+        NativeGraphicsSetResolution(std::atoi(scale), saved.windowWidth, saved.windowHeight, false);
     }
 
     // The screen the window is on, for the log

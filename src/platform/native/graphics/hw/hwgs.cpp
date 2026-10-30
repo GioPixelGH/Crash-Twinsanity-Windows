@@ -196,6 +196,11 @@ struct Target
     bool aligned = false;
     GLuint texture = 0;
     GLuint fbo = 0;
+    // Whether GL could make its framebuffer whole (HAB3X's 148af1e): not when its size at the scale is nothing, past the GPU's
+    // biggest texture or past the draws' viewport (see TargetFor), or GL had no memory for it. A draw into an incomplete
+    // framebuffer is a GL error (macOS's GL aborts on it): such a target's draws are the software GS's, and it's never shown or
+    // read as a texture
+    bool complete = false;
     Gs::PageSet pages;
     Gs::PageSet valid;
     // The pages it holds newest with every other target's copy out of date (MarkDrawn has nothing to do there)
@@ -1671,23 +1676,53 @@ Target* HwGs::TargetFor(u32 bp, u32 bw, u32 psm, u32 height, bool frame)
     GLsizei h = static_cast<GLsizei>(t.height * t.scale);
     gl.GenFramebuffers(1, &t.fbo);
     gl.BindFramebuffer(GL_FRAMEBUFFER, t.fbo);
+    // No storage for a size GL can't make or the draws can't reach (the framebuffer left incomplete, the target the software
+    // GS's): the GPU's biggest texture, and the draws' viewport, which reaches BigViewSize - BigViewOrigin pixels into a target
+    // (12288: a 2048-row target at 6x, a 640-wide one at 8x is 5120)
+    static GLint biggest = 0;
+    if (biggest == 0)
+    {
+        gl.GetIntegerv(GL_MAX_TEXTURE_SIZE, &biggest);
+        biggest = std::max<GLint>(biggest, 1);
+    }
+
+    // ($TWIN_HW_MAX_TARGET: a smaller largest side, for the check of the software GS's taking over)
+    static const GLsizei testLargest = std::getenv("TWIN_HW_MAX_TARGET") != nullptr ? std::atoi(std::getenv("TWIN_HW_MAX_TARGET")) : 0;
+    const GLsizei largest = std::min<GLsizei>(testLargest > 0 ? testLargest : biggest, BigViewSize - BigViewOrigin);
+    const bool fits = w > 0 && h > 0 && w <= largest && h <= largest;
+    while (gl.GetError() != GL_NO_ERROR)
+    {
+    }
+
     if (t.depth)
     {
-        gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_DEPTH32F_STENCIL8), w, h, 0, GL_DEPTH_STENCIL,
-                      GL_FLOAT_32_UNSIGNED_INT_24_8_REV, nullptr);
+        if (fits)
+        {
+            gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_DEPTH32F_STENCIL8), w, h, 0, GL_DEPTH_STENCIL,
+                          GL_FLOAT_32_UNSIGNED_INT_24_8_REV, nullptr);
+        }
+
         gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, t.texture, 0);
         gl.DrawBuffer(GL_NONE);
         gl.ReadBuffer(GL_NONE);
     }
     else
     {
-        gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA8), w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        if (fits)
+        {
+            gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA8), w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        }
+
         gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, t.texture, 0);
     }
 
-    if (gl.CheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    // (GL_OUT_OF_MEMORY: the graphics card's memory full at a high scale)
+    const GLenum error = gl.GetError();
+    t.complete = fits && error == GL_NO_ERROR && gl.CheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+    if (!t.complete)
     {
-        std::fprintf(stderr, "graphics: hardware renderer: a target's framebuffer isn't complete\n");
+        std::fprintf(stderr, "graphics: hardware renderer: the target %x/%u class %u (%dx%d at the scale%s) can't be drawn into: "
+                     "the software GS draws it\n", bp, bw, cls, w, h, error == GL_OUT_OF_MEMORY ? ", no memory for it" : "");
     }
 
     targets_.push_back(std::move(made));
@@ -3628,6 +3663,7 @@ Target* HwGs::ScratchStencil(Target* colour)
     made->height = colour->height;
     made->scale = colour->scale;
     made->depth = true;
+    made->complete = colour->complete;
     Gl& gl = GetGl();
     gl.GenTextures(1, &made->texture);
     gl.BindTexture(GL_TEXTURE_2D, made->texture);
@@ -3854,20 +3890,6 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
     key.datm = state.datm;
     key.stencilDate = stencilDate ? 1 : 0;
 
-    // A glyph image's sprite (the UI's glyphs)
-    Gs::Vertex glyphed[3];
-    bool glyphImage = false;
-    if (state.textured && state.uv && state.type == Gs::PrimSprite)
-    {
-        repeatable = false;
-        std::copy(vertexes, vertexes + count, glyphed);
-        if (gs_.GlyphForBackend(state, glyphed, count))
-        {
-            vertexes = glyphed;
-            glyphImage = true;
-        }
-    }
-
     // The targets
     // As tall as the primitive draws (a scissor taller than the buffer, as the game's full screen passes set, would make the
     // target run over the buffers past it)
@@ -3882,6 +3904,26 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
     nextDepthHigh_ = highestZ >= 0x80000000u;
     Target* depth = depthUsed ? TargetFor(state.zbp, state.fbw, state.zpsm, height) : nullptr;
     nextDepthHigh_ = false;
+    if (!colour->complete || (depth != nullptr && !depth->complete))
+    {
+        return Fallback(state, vertexes, count, rect, "a target the graphics card can't hold at this scale");
+    }
+
+    // A glyph image's sprite (the UI's glyphs): its texture swapped in the draw's state, so only once the draw is the GPU's (the
+    // software GS would draw the swapped texture with the sprite's own coordinates)
+    Gs::Vertex glyphed[3];
+    bool glyphImage = false;
+    if (state.textured && state.uv && state.type == Gs::PrimSprite)
+    {
+        repeatable = false;
+        std::copy(vertexes, vertexes + count, glyphed);
+        if (gs_.GlyphForBackend(state, glyphed, count))
+        {
+            vertexes = glyphed;
+            glyphImage = true;
+        }
+    }
+
     n = static_cast<s32>(colour->scale);
     if (static_cast<u32>(rect.right) >= colour->width)
     {
@@ -3963,7 +4005,8 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
                 // repeat)
                 // (two texels past its edge allowed: a sprite's end coordinate is past its last pixel's and the region reaches
                 // one more for the filter; the filter's weight there is nothing and the sampler clamps)
-                if (known->bp == level.bp && known->bw == level.bw && known->cls == sourceClass && left >= 0 && top >= 0 &&
+                if (known->complete && known->bp == level.bp && known->bw == level.bw && known->cls == sourceClass && left >= 0 &&
+                    top >= 0 &&
                     static_cast<u32>(right) <= known->width + 1 && static_cast<u32>(bottom) <= known->height + 1 &&
                     (state.wms == Gs::WrapClamp || static_cast<u32>(right) < level.width) &&
                     (state.wmt == Gs::WrapClamp || static_cast<u32>(bottom) < level.height))
@@ -5084,6 +5127,7 @@ void HwGs::SetScale(u32 scale)
 
     copies_.clear();
     scale_ = scale;
+    std::fprintf(stderr, "graphics: hardware renderer: drawing at %ux the PS2's picture\n", scale);
 }
 
 bool HwGs::DisplayTexture(NativeGraphics::DisplayTexture* display, Target** shown, Rect* shownRect)
@@ -5180,7 +5224,8 @@ bool HwGs::DisplayTexture(NativeGraphics::DisplayTexture* display, Target** show
         u32 cls = ClassOf(fb.psm);
         for (auto& known : targets_)
         {
-            if (known->bp == fb.fbp * 32 && known->bw == fb.fbw && known->cls == cls && fb.dbx + c.width <= known->width)
+            if (known->complete && known->bp == fb.fbp * 32 && known->bw == fb.fbw && known->cls == cls &&
+                fb.dbx + c.width <= known->width)
             {
                 c.target = known.get();
             }
@@ -5194,6 +5239,10 @@ bool HwGs::DisplayTexture(NativeGraphics::DisplayTexture* display, Target** show
         if (fb.dby + c.height > c.target->height)
         {
             c.target = TargetFor(c.target->bp, c.target->bw, c.target->psm, fb.dby + c.height);
+            if (!c.target->complete)
+            {
+                return false;
+            }
         }
 
         if (std::getenv("TWIN_HW_DISPLAY_TRACE") != nullptr)
@@ -5421,6 +5470,7 @@ bool StartHardwareRenderer(u32 scale)
 
     g_Hw = hw;
     g_HwActive = true;
+    std::fprintf(stderr, "graphics: hardware renderer: drawing at %ux the PS2's picture\n", std::clamp<u32>(scale, 1, 8));
     return true;
 }
 

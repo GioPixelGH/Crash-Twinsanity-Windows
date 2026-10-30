@@ -261,8 +261,12 @@ enum GameTextId : u32
 };
 
 // ----------------------------------------------------------------------------------------------------------------- resolution
-// The render scale (1 to 4 times the PS2's picture) and the display modes: windows of fixed sizes, then fullscreen
-constexpr s32 ScaleChoices = 4;
+// The render scale (1 to 8 times the PS2's picture: the choices' scales) and the display modes: windows of fixed sizes, then
+// fullscreen
+constexpr s32 ScaleChoices = 6;
+constexpr s32 Scales[ScaleChoices] = {1, 2, 3, 4, 6, 8};
+// A scale as one of the choices': the biggest choice not past it (resolution.txt written by hand, or by another version)
+s32 ChoiceScale(s32 scale);
 constexpr s32 DisplayChoices = TextFullscreen - TextWindow960 + 1;
 
 struct Resolution

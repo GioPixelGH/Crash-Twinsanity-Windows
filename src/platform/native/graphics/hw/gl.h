@@ -20,6 +20,7 @@ using GLuint64 = std::uint64_t;
 using GLsync = struct GLsyncObject*;
 constexpr GLenum GL_SYNC_GPU_COMMANDS_COMPLETE = 0x9117;
 constexpr GLuint64 GL_TIMEOUT_IGNORED = ~GLuint64{0};
+constexpr GLenum GL_NO_ERROR = 0, GL_OUT_OF_MEMORY = 0x0505, GL_MAX_TEXTURE_SIZE = 0x0D33;
 
 constexpr GLenum GL_TEXTURE_2D = 0x0DE1, GL_TEXTURE_MIN_FILTER = 0x2801, GL_TEXTURE_MAG_FILTER = 0x2800,
                  GL_TEXTURE_WRAP_S = 0x2802, GL_TEXTURE_WRAP_T = 0x2803, GL_CLAMP_TO_EDGE = 0x812F, GL_REPEAT = 0x2901,
@@ -105,6 +106,7 @@ struct Gl
     void (*DrawArrays)(GLenum, GLint, GLsizei);
     void (*Finish)();
     GLenum (*GetError)();
+    void (*GetIntegerv)(GLenum, GLint*);
     void (*PointSize)(GLfloat);
     void (*LineWidth)(GLfloat);
     void (*Uniform4ui)(GLint, GLuint, GLuint, GLuint, GLuint);

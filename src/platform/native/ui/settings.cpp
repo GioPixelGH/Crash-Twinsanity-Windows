@@ -219,13 +219,13 @@ void Build()
         TextResolution, TextDescResolution, [] { return ScaleChoice(CurrentResolution()); },
         [](s32 value) {
             Resolution resolution = CurrentResolution();
-            resolution.scale = value + 1;
+            resolution.scale = Scales[value];
             SetResolution(resolution);
         },
         ScaleChoices - 1, [](s32 value) {
             // The scale and the picture's size it draws at (the PAL frame's 640 x 512 times it): "2×  ·  1280 × 1024"
-            s32 scale = value + 1;
-            return Text(TextScale1 + static_cast<u32>(value)) + "  \xB7  " + std::to_string(640 * scale) + "x" +
+            s32 scale = Scales[value];
+            return std::to_string(scale) + "x  \xB7  " + std::to_string(640 * scale) + "x" +
                    std::to_string(512 * scale);
         }));
     display.push_back(Choice(

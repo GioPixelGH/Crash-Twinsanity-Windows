@@ -148,7 +148,12 @@ picture at the PS2's resolution, and `replayNNN_gpu.png`, the GPU's at the scale
   primitives overlap): partial frame masks, the destination's alpha as the factor, FIX over 0x80, COLCLAMP off, PABE and
   16 bit frames; the destination alpha test by a stencil pass when the draw can't change the alpha bit, else in the shader.
 - The PCRTC: the shown buffer's target (both circuits merged on the GPU as the PCRTC merges them) is the picture.
-- Left to the software GS: a frame in a Z format (the game's depth buffer copy into a Z32 frame).
+- Left to the software GS: a frame in a Z format (the game's depth buffer copy into a Z32 frame); a target GL can't make at
+  the scale (HAB3X's 148af1e): past the GPU's biggest texture, past the draws' viewport (12288 pixels into a target: a
+  2048-row target at 6x, a 640-wide frame at 8x is 5120), or no memory for it (GL_OUT_OF_MEMORY). Its framebuffer is left
+  incomplete (a draw into one is a GL error; macOS's GL aborts on it), its draws go to the software GS, and it's never
+  shown or read as a texture. The log names each ("the target ... can't be drawn into"). The options' scales: 1x to 4x,
+  6x and 8x.
 - Exactness the shadow volumes (the beach's character shadows) need: vertexes on the rasteriser's sixteenth of a pixel grid
   and a viewport far bigger than the target (no snapping, no clipping: a sliver of a primitive keeps its pixels); wrapping
   additive blends' parts summed as their signed values in 256ths (exact in the half float sums); a 32 bit depth buffer with
@@ -165,7 +170,7 @@ Replays (beach, flyover; 1x GPU picture against the software GS, mean per channe
 
 Debugging switches: `TWIN_GS_DUMP_AT=PRIM,BP,BW,PSM,W,H[;...]` (a buffer's values from local memory just before a primitive,
 into `$TWIN_HW_DUMP_DIR`), `TWIN_HW_TRACE_PRIM=N` (a primitive's batch state and vertexes), `TWIN_HW_CONVERSION_TRACE=A,B`,
-`TWIN_HW_DISPLAY_TRACE`, `TWIN_HW_TRACK=BP,X,Y` (a target pixel after each batch), `TWIN_HW_STATS` (render passes by cause, conversions, copies), and the old behaviours:
+`TWIN_HW_DISPLAY_TRACE`, `TWIN_HW_TRACK=BP,X,Y` (a target pixel after each batch), `TWIN_HW_STATS` (render passes by cause, conversions, copies), `TWIN_SCALE=N` (a headless run's internal scale), `TWIN_HW_MAX_TARGET=N` (targets with a side past N pixels refused: the software GS draws them), and the old behaviours:
 `TWIN_HW_VERTEX_OFFSET=n` (256ths), `TWIN_HW_SMALL_VIEWPORT`, `TWIN_HW_NO_WRAPADD`, `TWIN_HW_NO_STENCIL_DATE`,
 `TWIN_HW_NO_WIDE_LOAD`, `TWIN_HW_STAGED_UPLOADS`, `TWIN_HW_NO_SNAP`, `TWIN_HW_NO_NATIVE_DEPTH`.
 

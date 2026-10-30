@@ -59,7 +59,7 @@ and inverted Y are there too.
 
 ## Options
 
-Options (from the main or pause menu) has PC settings: window size or fullscreen, the internal resolution (1× to 4× the PS2's),
+Options (from the main or pause menu) has PC settings: window size or fullscreen, the internal resolution (1× to 8× the PS2's),
 widescreen (4:3, 16:9 or 21:9), 50 or 60 Hz, texture filtering, scanlines, texture packs, anti-aliasing, v-sync, volumes,
 skipping cutscenes, faster loading, and optional fixes of the original game's bugs (off plays exactly like the PS2).
 

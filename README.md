@@ -75,7 +75,7 @@ More in [SECURITY.md](.github/SECURITY.md), including how to report a security p
 
 ## What this port adds
 
-On top of HAB3X's port (GPU renderer up to 4x the PS2's resolution, widescreen and 21:9, HD texture packs, remappable keyboard,
+On top of HAB3X's port (GPU renderer, widescreen and 21:9, HD texture packs, remappable keyboard,
 mouse and controller, saves, cutscene skipping, community fixes):
 
 - **Windows support:**
@@ -86,6 +86,8 @@ mouse and controller, saves, cutscene skipping, community fixes):
 - **Speed:** a steady 60 fps everywhere tested. The game, the PS2's vector unit (VU1) and the graphics now run on three
   threads, and the renderer's hot paths are faster.
 - **Frame rates:** 50, 60, 120 and 144 Hz, or unlimited, at the same game speed.
+- **Resolution:** 1x to 8x the PS2's (6x and 8x added); a buffer the graphics card can't hold at the chosen scale is drawn
+  by the software renderer instead of failing.
 - **Language option:** English, French, German, Italian or Spanish texts, voices and movies, chosen in Options.
 - **Mods:** files in `%APPDATA%\Crash Twinsanity\mods` replace the disc's, including files inside the game's archive.
   `--list-files` and `--extract` help to start one.
@@ -110,7 +112,7 @@ mouse and controller, saves, cutscene skipping, community fixes):
 What comes next, roughly from the quickest job to the longest. The game stays the original by default: new game options are
 off until you turn them on.
 
-- [ ] 6x and 8x the PS2's resolution in the options ([#19]), and a safe fallback when the graphics card refuses one of the
+- [x] 6x and 8x the PS2's resolution in the options ([#19]), and a safe fallback when the graphics card refuses one of the
   renderer's buffers.
 - [ ] A Dithering option ([#24]): the PS2 game shows its picture in 16-bit colour with a fine pattern to hide the steps, and
   the port reproduces it; turned off, the picture would keep its full colour.
