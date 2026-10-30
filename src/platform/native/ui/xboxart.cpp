@@ -425,7 +425,8 @@ void ReadArt()
     s32 first = 0;
     if (!disc.Open(path) || !disc.ReadFile(FontPath, &font) || !ReadFont(font, &pages, &glyphs, &first))
     {
-        Native::Log("xbox art: %s isn't an Xbox disc image with Crash Twinsanity's font: the prompts are letters", path.c_str());
+        Native::Log("xbox art: %s isn't an Xbox disc image with Crash Twinsanity's font: the prompts are letters",
+                    Native::LogPath(path).c_str());
         return;
     }
 
@@ -446,7 +447,7 @@ void ReadArt()
     }
 
     g_Have = true;
-    Native::Log("xbox art: the Xbox's button glyphs read from %s", path.c_str());
+    Native::Log("xbox art: the Xbox's button glyphs read from %s", Native::LogPath(path).c_str());
 }
 }
 

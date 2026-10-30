@@ -98,7 +98,7 @@ void LoadFonts()
         font.descent = static_cast<f32>(descent);
         font.lineGap = static_cast<f32>(lineGap);
         font.loaded = true;
-        Native::Log("overlay: face %u from %s", face, used.c_str());
+        Native::Log("overlay: face %u from %s", face, Native::LogPath(used).c_str());
     }
 }
 }

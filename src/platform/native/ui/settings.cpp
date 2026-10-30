@@ -1544,6 +1544,15 @@ void SettingsActForTest(u32 action)
     Act(static_cast<UiAction>(action));
 }
 
+void SettingsKeyForTest(s32 scancode)
+{
+    // As the keyboard's key goes (a binding waiting for one takes it)
+    SDL_Event event = {};
+    event.type = SDL_EVENT_KEY_DOWN;
+    event.key.scancode = static_cast<SDL_Scancode>(scancode);
+    WatchSettings(nullptr, &event);
+}
+
 void SettingsMouseForTest(f32 x, f32 y, bool click)
 {
     // Fractions of the reference space

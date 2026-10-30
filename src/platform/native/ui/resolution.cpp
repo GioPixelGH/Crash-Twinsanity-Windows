@@ -37,6 +37,18 @@ constexpr Resolution Defaults = {2, 1280, 720, false};
 
 bool g_Known = false;
 Resolution g_Current = Defaults;
+// The log's changes (LogResolutionChanges): the resolution it last gave (the start's, then each change's), and whether it changed
+Resolution g_Logged = Defaults;
+bool g_LoggedKnown = false;
+bool g_ChangeDue = false;
+
+// "fullscreen", "a 1280x720 window"
+std::string DisplayText(const Resolution& resolution)
+{
+    return resolution.fullscreen ? std::string("fullscreen")
+                                 : "a " + std::to_string(resolution.windowWidth) + "x" + std::to_string(resolution.windowHeight) +
+                                       " window";
+}
 
 std::string SettingsPath()
 {
@@ -97,7 +109,7 @@ void Save(const Resolution& resolution)
     std::ofstream file(SettingsPath(), std::ios::trunc);
     if (!file)
     {
-        Native::Log("resolution: can't write %s", SettingsPath().c_str());
+        Native::Log("resolution: can't write %s", Native::LogPath(SettingsPath()).c_str());
         return;
     }
 
@@ -220,9 +232,15 @@ void SetResolution(const Resolution& resolution)
         return;
     }
 
+    // (The log's line once the settings screen is closed: LogResolutionChanges)
+    if (!g_LoggedKnown)
+    {
+        g_Logged = current;
+        g_LoggedKnown = true;
+    }
+
     g_Current = resolution;
-    Native::Log("resolution: %dx the PS2's picture, %s %dx%d", resolution.scale, resolution.fullscreen ? "fullscreen" : "window",
-                resolution.windowWidth, resolution.windowHeight);
+    g_ChangeDue = true;
     if (g_ResolutionToGraphics)
     {
         NativeGraphicsSetResolution(resolution.scale, resolution.windowWidth, resolution.windowHeight, resolution.fullscreen);
@@ -291,5 +309,33 @@ void LogResolution()
     std::snprintf(window, sizeof(window), "a %dx%d window", saved.windowWidth, saved.windowHeight);
     Native::Log("resolution (%s): %dx the PS2's picture, %s%s%s", there ? "resolution.txt's" : "the defaults: no resolution.txt yet",
                 saved.scale, saved.fullscreen ? "fullscreen (" : "", window, saved.fullscreen ? " when windowed)" : "");
+    // The changes are from this
+    g_Logged = saved;
+    g_LoggedKnown = true;
+    g_ChangeDue = false;
+}
+
+void LogResolutionChanges()
+{
+    if (!g_ChangeDue)
+    {
+        return;
+    }
+
+    g_ChangeDue = false;
+    const Resolution now = g_Current;
+    if (now.scale != g_Logged.scale)
+    {
+        Native::Log("options: resolution %dx -> %dx the PS2's picture", g_Logged.scale, now.scale);
+    }
+
+    // (A fullscreen's window size isn't seen until it's windowed)
+    if (now.fullscreen != g_Logged.fullscreen || (!now.fullscreen && (now.windowWidth != g_Logged.windowWidth ||
+                                                                       now.windowHeight != g_Logged.windowHeight)))
+    {
+        Native::Log("options: display %s -> %s", DisplayText(g_Logged).c_str(), DisplayText(now).c_str());
+    }
+
+    g_Logged = now;
 }
 }

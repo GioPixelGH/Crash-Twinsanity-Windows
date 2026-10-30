@@ -387,6 +387,14 @@ std::string TrailNow();
 // first start), in two lines (options.cpp); the saved resolution or the defaults (resolution.cpp)
 void LogOptions();
 void LogResolution();
+// The settings changed since the log last gave them, a line each ("options: refresh_60hz 3 -> 1 (144 Hz -> 60 Hz)"): options.txt's
+// (options.cpp), the resolution and the display (resolution.cpp), the controls (bindings.cpp). Each change's value is compared with
+// the one logged before, so a value stepped through and left isn't one; logged once the settings screen is closed (options.cpp's
+// Frame) and at the session's end
+void LogSettingChanges();
+void LogOptionChanges();
+void LogResolutionChanges();
+void LogBindingChanges();
 // Sets an option (kept, and applied at once where it applies at once)
 void SetOption(Option option, s32 value);
 // Applies what an option changes once it's set, and every option's start-up effect (features.cpp)
@@ -472,6 +480,8 @@ void ScaleCameraTurn(f32* yaw, f32* pitch, s32 currentYaw, u32 time);
 // The game's screen position page went back: true when the settings opened it (they're shown again)
 bool ScreenPositionClosed();
 void SettingsActForTest(u32 action);
+// A key pressed while the settings screen is open, as the keyboard's (a binding waiting for one takes it)
+void SettingsKeyForTest(s32 scancode);
 void SettingsShotsFrame();
 void SettingsMouseForTest(f32 x, f32 y, bool click);
 void SettingsCursorForTest(f32 x, f32 y);

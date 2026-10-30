@@ -118,6 +118,7 @@ off until you turn them on.
 - [ ] The game closing after the end credits instead of going back to the Iceberg Lab, as reported in [#20].
 - [ ] A modding guide: the game's files, the community's tools for them, and how to share a mod.
 - [ ] The two cutscenes that still end a little differently when skipped than when played ([#9]).
+- [ ] A skip for the cutscenes that have none yet, like those of the first fight with Cortex and of Cavern Catastrophe ([#28]).
 - [ ] The slide's long jump at any moment, as a game option ([#11]).
 - [ ] Render distance as a PC option.
 - [ ] Level select, as a game option.
@@ -151,6 +152,7 @@ differences as options on the PAL game ([#14]), the port's own texts in Brazilia
 [#23]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/23
 [#24]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/24
 [#25]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/25
+[#28]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/28
 
 ## Building on Windows
 

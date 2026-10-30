@@ -16,6 +16,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <string>
 
 namespace NativeUi
@@ -76,6 +77,9 @@ constexpr BindingInfo Infos[BindingCount] = {
 Binding g_Bindings[BindingCount];
 bool g_Read = false;
 bool g_Saving = true;
+// The log's changes (LogBindingChanges): the controls it last gave (the start's), and whether they changed since
+Binding g_Logged[BindingCount];
+bool g_ChangeDue = false;
 SDL_Gamepad* g_LastGamepad = nullptr;
 // The mouse's push past the stick's full deflection this read, each axis (1: none): the camera's turn's boost (ScaleCameraTurn)
 f32 g_MouseBoostX = 1.0f;
@@ -152,10 +156,13 @@ void Read()
             g_Bindings[i].keys[1] = Infos[i].defaults.keys[1];
         }
     }
+
+    std::copy(std::begin(g_Bindings), std::end(g_Bindings), std::begin(g_Logged));
 }
 
 void Save()
 {
+    g_ChangeDue = true;
     if (!g_Saving)
     {
         return;
@@ -173,6 +180,41 @@ void Save()
         file << Infos[i].name << "=" << g_Bindings[i].keys[0] << "," << g_Bindings[i].keys[1] << "," << g_Bindings[i].button << ","
              << g_Bindings[i].button2 << "\n";
     }
+}
+
+// A key or a pad's button as the log names it (English, whatever the game's language: "space", "the mouse's left button", "south")
+std::string LogKeyName(s32 key)
+{
+    static constexpr const char* Mouse[] = {"the mouse's left button", "the mouse's right button", "the mouse's middle button",
+                                            "the mouse's button 4",    "the mouse's button 5",     "the wheel up",
+                                            "the wheel down"};
+    if (IsMouseKey(key))
+    {
+        return Mouse[key - KeyMouseLeft];
+    }
+
+    const char* name = key > SDL_SCANCODE_UNKNOWN && key < SDL_SCANCODE_COUNT ? SDL_GetScancodeName(static_cast<SDL_Scancode>(key))
+                                                                               : nullptr;
+    return name != nullptr && name[0] != '\0' ? name : "none";
+}
+
+std::string LogButtonName(s32 button)
+{
+    // By their places (a pad's labels differ by its maker)
+    static constexpr const char* Buttons[] = {"south", "east", "west", "north", "back", "guide", "start", "the left stick",
+                                              "the right stick", "the left shoulder", "the right shoulder", "the D-pad's up",
+                                              "the D-pad's down", "the D-pad's left", "the D-pad's right"};
+    if (button == GamepadTriggerBase || button == GamepadTriggerBase + 1)
+    {
+        return button == GamepadTriggerBase ? "the left trigger" : "the right trigger";
+    }
+
+    if (button >= 0 && static_cast<size_t>(button) < std::size(Buttons))
+    {
+        return Buttons[button];
+    }
+
+    return button >= 0 ? "button " + std::to_string(button) : "none";
 }
 
 u8 Clamp255(int value)
@@ -342,6 +384,41 @@ void ResetBindings()
 
     Save();
     UpdatePrompts();
+}
+
+void LogBindingChanges()
+{
+    if (!g_ChangeDue)
+    {
+        return;
+    }
+
+    g_ChangeDue = false;
+    for (u32 i = 0; i < BindingCount; i++)
+    {
+        const Binding& was = g_Logged[i];
+        const Binding& now = g_Bindings[i];
+        for (u32 slot = 0; slot < 2; slot++)
+        {
+            if (was.keys[slot] != now.keys[slot])
+            {
+                Native::Log("options: %s's %s %s -> %s", Infos[i].name, slot == 0 ? "key" : "second key",
+                            LogKeyName(was.keys[slot]).c_str(), LogKeyName(now.keys[slot]).c_str());
+            }
+        }
+
+        const s32 buttons[2][2] = {{was.button, now.button}, {was.button2, now.button2}};
+        for (u32 slot = 0; slot < 2; slot++)
+        {
+            if (buttons[slot][0] != buttons[slot][1])
+            {
+                Native::Log("options: %s's %s %s -> %s", Infos[i].name, slot == 0 ? "pad button" : "second pad button",
+                            LogButtonName(buttons[slot][0]).c_str(), LogButtonName(buttons[slot][1]).c_str());
+            }
+        }
+
+        g_Logged[i] = now;
+    }
 }
 
 void SetBindingsSaving(bool saving)

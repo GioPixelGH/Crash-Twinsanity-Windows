@@ -106,6 +106,9 @@ double SessionSeconds();
 // once StartLogPrivacy has run (the first thing main does)
 void StartLogPrivacy();
 std::string WithoutProfile(const std::string& text);
+// A path as the log writes it: the system's separators throughout (Windows' \, whatever joined its parts with /); the log then
+// names the folders it's in (%APPDATA%\Crash Twinsanity\textures)
+std::string LogPath(const std::string& path);
 // A device's name as the log gives it: a person's name in it ("Headphones (Ann's AirPods)") left out
 std::string DeviceNameForLog(const char* name);
 // Where the log goes (entry.cpp's SetUpLog): the settings folder's log.txt (the last session's log is log.previous.txt then), or

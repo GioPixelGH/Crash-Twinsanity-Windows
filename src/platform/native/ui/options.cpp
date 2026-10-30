@@ -11,9 +11,11 @@
 
 #include <SDL3/SDL.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <filesystem>
+#include <iterator>
 #include <fstream>
 #include <string>
 
@@ -75,6 +77,9 @@ bool g_Read = false;
 // Whether options.txt was there when they were read (else the defaults: a first start)
 bool g_FromFile = false;
 bool g_Saving = true;
+// The log's changes (LogSettingChanges): the values it last gave (the start's, then each change's), and whether one changed since
+s32 g_Logged[OptionCount];
+bool g_ChangeDue = false;
 
 std::atomic<bool> g_FocusLost{false};
 std::atomic<bool> g_FocusPauseDue{false};
@@ -123,6 +128,42 @@ void Read()
                 g_Values[info.option] = value < 0 ? 0 : value > info.maximum ? info.maximum : value;
             }
         }
+    }
+
+    std::copy(std::begin(g_Values), std::end(g_Values), std::begin(g_Logged));
+}
+
+// What a value means where its number doesn't say it (the settings screen's words, in English): nullptr for a number
+const char* ValueMeaning(const OptionInfo& info, s32 value)
+{
+    static constexpr const char* Rates[] = {"50 Hz", "60 Hz", "120 Hz", "144 Hz", "unlimited"};
+    static constexpr const char* Controllers[] = {"automatic", "keyboard", "Xbox", "PlayStation", "Switch"};
+    static constexpr const char* Languages[] = {"Windows'", "English", "French", "German", "Italian", "Spanish"};
+    static constexpr const char* Filters[] = {"sharp", "smooth"};
+    static constexpr const char* Hints[] = {"original", "bar"};
+    static constexpr const char* AntiAliasing[] = {"off", "FXAA"};
+    static constexpr const char* Layouts[] = {"by the places", "Nintendo's"};
+    static constexpr const char* Toggle[] = {"off", "on"};
+    auto pick = [value](const auto& words) -> const char*
+    { return value >= 0 && static_cast<size_t>(value) < std::size(words) ? words[value] : nullptr; };
+    switch (info.option)
+    {
+    case OptionRefresh60:
+        return pick(Rates);
+    case OptionController:
+        return pick(Controllers);
+    case OptionLanguage:
+        return pick(Languages);
+    case OptionTextureFilter:
+        return pick(Filters);
+    case OptionMenuHints:
+        return pick(Hints);
+    case OptionAntiAliasing:
+        return pick(AntiAliasing);
+    case OptionNintendoLayout:
+        return pick(Layouts);
+    default:
+        return info.maximum == 1 ? pick(Toggle) : nullptr;
     }
 }
 
@@ -232,6 +273,7 @@ void SetOption(Option option, s32 value)
     }
 
     g_Values[option] = value;
+    g_ChangeDue = true;
     Save();
     ApplyOption(option);
 }
@@ -249,6 +291,46 @@ void LogOptions()
 
     Native::Log("options (%s): %s", g_FromFile ? "options.txt's" : "the defaults: no options.txt yet", halves[0].c_str());
     Native::Log("options, the rest: %s", halves[1].c_str());
+    // The changes are from these
+    std::copy(std::begin(g_Values), std::end(g_Values), std::begin(g_Logged));
+    g_ChangeDue = false;
+}
+
+void LogSettingChanges()
+{
+    LogOptionChanges();
+    LogResolutionChanges();
+    LogBindingChanges();
+}
+
+void LogOptionChanges()
+{
+    if (!g_ChangeDue)
+    {
+        return;
+    }
+
+    g_ChangeDue = false;
+    for (const OptionInfo& info : Infos)
+    {
+        const s32 was = g_Logged[info.option];
+        const s32 now = g_Values[info.option];
+        if (was == now)
+        {
+            continue;
+        }
+
+        const char* wasMeaning = ValueMeaning(info, was);
+        const char* nowMeaning = ValueMeaning(info, now);
+        char meaning[96] = "";
+        if (wasMeaning != nullptr && nowMeaning != nullptr)
+        {
+            std::snprintf(meaning, sizeof(meaning), " (%s -> %s)", wasMeaning, nowMeaning);
+        }
+
+        Native::Log("options: %s %d -> %d%s", info.name, was, now, meaning);
+        g_Logged[info.option] = now;
+    }
 }
 
 void SetOptionSaving(bool saving)
@@ -338,6 +420,13 @@ void Frame()
         Resolution resolution = CurrentResolution();
         resolution.fullscreen = !resolution.fullscreen;
         SetResolution(resolution);
+    }
+
+    // The settings changed, in the log: the settings screen's once it's closed (a value stepped through on the way to the one
+    // chosen isn't a change), the others' (Alt+Enter, a test's) now
+    if (!SettingsOpen())
+    {
+        LogSettingChanges();
     }
 
     // The sound muted while the window isn't the one in front (only while the option pauses)

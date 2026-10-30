@@ -374,7 +374,7 @@ std::string FindDiscImageBesideProgram()
         std::string problem = CheckDiscImage(image);
         if (problem.empty())
         {
-            Native::Log("portable mode: the disc image found in the program's folder: %s", image.c_str());
+            Native::Log("portable mode: the disc image found in the program's folder: %s", Native::LogPath(image).c_str());
             return image;
         }
 
@@ -455,7 +455,7 @@ void Native::OpenDiscImage()
     }
 
     g_DiscImage = image;
-    Log("disc image %s", image.c_str());
+    Log("disc image %s", LogPath(image).c_str());
 }
 
 // ---------------------------------------------------------------------------------------------------------- the system

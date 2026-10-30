@@ -1,5 +1,7 @@
 #include "gl.h"
 
+#include "graphics/gputime.h"
+
 #include <SDL3/SDL.h>
 
 #include <cstdio>
@@ -53,6 +55,12 @@ bool Load(T& function, const char* name)
     {
         std::fprintf(stderr, "graphics: OpenGL has no %s\n", name);
         return false;
+    }
+
+    // The work given the card timed (gputime.h)
+    if (void* timed = NativeGraphics::TimedEntryPoint(name))
+    {
+        function = reinterpret_cast<T>(timed);
     }
 
     return true;

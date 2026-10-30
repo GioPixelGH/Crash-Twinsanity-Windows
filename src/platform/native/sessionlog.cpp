@@ -2,12 +2,15 @@
 // "The log"). At the start, after the version's line: the date, Windows (and Wine), the command line, the processor and memory;
 // then the options and the resolution as their files name them, the threads, the TWIN_ variables, the mods, the texture pack and
 // how the last session ended. While the game is played, a line of performance a minute of play: the frames' rate, the slowest
-// frame, each thread's work a frame (the counters the threads keep anyway: nothing profiled). At the end the session's summary
-// (its play's frame rate, the share of it below the rate chosen) and how it ended, whichever way: the window closed, the game's
-// own exit, an error, a crash. Logs are attached to public issues: the profile folder in paths is written %USERPROFILE%, and
-// nothing names the user, the computer, a serial number or an address
+// frame, each thread's work a frame (the counters the threads keep anyway: nothing profiled) and the graphics card's own time
+// (OpenGL's timer queries, graphics/gputime.h); and a line for each setting changed (the ui's LogSettingChanges). At the end the
+// session's summary (its play's frame rate, the share of it below the rate chosen) and how it ended, whichever way: the window
+// closed, the game's own exit, an error, a crash. Logs are attached to public issues: the folders in paths are written by their
+// variables' names (%APPDATA%, %LOCALAPPDATA%, %USERPROFILE%), and nothing names the user, the computer, a serial number or an
+// address
 #include "native.h"
 
+#include "graphics/gputime.h"
 #include "graphics/renderthread.h"
 #include "ui/nativeui.h"
 
@@ -191,6 +194,8 @@ struct Span
     u64 waitedNanoseconds;
     u64 vuNanoseconds;
     u64 renderNanoseconds;
+    // The graphics card's (gputime.h: its results come a few frames late, nothing over a minute)
+    u64 gpuNanoseconds;
 };
 Span g_Minute = {};
 Span g_Play = {};
@@ -208,12 +213,14 @@ u64 g_LastGame = 0;
 u64 g_LastWaited = 0;
 u64 g_LastVu = 0;
 u64 g_LastRender = 0;
+u64 g_LastGpu = 0;
 // Seconds of play a performance line ($TWIN_PERFORMANCE_EVERY)
 double g_PerformanceEvery = 60.0;
 std::atomic<bool> g_Ended{false};
 bool g_LogToFile = false;
 
-// A frame's work, each thread's (as the threads are now)
+// A frame's work, each thread's (as the threads are now), and the graphics card's: its own time drawing, apart from the threads'
+// (the render thread's time has the driver's in it, and its waits for the card)
 void FormatWork(const Span& span, char* out, size_t size)
 {
     double frames = span.frames != 0 ? static_cast<double>(span.frames) : 1.0;
@@ -221,22 +228,33 @@ void FormatWork(const Span& span, char* out, size_t size)
     double game = static_cast<double>(span.gameNanoseconds) / frames / 1e6 - waited;
     double vu = static_cast<double>(span.vuNanoseconds) / frames / 1e6;
     double render = static_cast<double>(span.renderNanoseconds) / frames / 1e6;
+    char threads[192] = "";
     switch (NativeGraphics::ThreadsNow())
     {
     case NativeGraphics::Threads::One:
-        std::snprintf(out, size, "the game with VU1 and the GS %.1f ms", game + waited);
+        std::snprintf(threads, sizeof(threads), "the game with VU1 and the GS %.1f ms", game + waited);
         break;
     case NativeGraphics::Threads::TwoVuOnGame:
-        std::snprintf(out, size, "the game with VU1 %.1f ms (and %.1f ms waiting), the render thread %.1f ms", game, waited, render);
+        std::snprintf(threads, sizeof(threads), "the game with VU1 %.1f ms (and %.1f ms waiting), the render thread %.1f ms", game,
+                      waited, render);
         break;
     case NativeGraphics::Threads::TwoVuOnRender:
-        std::snprintf(out, size, "the game %.1f ms (and %.1f ms waiting), the render thread with VU1 %.1f ms", game, waited, render);
+        std::snprintf(threads, sizeof(threads), "the game %.1f ms (and %.1f ms waiting), the render thread with VU1 %.1f ms", game,
+                      waited, render);
         break;
     case NativeGraphics::Threads::Three:
-        std::snprintf(out, size, "the game %.1f ms (and %.1f ms waiting), VU1 %.1f ms, the render thread %.1f ms", game, waited, vu,
-                      render);
+        std::snprintf(threads, sizeof(threads), "the game %.1f ms (and %.1f ms waiting), VU1 %.1f ms, the render thread %.1f ms",
+                      game, waited, vu, render);
         break;
     }
+
+    char card[48] = "the graphics card unknown";
+    if (NativeGraphics::GpuTimeKnown())
+    {
+        std::snprintf(card, sizeof(card), "the graphics card %.1f ms", static_cast<double>(span.gpuNanoseconds) / frames / 1e6);
+    }
+
+    std::snprintf(out, size, "%s, %s", threads, card);
 }
 
 // The session's summary: its time, its play's frame rate, the share below the rate chosen, the slowest frame, the threads' work
@@ -252,7 +270,7 @@ void FormatSummary(char* out, size_t size)
 
     char played[32];
     char below[96] = "";
-    char work[192];
+    char work[256];
     FormatDuration(g_Play.seconds, played, sizeof(played));
     if (g_CountedSeconds > 0.0 && g_Rate > 0)
     {
@@ -268,7 +286,7 @@ void FormatSummary(char* out, size_t size)
 void LogPerformance()
 {
     char played[32];
-    char work[192];
+    char work[256];
     FormatDuration(g_Minute.seconds, played, sizeof(played));
     FormatWork(g_Minute, work, sizeof(work));
     const char* chunk = NativeUi::TrailChunk();
@@ -649,6 +667,9 @@ void Native::StartLogPrivacy()
 
     g_PrivacyReady = true;
 #if defined(_WIN32)
+    // The settings' folders by their own names (in the profile folder, and longer: replaced first)
+    AddVariable(L"APPDATA", "%APPDATA%", false);
+    AddVariable(L"LOCALAPPDATA", "%LOCALAPPDATA%", false);
     AddVariable(L"USERPROFILE", "%USERPROFILE%", false);
     AddVariable(L"USERNAME", "%USERNAME%", true);
     AddVariable(L"COMPUTERNAME", "%COMPUTERNAME%", true);
@@ -701,6 +722,15 @@ std::string Native::WithoutProfile(const std::string& text)
     }
 
     return result;
+}
+
+std::string Native::LogPath(const std::string& path)
+{
+    std::string text = path;
+#if defined(_WIN32)
+    std::replace(text.begin(), text.end(), '/', '\\');
+#endif
+    return text;
 }
 
 std::string Native::DeviceNameForLog(const char* name)
@@ -792,6 +822,7 @@ void Native::SessionFrame(u64 gameWorkNanoseconds)
     const u64 waited = NativeGraphics::RenderWaitNanoseconds();
     const u64 vu = NativeGraphics::VuStageBusyNanoseconds();
     const u64 render = NativeGraphics::RenderBusyNanoseconds();
+    const u64 gpu = NativeGraphics::GpuBusyNanoseconds();
     if (inPlay && g_LastInPlay && g_LastFrame != Clock::time_point{})
     {
         const double seconds = std::chrono::duration<double>(now - g_LastFrame).count();
@@ -804,6 +835,7 @@ void Native::SessionFrame(u64 gameWorkNanoseconds)
             span->waitedNanoseconds += waited - g_LastWaited;
             span->vuNanoseconds += vu - g_LastVu;
             span->renderNanoseconds += render - g_LastRender;
+            span->gpuNanoseconds += gpu - g_LastGpu;
         }
 
         g_SecondSeconds += seconds;
@@ -837,6 +869,7 @@ void Native::SessionFrame(u64 gameWorkNanoseconds)
     g_LastWaited = waited;
     g_LastVu = vu;
     g_LastRender = render;
+    g_LastGpu = gpu;
 }
 
 void Native::EndSession(const char* format, ...)
@@ -851,6 +884,8 @@ void Native::EndSession(const char* format, ...)
     va_start(arguments, format);
     std::vsnprintf(how, sizeof(how), format, arguments);
     va_end(arguments);
+    // A setting changed just before (the window closed with the settings screen open)
+    NativeUi::LogSettingChanges();
     char summary[600];
     FormatSummary(summary, sizeof(summary));
     Log("%s", summary);

@@ -127,12 +127,13 @@ The log always has the time of each line, the game's states as they change (load
 game over) with where Crash is, the area he's in, the saves written and the movies played. At the start it also says what a bug
 report would ask you: the date, your Windows version (and Wine's, on Linux or a Steam Deck), your processor, memory, screen and
 sound device, the game's options and resolution, the mods and texture pack in use, and how the last session ended (closed,
-crashed or stuck). While you play it adds how long each level took to load and a line a minute with the frame rate, and when the
-game closes, a summary of the session's frame rate and how it closed. To report a bug you can reproduce, turn on **Options >
-Gameplay > Detailed log** first: it also writes where Crash is every 5 seconds, every sound played and every file read from the
-disc image.
+crashed or stuck). While you play it adds how long each level took to load, a line a minute with the frame rate and how long
+the processor and the graphics card took for a frame, and a line for each option you change; when the game closes, a summary of
+the session's frame rate and how it closed. To report a bug you can reproduce, turn on **Options > Gameplay > Detailed log**
+first: it also writes where Crash is every 5 seconds, every sound played and every file read from the disc image.
 
-The log is made to be shared: its paths write your user folder as `%USERPROFILE%` (so your user name isn't in them), a device
+The log is made to be shared: its paths write your user folder as `%USERPROFILE%` and the game's settings folder as
+`%APPDATA%\Crash Twinsanity` (so your user name isn't in them), a device
 named after someone ("Ann's AirPods") loses the name, and the game doesn't write your computer's name, serial numbers or
 addresses. Folders outside your user folder keep their names: have a look before you share it if one has yours.
 

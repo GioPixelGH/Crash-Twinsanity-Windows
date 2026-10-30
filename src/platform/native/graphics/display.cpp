@@ -1,6 +1,7 @@
 #include "display.h"
 
 #include "capture.h"
+#include "gputime.h"
 
 #include "hardware.h"
 #include "renderthread.h"
@@ -159,6 +160,12 @@ void Load(T& function, const char* name)
     {
         std::fprintf(stderr, "graphics: OpenGL has no %s\n", name);
         std::abort();
+    }
+
+    // The work given the card timed (gputime.h)
+    if (void* timed = NativeGraphics::TimedEntryPoint(name))
+    {
+        function = reinterpret_cast<T>(timed);
     }
 }
 
@@ -1025,6 +1032,8 @@ void MakeShown(u64 frame)
     shown.boxPixels = h.gs->boxPixels;
     DumpPicture(shown.picture, g_ShownCount++);
     ApplyGraphicsSettings();
+    // The card's time of the frames before, read where it's there (gputime.h)
+    GpuTimeFrame();
 }
 
 // On the main thread: a slot's picture shown in the window
@@ -1122,6 +1131,9 @@ void ShowFrameHere();
 void ShowFrame()
 {
     NoteWindowSize();
+    // The card's time of the frames before on this thread's context (the window's: the picture shown, the UI over it; with one
+    // thread everything), read where it's there (gputime.h)
+    GpuTimeFrame();
     if (!RenderThreadActive())
     {
         ShowFrameHere();

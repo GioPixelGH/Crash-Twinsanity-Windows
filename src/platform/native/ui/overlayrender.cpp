@@ -6,6 +6,7 @@
 #include "ui/overlayinternal.h"
 #include "ui/nativeui.h"
 
+#include "graphics/gputime.h"
 #include "graphics/presenter.h"
 #include "native.h"
 
@@ -117,7 +118,9 @@ struct Gl
 
 template <typename T> void Load(T& function, const char* name)
 {
-    function = reinterpret_cast<T>(SDL_GL_GetProcAddress(name));
+    // The work given the card timed (gputime.h)
+    void* timed = NativeGraphics::TimedEntryPoint(name);
+    function = timed != nullptr ? reinterpret_cast<T>(timed) : reinterpret_cast<T>(SDL_GL_GetProcAddress(name));
 }
 
 bool LoadGl(Gl& gl)

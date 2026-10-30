@@ -106,7 +106,10 @@ PORTABLE_DATA = {"options.txt": (b"# a test's\nshow_fps=1\npause_on_focus_loss=0
 # The log a player's start writes (sessionlog.cpp; native/WINDOWS.md, "The log"), started as Explorer starts it (its own log.txt
 # in the settings folder): the last session's log a 1.0.18 one that crashed, a path in the profile folder in its last line; a mod,
 # a few options. What the start's log must have (regular expressions, in its order), played on the beach for LOG_SECONDS with a
-# performance line every 10 s of play; then a start that ends on an error (a disc image that isn't there), its last lines
+# performance line every 10 s of play (the graphics card's time in it: the render thread's context times it, a hidden window's);
+# then a start that ends on an error (a disc image that isn't there), its last lines; then the settings screen driven from the
+# main menu through changes ($TWIN_SETTINGS_LOG_TEST: settingsshots.cpp), each logged once as it was left, with a settings folder
+# of its own (LOG_SETTINGS_OPTIONS), and no other change line (LOG_SETTINGS_CHANGES of them)
 LOG_PREVIOUS = ("[native] [   0.000] Crash Twinsanity 1.0.18\n"
                 "[native] [ 812.500] disc image {profile}\\Desktop\\Crash Twinsanity.ISO\n"
                 "[native] fatal exception 0xc0000005 at 0xffffffffffffffff (pc CrashTwinsanity.exe+0x1eb40d), in {profile}\\x\n"
@@ -133,9 +136,9 @@ LOG_START = [
     r"\] audio: none",
     r"\] game: Levels\\Earth\\Hub\\beach loaded in [\d.]+ s",
     r"\] performance: [\d.]+ fps over \d+ s of play, the slowest frame \d+ ms; a frame's work: the game [\d.]+ ms .*"
-    r"VU1 [\d.]+ ms, the render thread [\d.]+ ms; the player in levels\\earth\\hub\\beach",
+    r"VU1 [\d.]+ ms, the render thread [\d.]+ ms, the graphics card [\d.]+ ms; the player in levels\\earth\\hub\\beach",
     rf"\] session: {DURATION}, {DURATION} of it played at [\d.]+ fps on average, \d+% of it below 57 fps .*"
-    r"the slowest frame \d+ ms",
+    r"the slowest frame \d+ ms; a frame's work: .*, the graphics card [\d.]+ ms\n",
     rf"\] exit: the level sweep's run ended \(status 0\) after {DURATION}; the game's state ",
 ]
 LOG_ERROR = [
@@ -143,6 +146,18 @@ LOG_ERROR = [
     r"\"exit: the level sweep's run ended \(status 0\)",
     rf"\] session: {DURATION}, none of it played\n\[native\] fatal: The disc image isn't where it was: .*missing image\.iso.*\n*$",
 ]
+# The settings screen's changes: the refresh rate stepped from 144 Hz to 120, 60, 50 and back to 60 is one change, the resolution
+# stepped 2x, 3x, 2x, 3x one, a key bound one; all three once the screen is closed, before the test's end
+LOG_SETTINGS_OPTIONS = "refresh_60hz=3\npause_on_focus_loss=0\n"
+LOG_SETTINGS = [
+    r"\] options \(options\.txt's\): .*refresh_60hz=3 ",
+    r"\] options: refresh_60hz 3 -> 1 \(144 Hz -> 60 Hz\)\n",
+    r"\] options: resolution 2x -> 3x the PS2's picture\n",
+    r"\] options: \w+'s (?:second )?key .+ -> F8\n",
+    r"\] settings log test: done\n",
+    rf"\] exit: the program ended after {DURATION}",
+]
+LOG_SETTINGS_CHANGES = 3
 # What starts it as Explorer does, run by pythonw (no console: python.exe made detached gets a console of its own, which the
 # program would attach to): the program started with no output handles and no console of its parent's (entry.cpp's SetUpLog)
 PORTABLE_LAUNCHER = ("import subprocess, sys\n"
@@ -522,8 +537,9 @@ def private_names(log):
 
 def session_log(exe, work):
     """The log a player's start writes (sessionlog.cpp), started as Explorer starts it: a start played on the beach (the last
-    session's log one that crashed), then a start that ends on an error (a disc image that isn't there), each log's lines against
-    LOG_START's and LOG_ERROR's, and nothing private in them: [(name, passed, what happened)]"""
+    session's log one that crashed), then a start that ends on an error (a disc image that isn't there), then the settings
+    screen's changes (a settings folder of its own), each log's lines against LOG_START's, LOG_ERROR's and LOG_SETTINGS', nothing
+    private in them and no path written with / in a folder named by its variable: [(name, passed, what happened)]"""
     root = work / "log"
     if root.exists():
         shutil.rmtree(root)
@@ -534,19 +550,24 @@ def session_log(exe, work):
     (settings / "disc_image.txt").write_text(disc_image() + "\n")
     (settings / "options.txt").write_text(LOG_OPTIONS)
     (settings / "log.txt").write_text(LOG_PREVIOUS.format(profile=Path.home()))
+    changing = root / "appdata-settings"
+    (changing / "Crash Twinsanity").mkdir(parents=True)
+    (changing / "Crash Twinsanity" / "disc_image.txt").write_text(disc_image() + "\n")
+    (changing / "Crash Twinsanity" / "options.txt").write_text(LOG_SETTINGS_OPTIONS)
 
-    def run(name, arguments, environment, timeout):
+    def run(name, arguments, environment, timeout, folder=appdata):
         """The program started headless as Explorer starts it: its exit status (99: timed out) and log.txt, kept as root/name"""
-        env = dict(os.environ, APPDATA=str(appdata), HOME=str(appdata), TWINSANITY_AUDIO="off", **environment)
+        env = dict(os.environ, APPDATA=str(folder), HOME=str(folder), TWINSANITY_AUDIO="off", **environment)
         env.pop("TWINSANITY_ISO", None)
         status = subprocess.run([str(Path(sys.executable).with_name("pythonw.exe")), "-c", PORTABLE_LAUNCHER, str(timeout),
                                  str(exe), "--headless", "--quiet-stubs", *arguments], env=env, cwd=root,
                                 timeout=timeout + 60).returncode
-        log = (settings / "log.txt").read_text(errors="replace") if (settings / "log.txt").exists() else ""
+        log_file = folder / "Crash Twinsanity" / "log.txt"
+        log = log_file.read_text(errors="replace") if log_file.exists() else ""
         (root / name).write_text(log)
         return status, log
 
-    def result(name, status, expected_status, log, patterns):
+    def result(name, status, expected_status, log, patterns, changes=None):
         # Each pattern found after the one before it
         at, missing = 0, None
         for pattern in patterns:
@@ -556,20 +577,30 @@ def session_log(exe, work):
                 break
             at = found.end()
         private = private_names(log)
+        # (The command line as it was given: local.json's disc image has /)
+        slashed = [line for line in log.splitlines() if re.search(r"%(?:APPDATA|LOCALAPPDATA|USERPROFILE)%", line) and "/" in line
+                   and "] command line: " not in line]
+        changed = len(re.findall(r"^\[native\] \[ *[\d.]+\] options: ", log, re.M))
         if status != expected_status:
             return name, False, f"exit {status}"
         if missing:
             return name, False, f"nothing in the log like {missing!r} (after the lines before it)"
         if private:
             return name, False, f"the log names {private[0]}"
+        if slashed:
+            return name, False, f"a path written with / in it: {slashed[0]!r}"
+        if changes is not None and changed != changes:
+            return name, False, f"{changed} lines of settings changed, not {changes}"
         return name, True, f"its {len(patterns)} kinds of lines there, nothing private"
 
     status, log = run("start.txt", ["--iso", disc_image()],
                       {"TWIN_SWEEP_LEVEL": PORTABLE_CHUNK, "TWIN_SWEEP_SECONDS": str(LOG_SECONDS), "TWIN_SWEEP_TIMEOUT": "120",
                        "TWIN_PERFORMANCE_EVERY": "10"}, 300)
-    results = [result("a start played", status, 0, log, LOG_START)]
+    results = [result("a start played", status, 0, log, LOG_START, changes=0)]
     status, log = run("error.txt", ["--iso", str(root / "missing image.iso")], {}, 60)
     results.append(result("a start ending on an error", status, 1, log, LOG_ERROR))
+    status, log = run("settings.txt", ["--iso", disc_image()], {"TWIN_SETTINGS_LOG_TEST": "1"}, 120, folder=changing)
+    results.append(result("settings changed", status, 0, log, LOG_SETTINGS, changes=LOG_SETTINGS_CHANGES))
     return results
 
 

@@ -279,11 +279,16 @@ local.json's. `--hints-shots FOLDER` runs only the hints' check, with a window, 
 portable mode's (under a minute; the dialog's pictures in `build/native/check/portable/shots/`); `--fps-shots FOLDER` only the
 FPS counter's (its `FPS_CASES`, `$TWIN_FPS_TEST`, below: at 60 Hz, 50 Hz, 144 Hz without v-sync, and off; a minute or so), with
 a window, as the counter counts the pictures shown (the self-test checks its sums and its place without one), and saves the
-window's pictures there. The log's check (`session_log()`, `--log` alone, under a minute) starts the program as Explorer does
-(its own log.txt) twice: a start played on the beach for 25 s, the last session's log a 1.0.18 one that crashed with a path in
-the profile folder in its last line, a mod and a few options; then a start that ends on an error (a disc image that isn't
-there). Each log must have its kinds of lines in their order (`LOG_START`, `LOG_ERROR`: below, "The log") and nothing private:
-not the profile folder's name anywhere, nor the user's in a path, nor the computer's.
+window's pictures there. The log's check (`session_log()`, `--log` alone, a minute or so) starts the program as Explorer does
+(its own log.txt) three times: a start played on the beach for 25 s, the last session's log a 1.0.18 one that crashed with a path
+in the profile folder in its last line, a mod and a few options; then a start that ends on an error (a disc image that isn't
+there); then, with a settings folder of its own, `$TWIN_SETTINGS_LOG_TEST=1` (settingsshots.cpp: the settings screen opened from
+the main menu, the refresh rate stepped from 144 Hz to 120, 60, 50 and 60 again, the resolution from 2x to 3x, 2x and 3x, a key
+bound to F8, the screen closed, the program ended). Each log must have its kinds of lines in their order (`LOG_START`,
+`LOG_ERROR`, `LOG_SETTINGS`: below, "The log"; the played start's performance lines with the graphics card's time), as many
+lines of settings changed as it should (none in the played start, three in the settings' run) and nothing private: not the
+profile folder's name anywhere, nor the user's in a path, nor the computer's, nor a path with `/` in a folder written as its
+variable.
 
 ## The log
 
@@ -319,25 +324,60 @@ person's name in it left out: "Headphones (someone's AirPods)"; the driver, its 
 While it runs, besides the game's trail (under "Debugging"): `game: LEVEL loaded in N s` for each loading (the title's and a
 level's, from the loading state to the next), and `performance:` a line a minute of play (play and the cutscenes, not the menus,
 the pause, the loadings or the movies): the frames a second, the slowest frame, a frame's work on each thread (the game's own
-and its waits for the others, VU1's, the render thread's; with fewer threads, which one has VU1 and the GS) and the player's
-chunk. Its counters are those the threads keep anyway (graphics/display.cpp's game work, renderthread.cpp's busy and wait times),
-a clock read and a few sums a frame: nothing is profiled. `$TWIN_PERFORMANCE_EVERY=SECONDS` sets the minute (the check's 10).
+and its waits for the others, VU1's, the render thread's; with fewer threads, which one has VU1 and the GS), the graphics card's
+own time a frame, and the player's chunk. The threads' counters are those they keep anyway (graphics/display.cpp's game work,
+renderthread.cpp's busy and wait times), a clock read and a few sums a frame: nothing is profiled.
+`$TWIN_PERFORMANCE_EVERY=SECONDS` sets the minute (the check's 10).
+
+The graphics card's time (graphics/gputime.cpp) tells a render thread slow on the processor from one waiting on the card: the
+render thread's own time has the driver's work in it, and its waits for the card (a picture read back, a full queue), so 25 ms
+there can be either. Each OpenGL call that gives the card work (`glDrawArrays`, `glClear`, `glBlitFramebuffer`,
+`glTexImage2D`, `glTexSubImage2D`, `glGenerateMipmap`: the hardware renderer's, the window's picture's and the UI's, timed where
+the three loaders take their entry points) is timed by a query of its own (`GL_TIME_ELAPSED`, OpenGL 3.3's), so the card's idle
+time between calls (waiting for the thread to send more) isn't counted. A single query around a frame's work would count it:
+it would read near the render thread's own time whenever the thread is the slow one. Each query's end is sent at once
+(`glFlush`): a driver may send a call's work to an idle card at once and keep the query's end until the next call, the card's
+wait counted (NVIDIA's without a window, one thread: 8.7 ms a frame against 2.2 with the flush; in a window the same with or
+without). The results are read a few frames later, each when `GL_QUERY_RESULT_AVAILABLE` says it's there (the render thread
+once it's made a picture, the game's thread when it shows one), never waited for. The picture read back (`glReadPixels`) isn't
+timed: the thread waits for it, and its copy is small. Each thread's context has queries of its own (they aren't shared), the
+one-thread mode's one context all of them. One frame in 8 is timed on each thread and counted 8 times: a query for each of
+the beach's some 250 calls a frame, every frame, cost the render thread 0.4-0.5 ms (68.5 fps against 1.0.19's 70.2 at 4x and
+144 Hz); a frame in 8, flushed, costs nothing seen (70.1 fps and 14.3 ms against 1.0.19's 70.0 and 14.3, three runs each,
+alternated), and the minute's line still averages over 400 timed frames. The log says it once at the start, `graphics: the
+card's time measured by OpenGL's timer queries (64 bits), a frame in 8`; `unknown` (with a line saying why) when the driver
+has no timer entry points or no bits (`GL_QUERY_COUNTER_BITS` 0), its results never come (8192 waiting), or
+`$TWIN_GPU_TIME=0` (which leaves the entry points as they are: for measuring the timing's own cost). Measured on the beach in
+a 1280x720 window at 144 Hz (RTX 4070 SUPER): at 4x the render thread 14 ms a frame, the card 2.2 ms; at 1x with one thread,
+the game's thread 28 ms, the card 1.1 ms. Without a window (the checks) the card's time reads higher (2.2 ms at 1x against
+1.1): an idle card's lower clocks, most likely.
+
+The settings changed in play are lines too, `options: NAME WAS -> NOW` by options.txt's names, with what the values mean where
+the number doesn't say it (`options: refresh_60hz 3 -> 1 (144 Hz -> 60 Hz)`, `options: vsync 1 -> 0 (on -> off)`),
+`options: resolution 2x -> 4x the PS2's picture`, `options: display a 1280x720 window -> fullscreen` and the controls
+(`options: jump's key Space -> K`, `... second key`, `pad button`, `second pad button`: keys by SDL's English names, pad buttons
+by their places). Each is compared with what the log gave last (the start's lines, then the changes'), once the settings screen
+is closed (a value stepped through on the way to another, or stepped back to, isn't a change), at the next frame for a change
+from elsewhere (Alt+Enter), and at the session's end (the window closed with the settings screen open): the ui's
+`LogSettingChanges` (options.cpp, resolution.cpp, bindings.cpp).
 
 At the end, whichever way it ends: `session:` its time, its time played, the frames a second on average, the share of the
 played seconds below 95% of the rate chosen (the refresh option's 50, 60, 120 or 144; none when unlimited), the slowest frame
-and a frame's work; then how it ended, with its time and where the game was: `quit: the window closed`; `exit: the program
-ended (status N)` (Main's return, a test's end); `exit: the game's C library ended the program` (ProgramExit: the retail C
-library's abort, a pure virtual call, gcc2.cpp's Terminate: the game never exits itself, so it's a bug), with the stack after
-it; `exit: portable mode turned on`; `exit: the level sweep's run ended`. An error (Native::Fatal: the disc image, SDL's video,
-the sound modules) writes the summary, then `[native] fatal: ...` as the last line (the message box shows it first); a crash's
-report (lowmemory_win32.cpp) ends with the summary ("it ended there"); `abort()` (a shader that doesn't compile, a failed
-check) writes `[native] fatal: the program aborted itself` and the summary.
+and a frame's work (the graphics card's with it); then how it ended, with its time and where the game was: `quit: the window
+closed`; `exit: the program ended (status N)` (Main's return, a test's end); `exit: the game's C library ended the program`
+(ProgramExit: the retail C library's abort, a pure virtual call, gcc2.cpp's Terminate: the game never exits itself, so it's a
+bug), with the stack after it; `exit: portable mode turned on`; `exit: the level sweep's run ended`. An error (Native::Fatal:
+the disc image, SDL's video, the sound modules) writes the summary, then `[native] fatal: ...` as the last line (the message
+box shows it first); a crash's report (lowmemory_win32.cpp) ends with the summary ("it ended there"); `abort()` (a shader that
+doesn't compile, a failed check) writes `[native] fatal: the program aborted itself` and the summary.
 
 Logs end up in public issues, so the profile folder in any path (the disc image's, the settings folder's, the mods', the
-command line's) is written `%USERPROFILE%`: as the system's code page has it and as UTF-8, its short form too, in any case and
-with either slash. A folder named as the user or the computer is `%USERNAME%`, `%COMPUTERNAME%`. Native::Log and Native::Fatal
-do it for every line; a crash's report names only modules and functions. Nothing names the computer, the user, a serial number
-or an address.
+command line's) is written `%USERPROFILE%`, and the settings' folders in it by their own names first, `%APPDATA%` and
+`%LOCALAPPDATA%` (`%APPDATA%\Crash Twinsanity\textures`): as the system's code page has them and as UTF-8, their short forms too,
+in any case and with either slash. A folder named as the user or the computer is `%USERNAME%`, `%COMPUTERNAME%`. Native::Log and
+Native::Fatal do it for every line; a crash's report names only modules and functions. Nothing names the computer, the user, a
+serial number or an address. Paths made of parts joined with `/` (the settings folder is kept with `/`, as SDL's) are written
+with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods', a portable disc image's).
 
 ## Debugging
 
@@ -366,6 +406,9 @@ or an address.
   `$TWIN_FIXED_TIME=144,144,60`: the frames' rates in turn instead (a 144 Hz screen's with a slow frame now and then: the uneven
   frames past 60 Hz, the same every run).
 - `$TWIN_FRAME_STATS`: each frame's time, VU1's work, the primitives, the render thread's time and the GPU renderer's batches, texture decodes, uploads, downloads and copies.
+- `$TWIN_GPU_TIME=0`: the graphics card's time not measured (the log's `the graphics card unknown`, the entry points
+  OpenGL's own): to measure what the timing costs. `$TWIN_SETTINGS_LOG_TEST=1` (headless): the settings screen driven from the
+  main menu through the log check's changes, then the program ends (settingsshots.cpp, beside `$TWIN_UI_SETTINGS_SHOTS`).
 - The log (what a report needs is under "The log", above): each line `[native] [SECONDS]` from the start, the first the
   version's. Once the window is there it names the graphics card and its driver:
   OpenGL's renderer, vendor and version (the driver's own number in it: NVIDIA's "3.3.0 NVIDIA 617.14", AMD's "... Core Profile

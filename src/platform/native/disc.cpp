@@ -177,7 +177,7 @@ bool ModsThere()
         g_ModsThere = std::filesystem::is_directory(g_ModFolder, error);
         if (g_ModsThere)
         {
-            Native::Log("mods: files in %s are read instead of the disc's", g_ModFolder.string().c_str());
+            Native::Log("mods: files in %s are read instead of the disc's", Native::LogPath(g_ModFolder.string()).c_str());
         }
     }
 
@@ -209,7 +209,7 @@ bool FindModEntry(const char* path, Native::Disc::Entry* entry)
         {
             slot = static_cast<s32>(g_ModFiles.size());
             g_ModFiles.push_back(file);
-            Native::Log("mods: %s from %s", key.c_str(), file.string().c_str());
+            Native::Log("mods: %s from %s", key.c_str(), Native::LogPath(file.string()).c_str());
         }
 
         known = g_ModSlots.emplace(key, slot).first;
@@ -590,7 +590,7 @@ bool Native::Disc::FindArchiveMod(const char* path, u32* start, u32* size)
                 slot = static_cast<s32>(g_ArchiveMods.size());
                 g_ArchiveMods.push_back({g_ArchiveModNext, static_cast<u32>(bytes), static_cast<u32>(room), file});
                 g_ArchiveModNext += room;
-                Native::Log("mods: the archive's %s from %s", key.c_str(), file.string().c_str());
+                Native::Log("mods: the archive's %s from %s", key.c_str(), Native::LogPath(file.string()).c_str());
             }
         }
 

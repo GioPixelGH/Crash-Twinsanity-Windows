@@ -1,6 +1,8 @@
 // Debugging aid ($TWIN_UI_SETTINGS_SHOTS=DIR, with --headless): the settings screen opened from the main menu (straight to it past
 // the logos, as $TWIN_UI_SHOTS goes) and driven through its tabs by its own input (keyboard actions and the mouse), a PNG saved of
-// each step, then the program ends
+// each step, then the program ends. $TWIN_SETTINGS_LOG_TEST=1 drives it the same way through changes the log must give once each,
+// as they're left when the screen is closed (check_windows.py's log check): the refresh rate stepped from 144 Hz down to 50 and up
+// to 60, the resolution from 2x to 3x, back and to 3x again, a key bound (F8); then the program ends
 #include "ui/bindings.h"
 #include "ui/overlay.h"
 
@@ -11,6 +13,7 @@
 
 #include <cstdlib>
 #include <filesystem>
+#include <iterator>
 #include <string>
 
 namespace NativeUi
@@ -24,6 +27,8 @@ enum Kind
     Mouse,
     Click,
     Shot,
+    // A key pressed (its SDL scancode in action), as the keyboard's
+    Press,
     Quit,
 };
 
@@ -111,7 +116,50 @@ constexpr Step Script[] = {
     {445, Quit, 0, 0, 0, nullptr},
 };
 
+// $TWIN_SETTINGS_LOG_TEST's (options.txt's refresh_60hz=3 given by the check)
+constexpr Step LogScript[] = {
+    {30, Open, 0, 0, 0, nullptr},
+    // The display tab's refresh rate (its fifth row): 144 Hz to 120, 60, 50 and 60 again
+    {40, Key, TabNext, 0, 0, nullptr},
+    {44, Key, Down, 0, 0, nullptr},
+    {46, Key, Down, 0, 0, nullptr},
+    {48, Key, Down, 0, 0, nullptr},
+    {50, Key, Down, 0, 0, nullptr},
+    {54, Key, Left, 0, 0, nullptr},
+    {56, Key, Left, 0, 0, nullptr},
+    {58, Key, Left, 0, 0, nullptr},
+    {60, Key, Right, 0, 0, nullptr},
+    // The resolution (the third): 2x to 3x, back to 2x, to 3x
+    {64, Key, Up, 0, 0, nullptr},
+    {66, Key, Up, 0, 0, nullptr},
+    {70, Key, Right, 0, 0, nullptr},
+    {72, Key, Left, 0, 0, nullptr},
+    {74, Key, Right, 0, 0, nullptr},
+    // The controls tab's table: an action's second key bound to F8
+    {80, Key, TabNext, 0, 0, nullptr},
+    {82, Key, TabNext, 0, 0, nullptr},
+    {84, Key, Down, 0, 0, nullptr},
+    {86, Key, Down, 0, 0, nullptr},
+    {88, Key, Down, 0, 0, nullptr},
+    {90, Key, Down, 0, 0, nullptr},
+    {92, Key, Down, 0, 0, nullptr},
+    {94, Key, Down, 0, 0, nullptr},
+    {96, Key, Down, 0, 0, nullptr},
+    {98, Key, Down, 0, 0, nullptr},
+    {100, Key, Down, 0, 0, nullptr},
+    {102, Key, Down, 0, 0, nullptr},
+    {104, Key, Down, 0, 0, nullptr},
+    {106, Key, Down, 0, 0, nullptr},
+    {108, Key, Right, 0, 0, nullptr},
+    {110, Key, Confirm, 0, 0, nullptr},
+    {116, Press, SDL_SCANCODE_F8, 0, 0, nullptr},
+    // Closed: the changes logged
+    {130, Key, Back, 0, 0, nullptr},
+    {170, Quit, 0, 0, 0, nullptr},
+};
+
 std::string g_Folder;
+bool g_LogTest = false;
 bool g_Checked = false;
 bool g_InMenu = false;
 u32 g_Frame = 0;
@@ -129,10 +177,13 @@ void SettingsShotsFrame()
             std::error_code ignored;
             std::filesystem::create_directories(g_Folder, ignored);
         }
+
+        const char* logTest = std::getenv("TWIN_SETTINGS_LOG_TEST");
+        g_LogTest = g_Folder.empty() && logTest != nullptr && logTest[0] == '1';
     }
 
     GameController* controller = G_GameController;
-    if (g_Folder.empty() || controller == nullptr)
+    if ((g_Folder.empty() && !g_LogTest) || controller == nullptr)
     {
         return;
     }
@@ -152,8 +203,11 @@ void SettingsShotsFrame()
     }
 
     g_Frame++;
-    for (const Step& step : Script)
+    const Step* begin = g_LogTest ? std::begin(LogScript) : std::begin(Script);
+    const Step* end = g_LogTest ? std::end(LogScript) : std::end(Script);
+    for (const Step* at = begin; at != end; at++)
     {
+        const Step& step = *at;
         if (step.frame != g_Frame)
         {
             continue;
@@ -189,8 +243,11 @@ void SettingsShotsFrame()
 
             break;
         }
+        case Press:
+            SettingsKeyForTest(static_cast<s32>(step.action));
+            break;
         case Quit:
-            Native::Log("settings shots: done");
+            Native::Log("%s: done", g_LogTest ? "settings log test" : "settings shots");
             std::exit(0);
         }
     }
