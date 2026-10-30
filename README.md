@@ -136,7 +136,8 @@ off until you turn them on.
 - [ ] The masks' bugs ([#18]): those the PS2 game has too become fixes under the bug fixes option.
 - [ ] HD texture packs in BC7, and texture upscaling.
 - [ ] A landing shadow ([#11]).
-- [ ] Better speed on older PCs ([#23], [#12]), starting with the port's render thread, measured as the limit on one of them.
+- [ ] Better speed on older PCs ([#23], [#12]): the render thread, measured as the limit there, is about a fifth lighter
+  since 1.1.0; VU1's thread is next.
 - [ ] Achievements in the game, kept on your PC (RetroAchievements doesn't award them for ports).
 - [ ] Subtitles for the cutscenes ([#11]).
 

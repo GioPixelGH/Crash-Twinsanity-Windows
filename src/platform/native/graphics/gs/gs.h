@@ -604,6 +604,7 @@ private:
     void Kick(bool draw, bool fog);
     void ResetQueue();
     void DrawPrimitive(const Vertex* vertexes, u32 count);
+    void DrawSoftware(DrawState& state, const Vertex* vertexes, u32 count);
     void DrawSprite(const DrawState& state, const Vertex& v0, const Vertex& v1);
     void DrawTriangle(const DrawState& state, const Vertex& v0, const Vertex& v1, const Vertex& v2);
     void DrawLine(const DrawState& state, const Vertex& v0, const Vertex& v1);
@@ -651,6 +652,8 @@ private:
     // Changed whenever a register a primitive's DrawState is made from is written (or the state restored): DrawPrimitive makes
     // the state again only then (gsdraw.cpp)
     u64 stateGeneration_ = 1;
+    // Whether the backend changed the draw's state (DecodeForBackend, GlyphForBackend): DrawPrimitive's cache made again
+    mutable bool stateTouched_ = false;
     RegRgbaq rgbaq_ = {};
     f32 s_ = 0.0f;
     f32 t_ = 0.0f;

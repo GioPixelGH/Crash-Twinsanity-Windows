@@ -757,24 +757,54 @@ void Gs::WriteImage(const u8* data, u32 bytes)
     if (psm == PSMCT32 || psm == PSMT8 || psm == PSMT4)
     {
         u32* vm32 = reinterpret_cast<u32*>(vm_);
+        // A row's pixels a block's run at a time (a block is 8 pixels across in 32 bit, 16 in 8 bit): the block's address and
+        // its page worked out once a run, each pixel's place in it by the column's layout (the render thread's busiest
+        // function, the textures streamed every frame)
+        auto endRun = [&](u32 run) {
+            transferX_ += run;
+            if (transferX_ == width)
+            {
+                transferX_ = 0;
+                transferY_++;
+            }
+        };
         if (psm == PSMCT32)
         {
-            for (; offset + 4 <= size && transferY_ < height; offset += 4)
+            while (offset + 4 <= size && transferY_ < height)
             {
-                u32 a = PixelAddress32((left + transferX_) & 2047, (top + transferY_) & 2047, bp, bw);
-                std::memcpy(&vm32[a], at + offset, 4);
-                mark(a >> 11);
-                advance();
+                const u32 x = (left + transferX_) & 2047;
+                const u32 y = (top + transferY_) & 2047;
+                const u32 run = std::min({8 - (x & 7), width - transferX_, (size - offset) / 4});
+                const u32 first = PixelAddress32(x, y, bp, bw);
+                mark(first >> 11);
+                const u32 block = first & ~63u;
+                for (u32 i = 0; i < run; i++)
+                {
+                    std::memcpy(&vm32[block | Column32((x + i) & 7, y & 7)], at + offset + i * 4, 4);
+                }
+
+                offset += run * 4;
+                endRun(run);
             }
         }
         else if (psm == PSMT8)
         {
-            for (; offset < size && transferY_ < height; offset++)
+            while (offset < size && transferY_ < height)
             {
-                u32 a = PixelAddress8((left + transferX_) & 2047, (top + transferY_) & 2047, bp, bw);
-                vm_[a] = at[offset];
-                mark(a >> 13);
-                advance();
+                const u32 x = (left + transferX_) & 2047;
+                const u32 y = (top + transferY_) & 2047;
+                const u32 run = std::min({16 - (x & 15), width - transferX_, size - offset});
+                const u32 first = PixelAddress8(x, y, bp, bw);
+                mark(first >> 13);
+                const u32 block = first & ~255u;
+                const u8* columns = Column8Table[y & 15];
+                for (u32 i = 0; i < run; i++)
+                {
+                    vm_[block | columns[(x + i) & 15]] = at[offset + i];
+                }
+
+                offset += run;
+                endRun(run);
             }
         }
         else

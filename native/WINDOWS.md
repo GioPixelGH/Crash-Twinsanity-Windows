@@ -70,7 +70,8 @@ without it (`$TWIN_FIXED_TIME`, below):
 | `Hw::Gl::GetUniformLocation` (hw/gl.cpp) | The answers kept, by program and name, per thread: the hardware renderer's passes asked for their uniforms by name thousands of times a frame | `$TWIN_HW_UNIFORM_CACHE=0` |
 | `Gs::DrawPrimitive` (gsdraw.cpp) | The primitive's DrawState kept while no register it's made from is written (`Gs::stateGeneration_`) | `$TWIN_GS_STATE_CACHE=0` |
 | `HwGs::RectPages`, the batch key (hwgs.cpp) | The loops' bounds worked out once; the key compared and copied inline | - |
-| `Gs::DrawPrimitive`'s state copy, the batch key (gsdraw.cpp, hwgs.cpp) | Copied inline (the C library's memcpy was 5% of the thread); the key copied only when it changes | - |
+| `Gs::DrawPrimitive`'s state copy, the batch key (gsdraw.cpp, hwgs.cpp) | No copy for the hardware renderer: it draws from the cache's own state (copying its 800 bytes a primitive, even inline, was a twelfth of the thread), and the two places that change it (`DecodeForBackend`, `GlyphForBackend`: `Gs::stateTouched_`) leave the cache to be made again; the software rasteriser draws from a copy (`DrawSoftware`). The key copied only when it changes | - |
+| `Gs::WriteImage` (gs.cpp) | The textures streamed every frame (32 and 8 bit) written a block's run of a row at a time: the block's address and page worked out once a run, each pixel's place by the column's layout (it was the thread's busiest function, 11.6%) | - |
 | The pixels' addresses (gs/gsaddress.h) | Inline, in a header of their own (the transfers worked one out per pixel through a call into gsmemory.cpp) | - |
 | The compiler's target | x86-64-v2 (SSE4.2, POPCNT: what Windows 11 asks of a processor): floor and ceil inline; no FMA, so the same results | - |
 | `HwGs::DecodeOnGpu` (hwgs.cpp) | A texture looked up again only when a register was written or the CLUT changed (`Gs::stateGeneration`); a complete one checked a page at a time against the pages' changes rather than a tile at a time | `$TWIN_HW_NO_TEXTURE_GENERATION`, `$TWIN_HW_NO_PAGE_CHECK` |
@@ -78,6 +79,23 @@ without it (`$TWIN_FIXED_TIME`, below):
 | `WaitForVBlank` (display.cpp) | `SDL_DelayPrecise` | - |
 
 ThinLTO over the emulation's files (`-DTWIN_EMULATION_LTO=ON`) was measured no faster, and is off.
+
+Older processors (#23: an i7-2600 at 39 frames a second, its render thread 25 ms a frame; 2026-10-30, the last two rows): the
+render thread is the limit, and it's the CPU's: at 1x in a 1280x720 window, uncapped, on the i7-8700K its time was the same at
+2x, 4x and 8x (14 ms) while the graphics card's was 1 to 5 ms, and the driver is under 4% of a profile; the rest is the GS's
+emulation a primitive at a time (WriteImage, DrawPrimitive, HwGs::Draw, RectPages, the GIF's packets, AddPrimitive, each 4-13%).
+Before and after the two rows, one run each (perf.py, the performance lines' averages):
+
+| Where | Frames a second | The render thread (one thread: all of it) |
+| --- | --- | --- |
+| The beach, three threads | 69.2 -> 87.8 | 14.4 -> 11.4 ms |
+| The beach, one thread (`TWIN_RENDER_THREAD=0`) | 35.4 -> 39.1 | 28.3 -> 25.6 ms |
+| The beach, three threads on two cores (affinity 0x5) | 51.0 -> 57.4 | 18.8 -> 15.6 ms |
+| The Academy's hub, three threads | 83.4 -> 102.7 | 12.0 -> 9.7 ms |
+| The Academy's hub, one thread | 47.5 -> 52.9 | 21.0 -> 18.9 ms |
+| The Academy's hub, three threads on two cores | 63.3 -> 74.1 | 15.7 -> 12.6 ms |
+
+VU1's thread (about 10 ms at the beach) is next once the render thread is under it.
 
 The threads: VIF1 and VU1 run on a thread of their own between the game's and the render thread (renderthread.h, three stages,
 the default): the game's thread queues VIF1's words, the GIF's transfers and the GS's work in their order, the VU stage runs

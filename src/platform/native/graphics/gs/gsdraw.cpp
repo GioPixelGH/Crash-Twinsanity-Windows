@@ -204,20 +204,17 @@ void Gs::DrawPrimitive(const Vertex* vertexes, u32 count)
     };
     thread_local StateCache cache;
     static const bool caching = std::getenv("TWIN_GS_STATE_CACHE") == nullptr || std::getenv("TWIN_GS_STATE_CACHE")[0] != '0';
-    DrawState state;
-    // (Copied inline: the C library's memcpy, called for a struct this big, cost more than the state's making saved)
-    static_assert(std::is_trivially_copyable_v<DrawState>);
-    if (caching && cache.gs == this && cache.generation == stateGeneration_)
+    // The backend draws from the cache's own state, not a copy (copying its 800 bytes a primitive was a twelfth of the render
+    // thread's time); a backend that changes it (a glyph's texture swapped in, the texture's levels decoded: stateTouched_)
+    // leaves the cache to be made again, and the software rasteriser draws from a copy of its own (below)
+    if (!(caching && cache.gs == this && cache.generation == stateGeneration_))
     {
-        __builtin_memcpy_inline(&state, &cache.state, sizeof(DrawState));
-    }
-    else
-    {
-        SetUpState(state, &vertexes[count - 1]);
+        SetUpState(cache.state, &vertexes[count - 1]);
         cache.gs = this;
         cache.generation = stateGeneration_;
-        __builtin_memcpy_inline(&cache.state, &state, sizeof(DrawState));
     }
+
+    DrawState& state = cache.state;
 
     primitivesDrawn++;
     // Debugging: TWIN_GS_DUMP_AT=PRIM,BP,BW,PSM,W,H[;...] (hex BP and PSM) writes that buffer's values, as local memory holds
@@ -333,13 +330,39 @@ void Gs::DrawPrimitive(const Vertex* vertexes, u32 count)
     };
 
     // A backend draws it, or leaves it to the software rasteriser (having made local memory current for it)
+    stateTouched_ = false;
     if (backend_ != nullptr && backend_->Draw(state, vertexes, count))
     {
+        if (stateTouched_)
+        {
+            cache.generation = ~0ull;
+        }
+
         primitives++;
         reportWatch();
         return;
     }
 
+    // (Copied inline: the C library's memcpy, called for a struct this big, cost more than the state's making saved)
+    static_assert(std::is_trivially_copyable_v<DrawState>);
+    DrawState own;
+    if (stateTouched_)
+    {
+        cache.generation = ~0ull;
+        SetUpState(own, &vertexes[count - 1]);
+    }
+    else
+    {
+        __builtin_memcpy_inline(&own, &state, sizeof(DrawState));
+    }
+
+    DrawSoftware(own, vertexes, count);
+    reportWatch();
+}
+
+// The software rasteriser's part of DrawPrimitive, on a state of its own (it fills its texture levels)
+void Gs::DrawSoftware(DrawState& state, const Vertex* vertexes, u32 count)
+{
     {
         u32 x0 = vertexes[0].x, x1 = vertexes[0].x, y0 = vertexes[0].y, y1 = vertexes[0].y;
         for (u32 i = 1; i < count; i++)
@@ -423,8 +446,6 @@ void Gs::DrawPrimitive(const Vertex* vertexes, u32 count)
     {
         DrawScaled(original, count, drawGeneration);
     }
-
-    reportWatch();
 }
 
 
@@ -2098,12 +2119,19 @@ namespace Gs
 {
 void Gs::DecodeForBackend(DrawState& state, const Vertex* vertexes, u32 count)
 {
+    stateTouched_ = true;
     DecodeTextures(state, vertexes, count);
 }
 
 bool Gs::GlyphForBackend(DrawState& state, Vertex* vertexes, u32 count) const
 {
-    return !glyphs_.empty() && GlyphImage(state, vertexes, count);
+    if (!glyphs_.empty() && GlyphImage(state, vertexes, count))
+    {
+        stateTouched_ = true;
+        return true;
+    }
+
+    return false;
 }
 }
 
