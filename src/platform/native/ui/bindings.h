@@ -141,6 +141,9 @@ bool SweepActive();
 // fromPads: the pads' read's call (time only; the game controller's counts the frames)
 void SweepFrame(bool fromPads = false);
 void SweepInput(BoundPad* pad);
+// $TWIN_PAD_SCRIPT (sweep.cpp): the pad's sticks and buttons set for spans of the pads' reads (a game frame each), whatever else
+// reads them: a camera turned the same way every run (the comparison bench's places)
+void PadScriptInput(BoundPad* pad);
 // The player put a height above the nearest live instance of its chunk whose object's name holds a text (any case; the physics
 // test's): whether there's one
 bool PutPlayerAbove(InstanceContext* player, const char* name, f32 height);

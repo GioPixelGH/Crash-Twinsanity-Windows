@@ -1326,4 +1326,112 @@ void SweepInput(BoundPad* pad)
         pad->buttons |= PadBitSquare;
     }
 }
+
+// $TWIN_PAD_SCRIPT=FROM-TO:WHAT[,WHAT...][;...]: from the pads' FROMth read to before their TOth (a game frame each since the
+// start; with $TWIN_FIXED_TIME the same frames every run) the pad holds WHAT: rx=N, ry=N, lx=N, ly=N (a stick's byte, 0x80 the
+// middle, up 0) or a button's name (cross, square, circle, triangle, l1, r1, l2, r2, l3, r3, start, select, up, down, left,
+// right). "FROM:WHAT" is one read. Each span logged as it starts
+void PadScriptInput(BoundPad* pad)
+{
+    struct Span
+    {
+        u32 from;
+        u32 to;
+        s32 sticks[4];
+        u32 buttons;
+    };
+    static const char* script = std::getenv("TWIN_PAD_SCRIPT");
+    if (script == nullptr)
+    {
+        return;
+    }
+
+    static std::vector<Span> spans;
+    static bool parsed = false;
+    if (!parsed)
+    {
+        parsed = true;
+        static const struct
+        {
+            const char* name;
+            u32 bit;
+        } Buttons[] = {{"cross", PadBitCross},   {"square", PadBitSquare}, {"circle", PadBitCircle}, {"triangle", PadBitTriangle},
+                       {"l1", PadBitL1},         {"r1", PadBitR1},         {"l2", PadBitL2},         {"r2", PadBitR2},
+                       {"l3", PadBitL3},         {"r3", PadBitR3},         {"start", PadBitStart},   {"select", PadBitSelect},
+                       {"up", PadBitUp},         {"down", PadBitDown},     {"left", PadBitLeft},     {"right", PadBitRight}};
+        std::string all = script;
+        size_t at = 0;
+        while (at < all.size())
+        {
+            size_t end = all.find(';', at);
+            std::string step = all.substr(at, end == std::string::npos ? std::string::npos : end - at);
+            at = end == std::string::npos ? all.size() : end + 1;
+            size_t colon = step.find(':');
+            if (colon == std::string::npos)
+            {
+                continue;
+            }
+
+            Span span = {0, 0, {-1, -1, -1, -1}, 0};
+            span.from = static_cast<u32>(std::strtoul(step.c_str(), nullptr, 10));
+            size_t dash = step.find('-');
+            span.to = dash != std::string::npos && dash < colon ? static_cast<u32>(std::strtoul(step.c_str() + dash + 1, nullptr, 10))
+                                                                  : span.from + 1;
+            std::string what = step.substr(colon + 1);
+            size_t w = 0;
+            while (w < what.size())
+            {
+                size_t comma = what.find(',', w);
+                std::string item = what.substr(w, comma == std::string::npos ? std::string::npos : comma - w);
+                w = comma == std::string::npos ? what.size() : comma + 1;
+                static const char* const Sticks[] = {"lx=", "ly=", "rx=", "ry="};
+                for (u32 s = 0; s < 4; s++)
+                {
+                    if (item.rfind(Sticks[s], 0) == 0)
+                    {
+                        span.sticks[s] = std::clamp(std::atoi(item.c_str() + 3), 0, 255);
+                    }
+                }
+
+                for (const auto& button : Buttons)
+                {
+                    if (item == button.name)
+                    {
+                        span.buttons |= button.bit;
+                    }
+                }
+            }
+
+            spans.push_back(span);
+        }
+
+        Native::Log("pad script: %zu spans", spans.size());
+    }
+
+    static u32 read = 0;
+    u32 now = read++;
+    for (const Span& span : spans)
+    {
+        if (now < span.from || now >= span.to)
+        {
+            continue;
+        }
+
+        if (now == span.from)
+        {
+            Native::Log("pad script: from read %u to %u", span.from, span.to);
+        }
+
+        u8* sticks[4] = {&pad->leftX, &pad->leftY, &pad->rightX, &pad->rightY};
+        for (u32 s = 0; s < 4; s++)
+        {
+            if (span.sticks[s] >= 0)
+            {
+                *sticks[s] = static_cast<u8>(span.sticks[s]);
+            }
+        }
+
+        pad->buttons |= span.buttons;
+    }
+}
 }

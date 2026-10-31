@@ -452,6 +452,13 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   frames past 60 Hz, the same every run). `$TWIN_WINDOW_SHOTS=FOLDER:N` (with a window) keeps the same pictures as the window
   shows them (`window_NNNNNN.png`: made the window's size, the overlay over them), numbered as the frames are: what the
   resolution, the filtering and the anti-aliasing do to the picture shown (check_windows.py's "window" line).
+  `$TWIN_PAD_SCRIPT=FROM-TO:WHAT[,WHAT...][;...]` holds the pad that way from the pads' FROMth read to before their TOth (a game
+  frame each from the start, so with `$TWIN_FIXED_TIME` the same frames every run; "FROM:WHAT" one read): `rx=N`, `ry=N`, `lx=N`,
+  `ly=N` a stick's byte (0x80 the middle, up 0) or a button's name (cross, square, circle, triangle, l1, r1, l2, r2, l3, r3, start,
+  select, up, down, left, right), each span logged as it starts. The beach's camera looking up at Crash and Aku Aku against the
+  sky: `620-700:ry=255`; Crash walked into the first boss's arena (its cutscene from about frame 690): `TWIN_START_CHUNK=
+  Levels\Earth\Hub\bossarea` with `500-800:ly=0`. With the pictures above, a real run (a window or fullscreen, three threads) is
+  the same place every time: a bug seen there is measured in the window as shown and in the picture drawn at once.
 - `$TWIN_FRAME_STATS`: each frame's time, VU1's work, the primitives, the render thread's time and the GPU renderer's batches, texture decodes, uploads, downloads and copies.
 - `$TWIN_GPU_TIME=0`: the graphics card's time not measured (the log's `the graphics card unknown`, the entry points
   OpenGL's own): to measure what the timing costs. `$TWIN_SETTINGS_LOG_TEST=1` (headless): the settings screen driven from the

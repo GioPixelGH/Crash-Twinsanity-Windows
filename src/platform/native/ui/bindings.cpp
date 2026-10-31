@@ -736,6 +736,7 @@ void ReadBindings(const bool* keys, SDL_Gamepad* gamepad, BoundPad* pad)
     HintsTestInput(pad);
     FpsTestInput(pad);
     PhysicsTestInput(pad);
+    PadScriptInput(pad);
 }
 
 void ScaleCameraTurn(f32* yaw, f32* pitch, s32 currentYaw, u32 time)
