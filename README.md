@@ -135,9 +135,11 @@ off until you turn them on.
 - [ ] The black screen at start on some AMD PCs ([#16]).
 - [ ] The masks' bugs ([#18]): those the PS2 game has too become fixes under the bug fixes option.
 - [ ] HD texture packs in BC7, and texture upscaling.
+- [ ] The characters' shadows drawn at the chosen resolution: they stay at the PS2's, softer than the rest of the picture at
+  high resolutions.
 - [ ] A landing shadow ([#11]).
-- [ ] Better speed on older PCs ([#23], [#12]): the render thread, measured as the limit there, is about a fifth lighter
-  since 1.1.0; VU1's thread is next.
+- [ ] Better speed on older PCs ([#23], [#12]): since 1.1.0 the render thread, measured as the limit there, is about a
+  quarter lighter and VU1's thread about a tenth; more needs deeper changes to the renderer.
 - [ ] Achievements in the game, kept on your PC (RetroAchievements doesn't award them for ports).
 - [ ] Subtitles for the cutscenes ([#11]).
 
