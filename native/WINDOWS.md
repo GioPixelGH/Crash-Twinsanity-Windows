@@ -506,6 +506,11 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   keyboard` picks the controller), then the mouse clicks the pages' right and left arrows and back; "hints test: pass" and exit 0.
   A click whose step hasn't happened 5 s on is clicked again, once, and logged ("hints test: clicked again"; check_windows.py's
   line names such cases: a press the pause didn't take while a save's result was due or a menu appeared, or a click lost).
+  The one-off "stuck (state 15, pause reason 1 or 9, step 3 or 4)" of 1.0.19's first release check (a page arrow's click not
+  taken) was never seen again: 1.0.19's own program (no second click, no wait for a drawn menu) passed 80 cases four at a
+  time (2026-10-30), then 200 more on 2026-10-31 with the processor loaded further (two at a time with six threads kept
+  busy, four at a time with four: 32 fps on average, 4 to 49, where the failure was at about 48), and the later program 130.
+  Its cause stays unknown; the second click and the wait cover both candidates.
   `$TWIN_HINTS_TEST=FOLDER` without `--headless` also saves the window as it's shown (the picture and the overlay:
   `NativeGraphicsShootWindow`) there: hints_pause.png and hints_levels.png.
 - `$TWIN_MOUSE_TRACE`: each click a menu takes, logged with how many lines and hints the frame before drew and how many are
