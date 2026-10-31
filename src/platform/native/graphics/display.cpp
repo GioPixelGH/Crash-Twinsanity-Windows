@@ -411,11 +411,13 @@ void PresentTexture(GLuint texture, f32 u0, f32 v0, f32 u1, f32 v1, u32 pictureW
         gl.LinkProgram(p.fxaaProgram);
     }
 
-    // Supersampling: the picture's texels an output pixel covers, the larger way; past 1.25 the mean of them (taps x taps
-    // bilinear reads, each the mean of four texels: up to 8 a side), whatever the filtering option
+    // A picture larger than the window (supersampling's, or a resolution past the screen's: 8x's 4096 rows on a 1440 one): the
+    // picture's texels an output pixel covers, the larger way; past 1.25 the mean of them (taps x taps bilinear reads, each the
+    // mean of four texels: up to 8 a side), whatever the filtering and anti-aliasing options (a single bilinear read skips
+    // texels there: the edges' steps come back, 2.8% of Crash's edge pixels off by more than 32 at 8x on 1440 rows, 0.7% so)
     const f32 covered = std::max(static_cast<f32>(pictureWidth) / static_cast<f32>(std::max(p.viewWidth, 1)),
                                  static_cast<f32>(pictureHeight) / static_cast<f32>(std::max(p.viewHeight, 1)));
-    const bool downsampled = p.antiAliasing >= 2 && covered > 1.25f;
+    const bool downsampled = covered > 1.25f;
     if (downsampled && p.downsampleProgram == 0)
     {
         GLuint vertex = Compile(gl, GL_VERTEX_SHADER, VertexSource);
@@ -432,9 +434,10 @@ void PresentTexture(GLuint texture, f32 u0, f32 v0, f32 u1, f32 v1, u32 pictureW
         p.vsyncSet = true;
     }
 
+    // (FXAA looks at the picture's own texels: on a picture made smaller the mean of them does its work)
     GLuint program = p.postProgram != 0                            ? p.postProgram
-                     : (p.antiAliasing == 1 && p.fxaaProgram != 0) ? p.fxaaProgram
                      : downsampled                                 ? p.downsampleProgram
+                     : (p.antiAliasing == 1 && p.fxaaProgram != 0) ? p.fxaaProgram
                                                                    : p.program;
     gl.UseProgram(program);
     gl.Uniform4f(gl.GetUniformLocation(program, "uvRect"), u0, v0, u1, v1);
@@ -1053,10 +1056,40 @@ void DumpPicture(const Picture& picture, u32 number)
     }
 }
 
+// TWIN_WINDOW_SHOTS=FOLDER[:EVERY]: every (default 50th) picture also written as the window shows it (the picture made the
+// window's size, the overlay over it) as window_NNNNNN.png, numbered as TWIN_DUMP_FRAMES numbers them: asked for just before
+// the picture is drawn into the window
+void ShootWindowFor(u64 number)
+{
+    static const char* shots = std::getenv("TWIN_WINDOW_SHOTS");
+    if (shots == nullptr || g_Presenter.window == nullptr)
+    {
+        return;
+    }
+
+    std::string folder = shots;
+    u32 every = 50;
+    size_t colon = folder.rfind(':');
+    if (colon != std::string::npos && colon > 1)
+    {
+        every = static_cast<u32>(std::max(1, std::atoi(folder.c_str() + colon + 1)));
+        folder.resize(colon);
+    }
+
+    if (number % every == 0)
+    {
+        char name[32];
+        std::snprintf(name, sizeof(name), "/window_%06llu.png", static_cast<unsigned long long>(number));
+        NativeGraphicsShootWindow((folder + name).c_str());
+    }
+}
+
 // With the render thread: each frame's picture, made there into a slot (three: the window draws one while the next ones are
 // made) and shown from the main thread a frame later
 struct Shown
 {
+    // Its number (TWIN_DUMP_FRAMES's)
+    u64 number = 0;
     // The hardware renderer's copy of the picture (and the fence the window's context waits for), or the picture read out
     bool gpu = false;
     ShownTexture texture = {};
@@ -1095,6 +1128,7 @@ void MakeShown(u64 frame)
     Hardware& h = GetHardware();
     shown.primitives = h.gs->primitivesDrawn;
     shown.boxPixels = h.gs->boxPixels;
+    shown.number = g_ShownCount;
     DumpPicture(shown.picture, g_ShownCount++);
     ApplyGraphicsSettings();
     // The card's time of the frames before, read where it's there (gputime.h)
@@ -1110,6 +1144,7 @@ void PresentShown(Shown& shown)
         return;
     }
 
+    ShootWindowFor(shown.number);
     if (!shown.gpu)
     {
         Present(shown.picture);
@@ -1225,6 +1260,9 @@ namespace
 void ShowFrameHere()
 {
     CaptureShown();
+    // This picture's number (TWIN_DUMP_FRAMES's)
+    static u32 shown = 0;
+    ShootWindowFor(shown);
     // The picture is read out when something shows or keeps it: a window, a frame dump, or LastPicture's caller later (its
     // buffer and the PCRTC's registers stay as they are until the next frame's drawing)
     static const bool dumping = std::getenv("TWIN_DUMP_FRAMES") != nullptr;
@@ -1282,7 +1320,6 @@ void ShowFrameHere()
 
     // TWIN_DUMP_FRAMES=FOLDER[:EVERY]: every (default 50th) picture also written there as frame_NNNNNN.png
     static const char* dump = std::getenv("TWIN_DUMP_FRAMES");
-    static u32 shown = 0;
     if (dump != nullptr && g_Picture.width != 0)
     {
         std::string folder = dump;

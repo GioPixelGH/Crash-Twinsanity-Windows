@@ -36,7 +36,7 @@ game C++ ──Platform::Graphics──▶ renderer/ (the PS2 renderer's packet 
 | `presenter.h` | The UI's presenter settings: `NativeGraphicsSetOverlay(draw)` (a callback after each picture, the window's framebuffer and full viewport, GL 3.3 core current: the UI's screens at the window's resolution), `NativeGraphicsPictureRect` (the picture's place in window points, after the letterbox), `NativeGraphicsSetPresentFilter(linear)`, `NativeGraphicsSetPostFilter(0 none, 1 CRT)` drawing with the UI's `NativeUiCrtShaderSource()` (weak here: none) and its uniforms (`picture`, `pictureSize`, `viewSize`, `time`, then `NativeUiCrtShaderUniforms`). None of them touches the PS2's picture |
 | `glyphs.h`, `glyphs.cpp` | The UI's glyph images: `NativeGraphicsSetGlyphImage(code, rgba, width, height)` (nullptr: the font's own glyph). Each font's glyph table gives the code's rectangle in its page (UV in sixteenths of a texel: U, V the first corner, U + width, V - height the other: the pages are upside down); the GS draws a UV sprite of exactly that rectangle from the image instead, through the same pipeline (colour, blend, filter), at every internal scale. Harness: `--glyph CHAR` (a test ring) |
 | `hw/` | The hardware renderer (the default; the harness's `--hardware 1`): `gl.h` GL 3.3 loader, `hwgs.h/.cpp` the GS's primitives drawn by OpenGL into render targets at the internal scale, kept in step with local memory page by page (see the file's head comment); what GL can't draw exactly goes to the software GS. `gs/backend.h` is the GS front end's interface to it |
-| `settings.h` | The UI's graphics settings: `NativeGraphicsSetRenderer(0 software, 1 hardware)` (default hardware; `$TWIN_GS=software`), `NativeGraphicsSetDither(0 none, 1 PS2 pixels, 2 fine, 3 none and full colour: the Dithering option off)`, `NativeGraphicsSetTextureFiltering(0 the game's, 1 bilinear, 2 trilinear + 16x anisotropic)`, `NativeGraphicsSetTextureUpscale(0-2)` (not yet: it refuses anything but off), `NativeGraphicsSetTexturePack(bool)` (PCSX2's packs, see below), `NativeGraphicsSetAntiAliasing(0 off, 1 FXAA, 2 and 3 supersampling 2x and 4x: the internal scale times 2 or 4, up to 8, and the picture shown the mean of the texels each window pixel covers, display.cpp's DownsampleSource; from HAB3X's 90d3287)`, `NativeGraphicsSetVSync(bool)`. The internal resolution is `NativeGraphicsSetResolution`'s: 1-8 (software 1-4), 0 = match the window |
+| `settings.h` | The UI's graphics settings: `NativeGraphicsSetRenderer(0 software, 1 hardware)` (default hardware; `$TWIN_GS=software`), `NativeGraphicsSetDither(0 none, 1 PS2 pixels, 2 fine, 3 none and full colour: the Dithering option off)`, `NativeGraphicsSetTextureFiltering(0 the game's, 1 bilinear, 2 trilinear + 16x anisotropic)`, `NativeGraphicsSetTextureUpscale(0-2)` (not yet: it refuses anything but off), `NativeGraphicsSetTexturePack(bool)` (PCSX2's packs, see below), `NativeGraphicsSetAntiAliasing(0 off, 1 FXAA, 2 and 3 supersampling 2x and 4x: the internal scale times 2 or 4, up to 8; from HAB3X's 90d3287)`. A picture larger than the window (supersampling's, or a resolution past the screen's: 8x's 4096 rows on a 1440 one) is shown as the mean of the texels each window pixel covers (display.cpp's DownsampleSource) whatever the anti-aliasing and filtering options: a single bilinear read there skipped texels, the edges' steps back (1.1.0 and before with anti-aliasing off or FXAA), `NativeGraphicsSetVSync(bool)`. The internal resolution is `NativeGraphicsSetResolution`'s: 1-8 (software 1-4), 0 = match the window |
 | `gs/workers.h`, `gs/workers.cpp` | Worker threads big primitives' rows are shared out to (`TWIN_GS_THREADS` sets how many cores; rows are independent, the pixels come out the same) |
 | `movie.h`, `movie.cpp` | For the native movie player: a decoded picture put in the GS where the PS2's player puts it, and the PS2 player's drawing packet |
 
@@ -170,12 +170,28 @@ picture at the PS2's resolution, and `replayNNN_gpu.png`, the GPU's at the scale
   (levels\ice\hub\labext) and Cortex's face green (psycho's cutscene), as the retail game does (#15: its executable in
   PCSX2 2.9, Crash in the same idle pose, the patch's mean colour 124, 190, 148 against the port's 123, 191, 149; the PS2
   build's Cortex at least as green). check_windows.py's "skinned light" keeps it so.
+- Not a difference: the characters' models and textures at a higher scale (2026-10-31, against PCSX2 2.9 at the beach's start,
+  `run_pcsx2.py --screenshot p9.2`, Crash in the port's frame 600's pose): at 8x its hardware renderer's picture and the port's
+  are 3.7 of 255 apart on average around Crash, on the outline's pixels only (the pose a fraction of a frame apart), with the
+  player's HD texture pack (its 18 character textures) as without; at 1x its software renderer and the port's (hardware or
+  software) have Crash's mean colour within 0.7 and 5 apart on average (the dither's pattern). Their outlines' steps and their
+  polygons' corners are the PS2's: the game never sets PRIM's AA1 (the GS's antialiased edges: none of 3.6 million primitives
+  on the beach, the Iceberg Lab and psycho's cutscene) and none of 555 million vertexes is out of the GS's range (Q zero, ST
+  or Q not finite, ST/Q past 64 widths: `TWIN_GS_VERTEX_CHECK`; the only far places, labext's, are past the scissor).
+- A difference: the characters' shadows (the beach's, the Iceberg Lab's: shadow volumes drawn into a half resolution buffer,
+  256 x 256, tested against a depth made from the scene's at the PS2's resolution, then laid over the frame filtered) stay at
+  the PS2's resolution under native scaling: at 1x as the PS2's (PCSX2's software renderer has the same soft 2 x 2 blocks), at
+  8x that shadow made larger, where PCSX2's hardware renderer (its native scaling off by default) draws the chain at its
+  scale, a sharp outline. Drawing it at the scale needs the depth copy made on the GPU (it's read from local memory now:
+  scaled up from there the volumes' test leaves streaks, `TWIN_HW_NATIVE_SMALL=0`).
 
 Replays (beach, flyover; 1x GPU picture against the software GS, mean per channel): beach 0.87-0.92, flyover 1.1.
 
 Debugging switches: `TWIN_GS_DUMP_AT=PRIM,BP,BW,PSM,W,H[;...]` (a buffer's values from local memory just before a primitive,
 into `$TWIN_HW_DUMP_DIR`), `TWIN_HW_TRACE_PRIM=N` (a primitive's batch state and vertexes), `TWIN_HW_CONVERSION_TRACE=A,B`,
-`TWIN_HW_DISPLAY_TRACE`, `TWIN_HW_TRACK=BP,X,Y` (a target pixel after each batch), `TWIN_HW_STATS` (render passes by cause, conversions, copies), `TWIN_SCALE=N` (a headless run's internal scale), `TWIN_HW_MAX_TARGET=N` (targets with a side past N pixels refused: the software GS draws them), and the old behaviours:
+`TWIN_HW_DISPLAY_TRACE`, `TWIN_HW_TRACK=BP,X,Y` (a target pixel after each batch), `TWIN_HW_BATCH_LOG=N` (the batches drawn
+for picture N, a line each: their target and its scale, the texture's target if any, filters, blend, depth), `TWIN_GS_VERTEX_CHECK`
+(vertexes a GPU could take differently, counted), `TWIN_HW_STATS` (render passes by cause, conversions, copies), `TWIN_SCALE=N` (a headless run's internal scale), `TWIN_HW_MAX_TARGET=N` (targets with a side past N pixels refused: the software GS draws them), and the old behaviours:
 `TWIN_HW_VERTEX_OFFSET=n` (256ths), `TWIN_HW_SMALL_VIEWPORT`, `TWIN_HW_NO_WRAPADD`, `TWIN_HW_NO_STENCIL_DATE`,
 `TWIN_HW_NO_WIDE_LOAD`, `TWIN_HW_STAGED_UPLOADS`, `TWIN_HW_NO_SNAP`, `TWIN_HW_NO_NATIVE_DEPTH`.
 

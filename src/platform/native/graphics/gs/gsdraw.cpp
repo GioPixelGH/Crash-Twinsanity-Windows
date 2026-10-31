@@ -217,6 +217,65 @@ void Gs::DrawPrimitive(const Vertex* vertexes, u32 count)
     DrawState& state = cache.state;
 
     primitivesDrawn++;
+    // Debugging: TWIN_GS_VERTEX_CHECK counts the vertexes VU1 and the game send that a GPU could take differently (ST or Q not
+    // finite, Q zero, ST/Q past 64 texture widths, a place more than 2048 pixels off), the first 40 of them each a line and the
+    // counts every 3 million vertexes
+    {
+        static const bool vertexCheck = std::getenv("TWIN_GS_VERTEX_CHECK") != nullptr;
+        if (vertexCheck)
+        {
+            static u64 checked = 0, nonFinite = 0, zeroQ = 0, farXy = 0, farSt = 0, shown = 0;
+            for (u32 i = 0; i < count; i++)
+            {
+                const Vertex& v = vertexes[i];
+                checked++;
+                const s32 sx = (static_cast<s32>(v.x) - static_cast<s32>(state.offsetX)) / 16;
+                const s32 sy = (static_cast<s32>(v.y) - static_cast<s32>(state.offsetY)) / 16;
+                bool odd = false;
+                const char* why = "";
+                if (sx < -2048 || sx > 2048 || sy < -2048 || sy > 2048)
+                {
+                    farXy++;
+                    odd = true;
+                    why = "xy";
+                }
+                if (state.textured && !state.uv)
+                {
+                    if (!std::isfinite(v.s) || !std::isfinite(v.t) || !std::isfinite(v.q))
+                    {
+                        nonFinite++;
+                        odd = true;
+                        why = "nonfinite";
+                    }
+                    else if (v.q == 0.0f)
+                    {
+                        zeroQ++;
+                        odd = true;
+                        why = "q0";
+                    }
+                    else if (std::fabs(v.s / v.q) > 64.0f || std::fabs(v.t / v.q) > 64.0f)
+                    {
+                        farSt++;
+                        odd = true;
+                        why = "st";
+                    }
+                }
+                if (odd && shown < 40)
+                {
+                    shown++;
+                    std::fprintf(stderr, "gs vertex check: %s prim %llu type %u vertex %u of %u: screen %d,%d z %u stq %g %g %g tex0 %x\n", why,
+                                 (unsigned long long)primitivesDrawn, (unsigned)state.type, i, count, sx, sy, v.z, v.s, v.t, v.q,
+                                 state.textured ? (unsigned)state.context->tex0.tbp0 : 0u);
+                }
+            }
+            if (checked % 3000000 < count)
+            {
+                std::fprintf(stderr, "gs vertex check: %llu vertexes, %llu not finite, %llu Q 0, %llu far XY, %llu ST/Q past 64\n",
+                             (unsigned long long)checked, (unsigned long long)nonFinite, (unsigned long long)zeroQ,
+                             (unsigned long long)farXy, (unsigned long long)farSt);
+            }
+        }
+    }
     // Debugging: TWIN_GS_DUMP_AT=PRIM,BP,BW,PSM,W,H[;...] (hex BP and PSM) writes that buffer's values, as local memory holds
     // them just before primitive PRIM, to gsdump_PRIM_BP.bin (a u32 a pixel, row by row) in
     // $TWIN_HW_DUMP_DIR (or the system's temporary folder)

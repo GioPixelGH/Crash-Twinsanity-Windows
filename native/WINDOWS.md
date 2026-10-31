@@ -422,7 +422,9 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   frame for frame (the sound in real time changes a run after some 700 frames). The pictures are at the render scale: with no
   `resolution.txt` in the run's settings, the default 2x (4x before version 1.0.4), so compare builds at the same scale.
   `$TWIN_FIXED_TIME=144,144,60`: the frames' rates in turn instead (a 144 Hz screen's with a slow frame now and then: the uneven
-  frames past 60 Hz, the same every run).
+  frames past 60 Hz, the same every run). `$TWIN_WINDOW_SHOTS=FOLDER:N` (with a window) keeps the same pictures as the window
+  shows them (`window_NNNNNN.png`: made the window's size, the overlay over them), numbered as the frames are: what the
+  resolution, the filtering and the anti-aliasing do to the picture shown (check_windows.py's "window" line).
 - `$TWIN_FRAME_STATS`: each frame's time, VU1's work, the primitives, the render thread's time and the GPU renderer's batches, texture decodes, uploads, downloads and copies.
 - `$TWIN_GPU_TIME=0`: the graphics card's time not measured (the log's `the graphics card unknown`, the entry points
   OpenGL's own): to measure what the timing costs. `$TWIN_SETTINGS_LOG_TEST=1` (headless): the settings screen driven from the
@@ -564,6 +566,15 @@ afterwards (game structures by their PS2 offsets: the `CHECK_OFFSET`s). Checked 
 player's locked inputs) has them all locked through the scene and none after it; the angry skunk (high path, the player moved
 into its trigger, the memory kept after the scene, the skunk's object node found by its object's name) takes its own object
 again (source node 0) with no behaviour running, as the port leaves it played out, and as the skip now leaves it.
+
+To compare pictures, `--gs KEY=VALUE` sets the run's `[EmuCore/GS]` (PCSX2.ini's names: `Renderer=13` the software renderer,
+`upscale_multiplier=8`, `LoadTextureReplacements=true` with a pack in the copy's `textures\SLES-52568\replacements`), and
+`--screenshot T` (or `pT`, after the game first plays) keeps PCSX2's own screenshot at the internal resolution as drawn (4096 x
+4096 at 8x, the port's own `$TWIN_DUMP_FRAMES` size; the states' pictures are 640x480 whatever the scale) as
+`screenshot_[p]T.png`: PCSX2 takes its hotkeys only from the window in front, so its window comes to the front a moment (F8,
+bound in the copy's PCSX2.ini) and the window before it gets it back; nothing is pressed if PCSX2's isn't in front. Checked
+2026-10-31: the beach at `p9.2` (`--start-chunk 'Levels\Earth\Hub\beach'`) is the port's frame 600 there, Crash standing in
+the same pose.
 
 ## Releasing
 

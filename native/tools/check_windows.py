@@ -703,6 +703,85 @@ def skinned_light(exe, work, frame=1770):
                        f"{len(patch)} pixels, the retail game's 124, 190, 148")
 
 
+def window_downsample(exe, work, frame=600):
+    """A picture larger than the window made its size as the mean of the texels each window pixel covers (display.cpp's
+    DownsampleSource, whatever the anti-aliasing option): the beach at 8x in a 1280x720 window, anti-aliasing off, the window
+    ($TWIN_WINDOW_SHOTS) against the same frame's internal picture box-filtered here around Crash; a single bilinear read (1.1.0
+    and before, anti-aliasing off or FXAA) left 5.2% of the edges' pixels off by more than 32 there: (passed, what happened)"""
+    folder = work / "window-downsample"
+    if folder.exists():
+        shutil.rmtree(folder)
+    settings = folder / "settings" / "Crash Twinsanity"
+    settings.mkdir(parents=True)
+    (settings / "disc_image.txt").write_text(disc_image() + "\n")
+    (settings / "options.txt").write_text("anti_aliasing=0\nwidescreen=1\n")
+    (settings / "resolution.txt").write_text("scale=8\nwindow=1280x720\nfullscreen=0\n")
+    env = dict(os.environ, HOME=str(folder / "settings"), APPDATA=str(folder / "settings"), TWIN_FIXED_TIME="1",
+               TWINSANITY_AUDIO="frames", TWIN_DUMP_FRAMES=f"{folder}:{frame}", TWIN_WINDOW_SHOTS=f"{folder}:{frame}")
+    shot, picture = folder / f"window_{frame:06d}.png", folder / f"frame_{frame:06d}.png"
+    with open(folder / "log.txt", "w") as log:
+        process = subprocess.Popen([str(exe), "--quick"], env=env, stdout=log, stderr=subprocess.STDOUT, cwd=folder)
+        started = time.time()
+        while not (shot.exists() and picture.exists()) and process.poll() is None and time.time() - started < 600:
+            time.sleep(1)
+        time.sleep(3)
+        process.kill()
+        process.wait()
+    if not shot.exists() or not picture.exists():
+        return False, f"no {'window' if not shot.exists() else 'picture'} of frame {frame}"
+    ww, wh, wraw = frame_rgba(shot)
+    pw, ph, praw = frame_rgba(picture)
+    if (ww, wh) != (1280, 720) or (pw, ph) != (4096, 4096):
+        return False, f"a {ww}x{wh} window, a {pw}x{ph} picture"
+
+    def spans(count, texels):
+        # Each window pixel's texels and their weights along one axis (the share of each texel it covers)
+        step = texels / count
+        out = []
+        for i in range(count):
+            a, b = i * step, (i + 1) * step
+            out.append([(t, min(b, t + 1) - max(a, t)) for t in range(int(a), min(int(b - 1e-9) + 1, texels))])
+        return out
+
+    # The window's middle (Crash), 16:9 filling it: the picture's 4096 texels over 1280 and 720 pixels
+    x0, x1, y0, y1 = 550, 740, 400, 650
+    columns, rows = spans(ww, pw), spans(wh, ph)
+    prow = 1 + pw * 4
+    wrow = 1 + ww * 4
+    expected, got = {}, {}
+    for y in range(y0 - 1, y1):
+        for x in range(x0 - 1, x1):
+            total = [0.0, 0.0, 0.0]
+            for ty, wy in rows[y]:
+                base = ty * prow + 1
+                for tx, wx in columns[x]:
+                    w = wx * wy
+                    at = base + tx * 4
+                    total[0] += praw[at] * w
+                    total[1] += praw[at + 1] * w
+                    total[2] += praw[at + 2] * w
+            area = sum(w for _, w in rows[y]) * sum(w for _, w in columns[x])
+            expected[x, y] = [c / area for c in total]
+            at = y * wrow + 1 + x * 4
+            got[x, y] = wraw[at:at + 3]
+    edges, off, error = 0, 0, 0.0
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            e = expected[x, y]
+            grey = sum(e) / 3
+            if abs(grey - sum(expected[x, y - 1]) / 3) + abs(grey - sum(expected[x - 1, y]) / 3) <= 24:
+                continue
+            edges += 1
+            d = sum(abs(a - b) for a, b in zip(got[x, y], e)) / 3
+            error += d
+            off += d > 32
+    if edges < 200:
+        return False, f"only {edges} edge pixels around Crash"
+    what = (f"8x in a 1280x720 window: {edges} edge pixels around Crash {error / edges:.1f} from the texels' mean, "
+            f"{off / edges:.2%} off by more than 32")
+    return off / edges < 0.004 and error / edges < 3.5, what
+
+
 def frame_colours(path, step=4):
     """A dumped frame's (png.cpp: RGBA, stored, no filter) colour bytes, every step-th row: bytes"""
     width, height, raw = frame_rgba(path)
@@ -918,6 +997,10 @@ def report(exe, reference, work, with_sweep, reference_name=None):
     looked, what = mouse_look(exe, work)
     print(f"mouse look      {'ok' if looked else 'FAILED'}: {what}")
     failed |= not looked
+
+    ok, what = window_downsample(exe, work)
+    print(f"window          {'ok' if ok else 'FAILED'}: {what}")
+    failed |= not ok
 
     for name, ok, what in physics(exe, work):
         print(f"physics         {'ok' if ok else 'FAILED'} {name} as 60 Hz: {what}")

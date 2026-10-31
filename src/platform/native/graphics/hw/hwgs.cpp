@@ -70,6 +70,9 @@ namespace
 {
 using namespace Hw;
 
+// TWIN_HW_BATCH_LOG=N: the batches drawn for picture N (its count of DisplayTexture calls), one line each
+u32 g_BatchLogFrame = 0;
+
 // The layouts targets keep: 32 bit colour (and 24), 16 bit colour, 16 bit colour S, Z32 (and Z24), Z16, Z16S
 enum TargetClass : u32
 {
@@ -4726,6 +4729,40 @@ void HwGs::Flush()
     stats.batches++;
     const BatchKey& k = key_;
     Gl& gl = GetGl();
+    {
+        static const char* batchLog = std::getenv("TWIN_HW_BATCH_LOG");
+        if (batchLog != nullptr && g_BatchLogFrame == static_cast<u32>(std::atoi(batchLog)))
+        {
+            const Target* source = nullptr;
+            for (auto& known : targets_)
+            {
+                if (known->texture == k.texture)
+                {
+                    source = known.get();
+                }
+            }
+
+            Rect region = {0x7FFF, 0x7FFF, -1, -1};
+            for (const Rect& r : batchRects_)
+            {
+                region.left = std::min(region.left, r.left);
+                region.top = std::min(region.top, r.top);
+                region.right = std::max(region.right, r.right);
+                region.bottom = std::max(region.bottom, r.bottom);
+            }
+
+            std::fprintf(stderr,
+                         "batch %llu: into %x/%u cls %u scale %u %ux%u, depth %x/%u, prim %u, %zu vertexes, rect %d,%d-%d,%d, program %x, "
+                         "texture %u%s%x/%u cls %u scale %u, filters %x/%x, wrap %x/%x, tex %gx%g gs %gx%g, snap %u, native depth %u, blend %u %u%u%u%u fix %u, "
+                         "depth func %x write %u, aref %u afail %u, mask %x\n",
+                         (unsigned long long)stats.batches, k.colour->bp, k.colour->bw, k.colour->cls, k.colour->scale, k.colour->width,
+                         k.colour->height, k.depth ? k.depth->bp : 0, k.depth ? k.depth->bw : 0, k.primitive, vertexes_.size(), region.left,
+                         region.top, region.right, region.bottom, k.program, k.texture, source ? " from target " : " ", source ? source->bp : 0,
+                         source ? source->bw : 0, source ? source->cls : 0, source ? source->scale : 0, k.minFilter, k.magFilter, k.wrapS,
+                         k.wrapT, k.texWidth, k.texHeight, k.gsTexWidth, k.gsTexHeight, k.texSnap, k.nativeDepthTest, k.blend, k.gsBlend[0],
+                         k.gsBlend[1], k.gsBlend[2], k.gsBlend[3], k.gsFix, k.depthFunc, k.depthWrite, k.aref, k.afail, k.colourMask);
+        }
+    }
     const GLsizei n = static_cast<GLsizei>(k.colour->scale);
     const GLsizei width = static_cast<GLsizei>(k.colour->width) * n;
     const GLsizei height = static_cast<GLsizei>(k.colour->height) * n;
@@ -5146,6 +5183,7 @@ bool HwGs::DisplayTexture(NativeGraphics::DisplayTexture* display, Target** show
 {
     MakeCurrent();
     Flush();
+    g_BatchLogFrame++;
     if (!passCounts_.empty() && ++passFrames_ % 60 == 0)
     {
         u64 total = 0;

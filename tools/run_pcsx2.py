@@ -160,6 +160,88 @@ def saved_state(pine, elf_crc, when):
                 os.remove(f"{states}/{name}")
 
 
+def bind_screenshot_key():
+    """The test copy's PCSX2.ini binds its screenshot hotkey to F8 (a fresh portable copy has no hotkeys)"""
+    ini = f"{CONFIG}/inis/PCSX2.ini"
+    with open(ini, encoding="utf-8") as file:
+        text = file.read()
+    if "Screenshot = Keyboard/F8" in text:
+        return
+    if "[Hotkeys]" in text:
+        text = text.replace("[Hotkeys]\n", "[Hotkeys]\nScreenshot = Keyboard/F8\n", 1)
+    else:
+        text = text.rstrip("\n") + "\n\n\n[Hotkeys]\nScreenshot = Keyboard/F8\n"
+    with open(ini, "w", encoding="utf-8", newline="\n") as file:
+        file.write(text)
+
+
+def take_screenshot(pid, when, folder, after=""):
+    """PCSX2's own screenshot (its F8 on its window brought to the front), moved into the folder as screenshot_T.png"""
+    import ctypes
+    from ctypes import wintypes
+    user32 = ctypes.windll.user32
+    found = []
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    def each(hwnd, _):
+        owner = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+        if owner.value == pid and user32.IsWindowVisible(hwnd):
+            found.append(hwnd)
+        return True
+
+    user32.EnumWindows(each, 0)
+    snaps = f"{CONFIG}/snaps"
+    before = {os.path.join(root, name) for root, _, names in os.walk(snaps) for name in names}
+    if not found:
+        print(f"{when:6.1f}s screenshot: no PCSX2 window", flush=True)
+        return
+    # PCSX2 takes its hotkeys only in front: brought there by sharing the front window's input (no key sent to it), F8 pressed
+    # only once PCSX2's window is the one in front, then the window that was there given the front back
+    before_window = user32.GetForegroundWindow()
+    kernel32 = ctypes.windll.kernel32
+    front_thread = user32.GetWindowThreadProcessId(before_window, None)
+    own_thread = kernel32.GetCurrentThreadId()
+    attached = front_thread != own_thread and user32.AttachThreadInput(own_thread, front_thread, True)
+    user32.BringWindowToTop(found[0])
+    user32.SetForegroundWindow(found[0])
+    if attached:
+        user32.AttachThreadInput(own_thread, front_thread, False)
+    time.sleep(0.3)
+    if user32.GetForegroundWindow() != found[0]:
+        print(f"{when:6.1f}s screenshot: PCSX2's window couldn't come to the front, no key pressed", flush=True)
+        return
+    user32.keybd_event(0x77, 0, 0, 0)
+    time.sleep(0.1)
+    user32.keybd_event(0x77, 0, 2, 0)
+    time.sleep(0.3)
+    if before_window:
+        front_thread = user32.GetWindowThreadProcessId(user32.GetForegroundWindow(), None)
+        attached = front_thread != own_thread and user32.AttachThreadInput(own_thread, front_thread, True)
+        user32.SetForegroundWindow(before_window)
+        if attached:
+            user32.AttachThreadInput(own_thread, front_thread, False)
+    # (a 4096x4096 PNG takes PCSX2 a minute)
+    deadline = time.time() + 150
+    while time.time() < deadline:
+        new = [path for path in (os.path.join(root, name) for root, _, names in os.walk(snaps) for name in names)
+               if path not in before and path.lower().endswith(".png")]
+        if new:
+            # Moved once PCSX2 has written it (until then it's open)
+            os.makedirs(folder, exist_ok=True)
+            out_path = f"{folder}/screenshot_{after}{when:05.1f}s.png"
+            while time.time() < deadline + 30:
+                time.sleep(1)
+                try:
+                    shutil.move(new[0], out_path)
+                except PermissionError:
+                    continue
+                print(f"{when:6.1f}s screenshot {out_path}", flush=True)
+                return
+        time.sleep(0.25)
+    print(f"{when:6.1f}s screenshot: none written", flush=True)
+
+
 def take_snapshot(pine, elf_crc, when, folder, name=None):
     # The state keeps a screenshot
     with saved_state(pine, elf_crc, when) as path:
@@ -347,6 +429,14 @@ def main():
                         help="print that many words from the map's symbol when the title comes up and once the game plays")
     parser.add_argument("--snapshot", action="append", type=float, default=[], help="seconds after the start to take a picture at")
     parser.add_argument("--snapshots", default="build/snapshots", help="where the pictures go")
+    parser.add_argument("--screenshot", action="append", default=[], metavar="T",
+                        help="Windows: PCSX2's own screenshot T seconds after the start, or pT after the game first plays (its "
+                             "F8, at the internal resolution as "
+                             "drawn, not the states' 640x480), into --snapshots as screenshot_T.png: PCSX2's window comes to the "
+                             "front for a moment")
+    parser.add_argument("--gs", action="append", default=[], metavar="KEY=VALUE",
+                        help="a setting of the run's [EmuCore/GS] (PCSX2.ini's names): Renderer=13 the software renderer, "
+                             "upscale_multiplier=8 the hardware one at 8x the PS2's resolution")
     parser.add_argument("--manual", action="store_true", help="drive nothing, run until --timeout")
     parser.add_argument("--card", help="a card image (not one of PCSX2's own) to play with in slot 1, written back after")
     parser.add_argument("--chunks", action="store_true", help="print the chunk manager's chunks whenever they change")
@@ -440,6 +530,10 @@ def main():
                                      *(part.split(":")[0].lstrip("*").split("+")[0] for part in args.freeze_dump),
                                      *(part.split(":")[1].split(">")[0].split("+")[0] for part in args.write)})
     snapshots = sorted(args.snapshot)
+    # [seconds, after play]
+    screenshots = sorted((float(text[1:]), True) if text.startswith("p") else (float(text), False) for text in args.screenshot)
+    if screenshots and not WINDOWS:
+        raise SystemExit("--screenshot is Windows' only")
     elf = None if retail else os.path.abspath(args.elf)
     elf_crc = RETAIL_CRC if retail else crc(elf)
     if snapshots and elf_crc == RETAIL_CRC and not WINDOWS:
@@ -467,6 +561,13 @@ def main():
                    f"[MemoryCards]\nSlot1_Enable = true\nSlot1_Filename = {RUN_CARD}\nSlot2_Enable = false\n"
                    # A test run is silent: nothing plays over whatever the machine's user is doing
                    f"\n[SPU2/Output]\nOutputMuted = true\n")
+        gs = list(args.gs)
+        if args.screenshot:
+            gs = ["ScreenshotSize=2", "ScreenshotFormat=0", "ScreenshotQuality=0"] + gs
+            bind_screenshot_key()
+        if gs:
+            file.write("\n[EmuCore/GS]\n" + "".join(f"{key.strip()} = {value.strip()}\n"
+                                                      for key, value in (setting.split("=", 1) for setting in gs)))
 
     placement = contextlib.nullcontext() if MACOS or WINDOWS else kwin.windows_on(kwin.monitor_from(args.monitor))
     placement.__enter__()
@@ -592,6 +693,10 @@ def main():
 
             if snapshots and time.time() - start >= snapshots[0]:
                 take_snapshot(pine, elf_crc, snapshots.pop(0), args.snapshots)
+
+            for item in [item for item in screenshots if (first_played or not item[1]) and due(item)]:
+                screenshots.remove(item)
+                take_screenshot(descendant(launcher.pid) or launcher.pid, item[0], args.snapshots, "p" if item[1] else "")
 
             if presses:
                 # A press starts at the first look past its time (a snapshot can take a second) and lasts its time from there
