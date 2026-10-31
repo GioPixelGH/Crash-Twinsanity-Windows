@@ -77,6 +77,13 @@ without it (`$TWIN_FIXED_TIME`, below):
 | `HwGs::DecodeOnGpu` (hwgs.cpp) | A texture looked up again only when a register was written or the CLUT changed (`Gs::stateGeneration`); a complete one checked a page at a time against the pages' changes rather than a tile at a time | `$TWIN_HW_NO_TEXTURE_GENERATION`, `$TWIN_HW_NO_PAGE_CHECK` |
 | `HwGs::Draw` (hwgs.cpp) | A mesh's next primitive drawn as the last one was while nothing it depended on changed (`DrawLikeLast`: the GS's state, the CLUT, the targets, the settings, the texture good as it was): no key, targets or texture worked out again, only its pages made current and its vertexes added. A quarter of the render thread's time | `$TWIN_HW_NO_FAST_DRAW` |
 | `WaitForVBlank` (display.cpp) | `SDL_DelayPrecise` | - |
+| VU programs' rounding (ee/rounding.h) | Toward zero for a run by MXCSR's rounding bits alone: MinGW's `fesetround` also sets the x87's, through `__mingw_setfp`, at each program's start and end (4% of VU1's thread); the inline kicks of one thread round to nearest the same way | - |
+| `Dispatcher::Identify` (ee/vu1translate.cpp) | The game swaps its VU1 programs in micro memory several times a frame, and each is told again when it's back: by the code its hash was found for, compared, before any hash of a program not seen yet (the FNV-1a hash a byte at a time was a tenth of VU1's thread) | - |
+| The VIF's unpacks (ee/vif.cpp) | The VU's memory wrapped by a mask, not a division an element | - |
+| `Gs::WritePackedRun` (gs.cpp) | A GIF tag's PACKED quadwords written in one loop in the GS's own file rather than a call a quadword from the GIF | - |
+| `Gs::DrawPrimitive` (gsdraw.cpp) | Its debugging switches and the software path's state copy out of line (their registers and stack were made at every primitive); the state cache `constinit` (no guard tested at each primitive) | - |
+| `HwGs::RectPages`, `FewPagesOf`, `EnsureValid`, `MarkDrawn` (hwgs.cpp) | A page's place by the target's page shifts, not four divisions; a primitive with up to 8 pages (nearly all) tests them a page at a time, the 512 page sets' work only when a page isn't current or the target's own yet (the two calls' early tests did that work on every primitive, a twelfth of the thread) | - |
+| `HwGs::ProcessWrites` (hwgs.cpp) | The CPU's writes' flag read before its exchange (a locked instruction at every primitive, 3% of the thread) | - |
 
 ThinLTO over the emulation's files (`-DTWIN_EMULATION_LTO=ON`) was measured no faster, and is off.
 
@@ -96,6 +103,26 @@ Before and after the two rows, one run each (perf.py, the performance lines' ave
 | The Academy's hub, three threads on two cores | 63.3 -> 74.1 | 15.7 -> 12.6 ms |
 
 VU1's thread (about 10 ms at the beach) is next once the render thread is under it.
+
+The second step (2026-10-31, the rows from "VU programs' rounding" on), aiming at every thread under 8.5 ms at the beach at 1x
+here (#23's i7-2600 took 1.7 to 2 times these times on 1.0.19: under 8.5 here would be about 60 there). Two runs of each
+program in turn, 1.0.19, the first step's and this one's (perf.py); frames a second, then the game's thread, VU1's and the
+render thread (one thread: all of it):
+
+| Where | 1.0.19 | The first step | This one |
+| --- | --- | --- | --- |
+| The beach, three threads | 71.0; 6.9, 10.0, 14.1 ms | 83.7; 7.0, 10.0, 11.9 ms | 93.1; 7.0, 8.8, 10.7 ms |
+| The beach, one thread | 34.8; 28.8 ms | 38.3; 26.1 ms | 45.0; 22.2 ms |
+| The beach, three threads on two cores | 54.8; 11.9, 15.0, 18.0 ms | 56.5; 13.0, 14.9, 16.9 ms | 62.7; 12.2, 13.1, 15.1 ms |
+| The Academy's hub, three threads | 81.8; 4.8, 6.2, 12.3 ms | 99.2; 4.9, 6.2, 10.1 ms | 113.1; 5.0, 5.6, 8.8 ms |
+| The Academy's hub, one thread | - | 52.0; 19.2 ms | 60.2; 16.6 ms |
+| The Academy's hub, three threads on two cores | 64.7; 7.0, 8.6, 15.4 ms | 73.8; 8.9, 9.9, 13.2 ms | 80.9; 8.6, 8.8, 11.9 ms |
+
+The target isn't reached at the beach: VU1's 8.8 ms is near it, the render thread's 10.7 isn't. Its time is now spread thinly
+(HwGs::Draw 14%, AddPrimitive 9%, the GIF's PACKED writes 8%, FewPagesOf 8%, the textures' tile check 7%, WriteImage 6%, the
+driver 5%, SDL's current context asked at every primitive 3%), so the rest needs work of another kind: the page tracking done
+a batch rather than a primitive at a time, the GS's side (the GIF, the registers, the kicks) on a thread of its own, or the
+textures' check by page. VU1's: the translated programs are two thirds of it.
 
 The threads: VIF1 and VU1 run on a thread of their own between the game's and the render thread (renderthread.h, three stages,
 the default): the game's thread queues VIF1's words, the GIF's transfers and the GS's work in their order, the VU stage runs

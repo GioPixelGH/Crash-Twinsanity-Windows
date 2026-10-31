@@ -369,7 +369,7 @@ void UnpackStraight(u8* memory, u32 memoryQuadwords, u32 address, const u8* byte
             }
         }
 
-        auto* destination = reinterpret_cast<u32*>(memory + (address % memoryQuadwords) * 16);
+        auto* destination = reinterpret_cast<u32*>(memory + (address & (memoryQuadwords - 1)) * 16);
         switch (mode)
         {
         case 1:
@@ -446,6 +446,7 @@ void Vif::Unpack(u32 code, const u32* data, u32 words)
         address += tops;
     }
 
+    // (VU0's 256 quadwords, VU1's 1024: the address wraps by a mask, not a division an element)
     u32 memoryQuadwords = vu_.dataSize() / 16;
     u32 wl = writeLength != 0 ? writeLength : 256;
     bool fill = cycleLength < wl;
@@ -545,7 +546,7 @@ void Vif::Unpack(u32 code, const u32* data, u32 words)
             }
         }
 
-        auto* destination = reinterpret_cast<u32*>(vu_.data() + (address % memoryQuadwords) * 16);
+        auto* destination = reinterpret_cast<u32*>(vu_.data() + (address & (memoryQuadwords - 1)) * 16);
         u32 maskRow = std::min(cycle, 3u);
         for (u32 c = 0; c < 4; c++)
         {

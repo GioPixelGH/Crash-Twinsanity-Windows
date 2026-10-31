@@ -47,6 +47,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <bit>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -195,8 +196,10 @@ struct Target
     u32 width = 0;
     u32 height = 0;
     u32 scale = 1;
-    // Pages laid out as rectangles (its base at a page's start)
+    // Pages laid out as rectangles (its base at a page's start), and a page's width and height as powers of two (its layout's)
     bool aligned = false;
+    u32 pageWidthShift = 6;
+    u32 pageHeightShift = 5;
     GLuint texture = 0;
     GLuint fbo = 0;
     // Whether GL could make its framebuffer whole (HAB3X's 148af1e): not when its size at the scale is nothing, past the GPU's
@@ -237,6 +240,14 @@ struct HwVertex
     f32 t;
     f32 q;
     f32 fog;
+};
+
+// A primitive's pages when it has few (most have one or two): EnsureValid's and MarkDrawn's tests made a page at a time, the
+// page sets' 512 bits only when there's something to do (their work on every primitive was a twelfth of the render thread's)
+struct FewPages
+{
+    u32 count = 0;
+    u16 page[8];
 };
 
 // What a batch draws with: everything that changes GL's state or the shader's uniforms (compared as bytes)
@@ -1181,7 +1192,8 @@ public:
     // end of every primitive's drawing (its batch, its vertexes, the pages it draws)
     bool DrawLikeLast(const Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count, Rect rect);
     void AddPrimitive(const Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, const Rect& rect, Target* colour, Target* depth,
-                      s32 n, bool shaderBlend, const Gs::PageSet& drawnPages, const Gs::PageSet& depthPages);
+                      s32 n, bool shaderBlend, const Gs::PageSet& drawnPages, const Gs::PageSet& depthPages,
+                      const FewPages* drawnFew = nullptr, const FewPages* depthFew = nullptr);
     void BeforeCpuRead(const Gs::PageSet& pages) override;
     void BeforeCpuWrite(const Gs::PageSet& pages) override { BeforeCpuRead(pages); }
     void Flush() override;
@@ -1210,6 +1222,10 @@ private:
     void EnsureValid(Target* target, const Gs::PageSet& pages);
     void MarkDrawn(Target* target, const Gs::PageSet& pages);
     void RectPages(const Target* target, const Rect& rect, Gs::PageSet& pages) const;
+    // The same for a primitive with few pages (FewPagesOf: false when it has more, or its rectangle isn't simple)
+    bool FewPagesOf(const Target* target, const Rect& rect, FewPages& few) const;
+    void EnsureValid(Target* target, const FewPages& few);
+    void MarkDrawn(Target* target, const FewPages& few);
     bool Fallback(const Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count, const Rect& rect, const char* why);
     const Program& ProgramFor(u32 bits);
     GLuint FramebufferFor(Target* colour, Target* depth);
@@ -1657,6 +1673,9 @@ Target* HwGs::TargetFor(u32 bp, u32 bw, u32 psm, u32 height, bool frame)
     // frame's pixel patterns)
     t.scale = (nativeSmall_ && bw < 8) ? 1 : scale_;
     t.aligned = (bp % 32) == 0;
+    // (the page's size worked out above is the stored layout's, t.psm's)
+    t.pageWidthShift = static_cast<u32>(std::countr_zero(static_cast<u32>(pageWidth)));
+    t.pageHeightShift = static_cast<u32>(std::countr_zero(static_cast<u32>(pageHeight)));
     t.pixels.resize(Gs::PageCount);
     t.rects.assign(Gs::PageCount, Rect{0x7FFF, 0x7FFF, -1, -1});
     for (u32 y = 0; y < t.height; y++)
@@ -1854,16 +1873,18 @@ void HwGs::RectPages(const Target* target, const Rect& rect, Gs::PageSet& pages)
 {
     if (target->aligned)
     {
-        s32 pageWidth = 0;
-        s32 pageHeight = 0;
-        PageSize(target->psm, &pageWidth, &pageHeight);
         u32 base = target->bp / 32;
         // The bounds worked out once (the compiler can't: the page set might be the rectangle as far as it knows), every
-        // primitive asks this
-        const s32 firstRow = rect.top / pageHeight;
-        const s32 lastRow = rect.bottom / pageHeight;
-        const s32 firstColumn = rect.left / pageWidth;
-        const s32 lastColumn = rect.right / pageWidth;
+        // primitive asks this twice: by the target's page shifts rather than four divisions (with them RectPages was a twelfth
+        // of the render thread's time). A primitive's rectangle is in the scissor, never left of or above the buffer: no value
+        // below 0, where a shift and a division round alike
+        const bool shifts = (rect.left | rect.top | rect.right | rect.bottom) >= 0;
+        const s32 pageWidth = 1 << target->pageWidthShift;
+        const s32 pageHeight = 1 << target->pageHeightShift;
+        const s32 firstRow = shifts ? rect.top >> target->pageHeightShift : rect.top / pageHeight;
+        const s32 lastRow = shifts ? rect.bottom >> target->pageHeightShift : rect.bottom / pageHeight;
+        const s32 firstColumn = shifts ? rect.left >> target->pageWidthShift : rect.left / pageWidth;
+        const s32 lastColumn = shifts ? rect.right >> target->pageWidthShift : rect.right / pageWidth;
         const u32 bw = target->bw;
         for (s32 row = firstRow; row <= lastRow; row++)
         {
@@ -1878,6 +1899,77 @@ void HwGs::RectPages(const Target* target, const Rect& rect, Gs::PageSet& pages)
     }
 
     Gs::PagesOfRect(target->psm, target->bp, target->bw, rect.left, rect.top, rect.right, rect.bottom, pages);
+}
+
+bool HwGs::FewPagesOf(const Target* target, const Rect& rect, FewPages& few) const
+{
+    // (RectPages' pages for an aligned target and a rectangle with no value below 0)
+    if (!target->aligned || (rect.left | rect.top | rect.right | rect.bottom) < 0)
+    {
+        return false;
+    }
+
+    const s32 firstRow = rect.top >> target->pageHeightShift;
+    const s32 lastRow = rect.bottom >> target->pageHeightShift;
+    const s32 firstColumn = rect.left >> target->pageWidthShift;
+    const s32 lastColumn = rect.right >> target->pageWidthShift;
+    if (lastRow < firstRow || lastColumn < firstColumn || (lastRow - firstRow + 1) * (lastColumn - firstColumn + 1) > 8)
+    {
+        return false;
+    }
+
+    const u32 base = target->bp / 32;
+    few.count = 0;
+    for (s32 row = firstRow; row <= lastRow; row++)
+    {
+        const u32 rowBase = base + static_cast<u32>(row) * target->bw;
+        for (s32 column = firstColumn; column <= lastColumn; column++)
+        {
+            few.page[few.count++] = static_cast<u16>((rowBase + static_cast<u32>(column)) & (Gs::PageCount - 1));
+        }
+    }
+
+    return true;
+}
+
+void HwGs::EnsureValid(Target* target, const FewPages& few)
+{
+    // Nothing to do (as EnsureValid's own first test finds) unless a page of the target's isn't current in it
+    for (u32 i = 0; i < few.count; i++)
+    {
+        const u32 page = few.page[i];
+        if (target->pages[page] && !target->valid[page])
+        {
+            Gs::PageSet pages;
+            for (u32 j = 0; j < few.count; j++)
+            {
+                pages.set(few.page[j]);
+            }
+
+            EnsureValid(target, pages);
+            return;
+        }
+    }
+}
+
+void HwGs::MarkDrawn(Target* target, const FewPages& few)
+{
+    // Nothing to do (as MarkDrawn's own first test finds) unless a page of the target's isn't its own yet
+    for (u32 i = 0; i < few.count; i++)
+    {
+        const u32 page = few.page[i];
+        if (target->pages[page] && !target->owned[page])
+        {
+            Gs::PageSet pages;
+            for (u32 j = 0; j < few.count; j++)
+            {
+                pages.set(few.page[j]);
+            }
+
+            MarkDrawn(target, pages);
+            return;
+        }
+    }
 }
 
 
@@ -2991,7 +3083,8 @@ void HwGs::SyncCpu(const Gs::PageSet& pages)
 
 void HwGs::ProcessWrites()
 {
-    if (!anyWritten_.exchange(false, std::memory_order_acquire))
+    // (Asked at every primitive: a plain read first, the exchange's locked instruction only when there's something)
+    if (!anyWritten_.load(std::memory_order_relaxed) || !anyWritten_.exchange(false, std::memory_order_acquire))
     {
         return;
     }
@@ -4536,6 +4629,23 @@ bool HwGs::DrawLikeLast(const Gs::Gs::DrawState& state, const Gs::Vertex* vertex
         return true;
     }
 
+    FewPages drawnFew;
+    FewPages depthFew;
+    if (FewPagesOf(colour, rect, drawnFew) && (depth == nullptr || FewPagesOf(depth, rect, depthFew)))
+    {
+        static const Gs::PageSet none;
+        cpuReason = "frame";
+        EnsureValid(colour, drawnFew);
+        if (depth != nullptr)
+        {
+            cpuReason = "depth";
+            EnsureValid(depth, depthFew);
+        }
+
+        AddPrimitive(state, vertexes, rect, colour, depth, n, last.shaderBlend, none, none, &drawnFew, &depthFew);
+        return true;
+    }
+
     Gs::PageSet drawnPages;
     RectPages(colour, rect, drawnPages);
     cpuReason = "frame";
@@ -4553,7 +4663,8 @@ bool HwGs::DrawLikeLast(const Gs::Gs::DrawState& state, const Gs::Vertex* vertex
 }
 
 void HwGs::AddPrimitive(const Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, const Rect& rect, Target* colour, Target* depth,
-                        s32 n, bool shaderBlend, const Gs::PageSet& drawnPages, const Gs::PageSet& depthPages)
+                        s32 n, bool shaderBlend, const Gs::PageSet& drawnPages, const Gs::PageSet& depthPages, const FewPages* drawnFew,
+                        const FewPages* depthFew)
 {
     if (batching_ && shaderBlend)
     {
@@ -4696,10 +4807,25 @@ void HwGs::AddPrimitive(const Gs::Gs::DrawState& state, const Gs::Vertex* vertex
     }
     }
 
-    MarkDrawn(colour, drawnPages);
+    if (drawnFew != nullptr)
+    {
+        MarkDrawn(colour, *drawnFew);
+    }
+    else
+    {
+        MarkDrawn(colour, drawnPages);
+    }
+
     if (depth != nullptr && state.zWritten)
     {
-        MarkDrawn(depth, depthPages);
+        if (depthFew != nullptr)
+        {
+            MarkDrawn(depth, *depthFew);
+        }
+        else
+        {
+            MarkDrawn(depth, depthPages);
+        }
     }
 
     static const char* tracePrim = std::getenv("TWIN_HW_TRACE_PRIM");

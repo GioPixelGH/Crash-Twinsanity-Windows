@@ -493,6 +493,10 @@ public:
     void WriteRegister(u32 address, u64 value);
     // A PACKED quadword for one of the GIF tag's register descriptors (0-0xF; 0xE is A+D)
     void WritePacked(u32 descriptor, const u32* quadword);
+    // A PACKED tag's quadwords as far as there are (at most available): each written as WritePacked writes it, from the tag's
+    // descriptors (registers, registerCount of them) at reg, loops counting down. The quadwords taken. (Here rather than a
+    // call a quadword from the GIF: the writes inlined into one loop)
+    u32 WritePackedRun(u64 registers, u32 registerCount, u32& reg, u32& loops, const u8* data, u32 available);
     // A GIF tag of loops starts: the Q that PACKED RGBAQ writes take is 1 again until an ST brings one
     void StartTag() { packedQ_ = 1.0f; }
     // IMAGE data of a host to local memory transfer (whole quadwords)
@@ -605,6 +609,9 @@ private:
     void ResetQueue();
     void DrawPrimitive(const Vertex* vertexes, u32 count);
     void DrawSoftware(DrawState& state, const Vertex* vertexes, u32 count);
+    [[gnu::noinline]] void DebugBeforeDraw(const DrawState& state, const Vertex* vertexes, u32 count, s32 watch[2]);
+    [[gnu::noinline]] void ReportWatch(const DrawState& state, const Vertex* vertexes, u32 count, const s32 watch[2]);
+    [[gnu::noinline]] void DrawOwnState(const DrawState& state, const Vertex* vertexes, u32 count, bool touched);
     void DrawSprite(const DrawState& state, const Vertex& v0, const Vertex& v1);
     void DrawTriangle(const DrawState& state, const Vertex& v0, const Vertex& v1, const Vertex& v2);
     void DrawLine(const DrawState& state, const Vertex& v0, const Vertex& v1);

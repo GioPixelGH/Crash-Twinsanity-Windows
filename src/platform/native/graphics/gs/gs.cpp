@@ -425,6 +425,25 @@ void Gs::WritePacked(u32 descriptor, const u32* q)
     }
 }
 
+u32 Gs::WritePackedRun(u64 registers, u32 registerCount, u32& reg, u32& loops, const u8* data, u32 available)
+{
+    u32 taken = 0;
+    while (taken < available && loops > 0)
+    {
+        u32 q[4];
+        std::memcpy(q, data + taken * 16, 16);
+        WritePacked((registers >> (reg * 4)) & 0xF, q);
+        taken++;
+        if (++reg == registerCount)
+        {
+            reg = 0;
+            loops--;
+        }
+    }
+
+    return taken;
+}
+
 // A vertex went in the queue at queued_ (or its last place): draw when the primitive has its vertexes
 void Gs::Kick(bool draw, bool)
 {

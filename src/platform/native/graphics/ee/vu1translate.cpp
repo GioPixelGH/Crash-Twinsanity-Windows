@@ -6,6 +6,7 @@
 
 #include "vu1translate.h"
 
+#include "rounding.h"
 #include "vif.h"
 #include "vu.h"
 #include "vu1jit.h"
@@ -402,20 +403,52 @@ private:
             return -1;
         }
 
-        for (const Candidate& candidate : found->second)
+        if (known_.size() != t_.programCount)
         {
-            const Program& program = t_.programs[candidate.program];
-            u32 base = (pc - candidate.offset) & t_.codeMask;
-            if (CodeHash(code, t_.codeMask, base, program.size) == program.codeHash)
+            known_.resize(t_.programCount);
+        }
+
+        // The game swaps its programs in micro memory several times a frame, and each is told again when it's back: first by the
+        // code its hash was found for, compared (the hash, a byte at a time, was a tenth of VU1's thread), then by the hash for
+        // the programs not seen yet (other code with a seen program's hash would be a collision, not that program)
+        for (u32 pass = 0; pass < 2; pass++)
+        {
+            for (const Candidate& candidate : found->second)
             {
-                for (u32 n = 0; n < program.size; n++)
+                const Program& program = t_.programs[candidate.program];
+                u32 base = (pc - candidate.offset) & t_.codeMask;
+                std::vector<u64>& known = known_[candidate.program];
+                bool same = false;
+                if (pass == 0 && known.size() == program.size)
                 {
-                    u32 at = (base + n) & t_.codeMask;
-                    owner_[at] = static_cast<s32>(candidate.program);
-                    base_[at] = base;
+                    same = true;
+                    for (u32 n = 0; same && n < program.size; n++)
+                    {
+                        same = code[(base + n) & t_.codeMask] == known[n];
+                    }
+                }
+                else if (pass == 1 && known.empty() && CodeHash(code, t_.codeMask, base, program.size) == program.codeHash)
+                {
+                    known.resize(program.size);
+                    for (u32 n = 0; n < program.size; n++)
+                    {
+                        known[n] = code[(base + n) & t_.codeMask];
+                    }
+
+                    same = true;
                 }
 
-                return static_cast<s32>(candidate.program);
+                if (same)
+                {
+                    for (u32 n = 0; n < program.size; n++)
+                    {
+                        u32 at = (base + n) & t_.codeMask;
+                        owner_[at] = static_cast<s32>(candidate.program);
+                        base_[at] = base;
+                    }
+
+                    return static_cast<s32>(candidate.program);
+                }
             }
         }
 
@@ -423,6 +456,8 @@ private:
     }
 
     std::vector<std::vector<u32>> first_;
+    // Each program's code as it was when its hash was found (none yet: empty)
+    std::vector<std::vector<u64>> known_;
     std::unordered_map<u32, std::vector<Candidate>> entries_;
     const Table& t_;
     std::array<s32, 2048> owner_;
@@ -552,8 +587,7 @@ void TraceRunaway(Vu& vu, VuMicroState& st)
 template <bool Profile>
 void RunTranslated(Vu& vu, Dispatcher& dispatcher, u32 start)
 {
-    int previousRounding = std::fegetround();
-    std::fesetround(FE_TOWARDZERO);
+    RoundTowardZero rounding;
     VuMicroState st;
     Slots slots;
     vu.BeginMicro(st, start);
@@ -648,7 +682,6 @@ void RunTranslated(Vu& vu, Dispatcher& dispatcher, u32 start)
 
     vu.EndMicro(st);
     lap(g_Times.leave);
-    std::fesetround(previousRounding);
     // $TWIN_VU_LONGEST: the most instructions a program ran to its end, said whenever it grows (for the runaway limit)
     static const bool longest = std::getenv("TWIN_VU_LONGEST") != nullptr;
     if (longest)

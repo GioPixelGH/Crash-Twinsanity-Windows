@@ -4,6 +4,7 @@
 
 #include "vu.h"
 
+#include "rounding.h"
 #include "../state.h"
 
 #include <algorithm>
@@ -1167,8 +1168,7 @@ void Vu::Kick(u32 address)
 
 void Vu::RunInterpreted(u32 start)
 {
-    int previousRounding = std::fegetround();
-    std::fesetround(FE_TOWARDZERO);
+    RoundTowardZero rounding;
     VuMicroState state;
     BeginMicro(state, start);
     while (StepMicro(state))
@@ -1176,7 +1176,6 @@ void Vu::RunInterpreted(u32 start)
     }
 
     EndMicro(state);
-    std::fesetround(previousRounding);
 }
 
 void Vu::BeginMicro(VuMicroState& state, u32 start)
@@ -2301,12 +2300,7 @@ void Vu::MacroMove(u32 ft, u32 fs, u32 mask)
 namespace
 {
 // A macro mode FMAC result: the VU's operand and result rules, rounding toward zero
-struct MacroRounding
-{
-    int previous;
-    MacroRounding() : previous(std::fegetround()) { std::fesetround(FE_TOWARDZERO); }
-    ~MacroRounding() { std::fesetround(previous); }
-};
+using MacroRounding = RoundTowardZero;
 
 u32 MacroResult(f32 value)
 {

@@ -202,7 +202,7 @@ void Gs::DrawPrimitive(const Vertex* vertexes, u32 count)
         u64 generation = 0;
         DrawState state;
     };
-    thread_local StateCache cache;
+    thread_local constinit StateCache cache{};
     static const bool caching = std::getenv("TWIN_GS_STATE_CACHE") == nullptr || std::getenv("TWIN_GS_STATE_CACHE")[0] != '0';
     // The backend draws from the cache's own state, not a copy (copying its 800 bytes a primitive was a twelfth of the render
     // thread's time); a backend that changes it (a glyph's texture swapped in, the texture's levels decoded: stateTouched_)
@@ -217,6 +217,48 @@ void Gs::DrawPrimitive(const Vertex* vertexes, u32 count)
     DrawState& state = cache.state;
 
     primitivesDrawn++;
+    // The debugging switches (TWIN_GS_VERTEX_CHECK, TWIN_GS_DUMP_AT, TWIN_GS_TRACE, TWIN_PIXEL_WATCH) and the software path are
+    // out of line: this runs for every primitive, and their registers and stack were saved and made at each call
+    static const bool debugging = std::getenv("TWIN_GS_VERTEX_CHECK") != nullptr || std::getenv("TWIN_GS_DUMP_AT") != nullptr ||
+                                  std::getenv("TWIN_GS_TRACE") != nullptr || std::getenv("TWIN_PIXEL_WATCH") != nullptr;
+    s32 watch[2] = {-1, -1};
+    if (debugging)
+    {
+        DebugBeforeDraw(state, vertexes, count, watch);
+    }
+
+    // A backend draws it, or leaves it to the software rasteriser (having made local memory current for it)
+    stateTouched_ = false;
+    if (backend_ != nullptr && backend_->Draw(state, vertexes, count))
+    {
+        if (stateTouched_)
+        {
+            cache.generation = ~0ull;
+        }
+
+        primitives++;
+    }
+    else
+    {
+        const bool touched = stateTouched_;
+        if (touched)
+        {
+            cache.generation = ~0ull;
+        }
+
+        DrawOwnState(state, vertexes, count, touched);
+    }
+
+    if (watch[0] >= 0)
+    {
+        ReportWatch(state, vertexes, count, watch);
+    }
+}
+
+// DrawPrimitive's debugging switches before the primitive is drawn: watch made the pixel TWIN_PIXEL_WATCH names when the
+// primitive's box covers it
+void Gs::DebugBeforeDraw(const DrawState& state, const Vertex* vertexes, u32 count, s32 watch[2])
+{
     // Debugging: TWIN_GS_VERTEX_CHECK counts the vertexes VU1 and the game send that a GPU could take differently (ST or Q not
     // finite, Q zero, ST/Q past 64 texture widths, a place more than 2048 pixels off), the first 40 of them each a line and the
     // counts every 3 million vertexes
@@ -335,12 +377,12 @@ void Gs::DrawPrimitive(const Vertex* vertexes, u32 count)
 
     // TWIN_PIXEL_WATCH=X,Y: each primitive whose box covers the pixel (of the frame drawn into), with the frame's and the depth
     // buffer's values there after it
-    static const char* watch = std::getenv("TWIN_PIXEL_WATCH");
-    s32 watchX = -1;
-    s32 watchY = -1;
-    if (watch != nullptr)
+    static const char* watching = std::getenv("TWIN_PIXEL_WATCH");
+    s32& watchX = watch[0];
+    s32& watchY = watch[1];
+    if (watching != nullptr)
     {
-        std::sscanf(watch, "%d,%d", &watchX, &watchY);
+        std::sscanf(watching, "%d,%d", &watchX, &watchY);
         s32 x0 = 0x7FFFFFFF, x1 = -0x7FFFFFFF, y0 = 0x7FFFFFFF, y1 = -0x7FFFFFFF;
         for (u32 i = 0; i < count; i++)
         {
@@ -355,59 +397,46 @@ void Gs::DrawPrimitive(const Vertex* vertexes, u32 count)
             watchX = -1;
         }
     }
+}
 
-    auto reportWatch = [&]() {
-        if (watchX < 0)
-        {
-            return;
-        }
-
-        u32 frame = 0;
-        u32 depth = 0;
-        if (backend_ == nullptr || !backend_->DebugPixel(state.fpsm, state.fbp, state.fbw, watchX, watchY, &frame))
-        {
-            frame = ReadPixel(state.fpsm, watchX, watchY, state.fbp, state.fbw);
-        }
-
-        if (backend_ == nullptr || !backend_->DebugPixel(state.zpsm, state.zbp, state.fbw, watchX, watchY, &depth))
-        {
-            depth = ReadPixel(state.zpsm, watchX, watchY, state.zbp, state.fbw);
-        }
-
-        const Context& c = *state.context;
-        std::fprintf(stderr, "watch: #%llu prim %u frame %x/%u/%x tex0 %llx test %llx alpha %llx -> frame %08x z %08x\n",
-                     static_cast<unsigned long long>(primitivesDrawn), state.type, state.fbp, state.fbw, state.fpsm,
-                     static_cast<unsigned long long>(state.textured ? c.tex0.value : 0), static_cast<unsigned long long>(c.test.value),
-                     static_cast<unsigned long long>(state.blend ? c.alpha.value : 0), frame, depth);
-        static const bool printVertexes = std::getenv("TWIN_PIXEL_WATCH_VERTEXES") != nullptr;
-        for (u32 i = 0; printVertexes && i < count; i++)
-        {
-            const Vertex& v = vertexes[i];
-            std::fprintf(stderr, "watch:   v %.4f,%.4f z %x rgba %02x%02x%02x%02x uv %.3f,%.3f stq %g,%g,%g\n", v.x / 16.0,
-                         v.y / 16.0, v.z, v.r, v.g, v.b, v.a, v.u / 16.0, v.v / 16.0, v.s, v.t, v.q);
-        }
-    };
-
-    // A backend draws it, or leaves it to the software rasteriser (having made local memory current for it)
-    stateTouched_ = false;
-    if (backend_ != nullptr && backend_->Draw(state, vertexes, count))
+// TWIN_PIXEL_WATCH's line after a primitive whose box covers the pixel: the frame's and the depth buffer's values there
+void Gs::ReportWatch(const DrawState& state, const Vertex* vertexes, u32 count, const s32 watch[2])
+{
+    u32 frame = 0;
+    u32 depth = 0;
+    if (backend_ == nullptr || !backend_->DebugPixel(state.fpsm, state.fbp, state.fbw, watch[0], watch[1], &frame))
     {
-        if (stateTouched_)
-        {
-            cache.generation = ~0ull;
-        }
-
-        primitives++;
-        reportWatch();
-        return;
+        frame = ReadPixel(state.fpsm, watch[0], watch[1], state.fbp, state.fbw);
     }
 
+    if (backend_ == nullptr || !backend_->DebugPixel(state.zpsm, state.zbp, state.fbw, watch[0], watch[1], &depth))
+    {
+        depth = ReadPixel(state.zpsm, watch[0], watch[1], state.zbp, state.fbw);
+    }
+
+    const Context& c = *state.context;
+    std::fprintf(stderr, "watch: #%llu prim %u frame %x/%u/%x tex0 %llx test %llx alpha %llx -> frame %08x z %08x\n",
+                 static_cast<unsigned long long>(primitivesDrawn), state.type, state.fbp, state.fbw, state.fpsm,
+                 static_cast<unsigned long long>(state.textured ? c.tex0.value : 0), static_cast<unsigned long long>(c.test.value),
+                 static_cast<unsigned long long>(state.blend ? c.alpha.value : 0), frame, depth);
+    static const bool printVertexes = std::getenv("TWIN_PIXEL_WATCH_VERTEXES") != nullptr;
+    for (u32 i = 0; printVertexes && i < count; i++)
+    {
+        const Vertex& v = vertexes[i];
+        std::fprintf(stderr, "watch:   v %.4f,%.4f z %x rgba %02x%02x%02x%02x uv %.3f,%.3f stq %g,%g,%g\n", v.x / 16.0,
+                     v.y / 16.0, v.z, v.r, v.g, v.b, v.a, v.u / 16.0, v.v / 16.0, v.s, v.t, v.q);
+    }
+}
+
+// The software rasteriser's draw from DrawPrimitive: on a state of its own (DrawSoftware fills its texture levels), made again
+// when the backend touched the cache's
+void Gs::DrawOwnState(const DrawState& state, const Vertex* vertexes, u32 count, bool touched)
+{
     // (Copied inline: the C library's memcpy, called for a struct this big, cost more than the state's making saved)
     static_assert(std::is_trivially_copyable_v<DrawState>);
     DrawState own;
-    if (stateTouched_)
+    if (touched)
     {
-        cache.generation = ~0ull;
         SetUpState(own, &vertexes[count - 1]);
     }
     else
@@ -416,7 +445,6 @@ void Gs::DrawPrimitive(const Vertex* vertexes, u32 count)
     }
 
     DrawSoftware(own, vertexes, count);
-    reportWatch();
 }
 
 // The software rasteriser's part of DrawPrimitive, on a state of its own (it fills its texture levels)

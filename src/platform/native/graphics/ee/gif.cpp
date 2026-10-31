@@ -65,20 +65,9 @@ u32 Gif::TransferNow(u32 index, const u8* data, u32 quadwords, bool stopAtEnd)
         switch (path.format)
         {
         case Packed:
-        {
-            u32 q[4];
-            std::memcpy(q, at, 16);
-            u32 descriptor = (path.registers >> (path.reg * 4)) & 0xF;
-            gs_.WritePacked(descriptor, q);
-            taken++;
-            if (++path.reg == path.registerCount)
-            {
-                path.reg = 0;
-                path.loops--;
-            }
-
+            // The tag's quadwords there written in one go (as many as it has, up to the data's end)
+            taken += gs_.WritePackedRun(path.registers, path.registerCount, path.reg, path.loops, at, quadwords - taken);
             break;
-        }
         case RegList:
         {
             // Two registers a quadword; an odd count leaves the last quadword's upper half unused

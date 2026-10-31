@@ -4,6 +4,7 @@
 #include "renderthread.h"
 #include "ee/dma.h"
 #include "ee/gif.h"
+#include "ee/rounding.h"
 #include "ee/vif.h"
 #include "ee/vu.h"
 #include "ee/vu1translate.h"
@@ -35,10 +36,8 @@ Hardware& GetHardware()
                 return;
             }
 
-            int rounding = std::fegetround();
-            std::fesetround(FE_TONEAREST);
+            Ee::RoundToNearest rounding;
             gif->Kick(vu1->data(), address, vu1->kickPc * 8);
-            std::fesetround(rounding);
         };
         // VU1's programs run translated (ee/vu1translate.h)
         Ee::AttachVu1Translation(*made.vu1);
