@@ -220,7 +220,8 @@ void Gs::DrawPrimitive(const Vertex* vertexes, u32 count)
     // The debugging switches (TWIN_GS_VERTEX_CHECK, TWIN_GS_DUMP_AT, TWIN_GS_TRACE, TWIN_PIXEL_WATCH) and the software path are
     // out of line: this runs for every primitive, and their registers and stack were saved and made at each call
     static const bool debugging = std::getenv("TWIN_GS_VERTEX_CHECK") != nullptr || std::getenv("TWIN_GS_DUMP_AT") != nullptr ||
-                                  std::getenv("TWIN_GS_TRACE") != nullptr || std::getenv("TWIN_PIXEL_WATCH") != nullptr;
+                                  std::getenv("TWIN_GS_TRACE") != nullptr || std::getenv("TWIN_PIXEL_WATCH") != nullptr ||
+                                  std::getenv("TWIN_FILTER_PROBE") != nullptr;
     s32 watch[2] = {-1, -1};
     if (debugging)
     {
@@ -259,6 +260,49 @@ void Gs::DrawPrimitive(const Vertex* vertexes, u32 count)
 // primitive's box covers it
 void Gs::DebugBeforeDraw(const DrawState& state, const Vertex* vertexes, u32 count, s32 watch[2])
 {
+    // Debugging: TWIN_FILTER_PROBE (with TWIN_GS=software, the GS's own memory): the game's colour filter (renderer/effects.cpp's
+    // FilterColours: its palette's 8 bit indexes read, PSMT8H, from its copies of the depth buffer) checked against the depth
+    // at the same pixel, for its first three frames (at a filter's first strip, the frame's whole width and the strips' height):
+    // of the pixels its depth test passes (the far ones), how many have the depth's bits 8-15 as their index. The hardware
+    // renderer draws the filter at the scale from that (hwgs.cpp's DepthIndexColour), which holds only if all of them do
+    {
+        static const bool probe = std::getenv("TWIN_FILTER_PROBE") != nullptr;
+        static int probes = 0;
+        const Context& c = *state.context;
+        const s32 left = (static_cast<s32>(vertexes[0].x) - static_cast<s32>(state.offsetX)) >> 4;
+        if (probe && state.textured && c.tex0.psm == PSMT8H && c.frame.psm == PSMCT32 && state.ztst == ZtstGreater && left == 0 &&
+            probes < 3)
+        {
+            probes++;
+            const u32 zpsm = 0x30 | static_cast<u32>(c.zbuf.psm);
+            const u32 spriteZ = vertexes[count - 1].z;
+            const s32 top = (static_cast<s32>(vertexes[0].y) - static_cast<s32>(state.offsetY)) >> 4;
+            const s32 bottom = (static_cast<s32>(vertexes[count - 1].y) - static_cast<s32>(state.offsetY)) >> 4;
+            u64 passed = 0;
+            u64 matched = 0;
+            for (s32 y = std::max(0, top); y < bottom; y++)
+            {
+                for (s32 x = 0; x < static_cast<s32>(c.frame.fbw) * 64; x++)
+                {
+                    const u32 z = ReadPixel(zpsm, static_cast<u32>(x), static_cast<u32>(y), static_cast<u32>(c.zbuf.zbp) * 32,
+                                            static_cast<u32>(c.frame.fbw));
+                    if (!(spriteZ > z))
+                    {
+                        continue;
+                    }
+
+                    passed++;
+                    const u32 index = ReadPixel(PSMT8H, static_cast<u32>(x), static_cast<u32>(y), static_cast<u32>(c.tex0.tbp0),
+                                                static_cast<u32>(c.tex0.tbw));
+                    matched += ((z >> 8) & 0xFF) == index;
+                }
+            }
+
+            std::fprintf(stderr, "filter probe: %llu of %llu filtered pixels have the depth's bits 8-15 as their index\n",
+                         static_cast<unsigned long long>(matched), static_cast<unsigned long long>(passed));
+        }
+    }
+
     // Debugging: TWIN_GS_VERTEX_CHECK counts the vertexes VU1 and the game send that a GPU could take differently (ST or Q not
     // finite, Q zero, ST/Q past 64 texture widths, a place more than 2048 pixels off), the first 40 of them each a line and the
     // counts every 3 million vertexes

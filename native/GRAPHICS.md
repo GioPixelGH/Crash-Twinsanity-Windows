@@ -170,14 +170,15 @@ picture at the PS2's resolution, and `replayNNN_gpu.png`, the GPU's at the scale
   (levels\ice\hub\labext) and Cortex's face green (psycho's cutscene), as the retail game does (#15: its executable in
   PCSX2 2.9, Crash in the same idle pose, the patch's mean colour 124, 190, 148 against the port's 123, 191, 149; the PS2
   build's Cortex at least as green). check_windows.py's "skinned light" keeps it so.
-- Not a difference: the characters' models and textures at a higher scale (2026-10-31, against PCSX2 2.9 at the beach's start,
+- The characters' models and textures at a higher scale (2026-10-31, against PCSX2 2.9 at the beach's start,
   `run_pcsx2.py --screenshot p9.2`, Crash in the port's frame 600's pose): at 8x its hardware renderer's picture and the port's
-  are 3.7 of 255 apart on average around Crash, on the outline's pixels only (the pose a fraction of a frame apart), with the
-  player's HD texture pack (its 18 character textures) as without; at 1x its software renderer and the port's (hardware or
-  software) have Crash's mean colour within 0.7 and 5 apart on average (the dither's pattern). Their outlines' steps and their
-  polygons' corners are the PS2's: the game never sets PRIM's AA1 (the GS's antialiased edges: none of 3.6 million primitives
-  on the beach, the Iceberg Lab and psycho's cutscene) and none of 555 million vertexes is out of the GS's range (Q zero, ST
-  or Q not finite, ST/Q past 64 widths: `TWIN_GS_VERTEX_CHECK`; the only far places, labext's, are past the scissor).
+  were 3.7 of 255 apart on average around Crash, on the outline's pixels, with the player's HD texture pack (its 18 character
+  textures) as without; at 1x its software renderer and the port's (hardware or software) have Crash's mean colour within 0.7
+  and 5 apart on average (the dither's pattern). Their polygons are the PS2's: the game never sets PRIM's AA1 (the GS's
+  antialiased edges: none of 3.6 million primitives on the beach, the Iceberg Lab and psycho's cutscene) and none of 555
+  million vertexes is out of the GS's range (Q zero, ST or Q not finite, ST/Q past 64 widths: `TWIN_GS_VERTEX_CHECK`; the only
+  far places, labext's, are past the scissor). The outline's differences were not all the pose's: against the sand they're
+  the half PS2 pixel the whole picture lies off PCSX2's, against far things the colour filter's blocks (below).
 - A difference: the characters' shadows (the beach's, the Iceberg Lab's: shadow volumes drawn into a half resolution buffer,
   256 x 256, tested against a depth made from the scene's at the PS2's resolution, then laid over the frame filtered) stay at
   the PS2's resolution under native scaling: at 1x as the PS2's (PCSX2's software renderer has the same soft 2 x 2 blocks), at
@@ -185,10 +186,51 @@ picture at the PS2's resolution, and `replayNNN_gpu.png`, the GPU's at the scale
   scale, a sharp outline. Drawing it at the scale needs the depth copy made on the GPU (it's read from local memory now:
   scaled up from there the volumes' test leaves streaks, `TWIN_HW_NATIVE_SMALL=0`).
 
+### The characters' stepped edges at a higher scale: the causes (2026-11-01)
+
+Players saw every character's outline stepped at a high resolution (#15, #19, #24; the player's own fullscreen 2560x1440 at
+8x): blocks the size of a PS2 pixel, darker or the wrong colour, where a character stands against far things (the sky, far
+rocks). Reproduced on the player's PC in real runs ($TWIN_PAD_SCRIPT: the window as shown and the picture drawn at the same
+frames) and measured on the bench (compare_models.py; WINDOWS.md, "The characters against PCSX2") against the retail game in
+PCSX2 2.9 at the beach with the camera looking up and in the first boss's cutscene, level by level. Steps of the PS2's pixel's
+size below are edges exactly a PS2 pixel long on the PS2 pixels' grid, per 1000 PS2 pixels over the grid's other positions:
+
+- The presentation: not it. The window is the drawn picture made its size (within 0.5 of 255 on average at 8x, fullscreen or
+  windowed, one thread or three, the player's settings or the defaults). At a higher scale the whole picture lies half a PS2
+  pixel up and left of PCSX2's (our first sample of a PS2 pixel is the GS's sample point, PCSX2's are the pixels' centres): a
+  shift of everything, no step; the bench fits it before measuring.
+- The drawing: the game's colour filter (renderer/effects.cpp: CopyDepthBuffer copies the depth buffer as 16 bit depth texels
+  in strips into a 16 bit buffer, 2800/8 and 3000/8 for its upper and lower halves; FilterColours reads that buffer as 8 bit
+  indexes, PSMT8H, through the chunk's palette and blends the colour, (Cd - Cs) * As + Cs, over the pixels whose depth is under
+  0x10000, the far ones). Each index is the depth's bits 8-15 at the same pixel: the software GS's every filtered pixel on the
+  beach (`TWIN_FILTER_PROBE`: 262144 of 262144, the camera looking up). The hardware renderer made the copy from local
+  memory, read back from the upscaled depth at each block's first sample, and tested the filter's depth there too ("Upscaled
+  effects reading textures made
+  at the PS2's resolution", above): the filter was the PS2's pixels' whatever the scale. Where a near thing's block met a far
+  one's, far samples took the near one's colour and near samples the far one's: the blocks players saw; and the sky, whose
+  depth changes across it, was coloured in blocks (the party's stepped clouds, smooth in PCSX2 drawing the same commands). On
+  the port's own GS commands drawn by both at 8x (its frame written as a GS dump, PCSX2 replaying it): steps 20.0 at the beach,
+  24.2 with Cortex against the sky, 27.9 at the party, 2.0 with Crash close up indoors (no far pixels), PCSX2 1.9 to 2.5; once
+  the half pixel is fitted the pictures are otherwise 0.3 to 1.1 of 255 apart. The cause of the stepped edges.
+- Other passes on the characters: none at the PS2's resolution. Their draws test the depth GEQUAL; some meshes have a second
+  blended pass over the same strips that doesn't write the depth: exact here, both passes writing and comparing the depth the
+  shader computes from the same vertexes (Crash close up: 0.3 of 255 from PCSX2 on the same commands, no flicker).
+- The characters' shadows (the shadow volumes in 2800/4 and 2c00/4, kept at the PS2's resolution by the native scaling): a
+  difference of their own, not the outlines'. On the beach's start at 8x on the same commands, around Crash's feet 1.5 of 255
+  from PCSX2 (whose shadow's edge is sharp, ours soft and half the PS2's resolution); drawn at the scale
+  (`TWIN_HW_NATIVE_SMALL=0`) 2.1, the volumes' test against the depth copy made from memory leaving streaks. Making them
+  PCSX2's needs the depth copy made on the GPU from the upscaled depth target (as the colour filter's index now is).
+- The geometry: the port's GS commands are the retail game's. In the first boss's cutscene the two frames draw the same ways,
+  85 and 85, 89 and 90, 125 and 125 draws, their primitives within 7 of 18,000 to 34,000 (one 4-primitive strip's alpha test
+  reference differs with the test off), no antialiased (AA1) primitive in either; at the beach the counts are a few in a
+  hundred apart (the idle pose and a seagull).
+- The texture pack, dithering, SSAA and the window's size change none of it: the same steps with the defaults at 4x.
+
 Replays (beach, flyover; 1x GPU picture against the software GS, mean per channel): beach 0.87-0.92, flyover 1.1.
 
 Debugging switches: `TWIN_GS_DUMP_AT=PRIM,BP,BW,PSM,W,H[;...]` (a buffer's values from local memory just before a primitive,
-into `$TWIN_HW_DUMP_DIR`), `TWIN_HW_TRACE_PRIM=N` (a primitive's batch state and vertexes), `TWIN_HW_CONVERSION_TRACE=A,B`,
+into `$TWIN_HW_DUMP_DIR`), `TWIN_FILTER_PROBE` (with `TWIN_GS=software`: the colour filter's first three draws, how many of
+the pixels it draws on have the depth's bits 8-15 as their index), `TWIN_HW_TRACE_PRIM=N` (a primitive's batch state and vertexes), `TWIN_HW_CONVERSION_TRACE=A,B`,
 `TWIN_HW_DISPLAY_TRACE`, `TWIN_HW_TRACK=BP,X,Y` (a target pixel after each batch), `TWIN_HW_BATCH_LOG=N` (the batches drawn
 for picture N, a line each: their target and its scale, the texture's target if any, filters, blend, depth), `TWIN_GS_VERTEX_CHECK`
 (vertexes a GPU could take differently, counted), `TWIN_HW_STATS` (render passes by cause, conversions, copies), `TWIN_SCALE=N` (a headless run's internal scale), `TWIN_HW_MAX_TARGET=N` (targets with a side past N pixels refused: the software GS draws them), and the old behaviours:
