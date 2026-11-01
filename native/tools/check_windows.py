@@ -668,6 +668,18 @@ AS_BEFORE = {"TWIN_HW_DEPTH_INDEX": "0", "TWIN_HW_SMALL_SCENES": "0", "TWIN_VU1_
 GS_FIXES_ONLY = {"TWIN_VU1_KICK_AT_ONCE": "1", "TWIN_HW_LOD_AT_SCALE": "0", "TWIN_HW_THIN_PRIMITIVES": "0"}
 
 
+def program_version(program):
+    """A program's version (its version information's ProductVersion) as numbers, () when it can't be read"""
+    try:
+        path = str(program).replace("'", "''")
+        out = subprocess.run(["powershell", "-NoProfile", "-Command",
+                              f"(Get-Item -LiteralPath '{path}').VersionInfo.ProductVersion"],
+                             capture_output=True, text=True, timeout=60).stdout.strip()
+        return tuple(int(part) for part in out.split("."))
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return ()
+
+
 def scene_buffers(exe, work, frame=832, scale=4):
     """Bossarea's sky (the first boss's cutscene, Cortex against the sky: compare_models.py's moment), drawn by the game at
     half the PS2's resolution into a 256 wide buffer and laid over the frame with the nearest texels, at the scale with the
@@ -981,27 +993,36 @@ def pictures(exe, reference, work, last=2500, every=100):
             process.kill()
             process.wait()
         return frames
+    # A reference from before 1.1.0 draws as AS_BEFORE does; from 1.1.0 on, as players have it: ours as they have it, alone
+    before = program_version(reference) < (1, 1, 0)
     with ThreadPoolExecutor(4) as pool:
-        ours, theirs, scaled, whole = pool.map(one, [exe, reference, exe, exe],
-                                               ["checked", "reference", "checked-filter", "checked-all"],
-                                               [AS_BEFORE, {}, GS_FIXES_ONLY, {}])
+        if before:
+            ours, theirs, scaled, whole = pool.map(one, [exe, reference, exe, exe],
+                                                   ["checked", "reference", "checked-filter", "checked-all"],
+                                                   [AS_BEFORE, {}, GS_FIXES_ONLY, {}])
+        else:
+            ours, theirs = pool.map(one, [exe, reference], ["checked", "reference"], [{}, {}])
+            scaled = whole = None
     same, different, changed, packets = 0, [], [], []
     for frame in range(every, last + 1, every):
         name = f"frame_{frame:06d}.png"
-        a, b, c = ours / name, theirs / name, scaled / name
+        a, b = ours / name, theirs / name
+        c = scaled / name if scaled else None
         if not a.exists() or not b.exists():
             different.append(name + " (missing)")
         elif a.read_bytes() != b.read_bytes():
             different.append(name)
         else:
             same += 1
+        if scaled is None:
+            continue
         if b.exists() and c.exists() and b.read_bytes() != c.read_bytes():
             width = int.from_bytes(b.read_bytes()[16:20], "big")
             changed.append((name, *changed_off_outlines(b, c, max(1, round(width / 512)))))
         d = whole / name
         if c.exists() and d.exists() and c.read_bytes() != d.read_bytes():
             packets.append((name, pixels_apart(c, d)))
-    return same, different, changed, packets
+    return same, different, changed, packets, before
 
 
 def pixels_apart(old, new):
@@ -1403,12 +1424,14 @@ def report(exe, reference, work, with_sweep, reference_name=None):
             print(f"  FAILED {name}: {what}")
 
     if reference and reference.exists():
-        same, different, changed, packets = pictures(exe, reference, work)
-        print(f"pictures        {same}/{same + len(different)} the same as {reference_name or reference}'s with the colour "
-              f"filter and the scene buffers at the PS2's pixels, VU1's packets read at the XGKICK, mipmaps' levels the 1x "
-              f"ones and no primitive thinner than a PS2 pixel"
+        same, different, changed, packets, before = pictures(exe, reference, work)
+        drawn = ("with the colour filter and the scene buffers at the PS2's pixels, VU1's packets read at the XGKICK, "
+                 "mipmaps' levels the 1x ones and no primitive thinner than a PS2 pixel" if before else
+                 "as players have them")
+        print(f"pictures        {same}/{same + len(different)} the same as {reference_name or reference}'s {drawn}"
               f"{'' if not different else ': not ' + ', '.join(different[:5])}")
         failed |= bool(different)
+    if reference and reference.exists() and before:
         off = [c for c in changed if c[2] > off_outlines_allowed(c[1])]
         print(f"pictures        with them at the scale (as players have it): {len(changed)} differ, the "
               f"changed pixels within a PS2 pixel of an outline (but one in a thousand): {'yes' if not off else 'NO'}"
@@ -1418,6 +1441,7 @@ def report(exe, reference, work, with_sweep, reference_name=None):
         failed |= bool(off)
         print(f"pictures        with VU1's packets, mipmaps' levels and thin primitives at the scale too: {len(packets)} differ"
               + "".join(f"; {name[6:12].lstrip('0')}: {count} pixels" for name, count in packets[:25]))
+    if reference and reference.exists():
         ok, what = vu1_packets(exe, work)
         print(f"vu1 packets     {'ok' if ok else 'FAILED'}: {what}")
         failed |= not ok

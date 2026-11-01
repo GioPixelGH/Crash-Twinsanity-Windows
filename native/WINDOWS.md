@@ -315,7 +315,9 @@ found, and a folder no file can be made in (icacls's deny of `WD,AD`, as Program
 switch refused); the beach's
 first 2,500 frames at a fixed time, every 100th picture compared byte for byte with the last packaged build's
 (`build/native/dist/`, or `--reference PROGRAM`; a program whose folder is a player's portable one, with a `portable.txt` or
-a `User` folder, runs from a copy of its own files, never with the player's settings and saves), first with the game's colour
+a `User` folder, runs from a copy of its own files, never with the player's settings and saves). Against 1.1.0 or a later
+release (the reference's version information says which) they're compared once, as players have them. Against an older
+one, first with the game's colour
 filter and the scenes drawn into narrow buffers at the PS2's pixels, VU1's packets read at the XGKICK and mipmaps' levels
 the 1x ones as 1.1.0 and before did (its `AS_BEFORE`: `$TWIN_HW_DEPTH_INDEX=0`, `$TWIN_HW_SMALL_SCENES=0`,
 `$TWIN_VU1_KICK_AT_ONCE=1`, `$TWIN_HW_LOD_AT_SCALE=0`, `$TWIN_HW_THIN_PRIMITIVES=0`), then with the GS's two at the scale
