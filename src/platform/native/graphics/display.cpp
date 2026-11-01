@@ -1030,7 +1030,39 @@ void ReadPicture()
     g_PictureStale = false;
 }
 
-// TWIN_DUMP_FRAMES=FOLDER[:EVERY]: every (default 50th) picture also written there as frame_NNNNNN.png
+// A picture setting's FOLDER[:EVERY] (every EVERYth picture, the 50th by default) or FOLDER:N1,N2,... (those pictures):
+// whether picture NUMBER is one, and the folder
+bool PictureWanted(const char* setting, u64 number, std::string* folder)
+{
+    *folder = setting;
+    size_t colon = folder->rfind(':');
+    if (colon == std::string::npos || colon <= 1)
+    {
+        return number % 50 == 0;
+    }
+
+    std::string which = folder->substr(colon + 1);
+    folder->resize(colon);
+    if (which.find(',') == std::string::npos)
+    {
+        return number % static_cast<u64>(std::max(1, std::atoi(which.c_str()))) == 0;
+    }
+
+    for (size_t at = 0; at < which.size();)
+    {
+        size_t comma = which.find(',', at);
+        if (std::strtoull(which.c_str() + at, nullptr, 10) == number)
+        {
+            return true;
+        }
+
+        at = comma == std::string::npos ? which.size() : comma + 1;
+    }
+
+    return false;
+}
+
+// TWIN_DUMP_FRAMES=FOLDER[:EVERY] or FOLDER:N1,N2,...: those pictures also written there as frame_NNNNNN.png
 void DumpPicture(const Picture& picture, u32 number)
 {
     static const char* dump = std::getenv("TWIN_DUMP_FRAMES");
@@ -1039,16 +1071,8 @@ void DumpPicture(const Picture& picture, u32 number)
         return;
     }
 
-    std::string folder = dump;
-    u32 every = 50;
-    size_t colon = folder.rfind(':');
-    if (colon != std::string::npos)
-    {
-        every = static_cast<u32>(std::max(1, std::atoi(folder.c_str() + colon + 1)));
-        folder.resize(colon);
-    }
-
-    if (number % every == 0)
+    std::string folder;
+    if (PictureWanted(dump, number, &folder))
     {
         char name[32];
         std::snprintf(name, sizeof(name), "/frame_%06u.png", number);
@@ -1056,9 +1080,9 @@ void DumpPicture(const Picture& picture, u32 number)
     }
 }
 
-// TWIN_WINDOW_SHOTS=FOLDER[:EVERY]: every (default 50th) picture also written as the window shows it (the picture made the
-// window's size, the overlay over it) as window_NNNNNN.png, numbered as TWIN_DUMP_FRAMES numbers them: asked for just before
-// the picture is drawn into the window
+// TWIN_WINDOW_SHOTS=FOLDER[:EVERY] or FOLDER:N1,N2,...: those pictures also written as the window shows them (the picture made
+// the window's size, the overlay over it) as window_NNNNNN.png, numbered as TWIN_DUMP_FRAMES numbers them: asked for just
+// before the picture is drawn into the window
 void ShootWindowFor(u64 number)
 {
     static const char* shots = std::getenv("TWIN_WINDOW_SHOTS");
@@ -1067,16 +1091,8 @@ void ShootWindowFor(u64 number)
         return;
     }
 
-    std::string folder = shots;
-    u32 every = 50;
-    size_t colon = folder.rfind(':');
-    if (colon != std::string::npos && colon > 1)
-    {
-        every = static_cast<u32>(std::max(1, std::atoi(folder.c_str() + colon + 1)));
-        folder.resize(colon);
-    }
-
-    if (number % every == 0)
+    std::string folder;
+    if (PictureWanted(shots, number, &folder))
     {
         char name[32];
         std::snprintf(name, sizeof(name), "/window_%06llu.png", static_cast<unsigned long long>(number));
@@ -1129,6 +1145,8 @@ void MakeShown(u64 frame)
     shown.primitives = h.gs->primitivesDrawn;
     shown.boxPixels = h.gs->boxPixels;
     shown.number = g_ShownCount;
+    // (its GS work ends here: $TWIN_GS_DUMP's frames)
+    GsDumpShown(g_ShownCount);
     DumpPicture(shown.picture, g_ShownCount++);
     ApplyGraphicsSettings();
     // The card's time of the frames before, read where it's there (gputime.h)
@@ -1262,6 +1280,7 @@ void ShowFrameHere()
     CaptureShown();
     // This picture's number (TWIN_DUMP_FRAMES's)
     static u32 shown = 0;
+    GsDumpShown(shown);
     ShootWindowFor(shown);
     // The picture is read out when something shows or keeps it: a window, a frame dump, or LastPicture's caller later (its
     // buffer and the PCRTC's registers stay as they are until the next frame's drawing)
@@ -1322,16 +1341,8 @@ void ShowFrameHere()
     static const char* dump = std::getenv("TWIN_DUMP_FRAMES");
     if (dump != nullptr && g_Picture.width != 0)
     {
-        std::string folder = dump;
-        u32 every = 50;
-        size_t colon = folder.rfind(':');
-        if (colon != std::string::npos)
-        {
-            every = static_cast<u32>(std::max(1, std::atoi(folder.c_str() + colon + 1)));
-            folder.resize(colon);
-        }
-
-        if (shown % every == 0)
+        std::string folder;
+        if (PictureWanted(dump, shown, &folder))
         {
             char name[32];
             std::snprintf(name, sizeof(name), "/frame_%06u.png", shown);

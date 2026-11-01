@@ -445,7 +445,8 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   thread (src/platform/native/profiler_win32.cpp); `native/tools/profile_report.py FILE` gives each busy thread's functions
   (`--lines` by source line).
 - `$TWIN_FIXED_TIME=1`: the test runs' time (debug.h), every frame a frame's time: with `$TWIN_DUMP_FRAMES=FOLDER:N` (every Nth
-  picture as a PNG), two builds' pictures can be compared frame by frame; with `$TWINSANITY_AUDIO=frames` too, runs agree
+  picture as a PNG; `FOLDER:N1,N2,...` those pictures), two builds' pictures can be compared frame by frame; with
+  `$TWINSANITY_AUDIO=frames` too, runs agree
   frame for frame (the sound in real time changes a run after some 700 frames). The pictures are at the render scale: with no
   `resolution.txt` in the run's settings, the default 2x (4x before version 1.0.4), so compare builds at the same scale.
   `$TWIN_FIXED_TIME=144,144,60`: the frames' rates in turn instead (a 144 Hz screen's with a slow frame now and then: the uneven
@@ -614,6 +615,68 @@ To compare pictures, `--gs KEY=VALUE` sets the run's `[EmuCore/GS]` (PCSX2.ini's
 bound in the copy's PCSX2.ini) and the window before it gets it back; nothing is pressed if PCSX2's isn't in front. Checked
 2026-10-31: the beach at `p9.2` (`--start-chunk 'Levels\Earth\Hub\beach'`) is the port's frame 600 there, Crash standing in
 the same pose.
+
+### The characters against PCSX2 (compare_models.py)
+
+`native/tools/compare_models.py` puts the port's pictures beside the PS2 game's in PCSX2 (the tests' own copy) at the same places
+and moments, and makes a local page of them: `..\compare\page\LABEL.html` (beside the working tree, in no repository: the
+pictures are the game's; `--out` another folder; `--label` names a build's page and runs, `current` by default). Its moments:
+the beach with the camera looking up at Crash and Aku Aku against the sky, and three of the first boss's cutscene in bossarea
+(Crash walked into the arena): Cortex against the sky, Crash close up, the characters at the party. The same input in both: the
+port's pad script ($TWIN_PAD_SCRIPT: `620-720:ry=255` on the beach, `500-800:ly=0` in bossarea) and in PCSX2 pad 1's stick held
+through keys the test copy binds to it (`run_pcsx2.py --key p0.82:rdown:2.0`, `--key p0.8:lup:6.0`). The port runs at 50 Hz
+there, as the PAL game in PCSX2 (the follow camera's smoothing goes a frame at a time: at 60 Hz the beach's camera turned
+otherwise), and PCSX2's times are the game's own (`--game-time`: its global clock, `G_GlobalClock_`). PCSX2 plays each place
+once at 1x, where it keeps the PS2's speed, writing a GS dump of the retail game at each moment (`run_pcsx2.py --gsdump T`,
+4:3, and widescreen for the player's configuration); each configuration's PCSX2 picture is that dump drawn again with its
+settings (`run_pcsx2.py replay`), so the picture and the commands are the same frame's whatever the settings cost (played at
+8x with its screenshots, PCSX2 took a second and more for each, and the moments slid along the cutscene). Three
+configurations:
+
+- player: as the player sees it. The port fullscreen at the screen's size, three threads, with copies of the player's
+  options, resolution and texture pack (taken once from `%APPDATA%\Crash Twinsanity` into `..\compare\user`, never written
+  there; the FPS counter off), the window as shown; PCSX2 fullscreen with the rendering keys of the [EmuCore/GS] of the player's
+  own PCSX2 (`C:\Program Files\PCSX2\inis\PCSX2.ini`, read only), the game's widescreen TV flag set as the port's option has
+  it (`--write p0.1:D_0030AAC4:1b` in the run that dumps), its screenshot at the screen's size (`--fullscreen
+  --screenshot-size 0`).
+- ps2: the PS2's own picture. The port at 1x against PCSX2's software renderer at 1x.
+- hw8: the hardware renderers at the port's scale. Both at 8x, the pictures drawn (4096 x 4096), the textures filtered as the
+  game asks and 4:3 in both.
+
+Aligned by the picture: the port's frames of each moment are drawn at 1x (4:3, and widescreen for the player's
+configuration), and of all the place's PCSX2 pictures and the moment's frames the most alike pair (the whole picture's mean
+difference at 192 pixels) is the moment's (where the cutscene falls in PCSX2's moments changes by up to a second from a run to
+the next); the characters' crops' difference is the pose's likeness: a pair past 14 isn't valid (the page says so). The
+port's frame is then drawn in each configuration ($TWIN_FIXED_TIME: the same frame every run; `$TWIN_DUMP_FRAMES` and
+`$TWIN_WINDOW_SHOTS` take a list of frames, `FOLDER:N1,N2,...`). At a higher scale the port's picture lies half a PS2 pixel up
+and left of PCSX2's (its samples start at the GS's sample point, PCSX2's at the PS2 pixels' centres: 4 pixels at 8x), a shift
+of the whole picture that alone would make every outline a difference: PCSX2's picture is moved by the whole-pixel shift that
+fits best before anything is measured, and the page says by how much.
+
+For each moment and configuration the page has the two pictures at the same size, a flip (hover or click), the difference,
+each character's crop enlarged with sharp pixels, the numbers (the mean difference, the pixels over 16 of 255, the outlines
+matched within half a PS2 pixel, the steps of the PS2's pixel's size: edges exactly one PS2 pixel long on the PS2 pixels'
+boundaries above the other grid positions', per 1000 PS2 pixels, 0 for a picture drawn at its own resolution; the textures'
+sharpness) and every region the two differ in, largest first, with its crops. Then, at the GS's level:
+
+- The same GS commands drawn by PCSX2 (player and hw8): the port's frame is also written as a PCSX2 GS dump
+  (`$TWIN_GS_DUMP=FILE:N` or `FOLDER:N1,N2,...`, graphics/capture.cpp: the GS state as the frame before leaves it, local memory
+  made current from the hardware renderer's targets, then every GIF packet of the three paths until the frame is made), played
+  by PCSX2 with the configuration's settings (`run_pcsx2.py replay FILE.gs`): the game's work, VU1's and the commands being the
+  port's in both pictures, whatever differs is the two renderers'.
+- The port's GS commands against the retail game's (hw8): the retail game's GS dump the PCSX2 picture was drawn from
+  (`run_pcsx2.py --gsdump T`, its hotkey GSDumpSingleFrame bound to F9 in the test copy), read with
+  `native/tools/gsdump.py` (PCSX2 2.x's GS dump format: the header, the GS state of GSState::Freeze's version 9, the 8 KB of
+  privileged registers, the transfers, vertical blanks and register packets; the GIF tags' PACKED, REGLIST and IMAGE loops
+  decoded into primitives with their registers) and the two frames' draws grouped by how they're drawn (the primitive, the
+  texture's format, the frame buffer, blending, FST, AA1, TEX1, ALPHA, TEST, the depth's mask; not the texture's address,
+  as the texture cache's slots needn't be the same): the groups each has and the primitives each draws.
+
+PCSX2's runs are kept in `..\compare\refs` (`--pcsx2-again` makes them again), the port's in `..\compare\runs\LABEL`; `--env K=V`
+adds a variable to the port's runs. `check_windows.py --vs-pcsx2` runs the bench on the program checked (label `check`) and
+passes a moment when its pair is valid, the port's PS2-sized steps are no more than PCSX2's (3 per 1000 over at most) and PCSX2
+drawing the port's commands gives the port's picture (within 1.5 of 255 on average once the half pixel is fitted). It needs
+numpy and Pillow in the .venv. `gsdump.py FILE.gs` sums a dump up; `gsdump.py compare PORT.gs RETAIL.gs` compares two.
 
 ## Releasing
 

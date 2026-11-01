@@ -639,6 +639,11 @@ public:
     };
     void SetGlyphOverride(GlyphOverride glyph);
 
+    // The state as PCSX2's GS dumps begin with it (its GSState::Freeze, version 9: the registers, local memory made current from
+    // the backend, the GIF paths idle) and its privileged registers' 8 KB (capture.cpp's $TWIN_GS_DUMP)
+    void WritePcsx2State(std::vector<u8>& out);
+    void WritePcsx2PrivilegedRegisters(std::vector<u8>& out) const;
+
     // Where the packets come from, for TWIN_GS_TRACE (VU1's program's address for path 1, ~0 otherwise)
     u32 traceSource = ~0u;
     // Counts for TWIN_FRAME_STATS: primitives drawn and their bounding boxes' pixels

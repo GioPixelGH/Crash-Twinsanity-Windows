@@ -9,6 +9,7 @@
 #include "gs/backend.h"
 #include "gs/gs.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -92,6 +93,125 @@ void HardwareState(Io& io)
     h.vif1->Serialize(io);
     h.gif->Serialize(io);
 }
+
+// $TWIN_GS_DUMP (capture.h)
+struct GsDump
+{
+    bool parsed = false;
+    // FILE:N one picture into FILE; FOLDER:N1,N2,... each into FOLDER/frame_NNNNNN.gs
+    std::string path;
+    bool listed = false;
+    std::vector<u64> frames;
+    u64 frame = 0;
+    FILE* file = nullptr;
+};
+
+GsDump g_GsDump;
+
+void GsDumpTap(u32 path, const u8* data, u32 quadwords)
+{
+    if (g_GsDump.file == nullptr || quadwords == 0)
+    {
+        return;
+    }
+
+    // A transfer: its id 0, the path (PCSX2's 1-3), its length in bytes, its data
+    const u8 head[2] = {0, static_cast<u8>(path + 1)};
+    const u32 bytes = quadwords * 16;
+    std::fwrite(head, 2, 1, g_GsDump.file);
+    std::fwrite(&bytes, 4, 1, g_GsDump.file);
+    std::fwrite(data, bytes, 1, g_GsDump.file);
+}
+}
+
+void GsDumpShown(u64 number)
+{
+    GsDump& d = g_GsDump;
+    if (!d.parsed)
+    {
+        d.parsed = true;
+        if (const char* setting = std::getenv("TWIN_GS_DUMP"))
+        {
+            std::string text = setting;
+            size_t colon = text.rfind(':');
+            if (colon != std::string::npos && colon > 1)
+            {
+                d.path = text.substr(0, colon);
+                std::string which = text.substr(colon + 1);
+                d.listed = which.find(',') != std::string::npos;
+                for (size_t at = 0; at < which.size();)
+                {
+                    size_t comma = which.find(',', at);
+                    std::string part = which.substr(at, comma == std::string::npos ? std::string::npos : comma - at);
+                    if (!part.empty())
+                    {
+                        d.frames.push_back(std::strtoull(part.c_str(), nullptr, 10));
+                    }
+
+                    at = comma == std::string::npos ? which.size() : comma + 1;
+                }
+            }
+        }
+    }
+
+    if (d.path.empty())
+    {
+        return;
+    }
+
+    Gs::Gs& gs = *GetHardware().gs;
+    if (d.file != nullptr && number >= d.frame)
+    {
+        // The picture's end: the privileged registers (packet 3), then the vertical blank (packet 1, field 0)
+        std::vector<u8> registers;
+        gs.WritePcsx2PrivilegedRegisters(registers);
+        const u8 three = 3;
+        std::fwrite(&three, 1, 1, d.file);
+        std::fwrite(registers.data(), registers.size(), 1, d.file);
+        const u8 vsync[2] = {1, 0};
+        std::fwrite(vsync, 2, 1, d.file);
+        std::fclose(d.file);
+        d.file = nullptr;
+        Ee::Gif::tap = nullptr;
+        std::fprintf(stderr, "graphics: picture %llu's GS work written as a PCSX2 GS dump\n", static_cast<unsigned long long>(number));
+    }
+
+    // The next picture one asked for: its dump started (the state as this picture leaves it)
+    if (d.file == nullptr && std::find(d.frames.begin(), d.frames.end(), number + 1) != d.frames.end())
+    {
+        d.frame = number + 1;
+        std::string name = d.path;
+        if (d.listed)
+        {
+            char file[32];
+            std::snprintf(file, sizeof(file), "/frame_%06llu.gs", static_cast<unsigned long long>(d.frame));
+            name += file;
+        }
+
+        d.file = std::fopen(name.c_str(), "wb");
+        if (d.file == nullptr)
+        {
+            std::fprintf(stderr, "graphics: TWIN_GS_DUMP: %s can't be written\n", name.c_str());
+            return;
+        }
+
+        std::vector<u8> state;
+        gs.WritePcsx2State(state);
+        std::vector<u8> registers;
+        gs.WritePcsx2PrivilegedRegisters(registers);
+        // 0xFFFFFFFF, the header's size (with the serial), the header: the state's version and size, the serial's place and
+        // size, the game's CRC (the retail executable's, as PCSX2 names it), no screenshot
+        static const char Serial[] = "SLES-52568";
+        const u32 serialSize = sizeof(Serial) - 1;
+        const u32 header[9] = {9, static_cast<u32>(state.size()), 36, serialSize, 0x1510E1D1u, 0, 0, 36 + serialSize, 0};
+        const u32 lead[2] = {0xFFFFFFFFu, 36 + serialSize};
+        std::fwrite(lead, sizeof(lead), 1, d.file);
+        std::fwrite(header, sizeof(header), 1, d.file);
+        std::fwrite(Serial, serialSize, 1, d.file);
+        std::fwrite(state.data(), state.size(), 1, d.file);
+        std::fwrite(registers.data(), registers.size(), 1, d.file);
+        Ee::Gif::tap = GsDumpTap;
+    }
 }
 
 void CaptureVif1(const u32* words, u32 count)

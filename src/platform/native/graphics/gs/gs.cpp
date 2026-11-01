@@ -941,6 +941,85 @@ void Gs::TransferLocalToLocal()
     }
 }
 
+namespace
+{
+template <typename T>
+void Append(std::vector<u8>& out, const T& value)
+{
+    const u8* bytes = reinterpret_cast<const u8*>(&value);
+    out.insert(out.end(), bytes, bytes + sizeof(T));
+}
+}
+
+void Gs::WritePcsx2State(std::vector<u8>& out)
+{
+    // Local memory as the PS2 has it: every page the backend holds newer brought back
+    if (backend_ != nullptr)
+    {
+        PageSet all;
+        all.set();
+        backend_->BeforeCpuRead(all);
+    }
+
+    Append(out, u32{9});
+    // PRIM, PRMODECONT, TEXCLUT, SCANMSK, TEXA, FOGCOL, DIMX, DTHE, COLCLAMP, PABE, BITBLTBUF, TRXDIR (3: no transfer), TRXPOS,
+    // TRXREG twice
+    const u64 env[] = {prim_.value, prmodecont_, texclut_.value, scanmsk_, texa_.value, fogcol_, dimx_, dthe_, colclamp_, pabe_,
+                       bitbltbuf_.value, 3, trxpos_.value, trxreg_.value, trxreg_.value};
+    for (u64 value : env)
+    {
+        Append(out, value);
+    }
+
+    for (const Context& c : context_)
+    {
+        const u64 registers[] = {c.xyoffset.value, c.tex0.value, c.tex1.value, c.clamp.value, c.miptbp1.value, c.miptbp2.value,
+                                 c.scissor.value, c.alpha.value, c.test.value, c.fba, c.frame.value, c.zbuf.value};
+        for (u64 value : registers)
+        {
+            Append(out, value);
+        }
+    }
+
+    // RGBAQ, ST, UV (32 bits), FOG (32 bits: its byte), XYZ, an obsolete register
+    const u64 st = static_cast<u64>(std::bit_cast<u32>(s_)) | static_cast<u64>(std::bit_cast<u32>(t_)) << 32;
+    Append(out, rgbaq_.value);
+    Append(out, st);
+    Append(out, static_cast<u32>(u_ | v_ << 16));
+    Append(out, static_cast<u32>(fog_));
+    Append(out, u64{0});
+    Append(out, u64{0});
+
+    // The transfer (none under way at a frame's start): x, y, w, h, BITBLTBUF, TRXPOS, TRXREG, its rectangle, total, start,
+    // end, write
+    out.insert(out.end(), 4 * 4 + 8 * 3 + 16 + 4 * 3 + 1, 0);
+    out.insert(out.end(), vm_, vm_ + LocalMemoryBytes);
+    // The four GIF paths' tags and registers: idle
+    out.insert(out.end(), 4 * (16 + 4), 0);
+    Append(out, packedQ_);
+}
+
+void Gs::WritePcsx2PrivilegedRegisters(std::vector<u8>& out) const
+{
+    // PMODE 0x0, SMODE1 0x10, SMODE2 0x20, SYNCV 0x60, DISPFB1 0x70, DISPLAY1 0x80, DISPFB2 0x90, DISPLAY2 0xA0, BGCOLOR 0xE0
+    // (the rest of the 8 KB zero). SMODE1 and SYNCV aren't kept here: the PAL game's own (PCSX2 2.9's GS dump of the retail
+    // game at the beach), which tell PCSX2 the video mode
+    constexpr u64 PalSmode1 = 0x0000000740816504ull;
+    constexpr u64 PalSyncv = 0x00A9000502101401ull;
+    size_t base = out.size();
+    out.insert(out.end(), 0x2000, 0);
+    auto put = [&](size_t offset, u64 value) { std::memcpy(out.data() + base + offset, &value, 8); };
+    put(0x00, pmode.value);
+    put(0x10, PalSmode1);
+    put(0x20, smode2.value);
+    put(0x60, PalSyncv);
+    put(0x70, dispfb[0].value);
+    put(0x80, display[0].value);
+    put(0x90, dispfb[1].value);
+    put(0xA0, display[1].value);
+    put(0xE0, bgcolor);
+}
+
 // The PCRTC: each enabled circuit reads its buffer (DISPFB: base, width, format, corner) over DISPLAY's size in pixels (its
 // width in video clocks divided by the magnification), placed by DISPLAY's offset relative to the other circuit's (an
 // interlaced display's offsets counting half lines); circuit 1 is blended over circuit 2 by PMODE's ALP (or its own alpha),

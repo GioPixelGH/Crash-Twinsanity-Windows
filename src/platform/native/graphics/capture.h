@@ -24,6 +24,12 @@ void CaptureGif(const u32* words, u32 count);
 // A picture about to be shown: starts, continues and ends a recording
 void CaptureShown();
 
+// $TWIN_GS_DUMP=FILE:N (or FOLDER:N1,N2,..., each into FOLDER/frame_NNNNNN.gs): picture N's GS work (the GS's state when
+// picture N-1 was made, then every packet of its three paths until picture N is) written as PCSX2's GS dumps are (.gs,
+// uncompressed): played in PCSX2 it draws the port's frame with PCSX2's renderer, and native/tools/gsdump.py reads it as it
+// reads PCSX2's own. Called on the GS's side as picture NUMBER (TWIN_DUMP_FRAMES's numbering) is made
+void GsDumpShown(u64 number);
+
 // A recording played back on the hardware: each picture shown read out and handed over with its number and the time it took
 // to draw (ms). Returns false when the file can't be read
 bool Replay(const char* path, const std::function<void(u32 frame, const Gs::DisplayImage& image, double ms)>& shown,

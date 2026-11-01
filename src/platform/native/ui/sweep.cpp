@@ -1410,6 +1410,22 @@ void PadScriptInput(BoundPad* pad)
 
     static u32 read = 0;
     u32 now = read++;
+    // (where play and the first cutscene start in reads: PCSX2's runs time their keys and screenshots from there)
+    static bool played = false;
+    static bool watched = false;
+    GameController* controller = G_GameController;
+    if (!played && controller != nullptr && controller->State() == GameController::StatePlaying)
+    {
+        played = true;
+        Native::Log("pad script: play starts at read %u", now);
+    }
+
+    if (played && !watched && controller != nullptr && controller->State() == GameController::StateWatching)
+    {
+        watched = true;
+        Native::Log("pad script: a cutscene starts at read %u", now);
+    }
+
     for (const Span& span : spans)
     {
         if (now < span.from || now >= span.to)

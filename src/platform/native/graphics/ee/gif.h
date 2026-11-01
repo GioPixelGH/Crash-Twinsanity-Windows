@@ -44,7 +44,19 @@ public:
 
         return TransferNow(path, data, quadwords, stopAtEnd);
     }
-    u32 TransferNow(u32 path, const u8* data, u32 quadwords, bool stopAtEnd = false);
+    u32 TransferNow(u32 path, const u8* data, u32 quadwords, bool stopAtEnd = false)
+    {
+        u32 taken = TransferTaken(path, data, quadwords, stopAtEnd);
+        if (tap != nullptr && !inKick_)
+        {
+            tap(path, data, taken);
+        }
+
+        return taken;
+    }
+    // Given every path's quadwords as the GS takes them (a path 1 kick's in a row, once): capture.cpp's GS dump while it records
+    using Tap = void (*)(u32 path, const u8* data, u32 quadwords);
+    static inline Tap tap = nullptr;
     // Path 1's XGKICK: packets read from VU1's memory (a 16 KB ring) from a quadword address until one ends with EOP; source is
     // the kicking VU1 code's address for TWIN_GS_TRACE
     void Kick(const u8* vuMemory, u32 address, u32 source = ~0u)
@@ -83,8 +95,11 @@ private:
         u32 reg = 0;
     };
 
+    u32 TransferTaken(u32 path, const u8* data, u32 quadwords, bool stopAtEnd);
+
     Gs::Gs& gs_;
     Path paths_[3];
+    bool inKick_ = false;
     Forward* forward_ = nullptr;
 };
 }

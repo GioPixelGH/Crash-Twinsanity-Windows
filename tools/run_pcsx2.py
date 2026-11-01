@@ -90,6 +90,7 @@ RETAIL_CRC = 0x1510E1D1
 SNAPSHOT_SLOT = 9
 RUN_CARD = "TwinsanityDecompRun.ps2"
 LOGOS, LOAD_START_CHUNK, TITLE, NEW_GAME, START_PLAYING, PLAYING, MOVIE = 4, 6, 7, 10, 11, 12, 14
+CUTSCENE = 13
 LOADING_LEVEL = 9
 # --start-chunk's path: below the executable (loaded at 0x100000), where nothing of the game lives, with room for any chunk's path
 START_CHUNK_TEXT, START_CHUNK_ROOM = 0x000FF000, 0x80
@@ -165,18 +166,82 @@ def bind_screenshot_key():
     ini = f"{CONFIG}/inis/PCSX2.ini"
     with open(ini, encoding="utf-8") as file:
         text = file.read()
-    if "Screenshot = Keyboard/F8" in text:
+    # (and F9 to a single frame's GS dump, --gsdump's)
+    if "Screenshot = Keyboard/F8" in text and "GSDumpSingleFrame = Keyboard/F9" in text:
         return
+    text = text.replace("Screenshot = Keyboard/F8\n", "").replace("GSDumpSingleFrame = Keyboard/F9\n", "")
     if "[Hotkeys]" in text:
-        text = text.replace("[Hotkeys]\n", "[Hotkeys]\nScreenshot = Keyboard/F8\n", 1)
+        text = text.replace("[Hotkeys]\n", "[Hotkeys]\nScreenshot = Keyboard/F8\nGSDumpSingleFrame = Keyboard/F9\n", 1)
     else:
-        text = text.rstrip("\n") + "\n\n\n[Hotkeys]\nScreenshot = Keyboard/F8\n"
+        text = text.rstrip("\n") + "\n\n\n[Hotkeys]\nScreenshot = Keyboard/F8\nGSDumpSingleFrame = Keyboard/F9\n"
     with open(ini, "w", encoding="utf-8", newline="\n") as file:
         file.write(text)
 
 
-def take_screenshot(pid, when, folder, after=""):
-    """PCSX2's own screenshot (its F8 on its window brought to the front), moved into the folder as screenshot_T.png"""
+# --key's names: pad 1's sticks pushed all the way (and its buttons) by keys the test copy binds them to (bind_pad_keys)
+PAD_KEYS = {"lup": ("LUp", "W"), "ldown": ("LDown", "S"), "lleft": ("LLeft", "A"), "lright": ("LRight", "D"),
+            "rup": ("RUp", "I"), "rdown": ("RDown", "K"), "rleft": ("RLeft", "J"), "rright": ("RRight", "L"),
+            "cross": ("Cross", "N"), "square": ("Square", "B"), "circle": ("Circle", "M"), "triangle": ("Triangle", "U")}
+
+
+def bind_pad_keys():
+    """The test copy's PCSX2.ini binds pad 1's sticks and face buttons to keys (PAD_KEYS) for --key"""
+    ini = f"{CONFIG}/inis/PCSX2.ini"
+    with open(ini, encoding="utf-8") as file:
+        text = file.read()
+    if "LUp = Keyboard/W" in text:
+        return
+    section = "[Pad1]\nType = DualShock2\n" + "".join(f"{name} = Keyboard/{key}\n" for name, key in PAD_KEYS.values())
+    text = re.sub(r"\[Pad1\]\n(?:[^\[]*\n)?", "", text)
+    text = text.rstrip("\n") + "\n\n\n" + section
+    with open(ini, "w", encoding="utf-8", newline="\n") as file:
+        file.write(text)
+
+
+def pcsx2_to_front(pid):
+    """PCSX2's window brought to the front (it takes keys only there): (its window, the window that was there) or None"""
+    import ctypes
+    from ctypes import wintypes
+    user32 = ctypes.windll.user32
+    found = []
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    def each(hwnd, _):
+        owner = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+        if owner.value == pid and user32.IsWindowVisible(hwnd):
+            found.append(hwnd)
+        return True
+
+    user32.EnumWindows(each, 0)
+    if not found:
+        return None
+    before_window = user32.GetForegroundWindow()
+    front_thread = user32.GetWindowThreadProcessId(before_window, None)
+    own_thread = ctypes.windll.kernel32.GetCurrentThreadId()
+    attached = front_thread != own_thread and user32.AttachThreadInput(own_thread, front_thread, True)
+    user32.BringWindowToTop(found[0])
+    user32.SetForegroundWindow(found[0])
+    if attached:
+        user32.AttachThreadInput(own_thread, front_thread, False)
+    time.sleep(0.2)
+    return (found[0], before_window) if user32.GetForegroundWindow() == found[0] else None
+
+
+def press_keys(pid, names, down):
+    """--key's keys pressed (down) or let go in PCSX2's window"""
+    import ctypes
+    user32 = ctypes.windll.user32
+    if down and pcsx2_to_front(pid) is None:
+        print("keys: PCSX2's window couldn't come to the front", flush=True)
+    for name in names:
+        vk = ord(PAD_KEYS[name][1])
+        user32.keybd_event(vk, user32.MapVirtualKeyW(vk, 0), 0 if down else 2, 0)
+
+
+def take_screenshot(pid, when, folder, after="", vk=0x77, extension=".png", stem="screenshot"):
+    """PCSX2's own screenshot (its F8 on its window brought to the front), moved into the folder as screenshot_T.png; with F9
+    (vk 0x78), a single frame's GS dump (.gs) instead"""
     import ctypes
     from ctypes import wintypes
     user32 = ctypes.windll.user32
@@ -211,9 +276,9 @@ def take_screenshot(pid, when, folder, after=""):
     if user32.GetForegroundWindow() != found[0]:
         print(f"{when:6.1f}s screenshot: PCSX2's window couldn't come to the front, no key pressed", flush=True)
         return
-    user32.keybd_event(0x77, 0, 0, 0)
+    user32.keybd_event(vk, 0, 0, 0)
     time.sleep(0.1)
-    user32.keybd_event(0x77, 0, 2, 0)
+    user32.keybd_event(vk, 0, 2, 0)
     time.sleep(0.3)
     if before_window:
         front_thread = user32.GetWindowThreadProcessId(user32.GetForegroundWindow(), None)
@@ -225,11 +290,11 @@ def take_screenshot(pid, when, folder, after=""):
     deadline = time.time() + 150
     while time.time() < deadline:
         new = [path for path in (os.path.join(root, name) for root, _, names in os.walk(snaps) for name in names)
-               if path not in before and path.lower().endswith(".png")]
+               if path not in before and path.lower().endswith(extension)]
         if new:
             # Moved once PCSX2 has written it (until then it's open)
             os.makedirs(folder, exist_ok=True)
-            out_path = f"{folder}/screenshot_{after}{when:05.1f}s.png"
+            out_path = f"{folder}/{stem}_{after}{when:05.1f}s{extension}"
             while time.time() < deadline + 30:
                 time.sleep(1)
                 try:
@@ -411,6 +476,44 @@ def describe_loaders(pine, symbol):
     return f"{pine.read32(manager):#x} " + "; ".join(loaders)
 
 
+def replay(dump, gs, folder, seconds, fullscreen, screenshot_size):
+    """A GS dump (.gs) played in the test copy of PCSX2 with these [EmuCore/GS] settings (the dump's game's settings file, put
+    back after): its screenshots SECONDS after the start (each at its time, as --screenshot's), PCSX2 closed after"""
+    settings = f"{CONFIG}/gamesettings/SLES-52568_{RETAIL_CRC:08X}.ini"
+    backup = settings + ".before_decomp_run"
+    had = os.path.exists(settings)
+    if had:
+        shutil.copy2(settings, backup)
+    os.makedirs(os.path.dirname(settings), exist_ok=True)
+    with open(settings, "w") as file:
+        values = [f"ScreenshotSize={screenshot_size}", "ScreenshotFormat=0", "ScreenshotQuality=0"] + list(gs)
+        file.write("[SPU2/Output]\nOutputMuted = true\n\n[EmuCore/GS]\n" +
+                   "".join(f"{k.strip()} = {v.strip()}\n" for k, v in (s.split("=", 1) for s in values)))
+    bind_screenshot_key()
+    launcher = subprocess.Popen([WINDOWS_PCSX2, "-nogui"] + (["-fullscreen"] if fullscreen else []) + ["--", os.path.abspath(dump)],
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    start = time.time()
+    try:
+        for when in sorted(seconds):
+            while time.time() - start < when:
+                time.sleep(0.1)
+            # (again, up to three times, when PCSX2's window couldn't come to the front: the dump plays on)
+            for _ in range(3):
+                take_screenshot(descendant(launcher.pid) or launcher.pid, when, folder)
+                if os.path.exists(f"{folder}/screenshot_{when:05.1f}s.png"):
+                    break
+                time.sleep(2)
+    finally:
+        for pid in (descendant(launcher.pid), launcher.pid):
+            if pid:
+                subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(1)
+        if had:
+            shutil.move(backup, settings)
+        elif os.path.exists(settings):
+            os.remove(settings)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("elf")
@@ -434,6 +537,22 @@ def main():
                              "F8, at the internal resolution as "
                              "drawn, not the states' 640x480), into --snapshots as screenshot_T.png: PCSX2's window comes to the "
                              "front for a moment")
+    parser.add_argument("--key", action="append", default=[], metavar="WHEN:KEYS:SECONDS",
+                        help="Windows: hold pad 1's sticks or buttons (names joined by +: lup, ldown, lleft, lright, rup, rdown, "
+                             "rleft, rright, cross, square, circle, triangle) through keys the test copy binds them to, WHEN "
+                             "seconds after the start (pN after the game first plays, cN after a cutscene first starts) for "
+                             "SECONDS: PCSX2's window comes to the front")
+    parser.add_argument("--gsdump", action="append", default=[], metavar="T",
+                        help="Windows: a single frame's GS dump (PCSX2's F9, bound in the test copy: GSDumpSingleFrame), "
+                             "uncompressed, at T as --screenshot's, into --snapshots as gsdump_T.gs")
+    parser.add_argument("--game-time", action="store_true",
+                        help="pN and cN (and --key's lengths) in the game's own seconds (its global clock), not the PC's: a "
+                             "PCSX2 slower than the PS2 at a high resolution still takes its pictures at the game's moments")
+    parser.add_argument("--fullscreen", action="store_true", help="PCSX2 fullscreen (its screenshots then the screen's size "
+                                                                 "with --screenshot-size 0)")
+    parser.add_argument("--screenshot-size", type=int, default=2,
+                        help="PCSX2's ScreenshotSize: 2 the internal resolution as drawn (the default), 1 corrected to the "
+                             "aspect, 0 the window's (as the player sees it)")
     parser.add_argument("--gs", action="append", default=[], metavar="KEY=VALUE",
                         help="a setting of the run's [EmuCore/GS] (PCSX2.ini's names): Renderer=13 the software renderer, "
                              "upscale_multiplier=8 the hardware one at 8x the PS2's resolution")
@@ -471,6 +590,13 @@ def main():
     parser.add_argument("--monitor", help="the monitor PCSX2's window goes to, below other windows and without the focus (KWin's "
                                           f"output name; default $PCSX2_MONITOR or {DEFAULT_MONITOR}, empty for anywhere)")
     args = parser.parse_args()
+    # "replay DUMP.gs": a GS dump drawn by PCSX2 (the port's $TWIN_GS_DUMP or PCSX2's own), --screenshot's plain seconds
+    if args.elf == "replay":
+        if not WINDOWS:
+            raise SystemExit("replay is Windows' only")
+        replay(args.iso, args.gs, args.snapshots, [float(t) for t in args.screenshot] or [6.0], args.fullscreen,
+               args.screenshot_size)
+        return
 
     # debug.h's DebugInput table: frame, kind (1 a state, 2 buttons), value, length
     frame_inputs, freeze_frame = [], None
@@ -521,6 +647,7 @@ def main():
         if presses or args.at_frame or args.backtrace:
             raise SystemExit("--press, --at-frame and --backtrace need the PS2 build's debug hooks: not with the retail executable")
     symbols = map_symbols(args.map, {"G_GameController", "G_ChunkManager", "G_GamePadController", "D_0031B4B8",
+                                     *(["G_GlobalClock_", "G_TICKS_TO_TIME"] if args.game_time else []),
                                      *(["G_ChunkLoadingManager_"] if args.loaders else []),
                                      *(["g_TestPadButtons"] if presses else []),
                                      *(["g_DebugFrame", "g_DebugFreezeFrame", "g_DebugInputs", "g_DebugStates"] if args.at_frame else []),
@@ -531,7 +658,18 @@ def main():
                                      *(part.split(":")[1].split(">")[0].split("+")[0] for part in args.write)})
     snapshots = sorted(args.snapshot)
     # [seconds, after play]
-    screenshots = sorted((float(text[1:]), True) if text.startswith("p") else (float(text), False) for text in args.screenshot)
+    # (seconds, from when: "" the start, "p" the game's first play, "c" its first cutscene)
+    def timing(text):
+        return (float(text[1:]), text[0]) if text[:1] in ("p", "c") else (float(text), "")
+    screenshots = sorted(timing(text) for text in args.screenshot)
+    gsdumps = sorted(timing(text) for text in args.gsdump)
+    # --key's: [seconds, from when, names, how long, when pressed]
+    keys = []
+    for part in args.key:
+        when, names, seconds = part.split(":")
+        keys.append([*timing(when), [name.lower() for name in names.split("+")], float(seconds), None])
+        if not WINDOWS or any(name not in PAD_KEYS for name in keys[-1][2]):
+            raise SystemExit(f"--key {part}: Windows' only, with PAD_KEYS' names")
     if screenshots and not WINDOWS:
         raise SystemExit("--screenshot is Windows' only")
     elf = None if retail else os.path.abspath(args.elf)
@@ -562,16 +700,19 @@ def main():
                    # A test run is silent: nothing plays over whatever the machine's user is doing
                    f"\n[SPU2/Output]\nOutputMuted = true\n")
         gs = list(args.gs)
-        if args.screenshot:
-            gs = ["ScreenshotSize=2", "ScreenshotFormat=0", "ScreenshotQuality=0"] + gs
+        if args.screenshot or args.gsdump:
+            gs = [f"ScreenshotSize={args.screenshot_size}", "ScreenshotFormat=0", "ScreenshotQuality=0",
+                  "GSDumpCompression=0"] + gs
             bind_screenshot_key()
+        if keys:
+            bind_pad_keys()
         if gs:
             file.write("\n[EmuCore/GS]\n" + "".join(f"{key.strip()} = {value.strip()}\n"
                                                       for key, value in (setting.split("=", 1) for setting in gs)))
 
     placement = contextlib.nullcontext() if MACOS or WINDOWS else kwin.windows_on(kwin.monitor_from(args.monitor))
     placement.__enter__()
-    boot = ["-nogui", "-fastboot"] + ([] if retail else ["-elf", elf]) + ["--", iso]
+    boot = ["-nogui", "-fastboot"] + (["-fullscreen"] if args.fullscreen else []) + ([] if retail else ["-elf", elf]) + ["--", iso]
     if WINDOWS:
         launcher = subprocess.Popen([WINDOWS_PCSX2] + boot, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     elif MACOS:
@@ -631,6 +772,7 @@ def main():
         writes = [[*when_of(part.split(":")[0]), part.split(":", 1)[1]] for part in args.write]
         ram_dumps = [[*when_of(part.split(":")[0]), part.split(":", 1)[1]] for part in args.dump_ram]
         first_played = None
+        first_cutscene = None
         start_chunk_written = False
         while time.time() - start < args.timeout:
             try:
@@ -640,10 +782,27 @@ def main():
                 time.sleep(0.2)
                 continue
 
+            # (--game-time: "now" the game's own seconds, its global clock over its units a second, so a PCSX2 slower than
+            # the PS2 still takes its pictures at the game's moments)
+            def clock_now():
+                if not args.game_time:
+                    return time.time()
+                units = struct.unpack("<f", struct.pack("<I", pine.read32(symbols["G_TICKS_TO_TIME"])))[0]
+                return pine.read32(symbols["G_GlobalClock_"] + 4) / units if units > 0 else time.time()
             if state == PLAYING and first_played is None:
-                first_played = time.time()
+                first_played = clock_now()
+            if state == CUTSCENE and first_cutscene is None:
+                first_cutscene = clock_now()
+                print(f"{time.time() - start:6.1f}s a cutscene starts", flush=True)
             now = time.time()
-            due = lambda item: (now - first_played >= item[0]) if item[1] else (now - start >= item[0])
+            game_now = clock_now()
+
+            def due(item):
+                # (True: after the first play, as --write and --dump-ram say it)
+                if item[1] in ("", False):
+                    return now - start >= item[0]
+                base = first_played if item[1] in ("p", True) else first_cutscene
+                return base is not None and game_now - base >= item[0]
             for item in [item for item in writes if (first_played or not item[1]) and due(item)]:
                 writes.remove(item)
                 target, values = item[2].rsplit(":", 1)
@@ -653,6 +812,10 @@ def main():
                 for hop in hops:
                     address = pine.read32(address) + int(hop, 0)
                 for index, value in enumerate(values.split(",")):
+                    if value.endswith("b"):
+                        # A byte (a u8 flag: the game's widescreen TV, say)
+                        pine.write8(address + index, int(value[:-1], 0))
+                        continue
                     word = struct.unpack("<I", struct.pack("<f", float(value[:-1])))[0] if value.endswith("f") else int(value, 0)
                     pine.write32(address + 4 * index, word)
                 print(f"{now - start:6.1f}s wrote {values} at {address:#x} ({target})", flush=True)
@@ -694,9 +857,29 @@ def main():
             if snapshots and time.time() - start >= snapshots[0]:
                 take_snapshot(pine, elf_crc, snapshots.pop(0), args.snapshots)
 
-            for item in [item for item in screenshots if (first_played or not item[1]) and due(item)]:
+            for key in keys[:]:
+                if key[4] is None and due(key):
+                    key[4] = game_now
+                    press_keys(descendant(launcher.pid) or launcher.pid, key[2], True)
+                    print(f"{time.time() - start:6.1f}s holding {'+'.join(key[2])} for {key[3]} s", flush=True)
+                elif key[4] is not None and game_now - key[4] >= key[3]:
+                    keys.remove(key)
+                    press_keys(descendant(launcher.pid) or launcher.pid, key[2], False)
+                    print(f"{time.time() - start:6.1f}s let go of {'+'.join(key[2])}", flush=True)
+
+            for item in [item for item in screenshots if due(item)]:
                 screenshots.remove(item)
-                take_screenshot(descendant(launcher.pid) or launcher.pid, item[0], args.snapshots, "p" if item[1] else "")
+                print(f"{time.time() - start:6.1f}s screenshot {item[1]}{item[0]} asked", flush=True)
+                take_screenshot(descendant(launcher.pid) or launcher.pid, item[0], args.snapshots, item[1])
+            for item in [item for item in gsdumps if due(item)]:
+                gsdumps.remove(item)
+                print(f"{time.time() - start:6.1f}s GS dump {item[1]}{item[0]} asked", flush=True)
+                take_screenshot(descendant(launcher.pid) or launcher.pid, item[0], args.snapshots, item[1], vk=0x78,
+                                extension=".gs", stem="gsdump")
+            # A manual run asked for screenshots (or GS dumps) ends with the last of them
+            if args.manual and (args.screenshot or args.gsdump) and not screenshots and not gsdumps and not keys:
+                result = "SHOTS"
+                break
 
             if presses:
                 # A press starts at the first look past its time (a snapshot can take a second) and lasts its time from there
@@ -806,6 +989,9 @@ def main():
 
             title_since = (title_since or time.time()) if state == TITLE else None
             if args.manual:
+                if args.start_chunk and state == PLAYING and pine.read32(controller + 0x14) != 0:
+                    # Started in a chunk: no level title card or autosave notice, as the port's --quick start has none
+                    pine.write32(controller + 0x14, 0)
                 if gotos and time.time() - start >= gotos[0][0]:
                     _, wanted = gotos.pop(0)
                     high = pine.read32(controller + 0xC)

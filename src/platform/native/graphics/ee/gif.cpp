@@ -18,7 +18,7 @@ enum GifFormat : u32
 };
 }
 
-u32 Gif::TransferNow(u32 index, const u8* data, u32 quadwords, bool stopAtEnd)
+u32 Gif::TransferTaken(u32 index, const u8* data, u32 quadwords, bool stopAtEnd)
 {
     Path& path = paths_[index];
     u32 taken = 0;
@@ -113,6 +113,20 @@ u32 Gif::TransferNow(u32 index, const u8* data, u32 quadwords, bool stopAtEnd)
 
 void Gif::KickNow(const u8* vuMemory, u32 address, u32 source)
 {
+    if (tap != nullptr)
+    {
+        // The kick's packets in a row, as the GS takes them
+        u8 row[0x400 * 16];
+        u32 length = KickLength(vuMemory, address);
+        for (u32 i = 0; i < length; i++)
+        {
+            std::memcpy(row + i * 16, vuMemory + ((address + i) & 0x3FF) * 16, 16);
+        }
+
+        tap(0, row, length);
+    }
+
+    inKick_ = true;
     gs_.traceSource = source;
     // Path 1 starts a packet fresh at each kick
     paths_[0] = Path{};
@@ -133,14 +147,22 @@ void Gif::KickNow(const u8* vuMemory, u32 address, u32 source)
     }
 
     gs_.traceSource = ~0u;
+    inKick_ = false;
 }
 
 void Gif::KickRow(const u8* quadwords, u32 count, u32 source)
 {
+    if (tap != nullptr)
+    {
+        tap(0, quadwords, count);
+    }
+
+    inKick_ = true;
     gs_.traceSource = source;
     paths_[0] = Path{};
     TransferNow(0, quadwords, count, true);
     gs_.traceSource = ~0u;
+    inKick_ = false;
 }
 
 u32 Gif::KickLength(const u8* vuMemory, u32 address)

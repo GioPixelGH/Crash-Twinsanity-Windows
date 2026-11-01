@@ -874,6 +874,35 @@ def pictures(exe, reference, work, last=2500, every=100):
     return same, different
 
 
+def vs_pcsx2(exe, label="check"):
+    """The characters against the PS2 game (compare_models.py, its moments: the beach against the sky, the first boss's
+    cutscene) in each configuration: a moment passes when its pair is valid (the poses alike), the port's edges have no more
+    steps of the PS2's pixel's size than PCSX2's at the same scale (3 per 1000 PS2 pixels over them at most), and PCSX2
+    drawing the port's own GS commands gives the port's picture (a mean within 1.5 of 255 once the half pixel is fitted):
+    [(name, passed, what)]"""
+    summary = HERE.parent / "compare" / "page" / f"{label}.json"
+    run = subprocess.run([sys.executable, str(TOOLS / "compare_models.py"), "--exe", str(exe), "--label", label,
+                          "--port-again"], capture_output=True, text=True)
+    if not summary.exists():
+        return [("bench", False, (run.stdout + run.stderr).strip().splitlines()[-1:] or "no summary")]
+    numbers = json.loads(summary.read_text())
+    results = []
+    for name, n in sorted(numbers.items()):
+        problems = []
+        if not n["valid"]:
+            problems.append(f"the poses differ ({n['pose']:.1f})")
+        if n.get("steps_port") is not None and n.get("steps_pcsx2") is not None and n["steps_port"] > n["steps_pcsx2"] + 3:
+            problems.append(f"PS2-sized steps {n['steps_port']:.1f} against PCSX2's {n['steps_pcsx2']:.1f}")
+        same = n.get("same")
+        if same is not None and same["mean"] > 1.5:
+            problems.append(f"PCSX2 drawing the port's commands {same['mean']:.2f} apart")
+        what = (f"mean {n['mean']:.2f}, steps {n['steps_port'] if n['steps_port'] is None else round(n['steps_port'], 1)}"
+                f" (PCSX2 {n['steps_pcsx2'] if n['steps_pcsx2'] is None else round(n['steps_pcsx2'], 1)})"
+                + (f", the same commands {same['mean']:.2f} apart" if same is not None else ""))
+        results.append((name, not problems, "; ".join(problems) if problems else what))
+    return results
+
+
 def outcome_class(result):
     """A sweep result's kind: played (the run went on, or to a game over: scripted input decides which), entered from a
     neighbour (no character in the chunk: the expected crash), or a problem"""
@@ -916,6 +945,9 @@ def main():
     parser.add_argument("--log", action="store_true", help="only the log's check (what a player's start writes in it)")
     parser.add_argument("--hints-shots", metavar="FOLDER",
                         help="only the menu hints' check, with a window: the pause menu's pictures saved in FOLDER")
+    parser.add_argument("--vs-pcsx2", action="store_true",
+                        help="only the characters against the PS2 game in PCSX2 (compare_models.py: its page and numbers in "
+                             "..\\compare, PCSX2's pictures kept there)")
     parser.add_argument("--fps-shots", metavar="FOLDER",
                         help="only the FPS counter's check, with a window: the window's pictures saved in FOLDER")
     arguments = parser.parse_args()
@@ -946,6 +978,11 @@ def main():
         for name, ok, what in results:
             print(f"log             {'ok' if ok else 'FAILED'} {name}: {what}")
         sys.exit(0 if all(ok for _, ok, _ in results) else 1)
+    if arguments.vs_pcsx2:
+        results = vs_pcsx2(exe)
+        for name, ok, what in results:
+            print(f"vs PCSX2        {'ok' if ok else 'FAILED'} {name}: {what}")
+        sys.exit(0 if results and all(ok for _, ok, _ in results) else 1)
     if arguments.portable:
         results = portable(exe, work)
         for name, ok, what in results:
