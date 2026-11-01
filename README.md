@@ -92,6 +92,8 @@ mouse and controller, saves, cutscene skipping, community fixes):
   colour.
 - **Resolution:** 1x to 8x the PS2's (6x and 8x added); a buffer the graphics card can't hold at the chosen scale is drawn
   by the software renderer instead of failing.
+- **Draw distance option** (from HAB3X's Mac port): short, original (the default), medium, long or unlimited; the farther
+  settings draw the grass and small things before you get close, at a cost on older PCs.
 - **Language option:** English, French, German, Italian or Spanish texts, voices and movies, chosen in Options.
 - **Mods:** files in `%APPDATA%\Crash Twinsanity\mods` replace the disc's, including files inside the game's archive.
   `--list-files` and `--extract` help to start one.
@@ -102,6 +104,9 @@ mouse and controller, saves, cutscene skipping, community fixes):
   - The crash during the Mecha-Bandicoot fight (a float argument on Windows).
   - Crashes in the caverns (a reference to an object already freed, an animation of zero length).
   - VU1 programs that ran away (two copies of the same data declared with different sizes).
+  - The characters drawn as on the PS2 at high resolutions: the game's distance haze and the first boss's sky at the chosen
+    resolution (no more stepped outlines), the colours VU1 writes after sending its vertices (no more patches on the
+    bodies), triangles thinner than a PS2 pixel (no more thin black lines), textures' detail for the chosen resolution.
 - **Controllers:** a modern controller's round stick is mapped to the PS2 stick's square, so Crash runs on diagonals too.
 - **The game's data from your disc:** the program carries none of the game's data. It reads the data from your disc image's
   executable when it starts, checks that it's the PAL release, and says so clearly when the disc image is wrong.
@@ -116,6 +121,8 @@ mouse and controller, saves, cutscene skipping, community fixes):
 What comes next, roughly from the quickest job to the longest. The game stays the original by default: new game options are
 off until you turn them on.
 
+- [x] The characters drawn as on the PS2 at high resolutions ([#15], [#19], [#24]): no more stepped outlines, patches on
+  the bodies or thin black lines.
 - [x] 6x and 8x the PS2's resolution in the options ([#19]), and a safe fallback when the graphics card refuses one of the
   renderer's buffers.
 - [x] A Dithering option ([#24]): the PS2 game shows its picture in 16-bit colour with a fine pattern to hide the steps, and
@@ -152,6 +159,7 @@ differences as options on the PAL game ([#14]), the port's own texts in Brazilia
 [#11]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/11
 [#12]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/12
 [#14]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/14
+[#15]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/15
 [#16]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/16
 [#17]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/17
 [#18]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/18
