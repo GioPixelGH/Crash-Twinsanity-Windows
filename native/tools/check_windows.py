@@ -889,9 +889,9 @@ def dithering(exe, work, frame=300):
 def render_distance(exe, work, frame=700):
     """The draw distance option (renderdistance.h): the beach from the start at a fixed time with the original distance (the
     default), unlimited, and unlimited with the far plane 4 times even where the colour filter reads the depth
-    ($TWIN_RENDER_DISTANCE=far). Unlimited draws more (the levels of detail's cut-off gone) and keeps the game's far plane there
-    (the beach's filter reads the depth: no far plane line in the log), its frame's lower half (the sand, Crash, the crates:
-    near) the original's byte for byte. The forced far plane moves the filter's haze (its depth's bits 8-15: renderdistance.h)
+    ($TWIN_RENDER_DISTANCE=far). Unlimited draws more (the levels of detail chosen as if the camera were 4 times nearer, their
+    cut-off gone) and keeps the game's far plane there (the beach's filter reads the depth: no far plane line in the log), its
+    frame's lower half (the sand, Crash, the crates: near) the original's byte for byte. The forced far plane moves the filter's haze (its depth's bits 8-15: renderdistance.h)
     in the upper half, the lower half all but the same: (passed, what happened)"""
     def run(name, distance, extra):
         folder = work / f"render-distance-{name}"

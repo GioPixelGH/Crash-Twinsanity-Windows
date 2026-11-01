@@ -747,9 +747,10 @@ void SkinRestartAnimations(Skin* skin)
 
 RigidModel* LodMeshAt(Lod* lod, u32 distance)
 {
-    // The draw distance option's cut-off past the farthest distance (renderdistance.h: gone when unlimited, the farthest mesh
-    // then drawn however far)
-    if (distance < lod->nearest || Native::LodCutOff(lod->farthest) < distance)
+    // The draw distance option (renderdistance.h): the meshes chosen as if the camera were the choice's times nearer, the cut-off
+    // past the farthest distance gone when unlimited (the farthest mesh then drawn however far)
+    distance = Native::LodDistance(distance);
+    if (distance < lod->nearest || (lod->farthest < distance && !Native::LodCutOffGone()))
     {
         return nullptr;
     }

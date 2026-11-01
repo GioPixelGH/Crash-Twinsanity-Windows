@@ -630,7 +630,7 @@ const NativeTextLine g_NativeTexts[] = {
     {TextSsaa2, {"ssaa 2x", "ssaa 2x", "ssaa 2x", "ssaa 2x", "ssaa 2x"}},
     {TextSsaa4, {"ssaa 4x", "ssaa 4x", "ssaa 4x", "ssaa 4x", "ssaa 4x"}},
     {TextRenderDistance, {"draw distance", "distance d'affichage", "sichtweite", "distancia de dibujado", "distanza di disegno"}},
-    {TextDescRenderDistance, {"how far things are drawn: original is the ps2's. farther draws more and is slower on older pcs, short is lighter.", "jusqu'où les objets sont affichés : d'origine est celle de la ps2. plus loin affiche plus et ralentit les pc anciens, courte allège.", "wie weit objekte gezeichnet werden: original wie auf der ps2. weiter zeichnet mehr und ist auf älteren pcs langsamer, kurz entlastet.", "hasta dónde se dibujan las cosas: original es la de la ps2. más lejos dibuja más y va más lento en pcs antiguos, corta aligera.", "fin dove si disegnano gli oggetti: originale è quella della ps2. più lontano disegna di più e rallenta i pc vecchi, corta alleggerisce."}},
+    {TextDescRenderDistance, {"how far things and their detailed models are drawn. farther is slower on older pcs.", "jusqu'où les objets et leurs détails sont affichés. plus loin ralentit les vieux pc.", "wie weit objekte und ihre details gezeichnet werden. weiter bremst ältere pcs.", "hasta dónde se ven los objetos y sus detalles. más lejos es más lento en pcs antiguos.", "fin dove si vedono gli oggetti e i loro dettagli. più lontano rallenta i pc vecchi."}},
     {TextDistanceShort, {"short", "courte", "kurz", "corta", "corta"}},
     {TextDistanceOriginal, {"original", "d'origine", "original", "original", "originale"}},
     {TextDistanceMedium, {"medium", "moyenne", "mittel", "media", "media"}},

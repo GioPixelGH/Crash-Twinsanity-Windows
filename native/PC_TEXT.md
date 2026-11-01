@@ -234,7 +234,7 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1BD | ssaa 2x | ssaa 2x | ssaa 2x | ssaa 2x | ssaa 2x |
 | 0x1BE | ssaa 4x | ssaa 4x | ssaa 4x | ssaa 4x | ssaa 4x |
 | 0x1BF | draw distance | distance d'affichage | sichtweite | distancia de dibujado | distanza di disegno |
-| 0x1C0 | how far things are drawn: original is the ps2's. farther draws more and is slower on older pcs, short is lighter. | jusqu'où les objets sont affichés : d'origine est celle de la ps2. plus loin affiche plus et ralentit les pc anciens, courte allège. | wie weit objekte gezeichnet werden: original wie auf der ps2. weiter zeichnet mehr und ist auf älteren pcs langsamer, kurz entlastet. | hasta dónde se dibujan las cosas: original es la de la ps2. más lejos dibuja más y va más lento en pcs antiguos, corta aligera. | fin dove si disegnano gli oggetti: originale è quella della ps2. più lontano disegna di più e rallenta i pc vecchi, corta alleggerisce. |
+| 0x1C0 | how far things and their detailed models are drawn. farther is slower on older pcs. | jusqu'où les objets et leurs détails sont affichés. plus loin ralentit les vieux pc. | wie weit objekte und ihre details gezeichnet werden. weiter bremst ältere pcs. | hasta dónde se ven los objetos y sus detalles. más lejos es más lento en pcs antiguos. | fin dove si vedono gli oggetti e i loro dettagli. più lontano rallenta i pc vecchi. |
 | 0x1C1 | short | courte | kurz | corta | corta |
 | 0x1C2 | original | d'origine | original | original | originale |
 | 0x1C3 | medium | moyenne | mittel | media | media |

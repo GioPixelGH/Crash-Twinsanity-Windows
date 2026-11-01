@@ -94,8 +94,8 @@ and movies; Windows' language by default, the new one from the game's next start
 resolution, widescreen (4:3, 16:9 or 21:9), the refresh rate, texture filtering, scanlines, texture packs, anti-aliasing
 (FXAA, or supersampling: SSAA 2x and 4x draw the picture 2 or 4 times larger, slower), **Dithering** (as the PS2, the default: its 16-bit picture with a fine pattern; or off: full colour), **Draw distance**
 (short, original, medium, long or unlimited; original, the default, is the PS2's: farther ones draw the grass and small
-things before you get close, but draw more: unlimited about half as much again on the beach, slower on an older PC; short
-draws less), v-sync, a frames per second counter (**Show FPS**, off by default: in the top left corner), volumes, skipping cutscenes,
+things before you get close and the detailed models of trees and statues from farther, but draw more: unlimited about twice
+as much on the beach, slower on an older PC; short draws less), v-sync, a frames per second counter (**Show FPS**, off by default: in the top left corner), volumes, skipping cutscenes,
 faster loading, and optional fixes of the original game's bugs (off plays exactly like the PS2).
 
 The defaults are the game as the PS2 had it, in a 1280×720 window at twice the PS2's resolution and 60 Hz: cutscenes can't be
