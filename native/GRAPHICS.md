@@ -192,15 +192,21 @@ picture at the PS2's resolution, and `replayNNN_gpu.png`, the GPU's at the scale
   $TWIN_HW_SMALL_SCENES=0 draws them as before.
 - Mipmaps' level of detail at the scale (LodAtScale, the shader's lodBias): the GS works a mipmapped texture's level out from
   Q, (log2(1/|Q|) << L) + K, for the PS2's pixels; drawn at Nx every pixel took the level a pixel N times larger takes, the
-  small levels the PS2 shows at 1x. Where a texture atlas's parts lie side by side those levels run them together: on the
-  characters (Cortex's face is one mesh with its moustache's black and its mouth's red in the same 128 x 128 atlas, Crash's
-  alike) black and dark red lines along the edges of a part's triangles, coming and going with the distance and the
-  animation, at every scale, the pack's or not; and textures softer than PCSX2's, which picks its level at the resolution it
-  draws. Now log2(N) less (none at 1x), the level the PS2 drawing at that resolution would pick; a constant level of detail
-  (LCM) stays the game's. Found by elimination, the user's screenshots of Cortex's nose (2026-11-01): the GS commands' strips,
-  ADC bits and colours the retail game's, the face's coverage without a hole and the depth test the same with the GS's
-  truncation or without (the port's and PCSX2's GS dumps rasterised and depth tested by scripts).
-  $TWIN_HW_LOD_AT_SCALE=0 picks the PS2's pixels' level as before.
+  small levels the PS2 shows at 1x: textures softer than PCSX2's, which picks its level at the resolution it draws. Now
+  log2(N) less (none at 1x), the level the PS2 drawing at that resolution would pick; a constant level of detail (LCM)
+  stays the game's. (First taken for the characters' black lines' cause, wrongly: Cortex's face's texture is mipmapped but
+  its K puts it at level 0 there; their cause is the next.) $TWIN_HW_LOD_AT_SCALE=0 picks the PS2's pixels' level as before.
+- Primitives thinner than a PS2 pixel (HwGs::Draw's rectangle, ThinPrimitives): the rectangle a primitive draws in was the
+  GS's pixels it covers at 1x, from the ceiling of its start, and a primitive with none (thinner than a pixel, between two of
+  the GS's sample points) was left out at any scale. At 1x right (the PS2 draws none of it); at a higher scale it covers some
+  of the scale's samples, and with it left out what's behind it shows: the characters' thin black and dark red lines along
+  their parts' edges (Cortex's nose's side and cheeks while he talks, #15's screenshot, Crash's eyes; their faces' meshes
+  have triangles a fraction of a pixel wide along those edges, over the black moustache and hair and the mouth's red behind),
+  coming and going with the animation and the camera, at every scale above 1x, the pack's or not; PCSX2, drawing at its
+  scale, never showed them. Now, above 1x, the rectangle reaches every pixel the primitive's box starts in (at most a pixel
+  more on its left and top). Found 2026-11-01: the port's own GS commands of a frame with the line drawn by PCSX2 at 8x had
+  none; the line's triangles (a 0.9 square pixel one from x 239.44 to 239.88) covered no integer x.
+  $TWIN_HW_THIN_PRIMITIVES=0 leaves them out as before.
 - Known differences: GL's float blending and filtering (1/255 steps against the GS's truncations); 16 bit frames blended under a
   stencil DATE keep 8 bits until they're read.
 - Not a difference: the Iceberg Lab's coloured lights tint the characters' bright parts, Crash's chin and chest pale green
@@ -294,7 +300,8 @@ for picture N, a line each: their target and its scale, the texture's target if 
 `TWIN_HW_VERTEX_OFFSET=n` (256ths), `TWIN_HW_SMALL_VIEWPORT`, `TWIN_HW_NO_WRAPADD`, `TWIN_HW_NO_STENCIL_DATE`,
 `TWIN_HW_NO_WIDE_LOAD`, `TWIN_HW_STAGED_UPLOADS`, `TWIN_HW_NO_SNAP`, `TWIN_HW_NO_NATIVE_DEPTH`, `TWIN_HW_DEPTH_INDEX=0` (the
 colour filter at the PS2's pixels), `TWIN_HW_SMALL_SCENES=0` (scenes drawn into narrow buffers at the PS2's resolution),
-`TWIN_VU1_KICK_AT_ONCE=1` (VU1's packets read at the XGKICK), `TWIN_HW_LOD_AT_SCALE=0` (mipmaps' levels the 1x ones); with the interpreter (`TWIN_VU1=interpret`),
+`TWIN_VU1_KICK_AT_ONCE=1` (VU1's packets read at the XGKICK), `TWIN_HW_LOD_AT_SCALE=0` (mipmaps' levels the 1x ones),
+`TWIN_HW_THIN_PRIMITIVES=0` (primitives thinner than a PS2 pixel left out); with the interpreter (`TWIN_VU1=interpret`),
 `TWIN_VU_KICK_WRITES` (each instruction that writes into a packet after its XGKICK, once: where and how many cycles after).
 
 ### Replacement textures (PCSX2's packs)

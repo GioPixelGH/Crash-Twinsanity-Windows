@@ -76,6 +76,15 @@ u32 g_BatchLogFrame = 0;
 
 // The game's colour filter drawn at the scale (BitDepthIndex); $TWIN_HW_DEPTH_INDEX=0 draws it at the PS2's pixels as before
 // (read back from memory, tested at each block's first sample)
+// Primitives thinner than a PS2 pixel drawn at a higher scale (HwGs::Draw's rectangle); $TWIN_HW_THIN_PRIMITIVES=0 leaves out,
+// as before, those that cover none of the GS's sample points
+bool ThinPrimitives()
+{
+    static const char* setting = std::getenv("TWIN_HW_THIN_PRIMITIVES");
+    static const bool on = setting == nullptr || setting[0] != '0';
+    return on;
+}
+
 // Mipmaps' level of detail at the drawing's scale: the GS works it out from Q for the PS2's pixels, so at Nx every level was
 // the one a pixel N times larger takes (the small levels, where a texture atlas's neighbouring parts run together, the
 // characters' black and red lines along their parts' edges, and textures softer than PCSX2's at its scale); log2(N) less, as
@@ -3894,9 +3903,12 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
         }
 
         // The GS's pixels: from the ceiling of the start to before the ceiling of the end (points and lines: the pixels their
-        // ends are in)
-        rect.left = std::max((minX + 15) >> 4, state.scissorLeft);
-        rect.top = std::max((minY + 15) >> 4, state.scissorTop);
+        // ends are in). At a higher scale every pixel the primitive reaches into from its start: a primitive thinner than a
+        // pixel between two of the GS's sample points draws none of the PS2's pixels but some of the scale's samples (left
+        // out, the characters' thinnest triangles, along a nose or an eye, let what's behind show through as black lines)
+        const bool thin = scale_ > 1 && ThinPrimitives();
+        rect.left = std::max(thin ? minX >> 4 : (minX + 15) >> 4, state.scissorLeft);
+        rect.top = std::max(thin ? minY >> 4 : (minY + 15) >> 4, state.scissorTop);
         rect.right = std::min(((maxX + 15) >> 4) - 1, state.scissorRight);
         rect.bottom = std::min(((maxY + 15) >> 4) - 1, state.scissorBottom);
         if (state.type == Gs::PrimPoint || state.type == Gs::PrimLine || state.type == Gs::PrimLineStrip)

@@ -318,12 +318,14 @@ first 2,500 frames at a fixed time, every 100th picture compared byte for byte w
 a `User` folder, runs from a copy of its own files, never with the player's settings and saves), first with the game's colour
 filter and the scenes drawn into narrow buffers at the PS2's pixels, VU1's packets read at the XGKICK and mipmaps' levels
 the 1x ones as 1.1.0 and before did (its `AS_BEFORE`: `$TWIN_HW_DEPTH_INDEX=0`, `$TWIN_HW_SMALL_SCENES=0`,
-`$TWIN_VU1_KICK_AT_ONCE=1`, `$TWIN_HW_LOD_AT_SCALE=0`), then with the GS's two at the scale (`GS_FIXES_ONLY`), where the
+`$TWIN_VU1_KICK_AT_ONCE=1`, `$TWIN_HW_LOD_AT_SCALE=0`, `$TWIN_HW_THIN_PRIMITIVES=0`), then with the GS's two at the scale
+(`GS_FIXES_ONLY`), where the
 changed pixels must
 lie within a PS2 pixel of an outline but one in a thousand (an edge between a near and a far surface of like colours is none
 to the colours: a dark leaf over the olive behind it; the line "pictures with them at the scale" names the pictures changed,
 their pixels, those off the outlines and where, and how far), then as a player has them all (the line "with VU1's packets
-as the GIF reads them and mipmaps' levels at the scale too" names the pictures that changes and their pixels); VU1's packets
+as the GIF reads them and mipmaps' levels and thin primitives at the scale too" names the pictures that changes and their
+pixels); VU1's packets
 (`vu1_packets()`: the first boss's cutscene in bossarea, Cortex against the sky, the frame's GS commands written as a GS
 dump with the packets read at the XGKICK and as the GIF reads them, `gsdump.strips`: only the skinned strips' last two vertices' colours apart, GRAPHICS.md's
 "Where the native build differs from the PS2", XGKICK); the colour filter (`colour_filter()`: the beach at 4x with the

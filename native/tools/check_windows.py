@@ -661,9 +661,11 @@ def frame_rgba(path):
 # The 1.1.0 drawing of what 2026-11-01's fixes changed: the game's colour filter (hwgs.cpp's DepthIndexColour) and the scenes
 # drawn into buffers narrower than the screen (bossarea's sky) at the scale; VU1's packets read when the GIF reads them
 # (ee/vu.cpp's Kick: the skinned meshes' last two vertices' colours); mipmaps' level of detail at the drawing's scale
-AS_BEFORE = {"TWIN_HW_DEPTH_INDEX": "0", "TWIN_HW_SMALL_SCENES": "0", "TWIN_VU1_KICK_AT_ONCE": "1", "TWIN_HW_LOD_AT_SCALE": "0"}
+# and primitives thinner than a PS2 pixel drawn at the scale (hwgs.cpp's ThinPrimitives)
+AS_BEFORE = {"TWIN_HW_DEPTH_INDEX": "0", "TWIN_HW_SMALL_SCENES": "0", "TWIN_VU1_KICK_AT_ONCE": "1", "TWIN_HW_LOD_AT_SCALE": "0",
+             "TWIN_HW_THIN_PRIMITIVES": "0"}
 # The GS's edge fixes alone (the pictures' outline rule is theirs)
-GS_FIXES_ONLY = {"TWIN_VU1_KICK_AT_ONCE": "1", "TWIN_HW_LOD_AT_SCALE": "0"}
+GS_FIXES_ONLY = {"TWIN_VU1_KICK_AT_ONCE": "1", "TWIN_HW_LOD_AT_SCALE": "0", "TWIN_HW_THIN_PRIMITIVES": "0"}
 
 
 def scene_buffers(exe, work, frame=832, scale=4):
@@ -1340,8 +1342,8 @@ def report(exe, reference, work, with_sweep, reference_name=None):
     if reference and reference.exists():
         same, different, changed, packets = pictures(exe, reference, work)
         print(f"pictures        {same}/{same + len(different)} the same as {reference_name or reference}'s with the colour "
-              f"filter and the scene buffers at the PS2's pixels, VU1's packets read at the XGKICK and mipmaps' levels the 1x "
-              f"ones"
+              f"filter and the scene buffers at the PS2's pixels, VU1's packets read at the XGKICK, mipmaps' levels the 1x "
+              f"ones and no primitive thinner than a PS2 pixel"
               f"{'' if not different else ': not ' + ', '.join(different[:5])}")
         failed |= bool(different)
         off = [c for c in changed if c[2] > off_outlines_allowed(c[1])]
@@ -1351,7 +1353,7 @@ def report(exe, reference, work, with_sweep, reference_name=None):
                         + (f" (at {' '.join(f'{x},{y}' for x, y in c[4])})" if c[4] else "") + f", {c[3]:.0f} apart"
                         for c in changed[:25]))
         failed |= bool(off)
-        print(f"pictures        with VU1's packets as the GIF reads them and mipmaps' levels at the scale too: {len(packets)} differ"
+        print(f"pictures        with VU1's packets, mipmaps' levels and thin primitives at the scale too: {len(packets)} differ"
               + "".join(f"; {name[6:12].lstrip('0')}: {count} pixels" for name, count in packets[:25]))
         ok, what = vu1_packets(exe, work)
         print(f"vu1 packets     {'ok' if ok else 'FAILED'}: {what}")
