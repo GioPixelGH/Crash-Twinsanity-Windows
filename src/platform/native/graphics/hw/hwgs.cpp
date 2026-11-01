@@ -76,6 +76,17 @@ u32 g_BatchLogFrame = 0;
 
 // The game's colour filter drawn at the scale (BitDepthIndex); $TWIN_HW_DEPTH_INDEX=0 draws it at the PS2's pixels as before
 // (read back from memory, tested at each block's first sample)
+// Mipmaps' level of detail at the drawing's scale: the GS works it out from Q for the PS2's pixels, so at Nx every level was
+// the one a pixel N times larger takes (the small levels, where a texture atlas's neighbouring parts run together, the
+// characters' black and red lines along their parts' edges, and textures softer than PCSX2's at its scale); log2(N) less, as
+// the PS2 drawing at that resolution would pick. $TWIN_HW_LOD_AT_SCALE=0 picks the PS2's pixels' level as before
+bool LodAtScale()
+{
+    static const char* setting = std::getenv("TWIN_HW_LOD_AT_SCALE");
+    static const bool on = setting == nullptr || setting[0] != '0';
+    return on;
+}
+
 bool DepthIndexEnabled()
 {
     static const char* setting = std::getenv("TWIN_HW_DEPTH_INDEX");
@@ -414,6 +425,7 @@ uniform int aem;
 uniform float lodK;
 uniform float lodL;
 uniform float lodMax;
+uniform float lodBias;
 uniform int dimx[16];
 uniform float scale;
 uniform sampler2D destination;
@@ -507,7 +519,8 @@ void main()
 #if LODCONST
     lod = lodK;
 #else
-    lod = log2(1.0 / abs(vStq.z)) * lodL + lodK;
+    // (at a higher scale, the level the PS2 would pick drawing at that resolution: log2 of the scale less)
+    lod = log2(1.0 / abs(vStq.z)) * lodL + lodK - lodBias;
 #endif
     lod = min(lod, lodMax);
 #endif
@@ -1063,6 +1076,7 @@ struct Program
     GLint lodK;
     GLint lodL;
     GLint lodMax;
+    GLint lodBias;
     GLint dimx;
     GLint scale;
     GLint destination;
@@ -1631,6 +1645,7 @@ const Program& HwGs::ProgramFor(u32 bits)
     p.lodK = gl.GetUniformLocation(p.id, "lodK");
     p.lodL = gl.GetUniformLocation(p.id, "lodL");
     p.lodMax = gl.GetUniformLocation(p.id, "lodMax");
+    p.lodBias = gl.GetUniformLocation(p.id, "lodBias");
     p.dimx = gl.GetUniformLocation(p.id, "dimx");
     p.scale = gl.GetUniformLocation(p.id, "scale");
     p.destination = gl.GetUniformLocation(p.id, "destination");
@@ -5312,6 +5327,7 @@ void HwGs::Flush()
         gl.Uniform1f(p.lodK, k.lodK);
         gl.Uniform1f(p.lodL, std::exp2(static_cast<f32>(k.lodL)));
         gl.Uniform1f(p.lodMax, static_cast<f32>(k.mxl));
+        gl.Uniform1f(p.lodBias, LodAtScale() ? std::log2(static_cast<f32>(n)) : 0.0f);
         GLint dimx[16];
         for (u32 i = 0; i < 16; i++)
         {

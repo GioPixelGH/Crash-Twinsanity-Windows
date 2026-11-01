@@ -190,6 +190,17 @@ picture at the PS2's resolution, and `replayNNN_gpu.png`, the GPU's at the scale
   before), so the sprites laying the sky read it from its buffer. Logged once ("a buffer narrower than the screen drawn as a
   scene"); check_windows.py's "scene buffers" line (bossarea at 4x: steps of the PS2's pixel 15.0 -> 0.7).
   $TWIN_HW_SMALL_SCENES=0 draws them as before.
+- Mipmaps' level of detail at the scale (LodAtScale, the shader's lodBias): the GS works a mipmapped texture's level out from
+  Q, (log2(1/|Q|) << L) + K, for the PS2's pixels; drawn at Nx every pixel took the level a pixel N times larger takes, the
+  small levels the PS2 shows at 1x. Where a texture atlas's parts lie side by side those levels run them together: on the
+  characters (Cortex's face is one mesh with its moustache's black and its mouth's red in the same 128 x 128 atlas, Crash's
+  alike) black and dark red lines along the edges of a part's triangles, coming and going with the distance and the
+  animation, at every scale, the pack's or not; and textures softer than PCSX2's, which picks its level at the resolution it
+  draws. Now log2(N) less (none at 1x), the level the PS2 drawing at that resolution would pick; a constant level of detail
+  (LCM) stays the game's. Found by elimination, the user's screenshots of Cortex's nose (2026-11-01): the GS commands' strips,
+  ADC bits and colours the retail game's, the face's coverage without a hole and the depth test the same with the GS's
+  truncation or without (the port's and PCSX2's GS dumps rasterised and depth tested by scripts).
+  $TWIN_HW_LOD_AT_SCALE=0 picks the PS2's pixels' level as before.
 - Known differences: GL's float blending and filtering (1/255 steps against the GS's truncations); 16 bit frames blended under a
   stencil DATE keep 8 bits until they're read.
 - Not a difference: the Iceberg Lab's coloured lights tint the characters' bright parts, Crash's chin and chest pale green
@@ -283,7 +294,7 @@ for picture N, a line each: their target and its scale, the texture's target if 
 `TWIN_HW_VERTEX_OFFSET=n` (256ths), `TWIN_HW_SMALL_VIEWPORT`, `TWIN_HW_NO_WRAPADD`, `TWIN_HW_NO_STENCIL_DATE`,
 `TWIN_HW_NO_WIDE_LOAD`, `TWIN_HW_STAGED_UPLOADS`, `TWIN_HW_NO_SNAP`, `TWIN_HW_NO_NATIVE_DEPTH`, `TWIN_HW_DEPTH_INDEX=0` (the
 colour filter at the PS2's pixels), `TWIN_HW_SMALL_SCENES=0` (scenes drawn into narrow buffers at the PS2's resolution),
-`TWIN_VU1_KICK_AT_ONCE=1` (VU1's packets read at the XGKICK); with the interpreter (`TWIN_VU1=interpret`),
+`TWIN_VU1_KICK_AT_ONCE=1` (VU1's packets read at the XGKICK), `TWIN_HW_LOD_AT_SCALE=0` (mipmaps' levels the 1x ones); with the interpreter (`TWIN_VU1=interpret`),
 `TWIN_VU_KICK_WRITES` (each instruction that writes into a packet after its XGKICK, once: where and how many cycles after).
 
 ### Replacement textures (PCSX2's packs)
