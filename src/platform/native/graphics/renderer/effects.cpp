@@ -1,5 +1,11 @@
 #include "renderer.h"
 #include "gsvalues.h"
+#include "renderdistance.h"
+
+#include "native.h"
+
+#include <cstdlib>
+#include <string_view>
 
 #include "abi.h"
 #include "game/disk.h"
@@ -721,3 +727,71 @@ extern "C"
 }
 
 EABI_EXPORT(FUN_001aecc0, BlendPalettes);
+
+// The draw distance's far plane (renderdistance.h) moves every pixel's depth: whether an effect would draw the frame otherwise for
+// it. The filter does, on, through the blended palettes (their alphas the first palette's) or a palette with an alpha other than
+// 0x80 (one all 0x80 leaves every colour as it is: (Cd - Cs) * 1 + Cs); the blur and the waves would (never switched on)
+bool Native::ScreenEffectsReadDepth()
+{
+    if (g_BlurEffect != 0 || g_WaveEffect != 0)
+    {
+        return true;
+    }
+
+    if (g_ColourFilterEffect == 0 || g_ColourFilterOn == 0)
+    {
+        return false;
+    }
+
+    if (g_ColourFilterBlends != 0 || g_ColourFilterPalette >= FilterPaletteCount)
+    {
+        return true;
+    }
+
+    static const u32 changing = []
+    {
+        u32 palettes = 0;
+        for (u32 palette = 0; palette < FilterPaletteCount; palette++)
+        {
+            for (u32 colour : g_FilterPalettes[palette])
+            {
+                if (colour >> 24 != 0x80)
+                {
+                    palettes |= 1u << palette;
+                    break;
+                }
+            }
+        }
+
+        return palettes;
+    }();
+    return (changing >> g_ColourFilterPalette & 1) != 0;
+}
+
+f32 Native::FarPlaneScaleNow()
+{
+    static const bool always = [] {
+        const char* setting = std::getenv("TWIN_RENDER_DISTANCE");
+        return setting != nullptr && std::string_view(setting) == "far";
+    }();
+    const f32 scale = RenderDistanceScale();
+    return scale != 1.0f && !always && ScreenEffectsReadDepth() ? 1.0f : scale;
+}
+
+void Native::SetFarPlaneScale(f32 scale)
+{
+    if (scale != g_FarPlaneScale.load(std::memory_order_relaxed))
+    {
+        if (scale != 1.0f)
+        {
+            Native::Log("render distance: the far plane %gx the game's", static_cast<double>(scale));
+        }
+        else
+        {
+            Native::Log("render distance: the far plane the game's (%s)",
+                        RenderDistanceScale() == 1.0f ? "the original distance" : "the colour filter reads the depth");
+        }
+    }
+
+    g_FarPlaneScale.store(scale, std::memory_order_relaxed);
+}

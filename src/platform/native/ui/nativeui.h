@@ -244,6 +244,13 @@ enum NativeText : u32
     // Anti-aliasing's supersampling (settings.cpp's Display page)
     TextSsaa2,
     TextSsaa4,
+    // The draw distance option (settings.cpp's Display page; its unlimited choice is the refresh rate's TextUnlimited)
+    TextRenderDistance,
+    TextDescRenderDistance,
+    TextDistanceShort,
+    TextDistanceOriginal,
+    TextDistanceMedium,
+    TextDistanceLong,
     NativeTextEnd,
 };
 
@@ -380,6 +387,9 @@ enum Option : u32
     // the frame's own full colour (1: the hardware renderer's dithered copy neither dithered nor truncated; the software
     // renderer draws into the PS2's 16 bits either way)
     OptionDithering,
+    // How far the game draws (renderdistance.h, HAB3X's): the original (0), short (1: 0.6 times the distances), medium (2: twice),
+    // long (3: three times) or unlimited (4: no level of detail's cut-off, the far plane four times); codes, not the menu's order
+    OptionRenderDistance,
     OptionCount,
 };
 

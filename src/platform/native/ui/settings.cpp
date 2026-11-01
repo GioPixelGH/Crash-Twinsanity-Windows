@@ -9,6 +9,7 @@
 #include "ui/overlay.h"
 
 #include "native.h"
+#include "renderdistance.h"
 
 #include "game/controllers.h"
 #include "game/gamecontroller.h"
@@ -20,10 +21,12 @@
 
 #include <SDL3/SDL.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <functional>
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -53,6 +56,12 @@ namespace
 // ------------------------------------------------------------------------------------------------------------------- the rows
 constexpr u32 TabTexts[Pages] = {TextTabGameplay, TextTabDisplay, TextTabAudio, TextControls, TextTabAccessibility};
 constexpr u32 Columns = BindingColumns;
+// The draw distance's choices from the shortest to the farthest, so left is less and right more (options.txt keeps
+// renderdistance.h's codes, whatever this order)
+constexpr u32 DistanceOrder[] = {Native::DistanceShort, Native::DistanceOriginal, Native::DistanceMedium, Native::DistanceLong,
+                                 Native::DistanceUnlimited};
+constexpr u32 DistanceTexts[] = {TextDistanceShort, TextDistanceOriginal, TextDistanceMedium, TextDistanceLong, TextUnlimited};
+constexpr s32 DistanceChoices = static_cast<s32>(std::size(DistanceOrder));
 
 std::vector<Row> g_Rows[Pages];
 bool g_Built = false;
@@ -249,6 +258,15 @@ void Build()
     display.push_back(
         OptionChoice(TextAntiAliasing, TextDescAntiAliasing, OptionAntiAliasing, {0, TextFxaa, TextSsaa2, TextSsaa4}));
     display.push_back(OptionChoice(TextDithering, TextDescDithering, OptionDithering, {TextDitherPs2, 0}));
+    display.push_back(Choice(
+        TextRenderDistance, TextDescRenderDistance,
+        [] {
+            const u32 code = static_cast<u32>(GetOption(OptionRenderDistance));
+            const auto* at = std::find(std::begin(DistanceOrder), std::end(DistanceOrder), code);
+            return at != std::end(DistanceOrder) ? static_cast<s32>(at - std::begin(DistanceOrder)) : 1;
+        },
+        [](s32 value) { SetOption(OptionRenderDistance, static_cast<s32>(DistanceOrder[value])); }, DistanceChoices - 1,
+        [](s32 value) { return Text(DistanceTexts[value]); }));
     display.push_back(Toggle(TextVSync, TextDescVSync, OptionVSync));
     display.push_back(Toggle(TextShowFps, TextDescShowFps, OptionShowFps));
     display.push_back(Action(GameTextCentreScreen, TextDescScreenPosition, [] { OpenScreenPosition(); }));
@@ -701,7 +719,7 @@ void ResetTab(u32 tab)
         SetResolution(DefaultResolution());
         g_WidescreenTv = static_cast<u8>(DefaultOption(OptionWidescreen) != 0 ? 1 : 0);
         ResetOptions({OptionWidescreen, OptionUltrawide, OptionRefresh60, OptionTextureFilter, OptionCrtFilter, OptionTexturePack,
-                      OptionTextureUpscale, OptionAntiAliasing, OptionVSync});
+                      OptionTextureUpscale, OptionAntiAliasing, OptionVSync, OptionRenderDistance});
         break;
     case TabAudio:
         SetMusic(DefaultOption(OptionMusicVolume));

@@ -1,4 +1,7 @@
 #include "game/view.h"
+#ifdef TWIN_NATIVE
+#include "renderdistance.h"
+#endif
 
 #include "game/camerarig.h"
 #include "game/controllers.h"
@@ -25,6 +28,12 @@ void RenderView::SetProjection(CameraLensNode* lens)
 {
     f32 farPlane = lens->farPlane;
     f32 nearPlane = lens->nearPlane;
+#ifdef TWIN_NATIVE
+    // The draw distance option's far plane (renderdistance.h), kept for the culling's frustum
+    const f32 farScale = Native::FarPlaneScaleNow();
+    Native::SetFarPlaneScale(farScale);
+    farPlane = farPlane * farScale;
+#endif
     projection = {};
     s32 half = static_cast<s32>(static_cast<f32>(lens->fov) * 0.5f);
     f32 cotangent = 1.0f / TanOfAngle(&half);
@@ -54,6 +63,11 @@ void RenderView::Update(f32 aspect)
     f32 scaled = lens->pixelAspect * aspect;
     f32 difference = scaled - inverseAspect;
     bool same = difference * difference <= SameAspect;
+#ifdef TWIN_NATIVE
+    // The projection made again when the draw distance's far plane changes (the option, or a screen effect reading the depth
+    // or no longer): the game makes it only when the lens changes
+    same = same || Native::FarPlaneScaleNow() != Native::FarPlaneScale();
+#endif
     InvertMatrix(&place->matrix, 4, &toCamera);
     VuRotateVector(&place->matrix, &Forward, &forward);
     if (lens->bits.projectionChanged != 0 || same)

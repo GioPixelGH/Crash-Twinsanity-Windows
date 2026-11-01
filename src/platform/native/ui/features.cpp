@@ -1,4 +1,5 @@
 // What the native options change in the game: applied once they're set and at start-up
+#include "renderdistance.h"
 #include "ui/nativeui.h"
 #include "ui/bindings.h"
 
@@ -83,6 +84,9 @@ void ApplyOption(Option option)
         // The hardware renderer's modes: 2 the GS's dither at each of the scale's pixels (the PS2's), 3 none and full colour
         NativeGraphicsSetDither(IsOn(OptionDithering) ? 3 : 2);
         break;
+    case OptionRenderDistance:
+        Native::SetRenderDistance(static_cast<u32>(GetOption(OptionRenderDistance)));
+        break;
     case OptionVoiceVolume:
         ApplyVolumes();
         break;
@@ -109,6 +113,7 @@ void ApplyStartOptions()
     ApplyOption(OptionVSync);
     ApplyOption(OptionShowFps);
     ApplyOption(OptionDithering);
+    ApplyOption(OptionRenderDistance);
     ApplyVolumes();
 }
 

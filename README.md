@@ -126,7 +126,8 @@ off until you turn them on.
 - [ ] The two cutscenes that still end a little differently when skipped than when played ([#9]).
 - [ ] A skip for the cutscenes that have none yet, like those of the first fight with Cortex and of Cavern Catastrophe ([#28]).
 - [ ] The slide's long jump at any moment, as a game option ([#11]).
-- [ ] Render distance as a PC option.
+- [x] Draw distance as a PC option (from HAB3X's Mac port): farther than the PS2's draws the grass and small things before
+  you get close, at a cost on older PCs.
 - [ ] Level select, as a game option.
 - [x] Anti-aliasing by supersampling (2x, 4x).
 - [ ] Eight save slots.

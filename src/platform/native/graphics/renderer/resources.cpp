@@ -1,3 +1,4 @@
+#include "renderdistance.h"
 #include "renderer.h"
 
 #include "game/clock.h"
@@ -746,7 +747,9 @@ void SkinRestartAnimations(Skin* skin)
 
 RigidModel* LodMeshAt(Lod* lod, u32 distance)
 {
-    if (distance < lod->nearest || lod->farthest < distance)
+    // The draw distance option's cut-off past the farthest distance (renderdistance.h: gone when unlimited, the farthest mesh
+    // then drawn however far)
+    if (distance < lod->nearest || Native::LodCutOff(lod->farthest) < distance)
     {
         return nullptr;
     }

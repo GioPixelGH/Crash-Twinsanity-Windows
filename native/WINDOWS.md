@@ -333,7 +333,10 @@ camera looking up at Crash and Aku Aku, the filter at the PS2's pixels and at th
 changes along outlines; and the software GS's `$TWIN_FILTER_PROBE`: every filtered pixel's index the depth's bits 8-15,
 GRAPHICS.md's "The game's colour filter at the scale"); the scene buffers (`scene_buffers()`: bossarea's first boss cutscene at 4x, Cortex
 against the sky the game draws into a 256 wide buffer, with that buffer at the PS2's pixels and at the scale: the PS2-sized
-steps gone, GRAPHICS.md's "Scenes drawn into narrow buffers"); with `--sweep`, every level
+steps gone, GRAPHICS.md's "Scenes drawn into narrow buffers"); the draw distance (`render_distance()`, a minute: the beach's
+frame 700 with the original distance, unlimited, and unlimited with `$TWIN_RENDER_DISTANCE=far`: unlimited draws more, keeps
+the game's far plane there and the frame's lower half the original's byte for byte; the forced far plane moves the colour
+filter's haze, NATIVE.md's "Draw distance"); with `--sweep`, every level
 chunk, its outcome
 against `native/sweep/results_windows.json` (a run that went on and one that ended in a game over count alike: the scripted
 input decides which). Some 5 minutes, 25 more with the sweep. Each run has a settings folder of its own; the disc image is
@@ -479,6 +482,9 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   Levels\Earth\Hub\bossarea` with `500-800:ly=0`. With the pictures above, a real run (a window or fullscreen, three threads) is
   the same place every time: a bug seen there is measured in the window as shown and in the picture drawn at once.
 - `$TWIN_FRAME_STATS`: each frame's time, VU1's work, the primitives, the render thread's time and the GPU renderer's batches, texture decodes, uploads, downloads and copies.
+- `$TWIN_RENDER_DISTANCE=far`: the draw distance's far plane its choice's even where the colour filter reads the depth
+  (renderdistance.h, NATIVE.md's "Draw distance"): to see what it would change. The log's "render distance: the far plane Nx"
+  lines say when the far plane moves.
 - `$TWIN_GPU_TIME=0`: the graphics card's time not measured (the log's `the graphics card unknown`, the entry points
   OpenGL's own): to measure what the timing costs. `$TWIN_SETTINGS_LOG_TEST=1` (headless): the settings screen driven from the
   main menu through the log check's changes, then the program ends (settingsshots.cpp, beside `$TWIN_UI_SETTINGS_SHOTS`).

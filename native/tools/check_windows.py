@@ -886,6 +886,69 @@ def dithering(exe, work, frame=300):
     return low_a == 0 and low_b > 0.5 and 1.0 < brighter < 8.0, what
 
 
+def render_distance(exe, work, frame=700):
+    """The draw distance option (renderdistance.h): the beach from the start at a fixed time with the original distance (the
+    default), unlimited, and unlimited with the far plane 4 times even where the colour filter reads the depth
+    ($TWIN_RENDER_DISTANCE=far). Unlimited draws more (the levels of detail's cut-off gone) and keeps the game's far plane there
+    (the beach's filter reads the depth: no far plane line in the log), its frame's lower half (the sand, Crash, the crates:
+    near) the original's byte for byte. The forced far plane moves the filter's haze (its depth's bits 8-15: renderdistance.h)
+    in the upper half, the lower half all but the same: (passed, what happened)"""
+    def run(name, distance, extra):
+        folder = work / f"render-distance-{name}"
+        if folder.exists():
+            shutil.rmtree(folder)
+        frames = folder / "frames"
+        frames.mkdir(parents=True)
+        settings = folder / "settings" / "Crash Twinsanity"
+        settings.mkdir(parents=True)
+        (settings / "disc_image.txt").write_text(disc_image() + "\n")
+        (settings / "options.txt").write_text(f"render_distance={distance}\n")
+        env = dict(os.environ, HOME=str(folder / "settings"), APPDATA=str(folder / "settings"), TWIN_FIXED_TIME="1",
+                   TWINSANITY_AUDIO="frames", TWIN_DUMP_FRAMES=f"{frames}:{frame}", TWIN_FRAME_STATS="1", **extra)
+        with open(folder / "log.txt", "w") as log:
+            process = subprocess.Popen([str(exe), "--quick", "--headless"], env=env, stdout=log, stderr=subprocess.STDOUT,
+                                       cwd=folder)
+            beyond = frames / f"frame_{frame * 2:06d}.png"
+            started = time.time()
+            while not beyond.exists() and process.poll() is None and time.time() - started < 600:
+                time.sleep(1)
+            process.kill()
+            process.wait()
+        text = (folder / "log.txt").read_text(errors="replace")
+        # The GS's primitives a frame (TWIN_FRAME_STATS), the median of the 50 frames up to the picture
+        counts = [int(m.group(1)) for m in re.finditer(r"primitives (\d+)", text)][frame - 50:frame]
+        drawn = sorted(counts)[len(counts) // 2] if counts else 0
+        return frames / f"frame_{frame:06d}.png", drawn, "render distance: the far plane 4x" in text
+
+    with ThreadPoolExecutor(3) as pool:
+        (original, few, _), (unlimited, many, moved), (far, most, forced) = pool.map(
+            run, ["original", "unlimited", "far"], [0, 4, 4], [{}, {}, {"TWIN_RENDER_DISTANCE": "far"}])
+    if not all(path.exists() for path in (original, unlimited, far)):
+        return False, f"no frame {frame}"
+
+    def changed(old, new):
+        # The pixels apart in the frame's upper and lower halves
+        width, height, a = frame_rgba(old)
+        _, _, b = frame_rgba(new)
+        row = 1 + width * 4
+        halves = [0, 0]
+        for y in range(height):
+            start = y * row + 1
+            if a[start:start + width * 4] != b[start:start + width * 4]:
+                halves[y >= height // 2] += sum(a[at:at + 3] != b[at:at + 3] for at in range(start, start + width * 4, 4))
+        return halves, width * (height // 2)
+    (_, near_unlimited), half = changed(original, unlimited)
+    (haze, near_far), _ = changed(unlimited, far)
+    unlimited_far = "4x: WRONG, the filter reads the depth there" if moved else "the game's (the filter reads the depth)"
+    forced_far = "4x" if forced else "the game's: NOT MOVED"
+    what = (f"the beach's frame {frame}: {few} primitives as the original, {many} unlimited ({many / max(few, 1) - 1:+.0%}), "
+            f"its far plane {unlimited_far}, {near_unlimited} pixels of the lower half (near) not the original's; the far plane "
+            f"forced ($TWIN_RENDER_DISTANCE=far) {forced_far}, {most} primitives, the filter's haze moved on {haze} pixels of the "
+            f"upper half and {near_far} of the lower")
+    return (many > few * 1.1 and not moved and near_unlimited == 0 and forced and most >= many and haze > 0
+            and near_far * 10000 <= half), what
+
+
 def pictures(exe, reference, work, last=2500, every=100):
     """The beach from the start (--quick) at a fixed time with the sound made frame by frame, every 100th picture compared
     byte for byte: ours with the colour filter and the small scene buffers as the reference's program draws them (AS_BEFORE: at
@@ -1372,6 +1435,10 @@ def report(exe, reference, work, with_sweep, reference_name=None):
         failed |= not ok
     else:
         print("pictures        not compared (no reference program)")
+
+    ok, what = render_distance(exe, work)
+    print(f"draw distance   {'ok' if ok else 'FAILED'}: {what}")
+    failed |= not ok
 
     if with_sweep:
         counts, differences = sweep(exe, work)
