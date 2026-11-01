@@ -88,6 +88,16 @@ MOMENTS = {
                   frames=[(1960, 2400)], shots=["c26.4", "c27.0", "c27.6", "c28.2", "c28.8", "c29.4"],
                   crops={"Left": (0.0, 0.1, 0.35, 0.95), "Middle": (0.35, 0.1, 0.65, 0.95), "Right": (0.65, 0.1, 1.0, 0.95)}),
 }
+# The scan (--scan): Crash all round, the beach's camera looking up at him (as the beach's moment) then turned round him by the
+# right stick held for 18 s (a turn takes about 150 frames at 50 Hz: six turns). PCSX2's GS dumps can't keep a time (each takes
+# it a second and more, the emulation slower meanwhile): twelve, a second apart, each a moment of its own (own_shots), its pair
+# the port's frame of the whole turning most like it (the camera's angle, then the pose: his idles are the game's random ones)
+PLACES["scan"] = dict(chunk="Levels\\Earth\\Hub\\beach", pad="620-720:ry=255;730-1630:rx=255",
+                      keys=["p0.82:rdown:2.0", "p3.02:rright:18.0"], timeout=300)
+for _shot in range(12):
+    MOMENTS[f"scan{_shot + 1:02d}"] = dict(
+        place="scan", scan=True, own_shots=True, title=f"Crash all round: PCSX2's dump {_shot + 1} of the camera turning",
+        frames=[(740, 1620)], shots=[f"p{3.2 + _shot:.1f}"], crops={"Crash": (0.22, 0.05, 0.82, 1.0)})
 # The most two pictures' characters may differ (a channel's mean, 0-255, the crops at 128 pixels) for the pair to be valid
 POSE_LIMIT = 14.0
 # A difference worth listing: pixels over 48 (a channel), in a region of at least this share of the picture
@@ -617,7 +627,9 @@ def main():
     parser.add_argument("--out", default=str(HERE.parent / "compare"))
     parser.add_argument("--exe", default=str(HERE / "build/native/cmake/CrashTwinsanity.exe"))
     parser.add_argument("--configs", default="player,ps2,hw8")
-    parser.add_argument("--moments", default=",".join(MOMENTS))
+    parser.add_argument("--moments", default=",".join(m for m in MOMENTS if not MOMENTS[m].get("scan")))
+    parser.add_argument("--scan", action="store_true",
+                        help="Crash all round instead: the camera turned round him, twelve moments (the page 'scan' by default)")
     parser.add_argument("--pcsx2-again", nargs="?", const="all", default="",
                         help="make PCSX2's screenshots again (all, or a list of PLACE_CONFIG: bossarea_hw8,beach_player)")
     parser.add_argument("--port-again", action="store_true", help="make the port's coarse frames again (alignment)")
@@ -634,6 +646,9 @@ def main():
     user = prepare_player(out)
     configs = [c for c in args.configs.split(",") if c]
     moments = [m for m in args.moments.split(",") if m]
+    if args.scan:
+        moments = [m for m in MOMENTS if MOMENTS[m].get("scan")]
+        args.label = args.label or "scan"
     places = sorted({MOMENTS[m]["place"] for m in moments})
     extra_env = dict(kv.split("=", 1) for kv in args.env)
     label = args.label or "current"
@@ -690,6 +705,10 @@ def main():
             # (any of the place's screenshots: where PCSX2's cutscene falls in them changes by up to a second a run; the
             # moment's frames decide which pair is its)
             shots = shot_files(refs / f"{place}_{config}")
+            if spec.get("own_shots"):
+                # (only the moment's own: the scan's dumps are each a moment)
+                own = {f"screenshot_{s[0]}{float(s[1:]):05.1f}s.png" for s in spec["shots"]}
+                shots = [s for s in shots if s.name in own]
             best = None
             for shot in shots:
                 found = align(shot, candidates, spec["crops"])

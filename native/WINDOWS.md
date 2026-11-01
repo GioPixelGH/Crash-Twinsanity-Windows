@@ -315,7 +315,17 @@ found, and a folder no file can be made in (icacls's deny of `WD,AD`, as Program
 switch refused); the beach's
 first 2,500 frames at a fixed time, every 100th picture compared byte for byte with the last packaged build's
 (`build/native/dist/`, or `--reference PROGRAM`; a program whose folder is a player's portable one, with a `portable.txt` or
-a `User` folder, runs from a copy of its own files, never with the player's settings and saves); with `--sweep`, every level
+a `User` folder, runs from a copy of its own files, never with the player's settings and saves), first with the game's colour
+filter and the scenes drawn into narrow buffers at the PS2's pixels as 1.1.0 and before drew them (its `AS_BEFORE`:
+`$TWIN_HW_DEPTH_INDEX=0`, `$TWIN_HW_SMALL_SCENES=0`), then as a player has them, at the scale, where the changed pixels must
+lie within a PS2 pixel of an outline but one in a thousand (an edge between a near and a far surface of like colours is none
+to the colours: a dark leaf over the olive behind it; the line "pictures with them at the scale" names the pictures changed,
+their pixels, those off the outlines and where, and how far); the colour filter (`colour_filter()`: the beach at 4x with the
+camera looking up at Crash and Aku Aku, the filter at the PS2's pixels and at the scale: the PS2-sized steps gone, the
+changes along outlines; and the software GS's `$TWIN_FILTER_PROBE`: every filtered pixel's index the depth's bits 8-15,
+GRAPHICS.md's "The game's colour filter at the scale"); the scene buffers (`scene_buffers()`: bossarea's first boss cutscene at 4x, Cortex
+against the sky the game draws into a 256 wide buffer, with that buffer at the PS2's pixels and at the scale: the PS2-sized
+steps gone, GRAPHICS.md's "Scenes drawn into narrow buffers"); with `--sweep`, every level
 chunk, its outcome
 against `native/sweep/results_windows.json` (a run that went on and one that ended in a game over count alike: the scripted
 input decides which). Some 5 minutes, 25 more with the sweep. Each run has a settings folder of its own; the disc image is
@@ -677,6 +687,14 @@ adds a variable to the port's runs. `check_windows.py --vs-pcsx2` runs the bench
 passes a moment when its pair is valid, the port's PS2-sized steps are no more than PCSX2's (3 per 1000 over at most) and PCSX2
 drawing the port's commands gives the port's picture (within 1.5 of 255 on average once the half pixel is fitted). It needs
 numpy and Pillow in the .venv. `gsdump.py FILE.gs` sums a dump up; `gsdump.py compare PORT.gs RETAIL.gs` compares two.
+
+`--scan` makes the page `scan` instead: Crash all round. On the beach the camera looks up at him (the beach's moment's input)
+and is then turned round him by the right stick held for 18 s (`730-1630:rx=255`, PCSX2's `--key p3.02:rright:18.0`; a turn
+takes about 150 frames at 50 Hz, six turns). PCSX2's GS dumps can't keep a time (each takes it a second and more of the
+screen's time, the emulation slower meanwhile: asked a quarter of a second apart, they came late and after the stick was let
+go), so twelve are asked a second apart, each a moment of its own, its pair the port's frame of the whole turning most like it:
+the camera's angle, then the pose (his idles are the game's random ones: a pair can still differ by a pose, the same
+commands' pair never does).
 
 ## Releasing
 

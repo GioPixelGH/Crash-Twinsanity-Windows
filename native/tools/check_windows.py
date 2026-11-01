@@ -658,6 +658,53 @@ def frame_rgba(path):
     return width, height, zlib.decompress(compressed)
 
 
+# The 1.1.0 drawing of what 2026-11-01's fixes draw at the scale: the game's colour filter (hwgs.cpp's DepthIndexColour) and the
+# scenes drawn into buffers narrower than the screen (bossarea's sky)
+AS_BEFORE = {"TWIN_HW_DEPTH_INDEX": "0", "TWIN_HW_SMALL_SCENES": "0"}
+
+
+def scene_buffers(exe, work, frame=832, scale=4):
+    """Bossarea's sky (the first boss's cutscene, Cortex against the sky: compare_models.py's moment), drawn by the game at
+    half the PS2's resolution into a 256 wide buffer and laid over the frame with the nearest texels, at the scale with the
+    buffer at the PS2's pixels (TWIN_HW_SMALL_SCENES=0: blocks of two PS2 pixels on the clouds, the island, the horizon) and at
+    the scale (as PCSX2 draws it): the steps of the PS2's pixel's size gone: (passed, what happened)"""
+    def run(name, extra):
+        folder = work / f"scene-buffers-{name}"
+        if folder.exists():
+            shutil.rmtree(folder)
+        settings = folder / "settings" / "Crash Twinsanity"
+        settings.mkdir(parents=True)
+        (settings / "disc_image.txt").write_text(disc_image() + "\n")
+        # 50 Hz as the bench's (the PAL game's: the cutscene's moment at the same frame)
+        (settings / "options.txt").write_text("widescreen=0\nrefresh_60hz=0\n")
+        env = dict(os.environ, HOME=str(folder / "settings"), APPDATA=str(folder / "settings"), TWIN_FIXED_TIME="1",
+                   TWINSANITY_AUDIO="frames", TWIN_DUMP_FRAMES=f"{folder}:{frame},", TWIN_SCALE=str(scale),
+                   TWIN_PAD_SCRIPT="500-800:ly=0", TWIN_START_CHUNK="Levels\\Earth\\Hub\\bossarea", **extra)
+        with open(folder / "log.txt", "w") as log:
+            process = subprocess.Popen([str(exe), "--quick", "--headless"], env=env, stdout=log, stderr=subprocess.STDOUT,
+                                       cwd=folder)
+            shot = folder / f"frame_{frame:06d}.png"
+            started = time.time()
+            while process.poll() is None and time.time() - started < 900:
+                if shot.exists():
+                    time.sleep(2)
+                    break
+                time.sleep(1)
+            process.kill()
+            process.wait()
+        return folder
+    with ThreadPoolExecutor(2) as pool:
+        old, new = pool.map(run, ["old", "new"], [{"TWIN_HW_SMALL_SCENES": "0"}, {}])
+    a, b = old / f"frame_{frame:06d}.png", new / f"frame_{frame:06d}.png"
+    if not a.exists() or not b.exists():
+        return False, f"no frame {frame}"
+    drawn = "drawn as a scene" in (new / "log.txt").read_text(errors="replace")
+    before, after = ps2_steps(a, scale), ps2_steps(b, scale)
+    what = (f"bossarea's sky at {scale}x, steps of the PS2's pixel {before:.1f} -> {after:.1f} per 1000 PS2 pixels"
+            + ("" if drawn else "; the log doesn't say a narrow buffer is drawn as a scene"))
+    return drawn and after < 3 and after < before / 3, what
+
+
 def skinned_light(exe, work, frame=1770):
     """#15: Crash at the Iceberg Lab's start (levels\\ice\\hub\\labext) looks round in his idle, his chin lit pale green by the
     level's lights as the retail game lights it (its executable in PCSX2 2.9, the same pose: the patch's mean colour 124, 190,
@@ -714,7 +761,8 @@ def window_downsample(exe, work, frame=600):
     settings = folder / "settings" / "Crash Twinsanity"
     settings.mkdir(parents=True)
     (settings / "disc_image.txt").write_text(disc_image() + "\n")
-    (settings / "options.txt").write_text("anti_aliasing=0\nwidescreen=1\n")
+    # (not paused when the window isn't in front: a check run while the PC is in use)
+    (settings / "options.txt").write_text("anti_aliasing=0\nwidescreen=1\npause_on_focus_loss=0\n")
     (settings / "resolution.txt").write_text("scale=8\nwindow=1280x720\nfullscreen=0\n")
     env = dict(os.environ, HOME=str(folder / "settings"), APPDATA=str(folder / "settings"), TWIN_FIXED_TIME="1",
                TWINSANITY_AUDIO="frames", TWIN_DUMP_FRAMES=f"{folder}:{frame}", TWIN_WINDOW_SHOTS=f"{folder}:{frame}")
@@ -797,7 +845,7 @@ def dithering(exe, work, frame=300):
     """The Dithering option off (hwgs.cpp's full colour dithered draws): the beach's frame at a fixed time against the pictures
     check's, made as the PS2 (the default): that one 5 bits a channel (no low three bits), this one the frame's full colour (most
     channels' low bits set) and a little brighter (the truncation's floor gone): (passed, what happened)"""
-    ps2 = work / "pictures-checked" / "frames" / f"frame_{frame:06d}.png"
+    ps2 = work / "pictures-checked-filter" / "frames" / f"frame_{frame:06d}.png"
     folder = work / "dithering"
     if folder.exists():
         shutil.rmtree(folder)
@@ -834,9 +882,15 @@ def dithering(exe, work, frame=300):
 
 
 def pictures(exe, reference, work, last=2500, every=100):
-    """The beach from the start (--quick) at a fixed time with the sound made frame by frame, every 100th picture of both
-    programs compared byte for byte: (pictures the same, [different or missing ones])"""
-    def one(program, name):
+    """The beach from the start (--quick) at a fixed time with the sound made frame by frame, every 100th picture compared
+    byte for byte: ours with the colour filter and the small scene buffers as the reference's program draws them (AS_BEFORE: at
+    the PS2's pixels) against the reference's, then ours as a player has it (both at the scale) against the reference's, whose
+    differences
+    must lie within a PS2 pixel of an outline (the filter's near and far edges) but one in a thousand at most (an edge between
+    a near and a far surface of like colours is no outline to the colours: a leaf's dark green over the olive behind it):
+    (pictures the same with the old filter, [different or missing ones], [(picture, pixels changed, of them off the outlines,
+    their mean change, the first off ones' places)] with the new)"""
+    def one(program, name, extra):
         folder = work / f"pictures-{name}"
         if folder.exists():
             shutil.rmtree(folder)
@@ -847,7 +901,7 @@ def pictures(exe, reference, work, last=2500, every=100):
         settings.mkdir(parents=True)
         (settings / "disc_image.txt").write_text(disc_image() + "\n")
         env = dict(os.environ, HOME=str(folder / "settings"), APPDATA=str(folder / "settings"), TWIN_FIXED_TIME="1",
-                   TWINSANITY_AUDIO="frames", TWIN_DUMP_FRAMES=f"{frames}:{every}")
+                   TWINSANITY_AUDIO="frames", TWIN_DUMP_FRAMES=f"{frames}:{every}", **extra)
         with open(folder / "log.txt", "w") as log:
             process = subprocess.Popen([str(program), "--quick", "--headless"], env=env, stdout=log, stderr=subprocess.STDOUT,
                                        cwd=folder)
@@ -859,19 +913,161 @@ def pictures(exe, reference, work, last=2500, every=100):
             process.kill()
             process.wait()
         return frames
-    with ThreadPoolExecutor(2) as pool:
-        ours, theirs = pool.map(one, [exe, reference], ["checked", "reference"])
-    same, different = 0, []
+    with ThreadPoolExecutor(3) as pool:
+        ours, theirs, scaled = pool.map(one, [exe, reference, exe], ["checked", "reference", "checked-filter"],
+                                        [AS_BEFORE, {}, {}])
+    same, different, changed = 0, [], []
     for frame in range(every, last + 1, every):
         name = f"frame_{frame:06d}.png"
-        a, b = ours / name, theirs / name
+        a, b, c = ours / name, theirs / name, scaled / name
         if not a.exists() or not b.exists():
             different.append(name + " (missing)")
         elif a.read_bytes() != b.read_bytes():
             different.append(name)
         else:
             same += 1
-    return same, different
+        if b.exists() and c.exists() and b.read_bytes() != c.read_bytes():
+            width = int.from_bytes(b.read_bytes()[16:20], "big")
+            changed.append((name, *changed_off_outlines(b, c, max(1, round(width / 512)))))
+    return same, different, changed
+
+
+def changed_off_outlines(old, new, reach):
+    """Two pictures of the same size (png.cpp's): the pixels apart (a channel over 8), how many of them lie more than reach
+    pixels (a PS2 pixel) from an outline of either picture (neighbours over 48 apart, the channels summed), the changed
+    pixels' mean change (the channels summed) and the first three off ones' places (x, y)"""
+    width, height, a = frame_rgba(old)
+    _, _, b = frame_rgba(new)
+    row = 1 + width * 4
+
+    def outline(pic, x, y):
+        at = y * row + 1 + x * 4
+        here = pic[at:at + 3]
+        for nx, ny in ((x + 1, y), (x, y + 1)):
+            if nx < width and ny < height:
+                there = pic[ny * row + 1 + nx * 4:ny * row + 4 + nx * 4]
+                if abs(here[0] - there[0]) + abs(here[1] - there[1]) + abs(here[2] - there[2]) > 48:
+                    return True
+        return False
+
+    count, off, total, places = 0, 0, 0, []
+    for y in range(height):
+        start = y * row + 1
+        if a[start:start + width * 4] == b[start:start + width * 4]:
+            continue
+        for x in range(width):
+            at = start + x * 4
+            change = abs(a[at] - b[at]) + abs(a[at + 1] - b[at + 1]) + abs(a[at + 2] - b[at + 2])
+            if max(abs(a[at] - b[at]), abs(a[at + 1] - b[at + 1]), abs(a[at + 2] - b[at + 2])) <= 8:
+                continue
+            count += 1
+            total += change
+            near = False
+            for ny in range(max(0, y - reach - 1), min(height, y + reach + 2)):
+                for nx in range(max(0, x - reach - 1), min(width, x + reach + 2)):
+                    if outline(a, nx, ny) or outline(b, nx, ny):
+                        near = True
+                        break
+                if near:
+                    break
+            if not near:
+                off += 1
+                if len(places) < 3:
+                    places.append((x, y))
+    return count, off, (total / count if count else 0.0), places
+
+
+def off_outlines_allowed(count):
+    """The changed pixels that may lie off the outlines: one in a thousand (depth edges between like colours)"""
+    return count // 1000
+
+
+def ps2_steps(path, n):
+    """A picture's (png.cpp's) steps of the PS2's pixel's size, n pixels a PS2 pixel: for each of the n x n positions of the
+    PS2 pixels' grid, the blocks' sides whose n pixel pairs across all differ (the channels summed over 18); the most's excess
+    over the positions' median per 1000 PS2 pixels (compare_models.py's gridsteps: a picture drawn at its scale about 0, a
+    layer at the PS2's pixels adds its edges at one position)"""
+    width, height, raw = frame_rgba(path)
+    row = 1 + width * 4
+    pixels = [raw[y * row + 1:(y + 1) * row] for y in range(height)]
+
+    def differ(p, i, j):
+        return abs(p[i] - p[j]) + abs(p[i + 1] - p[j + 1]) + abs(p[i + 2] - p[j + 2]) > 18
+
+    dx = [[differ(line, 4 * x, 4 * x + 4) for x in range(width - 1)] for line in pixels]
+    dy = [[differ_rows(pixels[y], pixels[y + 1], x) for x in range(width)] for y in range(height - 1)]
+    counts = []
+    for oy in range(n):
+        for ox in range(n):
+            total = 0
+            for x in range(n + ox - 1, width - 1, n):
+                for y0 in range(oy, height - n + 1, n):
+                    total += all(dx[y0 + i][x] for i in range(n))
+            for y in range(n + oy - 1, height - 1, n):
+                for x0 in range(ox, width - n + 1, n):
+                    total += all(dy[y][x0 + i] for i in range(n))
+            counts.append(total)
+    counts.sort()
+    median = counts[len(counts) // 2] if len(counts) % 2 else (counts[len(counts) // 2 - 1] + counts[len(counts) // 2]) / 2
+    return (counts[-1] - median) * 1000.0 / max(1, (width // n) * (height // n))
+
+
+def differ_rows(a, b, x):
+    i = 4 * x
+    return abs(a[i] - b[i]) + abs(a[i + 1] - b[i + 1]) + abs(a[i + 2] - b[i + 2]) > 18
+
+
+def colour_filter(exe, work, frame=700, scale=4):
+    """The game's colour filter at the scale (hwgs.cpp's DepthIndexColour): the beach with the camera looking up at Crash and
+    Aku Aku against the sky (a pad script) at a fixed time, drawn at the pictures' scale with the filter at the PS2's pixels
+    (TWIN_HW_DEPTH_INDEX=0) and at the scale: the steps of the PS2's pixel's size gone (at 4x: at 2x a PS2 pixel's two
+    pixels are no longer than the scene's own edges, the measure can't tell), the changed pixels within a PS2 pixel of an
+    outline (one in a thousand may not be: changed_off_outlines); and, with the software GS at 1x, every pixel the filter
+    draws on taking the depth's bits 8-15 as its index (TWIN_FILTER_PROBE: what the GPU's way relies on): (passed, what
+    happened)"""
+    def run(name, extra, scale_now):
+        folder = work / f"colour-filter-{name}"
+        if folder.exists():
+            shutil.rmtree(folder)
+        folder.mkdir(parents=True)
+        settings = folder / "settings" / "Crash Twinsanity"
+        settings.mkdir(parents=True)
+        (settings / "disc_image.txt").write_text(disc_image() + "\n")
+        env = dict(os.environ, HOME=str(folder / "settings"), APPDATA=str(folder / "settings"), TWIN_FIXED_TIME="1",
+                   TWINSANITY_AUDIO="frames", TWIN_DUMP_FRAMES=f"{folder}:{frame},", TWIN_SCALE=str(scale_now),
+                   TWIN_PAD_SCRIPT="620-700:ry=255", **extra)
+        with open(folder / "log.txt", "w") as log:
+            process = subprocess.Popen([str(exe), "--quick", "--headless"], env=env, stdout=log, stderr=subprocess.STDOUT,
+                                       cwd=folder)
+            shot = folder / f"frame_{frame:06d}.png"
+            started = time.time()
+            while process.poll() is None and time.time() - started < 900:
+                if shot.exists():
+                    time.sleep(2)
+                    break
+                time.sleep(1)
+            process.kill()
+            process.wait()
+        return folder
+    with ThreadPoolExecutor(3) as pool:
+        old, new, probe = pool.map(run, ["old", "new", "probe"], [{"TWIN_HW_DEPTH_INDEX": "0"}, {},
+                                                                  {"TWIN_GS": "software", "TWIN_FILTER_PROBE": "1"}],
+                                   [scale, scale, 1])
+    a, b = old / f"frame_{frame:06d}.png", new / f"frame_{frame:06d}.png"
+    if not a.exists() or not b.exists():
+        return False, f"no frame {frame}"
+    drawn = "colour filter drawn at" in (new / "log.txt").read_text(errors="replace")
+    before, after = ps2_steps(a, scale), ps2_steps(b, scale)
+    count, off, mean, places = changed_off_outlines(a, b, scale)
+    probes = re.findall(r"filter probe: (\d+) of (\d+) filtered pixels", (probe / "log.txt").read_text(errors="replace"))
+    exact = bool(probes) and all(m == t and int(t) > 0 for m, t in probes)
+    what = (f"{scale}x, steps of the PS2's pixel {before:.1f} -> {after:.1f} per 1000 PS2 pixels, {count} pixels changed "
+            f"({off} off the outlines{' at ' + ' '.join(f'{x},{y}' for x, y in places) if places else ''}, {mean:.0f} apart on "
+            f"average); the software GS's indexes the depth's bits 8-15 at "
+            f"{', '.join(f'{m} of {t}' for m, t in probes) or 'no filter draw'}"
+            + ("" if drawn else "; the log doesn't say the filter is drawn at the scale"))
+    return (drawn and exact and off <= off_outlines_allowed(count) and count > 0 and after < 3 and after < before / 3,
+            what)
 
 
 def vs_pcsx2(exe, label="check"):
@@ -1060,10 +1256,23 @@ def report(exe, reference, work, with_sweep, reference_name=None):
             print(f"  FAILED {name}: {what}")
 
     if reference and reference.exists():
-        same, different = pictures(exe, reference, work)
-        print(f"pictures        {same}/{same + len(different)} the same as {reference_name or reference}'s"
-              f"{'' if not different else ': not ' + ', '.join(different[:5])}")
+        same, different, changed = pictures(exe, reference, work)
+        print(f"pictures        {same}/{same + len(different)} the same as {reference_name or reference}'s with the colour "
+              f"filter and the scene buffers at the PS2's pixels{'' if not different else ': not ' + ', '.join(different[:5])}")
         failed |= bool(different)
+        off = [c for c in changed if c[2] > off_outlines_allowed(c[1])]
+        print(f"pictures        with them at the scale (as players have it): {len(changed)} differ, the "
+              f"changed pixels within a PS2 pixel of an outline (but one in a thousand): {'yes' if not off else 'NO'}"
+              + "".join(f"; {c[0][6:12].lstrip('0')}: {c[1]} pixels, {c[2]} off"
+                        + (f" (at {' '.join(f'{x},{y}' for x, y in c[4])})" if c[4] else "") + f", {c[3]:.0f} apart"
+                        for c in changed[:25]))
+        failed |= bool(off)
+        ok, what = colour_filter(exe, work)
+        print(f"colour filter   {'ok' if ok else 'FAILED'}: {what}")
+        failed |= not ok
+        ok, what = scene_buffers(exe, work)
+        print(f"scene buffers   {'ok' if ok else 'FAILED'}: {what}")
+        failed |= not ok
         ok, what = dithering(exe, work)
         print(f"dithering       {'ok' if ok else 'FAILED'}: {what}")
         failed |= not ok

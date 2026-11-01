@@ -74,6 +74,15 @@ using namespace Hw;
 // TWIN_HW_BATCH_LOG=N: the batches drawn for picture N (its count of DisplayTexture calls), one line each
 u32 g_BatchLogFrame = 0;
 
+// The game's colour filter drawn at the scale (BitDepthIndex); $TWIN_HW_DEPTH_INDEX=0 draws it at the PS2's pixels as before
+// (read back from memory, tested at each block's first sample)
+bool DepthIndexEnabled()
+{
+    static const char* setting = std::getenv("TWIN_HW_DEPTH_INDEX");
+    static const bool on = setting == nullptr || setting[0] != '0';
+    return on;
+}
+
 // The layouts targets keep: 32 bit colour (and 24), 16 bit colour, 16 bit colour S, Z32 (and Z24), Z16, Z16S
 enum TargetClass : u32
 {
@@ -306,6 +315,9 @@ struct BatchKey
     u32 zMaxU;
     // The depth test at the GS's sample point (the block's first sample) in the shader: its ZTST, 0 for GL's own test
     u32 nativeDepthTest;
+    // The colour filter's palette (BitDepthIndex): the CLUT's texture and the entry offset
+    u32 clutTexture;
+    u32 clutOffset;
 };
 
 // Every primitive builds a key (zeroed, so its padding compares too) and compares it with the batch's: done inline, a word at a
@@ -350,6 +362,8 @@ enum ProgramBits : u32
     BitNativeDepth = 1u << 23,
     // A 16 bit frame's dithered draw kept in full colour (the PC option Dithering off: neither dithered nor truncated)
     BitFullColour = 1u << 24,
+    // The game's colour filter: its palette's indexes the depth's bits 8-15 at the sample itself (DepthIndexColour)
+    BitDepthIndex = 1u << 25,
 };
 
 constexpr const char* VertexSource = R"(#version 330 core
@@ -417,10 +431,28 @@ uniform int depthReverse;
 uniform sampler2D depthCopy;
 uniform int nativeZtst;
 uniform int targetScale;
+uniform usampler2D clut;
+uniform int clutOffset;
 vec3 Pick(int select, vec3 source, vec3 destination)
 {
     return select == 0 ? source : select == 1 ? destination : vec3(0.0);
 }
+#if DEPTHINDEX
+// The game's colour filter (renderer/effects.cpp: CopyDepthBuffer, FilterColours) reads 8 bit indexes of its palette from a copy
+// of the depth buffer made through two other layouts; at the PS2's resolution each index is the depth's bits 8-15 at the same
+// pixel (the software GS's every pixel, the beach's frame). Taken here from the sample's own depth, the filter is the scale's,
+// where the copy read back from memory gave each block of samples its first one's: blocks of the PS2's pixel's size along every
+// edge between near and far things
+vec4 DepthIndexColour()
+{
+    float stored = texelFetch(depthCopy, ivec2(gl_FragCoord.xy), 0).r;
+    float scaled = min(stored * 4294967296.0, 4294967295.0);
+    uint z = depthReverse != 0 ? 0xFFFFFFFFu - uint(scaled) : uint(scaled + 0.5);
+    int slot = int(((z >> 8u) + uint(clutOffset)) & 255u);
+    uint colour = texelFetch(clut, ivec2(slot, 0), 0).r | texelFetch(clut, ivec2(slot + 256, 0), 0).r << 16u;
+    return vec4(float(colour & 255u), float((colour >> 8u) & 255u), float((colour >> 16u) & 255u), float(colour >> 24u));
+}
+#endif
 // The depth at the GS's sample point: the pixel's centre is 1/256 of a pixel past it (right and down, see the top), which on
 // a steep surface is a unit or two of depth; the GS truncates it (exactly, while the value is below 2^24)
 float GsDepth()
@@ -485,7 +517,11 @@ void main()
     {
         uv = floor(uv) + 0.5 / texSnap;
     }
+#if DEPTHINDEX
+    vec4 t = DepthIndexColour();
+#else
     vec4 t = floor(textureLod(tex, uv / texActual, lod) * 255.0 + 0.5);
+#endif
 #if TEXALPHA == 1
     t.a = (aem != 0 && t.r + t.g + t.b == 0.0) ? 0.0 : ta0;
 #elif TEXALPHA == 2
@@ -1040,6 +1076,8 @@ struct Program
     GLint colclamp;
     GLint datm;
     GLint frameMask;
+    GLint clut;
+    GLint clutOffset;
 };
 
 struct CachedTexture
@@ -1239,6 +1277,10 @@ private:
     // The draw making a depth target has its depth in the top half (the target is made reversed)
     bool nextDepthHigh_ = false;
     bool nativeSmall_ = std::getenv("TWIN_HW_NATIVE_SMALL") == nullptr || std::getenv("TWIN_HW_NATIVE_SMALL")[0] != '0';
+    // The draw making a target draws a scene into it (its depth written): at the scale, however narrow (native scaling's
+    // buffers are the effects'); $TWIN_HW_SMALL_SCENES=0 keeps such buffers at the PS2's resolution and reads them as before
+    bool nextScene_ = false;
+    bool smallScenes_ = std::getenv("TWIN_HW_SMALL_SCENES") == nullptr || std::getenv("TWIN_HW_SMALL_SCENES")[0] != '0';
     std::vector<std::unique_ptr<Target>> targets_;
     Target* newest_[Gs::PageCount] = {};
     // The pages a target holds newer than local memory (newest_ not null)
@@ -1380,6 +1422,13 @@ private:
     }
     GLuint clutTexture_ = 0;
     u32 clutUploaded_ = 0;
+    // The CLUT's texture, uploaded when it changed
+    GLuint CurrentClut();
+    // The game's colour filter at the scale (DepthIndexColour): the pages its copies of the depth buffer wrote and nothing else
+    // wrote since, the depth target they're the copy of, and whether the draw being added is such a copy
+    Gs::PageSet depthCopyPages_;
+    Target* depthCopySource_ = nullptr;
+    bool drawIsDepthCopy_ = false;
     // Rings of textures written by the CPU (a texture the GPU may still read is never changed: the driver would wait for it):
     // CLUTs, and staging for memory's pages (copied into memory's copy on the GPU)
     static constexpr u32 ClutRing = 64;
@@ -1553,6 +1602,7 @@ const Program& HwGs::ProgramFor(u32 bits)
     define("FRAME24", (bits & BitFrame24) ? 1 : 0);
     define("WRAPADD", (bits & BitWrapAdd) ? 1 : 0);
     define("NATIVEDEPTH", (bits & BitNativeDepth) ? 1 : 0);
+    define("DEPTHINDEX", (bits & BitDepthIndex) ? 1 : 0);
     GLuint vertex = CompileShader(GL_VERTEX_SHADER, VertexSource);
     GLuint fragment = CompileShader(GL_FRAGMENT_SHADER, header + FragmentSource);
     Gl& gl = GetGl();
@@ -1594,6 +1644,8 @@ const Program& HwGs::ProgramFor(u32 bits)
     p.colclamp = gl.GetUniformLocation(p.id, "colclamp");
     p.datm = gl.GetUniformLocation(p.id, "datm");
     p.frameMask = gl.GetUniformLocation(p.id, "frameMask");
+    p.clut = gl.GetUniformLocation(p.id, "clut");
+    p.clutOffset = gl.GetUniformLocation(p.id, "clutOffset");
     return programs_[bits] = p;
 }
 
@@ -1642,17 +1694,21 @@ Target* HwGs::TargetFor(u32 bp, u32 bw, u32 psm, u32 height, bool frame)
     s32 pageHeight = 0;
     PageSize(StoredPsm(cls), &pageWidth, &pageHeight);
     height = std::min<u32>((height + pageHeight - 1) / pageHeight * pageHeight, 2048);
+    bool scene = nextScene_;
     for (auto& known : targets_)
     {
         if (known->bp == bp && known->bw == bw && known->cls == cls)
         {
-            if (known->height >= height)
+            // (a buffer kept at the PS2's resolution a scene is now drawn into: made again at the scale)
+            if (known->height >= height && !(scene && known->scale != scale_))
             {
                 return known.get();
             }
 
-            // Taller than it was: a new one is made (the old one's newest pages go to memory's copy as it goes)
+            // Taller than it was, or a scene's now: a new one is made (the old one's newest pages go to memory's copy as it goes);
+            // a scene's stays at the scale, taller
             height = std::max(height, known->height);
+            scene = scene || (known->scale == scale_ && scale_ > 1);
             DestroyTarget(known.get());
             break;
         }
@@ -1671,7 +1727,17 @@ Target* HwGs::TargetFor(u32 bp, u32 bw, u32 psm, u32 height, bool frame)
     // Native scaling: buffers narrower than the screen (the effects' half resolution buffers) stay at the PS2's resolution and
     // are filtered up where the scene reads them, as PCSX2's native scaling does (their sub-pixels would otherwise pick up the
     // frame's pixel patterns)
-    t.scale = (nativeSmall_ && bw < 8) ? 1 : scale_;
+    t.scale = (nativeSmall_ && bw < 8 && !scene) ? 1 : scale_;
+    if (nativeSmall_ && bw < 8 && scene && scale_ > 1)
+    {
+        static bool told = false;
+        if (!told)
+        {
+            told = true;
+            std::fprintf(stderr, "graphics: a buffer narrower than the screen drawn as a scene (%x, %u wide) at %ux\n", bp, bw * 64,
+                         scale_);
+        }
+    }
     t.aligned = (bp % 32) == 0;
     // (the page's size worked out above is the stored layout's, t.psm's)
     t.pageWidthShift = static_cast<u32>(std::countr_zero(static_cast<u32>(pageWidth)));
@@ -2601,15 +2667,11 @@ u64 HwGs::ContentHash(const Gs::Gs::DrawState& state)
     return result;
 }
 
-void HwGs::DecodePasses(const Gs::Gs::DrawState& state, GLuint texture, const Rect* rects, u32 levels)
+GLuint HwGs::CurrentClut()
 {
-    Gl& gl = GetGl();
-    const Gs::RegTex0& tex0 = state.context->tex0;
-    const Gs::TextureLevel& base = state.levels[0];
-    const bool indexed = base.psm == Gs::PSMT8 || base.psm == Gs::PSMT4 || base.psm == Gs::PSMT8H || base.psm == Gs::PSMT4HL ||
-                         base.psm == Gs::PSMT4HH;
-    if (indexed && clutUploaded_ != gs_.clutVersion())
+    if (clutUploaded_ != gs_.clutVersion())
     {
+        Gl& gl = GetGl();
         clutTexture_ = clutRing_[clutNext_++ % ClutRing];
         gl.BindTexture(GL_TEXTURE_2D, clutTexture_);
         gl.PixelStorei(GL_UNPACK_ALIGNMENT, 2);
@@ -2617,6 +2679,21 @@ void HwGs::DecodePasses(const Gs::Gs::DrawState& state, GLuint texture, const Re
         gl.TexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 512, 1, GL_RED_INTEGER, GL_UNSIGNED_SHORT, gs_.clut());
         gl.PixelStorei(GL_UNPACK_ALIGNMENT, 4);
         clutUploaded_ = gs_.clutVersion();
+    }
+
+    return clutTexture_;
+}
+
+void HwGs::DecodePasses(const Gs::Gs::DrawState& state, GLuint texture, const Rect* rects, u32 levels)
+{
+    Gl& gl = GetGl();
+    const Gs::RegTex0& tex0 = state.context->tex0;
+    const Gs::TextureLevel& base = state.levels[0];
+    const bool indexed = base.psm == Gs::PSMT8 || base.psm == Gs::PSMT4 || base.psm == Gs::PSMT8H || base.psm == Gs::PSMT4HL ||
+                         base.psm == Gs::PSMT4HH;
+    if (indexed)
+    {
+        CurrentClut();
     }
 
     gl.BindFramebuffer(GL_FRAMEBUFFER, decodeFbo_);
@@ -3120,6 +3197,7 @@ void HwGs::ProcessWrites()
     newestMask_ &= ~written;
     memStale_ |= written;
     scaledPages_ &= ~written;
+    depthCopyPages_ &= ~written;
     cpuStale_ &= ~written;
     shadowGood_ &= ~written;
     for (auto& target : targets_)
@@ -3995,6 +4073,10 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
     // As tall as the primitive draws (a scissor taller than the buffer, as the game's full screen passes set, would make the
     // target run over the buffers past it)
     const u32 height = static_cast<u32>(rect.bottom + 1);
+    // Native scaling keeps buffers narrower than the screen at the PS2's resolution (the effects'); one the game draws a scene
+    // into, its depth written, is the scale's with its depth buffer, as PCSX2 draws it: bossarea's sky, drawn at half the PS2's
+    // resolution into a 256 wide buffer and laid over the frame with the nearest texels, was blocks of two PS2 pixels at any scale
+    nextScene_ = smallScenes_ && nativeSmall_ && state.fbw < 8 && state.zWritten && depthUsed;
     Target* colour = TargetFor(state.fbp, state.fbw, state.fpsm, height, true);
     u32 highestZ = 0;
     for (u32 i = 0; i < count; i++)
@@ -4004,6 +4086,21 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
 
     nextDepthHigh_ = highestZ >= 0x80000000u;
     Target* depth = depthUsed ? TargetFor(state.zbp, state.fbw, state.zpsm, height) : nullptr;
+    // A buffer and a depth buffer drawn together at different scales (one of them a scene's since): the other made the scale's
+    if (depth != nullptr && depth->scale != colour->scale)
+    {
+        nextScene_ = true;
+        if (colour->scale < depth->scale)
+        {
+            colour = TargetFor(state.fbp, state.fbw, state.fpsm, height, true);
+        }
+        else
+        {
+            depth = TargetFor(state.zbp, state.fbw, state.zpsm, height);
+        }
+    }
+
+    nextScene_ = false;
     nextDepthHigh_ = false;
     if (!colour->complete || (depth != nullptr && !depth->complete))
     {
@@ -4076,6 +4173,15 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
         s32 b = 0;
         if (Gs::TextureRegionForDraw(state, vertexes, count, &l, &t, &r, &b))
         {
+            // The region is the bilinear filter's (the texel before the first: -1 at 0); the nearest texels at UV coordinates,
+            // which are never negative, start at 0 (bossarea's sky, a repeating texture laid with the nearest texels from 0, read
+            // its whole height otherwise, and not from the buffer it was drawn into)
+            if (smallScenes_ && state.uv && key.magFilter == GL_NEAREST && key.minFilter == GL_NEAREST)
+            {
+                l = std::max(l, 0);
+                t = std::max(t, 0);
+            }
+
             // As the decoder takes it: a clamped coordinate's range clamped, a repeating one's whole unless it stays inside
             s32 w = static_cast<s32>(level.width);
             s32 h = static_cast<s32>(level.height);
@@ -4094,10 +4200,25 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
 
         // The software GS's decoder (on the CPU) for replacement textures and their dumps
         static const bool cpuTextures = std::getenv("TWIN_HW_DUMP_TEXTURES") != nullptr || std::getenv("TWIN_HW_CPU_TEXTURES") != nullptr;
+        // The game's colour filter at the scale: its palette's 8 bit read of the copies of the depth buffer (pages nothing else
+        // wrote since), tested against that depth buffer, made at each sample from the sample's depth (DepthIndexColour)
+        bool depthIndex = false;
+        if (DepthIndexEnabled() && level.psm == Gs::PSMT8H && state.levelCount == 1 && !state.mipmapped &&
+            state.context->tex0.cpsm == Gs::PSMCT32 && depth != nullptr && depth == depthCopySource_ && depth->scale > 1 &&
+            !state.zWritten && (state.ztst == Gs::ZtstGreater || state.ztst == Gs::ZtstGequal) && right >= left && bottom >= top &&
+            depthCopyPages_.any())
+        {
+            // (the region the texels are read from: the sprites' ends and the filter's reach past the buffer left out)
+            Gs::PageSet texturePages;
+            Gs::PagesOfRect(level.psm, level.bp, level.bw, left, top, std::min(right, static_cast<s32>(depth->width) - 1),
+                            std::min(bottom, static_cast<s32>(depth->height) - 1), texturePages);
+            depthIndex = texturePages.any() && (texturePages & ~depthCopyPages_).none();
+        }
+
         // A target's own buffer in its own layout (no mipmaps; its rectangle within the target)
         Target* source = nullptr;
         u32 sourceClass = ClassOf(level.psm);
-        if (level.cacheId == nullptr && !state.mipmapped && sourceClass != ClassNone && !IsDepthClass(sourceClass) &&
+        if (!depthIndex && level.cacheId == nullptr && !state.mipmapped && sourceClass != ClassNone && !IsDepthClass(sourceClass) &&
             right >= left && bottom >= top)
         {
             for (auto& known : targets_)
@@ -4117,7 +4238,21 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
             }
         }
 
-        if (source != nullptr)
+        if (depthIndex)
+        {
+            // No texture: the palette's texture and its offset (the 8 bit indexes' CSA)
+            repeatable = false;
+            program |= BitDepthIndex;
+            key.clutTexture = CurrentClut();
+            key.clutOffset = static_cast<u32>(state.context->tex0.csa & 15) * 16;
+            static bool told = false;
+            if (!told)
+            {
+                told = true;
+                std::fprintf(stderr, "graphics: the colour filter drawn at %ux from the depth at each sample\n", depth->scale);
+            }
+        }
+        else if (source != nullptr)
         {
             repeatable = false;
             Gs::PageSet pages;
@@ -4421,6 +4556,23 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
             key.ta0 = texa.ta0;
             key.ta1 = texa.ta1;
             key.aem = texa.aem;
+        }
+    }
+
+    // A copy of an upscaled depth target into a 16 bit colour buffer (the colour filter's: the depth buffer read in a 16 bit
+    // depth layout): its pages are the filter's copy until something else draws there (AddPrimitive)
+    drawIsDepthCopy_ = false;
+    if (state.textured && frame16 && (state.levels[0].psm == Gs::PSMZ16 || state.levels[0].psm == Gs::PSMZ16S))
+    {
+        // (the lower half's copy starts half way into the depth buffer)
+        const u32 page = (state.levels[0].bp / 32) & (Gs::PageCount - 1);
+        for (auto& known : targets_)
+        {
+            if (IsDepthClass(known->cls) && known->scale > 1 && known->pages.test(page))
+            {
+                drawIsDepthCopy_ = true;
+                depthCopySource_ = known.get();
+            }
         }
     }
 
@@ -4816,6 +4968,26 @@ void HwGs::AddPrimitive(const Gs::Gs::DrawState& state, const Gs::Vertex* vertex
         MarkDrawn(colour, drawnPages);
     }
 
+    // The colour filter's copies of the depth buffer: their pages kept, any other drawing there forgets them
+    if (drawIsDepthCopy_ || depthCopyPages_.any())
+    {
+        if (drawnFew != nullptr)
+        {
+            for (u32 i = 0; i < drawnFew->count; i++)
+            {
+                depthCopyPages_.set(drawnFew->page[i], drawIsDepthCopy_);
+            }
+        }
+        else if (drawIsDepthCopy_)
+        {
+            depthCopyPages_ |= drawnPages;
+        }
+        else
+        {
+            depthCopyPages_ &= ~drawnPages;
+        }
+    }
+
     if (depth != nullptr && state.zWritten)
     {
         if (depthFew != nullptr)
@@ -4945,7 +5117,7 @@ void HwGs::Flush()
 
     // The depth target as floats, for the shader's native depth test
     GLuint depthCopy = 0;
-    if ((k.program & BitNativeDepth) && k.depth != nullptr)
+    if ((k.program & (BitNativeDepth | BitDepthIndex)) && k.depth != nullptr)
     {
         const u32 w = k.depth->width * k.depth->scale;
         const u32 h = k.depth->height * k.depth->scale;
@@ -5113,6 +5285,18 @@ void HwGs::Flush()
             gl.Uniform1i(p.depthCopy, 4);
             gl.Uniform1i(p.nativeZtst, static_cast<GLint>(k.nativeDepthTest));
             gl.Uniform1i(p.targetScale, static_cast<GLint>(n));
+        }
+
+        if (k.program & BitDepthIndex)
+        {
+            gl.ActiveTexture(GL_TEXTURE0 + 4);
+            gl.BindTexture(GL_TEXTURE_2D, depthCopy);
+            gl.ActiveTexture(GL_TEXTURE0 + 5);
+            gl.BindTexture(GL_TEXTURE_2D, k.clutTexture);
+            gl.ActiveTexture(GL_TEXTURE0);
+            gl.Uniform1i(p.depthCopy, 4);
+            gl.Uniform1i(p.clut, 5);
+            gl.Uniform1i(p.clutOffset, static_cast<GLint>(k.clutOffset));
         }
         gl.Uniform1f(p.pointSize, static_cast<f32>(n));
         gl.Uniform1i(p.tex, 0);

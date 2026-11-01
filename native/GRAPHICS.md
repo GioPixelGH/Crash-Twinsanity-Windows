@@ -136,7 +136,9 @@ picture at the PS2's resolution, and `replayNNN_gpu.png`, the GPU's at the scale
 
 - Targets: one for each frame and depth buffer drawn into (base, width, layout: 32 and 24 bit colour share one, as do Z32 and
   Z24), as tall as what's drawn. A PS2 pixel is a block of scale x scale pixels whose first sample is the GS's sample point.
-  Buffers narrower than the screen (the effects' half resolution buffers) stay at the PS2's resolution (native scaling).
+  Buffers narrower than the screen (the effects' half resolution buffers) stay at the PS2's resolution (native scaling); one
+  the game draws a scene into, its depth written, is the scale's with its depth buffer (below, "Scenes drawn into narrow
+  buffers").
 - Local memory and the targets: each 8 KB page records where its newest content is; a target is brought up to date from local
   memory before the GPU uses it, local memory from a target (at the PS2's resolution) before the CPU side reads or writes it
   (transfers, the CLUT, texture decoding, the display read, a software draw).
@@ -164,6 +166,30 @@ picture at the PS2's resolution, and `replayNNN_gpu.png`, the GPU's at the scale
   an upscaled target, and which tests (without writing) an upscaled depth buffer, makes its depth test and its texture read
   at each block's first sample (the GS's sample point), as the texture was made there. Without it the beach's depth haze
   (a palette lookup of the depth's copy) drew a bright line where the depth crosses its threshold: a circle around Crash.
+  That haze is the game's colour filter, drawn at the scale since (next): this way it was the PS2's pixels' and stepped every
+  outline against far things.
+- The game's colour filter at the scale (BitDepthIndex, DepthIndexColour): a draw reading 8 bit indexes (PSMT8H) through a 32 bit
+  palette from pages that hold the copies of an upscaled depth target (the draws into a 16 bit colour buffer whose texture is
+  that target's memory in a 16 bit depth layout: their pages kept, any other drawing or upload there forgets them), tested
+  GREATER or GEQUAL against that depth target without writing it, is drawn with no texture: each sample takes the depth's bits
+  8-15 at the sample itself (the depth target's float copy, as the native depth test reads it) through the CLUT (a texture of
+  its 512 halves, the 8 bit indexes' CSA added), and is tested against its own depth by GL. At 1x it isn't used (the old way
+  is exact there). What it rests on, the index being the depth's bits 8-15 at the same pixel, is the software GS's
+  (TWIN_FILTER_PROBE: every filtered pixel; check_windows.py's "colour filter" line runs it). $TWIN_HW_DEPTH_INDEX=0 draws
+  the filter as before, at the PS2's pixels. Measured (2026-11-01): the beach looking up at Crash and Aku Aku at 4x, steps of
+  the PS2's pixel 19.2 -> 1.0 per 1000 PS2 pixels; check_windows' 25 pictures (4x): 20 change, 23,000 to 25,000 pixels each
+  (0.55%), along the outlines but for 0 to 13 a picture at depth edges between like colours (a dark leaf over the olive
+  behind, leaves over leaves, an outline just past the picture's top); the same 20 against PCSX2 drawing the same GS commands
+  at 4x: mean difference 0.73 -> 0.60, pixels over 16 0.64% -> 0.32%, steps 11 -> 0.8 (PCSX2's 0.5 to 1.0).
+- Scenes drawn into narrow buffers (TargetFor's nextScene_): a draw writing its depth into a buffer narrower than the screen
+  draws a scene there (bossarea's sky, at half the PS2's resolution into 2800/4, then laid over the frame), not an effect: the
+  buffer and its depth buffer are made at the scale (made again if native scaling made them at the PS2's resolution; a buffer
+  drawn with a depth buffer of another scale has the lower one made the scale's), as PCSX2 draws them. The effects' buffers
+  (the copies of the frame, the shadow volumes, which test the depth without writing it) stay at the PS2's resolution. A
+  texture read with the nearest texels at UV coordinates starts at texel 0 (its region was the bilinear filter's, a texel
+  before), so the sprites laying the sky read it from its buffer. Logged once ("a buffer narrower than the screen drawn as a
+  scene"); check_windows.py's "scene buffers" line (bossarea at 4x: steps of the PS2's pixel 15.0 -> 0.7).
+  $TWIN_HW_SMALL_SCENES=0 draws them as before.
 - Known differences: GL's float blending and filtering (1/255 steps against the GS's truncations); 16 bit frames blended under a
   stencil DATE keep 8 bits until they're read.
 - Not a difference: the Iceberg Lab's coloured lights tint the characters' bright parts, Crash's chin and chest pale green
@@ -208,10 +234,18 @@ size below are edges exactly a PS2 pixel long on the PS2 pixels' grid, per 1000 
   effects reading textures made
   at the PS2's resolution", above): the filter was the PS2's pixels' whatever the scale. Where a near thing's block met a far
   one's, far samples took the near one's colour and near samples the far one's: the blocks players saw; and the sky, whose
-  depth changes across it, was coloured in blocks (the party's stepped clouds, smooth in PCSX2 drawing the same commands). On
+  depth changes across it, was coloured in blocks. On
   the port's own GS commands drawn by both at 8x (its frame written as a GS dump, PCSX2 replaying it): steps 20.0 at the beach,
   24.2 with Cortex against the sky, 27.9 at the party, 2.0 with Crash close up indoors (no far pixels), PCSX2 1.9 to 2.5; once
-  the half pixel is fitted the pictures are otherwise 0.3 to 1.1 of 255 apart. The cause of the stepped edges.
+  the half pixel is fitted the pictures are otherwise 0.3 to 1.1 of 255 apart. The cause of the stepped edges; drawn now
+  at the scale ("The game's colour filter at the scale", above).
+- The drawing, a second one, found once the filter was the scale's (the cutscene still had steps 16.6 with Cortex and 8.8 at
+  the party against PCSX2's 1.9 to 2.5, on the clouds, the far island and the horizon): bossarea's sky. The game draws it at
+  half the PS2's resolution, with its depth, into a 256 wide buffer (2800/4) and lays it over the frame with sprites reading
+  the nearest texels; native scaling kept that buffer at the PS2's resolution, and the sprites read it decoded from memory
+  (the region worked out for a bilinear filter started a texel before 0, so the repeating texture's whole 1024 rows, more than
+  the buffer). The sky was blocks of two PS2 pixels at any scale, the party's stepped clouds; drawn now at the scale ("Scenes
+  drawn into narrow buffers", above): steps 1.8 and 2.2.
 - Other passes on the characters: none at the PS2's resolution. Their draws test the depth GEQUAL; some meshes have a second
   blended pass over the same strips that doesn't write the depth: exact here, both passes writing and comparing the depth the
   shader computes from the same vertexes (Crash close up: 0.3 of 255 from PCSX2 on the same commands, no flicker).
@@ -235,7 +269,8 @@ the pixels it draws on have the depth's bits 8-15 as their index), `TWIN_HW_TRAC
 for picture N, a line each: their target and its scale, the texture's target if any, filters, blend, depth), `TWIN_GS_VERTEX_CHECK`
 (vertexes a GPU could take differently, counted), `TWIN_HW_STATS` (render passes by cause, conversions, copies), `TWIN_SCALE=N` (a headless run's internal scale), `TWIN_HW_MAX_TARGET=N` (targets with a side past N pixels refused: the software GS draws them), and the old behaviours:
 `TWIN_HW_VERTEX_OFFSET=n` (256ths), `TWIN_HW_SMALL_VIEWPORT`, `TWIN_HW_NO_WRAPADD`, `TWIN_HW_NO_STENCIL_DATE`,
-`TWIN_HW_NO_WIDE_LOAD`, `TWIN_HW_STAGED_UPLOADS`, `TWIN_HW_NO_SNAP`, `TWIN_HW_NO_NATIVE_DEPTH`.
+`TWIN_HW_NO_WIDE_LOAD`, `TWIN_HW_STAGED_UPLOADS`, `TWIN_HW_NO_SNAP`, `TWIN_HW_NO_NATIVE_DEPTH`, `TWIN_HW_DEPTH_INDEX=0` (the
+colour filter at the PS2's pixels), `TWIN_HW_SMALL_SCENES=0` (scenes drawn into narrow buffers at the PS2's resolution).
 
 ### Replacement textures (PCSX2's packs)
 
