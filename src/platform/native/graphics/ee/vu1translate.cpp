@@ -737,6 +737,7 @@ public:
         kicks_.clear();
         shadow_.xgkick = [this](u32 address) { kicks_.push_back(Record(shadow_, address)); };
         shadow_.RunInterpreted(start);
+        shadow_.FlushKick();
 
         next_ = 0;
         start_ = start;
@@ -751,6 +752,7 @@ public:
             }
         };
         RunTranslated(vu_, dispatcher, start);
+        vu_.FlushKick();
         dispatcher.trace = nullptr;
         vu_.xgkick = original;
         StatsOf(vu_).verifiedRuns++;

@@ -125,9 +125,13 @@ public:
     // Where the last program stopped (MSCNT goes on from there)
     u32 pc() const { return pc_; }
 
-    // VU1's XGKICK: the GIF packet at a data address (a quadword index) sent on path 1
+    // VU1's XGKICK: the GIF packet at a data address (a quadword index) sent on path 1. The GIF reads the packet over the
+    // cycles after XGKICK while the program goes on, and a program may finish its packet meanwhile (the skinned meshes' writes
+    // their last two vertices' colours 2 and 5 cycles after): the packet is sent at the next XGKICK or when the program stops
+    // (FlushKick), with what the program wrote into it by then ($TWIN_VU1_KICK_AT_ONCE=1: at the XGKICK, as before)
     std::function<void(u32 address)> xgkick;
     void Kick(u32 address);
+    void FlushKick();
     // What runs a program instead of the interpreter (VU1's translations, vu1translate.h)
     std::function<void(u32 start)> runner;
     u32 top = 0;
@@ -169,6 +173,10 @@ public:
     bool timing = false;
     u64 runNanoseconds = 0;
     u64 kickNanoseconds = 0;
+    // The XGKICK not sent yet: its packet's address and the instruction's
+    bool kickPending = false;
+    u32 kickPendingAddress = 0;
+    u32 kickPendingPc = 0;
     // Bumped when code written into micro memory changes it, and the instructions changed since TakeCodeChanges last took them
     u64 codeVersion() const { return codeVersion_; }
     std::bitset<2048> TakeCodeChanges()

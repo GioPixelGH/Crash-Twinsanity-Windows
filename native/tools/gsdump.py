@@ -176,10 +176,10 @@ class Gs:
             self.draws.append({"key": key, "prims": [verts], "index": len(self.draws)})
 
 
-def decode(packets, state, frame=None):
+def decode(packets, state, frame=None, kind=None):
     """The draws of a dump's packets: each a run of primitives with the same registers (frame: only those between that
-    vertical blank and the next, the registers from the packets before them; -1 the last whole one)"""
-    gs = Gs(state)
+    vertical blank and the next, the registers from the packets before them; -1 the last whole one; kind: the GS class)"""
+    gs = (kind or Gs)(state)
     vsyncs = [i for i, p in enumerate(packets) if p[0] == 1]
     if frame is not None and frame < 0:
         frame = max(0, len(vsyncs) - 1 + frame)
@@ -255,6 +255,35 @@ def packed(gs, r, w, q64):
         gs.fog = ((w[3] >> 4) & 0xFF) << 56
     elif r == 0xE:
         gs.write(w[2] & 0xFF, q64[0])
+
+
+class StripGs(Gs):
+    """The GS with every strip's vertices kept (a PRIM write starts one): (X, Y, Z as written, RGBAQ, ST, whether it kicks)"""
+
+    def __init__(self, state):
+        super().__init__(state)
+        self.strips = []
+
+    def write(self, address, value):
+        if ADDRESSES.get(address, (None, None))[0] == "PRIM" and self.recording:
+            self.strips.append({"prim": value & 0x7FF, "kind": None, "tex0": None, "verts": []})
+        super().write(address, value)
+
+    def vertex(self, x, y, z, f, kick):
+        if self.recording and self.strips:
+            strip = self.strips[-1]
+            if strip["kind"] is None:
+                kind, mode = self.attrs()
+                strip["kind"] = kind
+                strip["tex0"] = self.ctx[(mode >> 9) & 1]["TEX0"]
+            strip["verts"].append((x, y, z, self.rgbaq, self.st, kick))
+        super().vertex(x, y, z, f, kick)
+
+
+def strips(path, frame=0):
+    """A dump's frame's strips (StripGs)"""
+    header, state, regs, packets = read(path)
+    return decode(packets, state, frame, StripGs).strips
 
 
 def describe(draw, origin):

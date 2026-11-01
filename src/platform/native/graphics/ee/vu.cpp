@@ -14,6 +14,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <set>
 
 #pragma STDC FENV_ACCESS ON
 #pragma clang fp contract(off)
@@ -1132,6 +1133,7 @@ void Vu::Run(u32 start)
             RunInterpreted(start);
         }
 
+        FlushKick();
         return;
     }
 
@@ -1145,29 +1147,106 @@ void Vu::Run(u32 start)
         RunInterpreted(start);
     }
 
+    FlushKick();
     runNanoseconds += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - began).count();
 }
 
-void Vu::Kick(u32 address)
+namespace
 {
-    if (!xgkick)
+bool KicksAtOnce()
+{
+    static const bool atOnce = std::getenv("TWIN_VU1_KICK_AT_ONCE") != nullptr && std::getenv("TWIN_VU1_KICK_AT_ONCE")[0] != '0';
+    return atOnce;
+}
+
+void Send(Vu& vu, u32 address)
+{
+    if (!vu.xgkick)
     {
         return;
     }
 
-    if (!timing)
+    if (!vu.timing)
     {
-        xgkick(address);
+        vu.xgkick(address);
         return;
     }
 
     auto began = std::chrono::steady_clock::now();
-    xgkick(address);
-    kickNanoseconds += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - began).count();
+    vu.xgkick(address);
+    vu.kickNanoseconds += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - began).count();
+}
+}
+
+void Vu::Kick(u32 address)
+{
+    if (KicksAtOnce())
+    {
+        Send(*this, address);
+        return;
+    }
+
+    // The packet before goes first (a second XGKICK waits for the GIF to finish the first)
+    FlushKick();
+    kickPending = true;
+    kickPendingAddress = address;
+    kickPendingPc = kickPc;
+}
+
+void Vu::FlushKick()
+{
+    if (!kickPending)
+    {
+        return;
+    }
+
+    kickPending = false;
+    const u32 pc = kickPc;
+    kickPc = kickPendingPc;
+    Send(*this, kickPendingAddress);
+    kickPc = pc;
+}
+
+namespace
+{
+// $TWIN_VU_KICK_WRITES (the interpreter, TWIN_VU1=interpret): each instruction that writes into a packet XGKICK sent, before
+// the GIF has it (the next XGKICK or the program's stop), told once: where in the packet and how many cycles after the XGKICK
+struct KickWrites
+{
+    bool on = std::getenv("TWIN_VU_KICK_WRITES") != nullptr;
+    bool pending = false;
+    u32 start = 0;
+    u32 end = 0;
+    u64 cycle = 0;
+    u32 pc = 0;
+    std::set<std::pair<u32, u32>> told;
+};
+KickWrites g_KickWrites;
+
+// A GIF packet's quadwords in VU memory, its tags' to the one with EOP
+u32 PacketLength(const u8* data, u32 dataMask, u32 address)
+{
+    u32 at = address;
+    for (u32 guard = 0; guard < 1024; guard++)
+    {
+        const u64 tag = *reinterpret_cast<const u64*>(data + ((at * 16) & dataMask));
+        const u32 nloop = tag & 0x7FFF;
+        const u32 flg = (tag >> 58) & 3;
+        const u32 nreg = ((tag >> 60) & 0xF) != 0 ? (tag >> 60) & 0xF : 16;
+        at += 1 + (flg == 0 ? nloop * nreg : flg == 1 ? (nloop * nreg + 1) / 2 : nloop);
+        if ((tag >> 15) & 1)
+        {
+            break;
+        }
+    }
+
+    return at - address;
+}
 }
 
 void Vu::RunInterpreted(u32 start)
 {
+    g_KickWrites.pending = false;
     RoundTowardZero rounding;
     VuMicroState state;
     BeginMicro(state, start);
@@ -1689,6 +1768,17 @@ bool Vu::StepMicro(VuMicroState& state)
                 }
             };
             auto store = [&](const Vf& value, u32* to) {
+                if (g_KickWrites.on && g_KickWrites.pending && index_ == 1)
+                {
+                    const u32 at = static_cast<u32>((reinterpret_cast<u8*>(to) - data_) / 16);
+                    if (at >= g_KickWrites.start && at < g_KickWrites.end && g_KickWrites.told.insert({g_KickWrites.pc, thisPc}).second)
+                    {
+                        std::fprintf(stderr, "vu1: the XGKICK at %#x's packet written at %#x, quadword %u of %u, %llu cycles after it\n",
+                                     g_KickWrites.pc, thisPc, at - g_KickWrites.start, g_KickWrites.end - g_KickWrites.start,
+                                     static_cast<unsigned long long>(cycle - g_KickWrites.cycle));
+                    }
+                }
+
                 for (u32 c = 0; c < 4; c++)
                 {
                     if (d.lowerDest & (1u << c))
@@ -2004,6 +2094,16 @@ bool Vu::StepMicro(VuMicroState& state)
                 break;
             case Lower::Xgkick:
                 kickPc = thisPc;
+                if (g_KickWrites.on && index_ == 1)
+                {
+                    const u32 address = vi[is] & (dataMask >> 4);
+                    g_KickWrites.pending = true;
+                    g_KickWrites.start = address;
+                    g_KickWrites.end = address + PacketLength(data_, dataMask, address);
+                    g_KickWrites.cycle = cycle;
+                    g_KickWrites.pc = thisPc;
+                }
+
                 Kick(vi[is] & (dataMask >> 4));
 
                 break;

@@ -658,9 +658,12 @@ def frame_rgba(path):
     return width, height, zlib.decompress(compressed)
 
 
-# The 1.1.0 drawing of what 2026-11-01's fixes draw at the scale: the game's colour filter (hwgs.cpp's DepthIndexColour) and the
-# scenes drawn into buffers narrower than the screen (bossarea's sky)
-AS_BEFORE = {"TWIN_HW_DEPTH_INDEX": "0", "TWIN_HW_SMALL_SCENES": "0"}
+# The 1.1.0 drawing of what 2026-11-01's fixes changed: the game's colour filter (hwgs.cpp's DepthIndexColour) and the scenes
+# drawn into buffers narrower than the screen (bossarea's sky) at the scale; VU1's packets read when the GIF reads them
+# (ee/vu.cpp's Kick: the skinned meshes' last two vertices' colours)
+AS_BEFORE = {"TWIN_HW_DEPTH_INDEX": "0", "TWIN_HW_SMALL_SCENES": "0", "TWIN_VU1_KICK_AT_ONCE": "1"}
+# The GS's fixes alone (the pictures' outline rule is theirs)
+GS_FIXES_ONLY = {"TWIN_VU1_KICK_AT_ONCE": "1"}
 
 
 def scene_buffers(exe, work, frame=832, scale=4):
@@ -913,10 +916,11 @@ def pictures(exe, reference, work, last=2500, every=100):
             process.kill()
             process.wait()
         return frames
-    with ThreadPoolExecutor(3) as pool:
-        ours, theirs, scaled = pool.map(one, [exe, reference, exe], ["checked", "reference", "checked-filter"],
-                                        [AS_BEFORE, {}, {}])
-    same, different, changed = 0, [], []
+    with ThreadPoolExecutor(4) as pool:
+        ours, theirs, scaled, whole = pool.map(one, [exe, reference, exe, exe],
+                                               ["checked", "reference", "checked-filter", "checked-all"],
+                                               [AS_BEFORE, {}, GS_FIXES_ONLY, {}])
+    same, different, changed, packets = 0, [], [], []
     for frame in range(every, last + 1, every):
         name = f"frame_{frame:06d}.png"
         a, b, c = ours / name, theirs / name, scaled / name
@@ -929,7 +933,85 @@ def pictures(exe, reference, work, last=2500, every=100):
         if b.exists() and c.exists() and b.read_bytes() != c.read_bytes():
             width = int.from_bytes(b.read_bytes()[16:20], "big")
             changed.append((name, *changed_off_outlines(b, c, max(1, round(width / 512)))))
-    return same, different, changed
+        d = whole / name
+        if c.exists() and d.exists() and c.read_bytes() != d.read_bytes():
+            packets.append((name, pixels_apart(c, d)))
+    return same, different, changed, packets
+
+
+def pixels_apart(old, new):
+    """Two pictures of the same size (png.cpp's): the pixels with a channel more than 8 apart"""
+    width, height, a = frame_rgba(old)
+    _, _, b = frame_rgba(new)
+    row = 1 + width * 4
+    count = 0
+    for y in range(height):
+        start = y * row + 1
+        if a[start:start + width * 4] == b[start:start + width * 4]:
+            continue
+        for at in range(start, start + width * 4, 4):
+            if max(abs(a[at] - b[at]), abs(a[at + 1] - b[at + 1]), abs(a[at + 2] - b[at + 2])) > 8:
+                count += 1
+    return count
+
+
+def vu1_packets(exe, work, frame=832):
+    """VU1's packets as the GIF reads them (ee/vu.cpp's Kick and FlushKick: at the next XGKICK or when the program stops): the
+    first boss's cutscene in bossarea at a fixed time (Cortex against the sky, compare_models.py's moment), the frame's GS
+    commands written twice (TWIN_GS_DUMP; gsdump.strips), the packets read at the XGKICK as 1.1.0 and before read them
+    (TWIN_VU1_KICK_AT_ONCE=1) and as the GIF reads them. The skinned meshes' program writes its packet's last two vertices'
+    colours 2 and 5 cycles after its XGKICK: those, and nothing else, apart: (passed, what happened)"""
+    import gsdump
+
+    def run(name, extra):
+        folder = work / f"vu1-packets-{name}"
+        if folder.exists():
+            shutil.rmtree(folder)
+        settings = folder / "settings" / "Crash Twinsanity"
+        settings.mkdir(parents=True)
+        (settings / "disc_image.txt").write_text(disc_image() + "\n")
+        # 50 Hz as the bench's (the cutscene's moment at the same frame)
+        (settings / "options.txt").write_text("widescreen=0\nrefresh_60hz=0\n")
+        env = dict(os.environ, HOME=str(folder / "settings"), APPDATA=str(folder / "settings"), TWIN_FIXED_TIME="1",
+                   TWINSANITY_AUDIO="frames", TWIN_GS_DUMP=f"{folder}:{frame},", TWIN_SCALE="1",
+                   TWIN_PAD_SCRIPT="500-800:ly=0", TWIN_START_CHUNK="Levels\\Earth\\Hub\\bossarea", **extra)
+        dump = folder / f"frame_{frame:06d}.gs"
+        with open(folder / "log.txt", "w") as log:
+            process = subprocess.Popen([str(exe), "--quick", "--headless"], env=env, stdout=log, stderr=subprocess.STDOUT,
+                                       cwd=folder)
+            started = time.time()
+            while process.poll() is None and time.time() - started < 900:
+                if dump.exists() and "GS dump" in (folder / "log.txt").read_text(errors="replace"):
+                    time.sleep(2)
+                    break
+                time.sleep(1)
+            process.kill()
+            process.wait()
+        return dump
+    with ThreadPoolExecutor(2) as pool:
+        old, new = pool.map(run, ["old", "new"], [{"TWIN_VU1_KICK_AT_ONCE": "1"}, {}])
+    if not old.exists() or not new.exists():
+        return False, f"no GS dump of frame {frame}"
+    a, b = gsdump.strips(old), gsdump.strips(new)
+    if len(a) != len(b):
+        return False, f"{len(a)} strips read at the XGKICK, {len(b)} as the GIF reads them"
+    strips_apart = vertices_apart = elsewhere = 0
+    for sa, sb in zip(a, b):
+        if len(sa["verts"]) != len(sb["verts"]):
+            elsewhere += 1
+            continue
+        apart = [k for k, (va, vb) in enumerate(zip(sa["verts"], sb["verts"])) if va != vb]
+        if apart:
+            strips_apart += 1
+            vertices_apart += len(apart)
+        for k in apart:
+            va, vb = sa["verts"][k], sb["verts"][k]
+            # (only the colour, RGBAQ, and only the strip's last two)
+            if va[:3] != vb[:3] or va[4:] != vb[4:] or k < len(sa["verts"]) - 2:
+                elsewhere += 1
+    what = (f"{strips_apart} of {len(a)} strips with their last two vertices' colours as the GIF reads them ({vertices_apart} "
+            f"vertices), {elsewhere} other differences")
+    return strips_apart > 0 and elsewhere == 0, what
 
 
 def changed_off_outlines(old, new, reach):
@@ -1256,9 +1338,10 @@ def report(exe, reference, work, with_sweep, reference_name=None):
             print(f"  FAILED {name}: {what}")
 
     if reference and reference.exists():
-        same, different, changed = pictures(exe, reference, work)
+        same, different, changed, packets = pictures(exe, reference, work)
         print(f"pictures        {same}/{same + len(different)} the same as {reference_name or reference}'s with the colour "
-              f"filter and the scene buffers at the PS2's pixels{'' if not different else ': not ' + ', '.join(different[:5])}")
+              f"filter and the scene buffers at the PS2's pixels and VU1's packets read at the XGKICK"
+              f"{'' if not different else ': not ' + ', '.join(different[:5])}")
         failed |= bool(different)
         off = [c for c in changed if c[2] > off_outlines_allowed(c[1])]
         print(f"pictures        with them at the scale (as players have it): {len(changed)} differ, the "
@@ -1267,6 +1350,11 @@ def report(exe, reference, work, with_sweep, reference_name=None):
                         + (f" (at {' '.join(f'{x},{y}' for x, y in c[4])})" if c[4] else "") + f", {c[3]:.0f} apart"
                         for c in changed[:25]))
         failed |= bool(off)
+        print(f"pictures        with VU1's packets as the GIF reads them too: {len(packets)} differ"
+              + "".join(f"; {name[6:12].lstrip('0')}: {count} pixels" for name, count in packets[:25]))
+        ok, what = vu1_packets(exe, work)
+        print(f"vu1 packets     {'ok' if ok else 'FAILED'}: {what}")
+        failed |= not ok
         ok, what = colour_filter(exe, work)
         print(f"colour filter   {'ok' if ok else 'FAILED'}: {what}")
         failed |= not ok

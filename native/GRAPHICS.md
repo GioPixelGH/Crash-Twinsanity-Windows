@@ -93,7 +93,7 @@ The PS2 build stays the same executable (checked with `tools/build.py` and `cmp`
 | Where | The PS2 | Native | Effect |
 |---|---|---|---|
 | When chains run | The DMA sends a frame's chain while the game builds the next | Run at once when it's sent | None: the game waits for each before it touches what the chain reads |
-| XGKICK | The GIF reads VU1's memory over the next cycles | The whole packet at once | None for programs that double buffer their output (the game's do) |
+| XGKICK | The GIF reads VU1's memory over the cycles after the XGKICK while the program goes on | The packet read at the next XGKICK or when the program stops (`Vu::Kick`, `FlushKick`), with what the program wrote into it by then | None. Until 2026-11-01 read at the XGKICK: the skinned meshes' program writes its packet's last two vertices' colours 2 and 5 cycles after its XGKICK, and every animated character (Crash, Cortex, the cutscenes' cast) had two vertices in 38 coloured as the batch before's, the sharp-edged patches players saw (`$TWIN_VU1_KICK_AT_ONCE=1` reads at the XGKICK as before) |
 | VU floats | VU arithmetic | Host IEEE single precision with round toward zero, denormals and overflow handled as the VU does (PCSX2's model) | The last bit of some results can differ (the VU's multiplier isn't exactly IEEE) |
 | Rasterisation | The GS's DDA | Edge functions with the GS's sampling and fill rules; attributes interpolated in double precision, colours with 7 fraction bits, texture coordinates 16.16 with 4 bit bilinear weights | A pixel's colour or texel can differ by one step at some edges |
 | Anti-aliasing (PRIM's AA1) | Coverage alpha on edges | Not done | The game only sets it through shader type 0's settings |
@@ -259,6 +259,18 @@ size below are edges exactly a PS2 pixel long on the PS2 pixels' grid, per 1000 
   reference differs with the test off), no antialiased (AA1) primitive in either; at the beach the counts are a few in a
   hundred apart (the idle pose and a seagull).
 - The texture pack, dithering, SSAA and the window's size change none of it: the same steps with the defaults at 4x.
+- The characters' sharp-edged patches (found after the edges with `compare_models.py --scan`, Crash all round: the player saw
+  them in the port only, since 1.0, and PCSX2 drew them too from the port's own GS commands, so they were in the commands): on
+  Crash's snout two yellow triangles, on his chest a pale blue strip, on his arm a light rectangle; Cortex and the cutscenes'
+  characters alike. The port's and the retail game's GS dumps, strip by strip: the same strips, the same ADC bits, the same
+  triangles (2,970 of Crash's), but in nearly every 38 vertex strip the last two vertices' colours (and alpha, 127 for 119)
+  were another batch's. VU1's skinned meshes' program (XGKICK at 0x34e) writes those two colours, its packet's quadwords 110
+  and 113 of 115, 2 and 5 cycles after its XGKICK (`$TWIN_VU_KICK_WRITES` with `TWIN_VU1=interpret` says each such write):
+  the PS2's GIF reads them, still on its way through the packet; the port read the packet at the XGKICK. Read now when the
+  GIF has it (the table above, "XGKICK"): in the first boss's cutscene every mesh's colours the retail game's (the skinned
+  ones' strips with colours more than 8 apart: Cortex 133 of 138 -> 0, Crash 118 of 118 -> 0, the party's three 118, 29 and
+  27 -> 0), the interpreter and the translated programs the same (`TWIN_VU1=verify`); the only program writing a packet after
+  its XGKICK there and on the beach.
 
 Replays (beach, flyover; 1x GPU picture against the software GS, mean per channel): beach 0.87-0.92, flyover 1.1.
 
@@ -270,7 +282,9 @@ for picture N, a line each: their target and its scale, the texture's target if 
 (vertexes a GPU could take differently, counted), `TWIN_HW_STATS` (render passes by cause, conversions, copies), `TWIN_SCALE=N` (a headless run's internal scale), `TWIN_HW_MAX_TARGET=N` (targets with a side past N pixels refused: the software GS draws them), and the old behaviours:
 `TWIN_HW_VERTEX_OFFSET=n` (256ths), `TWIN_HW_SMALL_VIEWPORT`, `TWIN_HW_NO_WRAPADD`, `TWIN_HW_NO_STENCIL_DATE`,
 `TWIN_HW_NO_WIDE_LOAD`, `TWIN_HW_STAGED_UPLOADS`, `TWIN_HW_NO_SNAP`, `TWIN_HW_NO_NATIVE_DEPTH`, `TWIN_HW_DEPTH_INDEX=0` (the
-colour filter at the PS2's pixels), `TWIN_HW_SMALL_SCENES=0` (scenes drawn into narrow buffers at the PS2's resolution).
+colour filter at the PS2's pixels), `TWIN_HW_SMALL_SCENES=0` (scenes drawn into narrow buffers at the PS2's resolution),
+`TWIN_VU1_KICK_AT_ONCE=1` (VU1's packets read at the XGKICK); with the interpreter (`TWIN_VU1=interpret`),
+`TWIN_VU_KICK_WRITES` (each instruction that writes into a packet after its XGKICK, once: where and how many cycles after).
 
 ### Replacement textures (PCSX2's packs)
 

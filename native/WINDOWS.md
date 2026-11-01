@@ -316,11 +316,16 @@ switch refused); the beach's
 first 2,500 frames at a fixed time, every 100th picture compared byte for byte with the last packaged build's
 (`build/native/dist/`, or `--reference PROGRAM`; a program whose folder is a player's portable one, with a `portable.txt` or
 a `User` folder, runs from a copy of its own files, never with the player's settings and saves), first with the game's colour
-filter and the scenes drawn into narrow buffers at the PS2's pixels as 1.1.0 and before drew them (its `AS_BEFORE`:
-`$TWIN_HW_DEPTH_INDEX=0`, `$TWIN_HW_SMALL_SCENES=0`), then as a player has them, at the scale, where the changed pixels must
+filter and the scenes drawn into narrow buffers at the PS2's pixels and VU1's packets read at the XGKICK as 1.1.0 and before
+did (its `AS_BEFORE`: `$TWIN_HW_DEPTH_INDEX=0`, `$TWIN_HW_SMALL_SCENES=0`, `$TWIN_VU1_KICK_AT_ONCE=1`), then with the GS's two
+at the scale (`GS_FIXES_ONLY`), where the changed pixels must
 lie within a PS2 pixel of an outline but one in a thousand (an edge between a near and a far surface of like colours is none
 to the colours: a dark leaf over the olive behind it; the line "pictures with them at the scale" names the pictures changed,
-their pixels, those off the outlines and where, and how far); the colour filter (`colour_filter()`: the beach at 4x with the
+their pixels, those off the outlines and where, and how far), then as a player has them all (the line "with VU1's packets
+as the GIF reads them too" names the pictures the characters' colours change and their pixels); VU1's packets
+(`vu1_packets()`: the first boss's cutscene in bossarea, Cortex against the sky, the frame's GS commands written as a GS
+dump with the packets read at the XGKICK and as the GIF reads them, `gsdump.strips`: only the skinned strips' last two vertices' colours apart, GRAPHICS.md's
+"Where the native build differs from the PS2", XGKICK); the colour filter (`colour_filter()`: the beach at 4x with the
 camera looking up at Crash and Aku Aku, the filter at the PS2's pixels and at the scale: the PS2-sized steps gone, the
 changes along outlines; and the software GS's `$TWIN_FILTER_PROBE`: every filtered pixel's index the depth's bits 8-15,
 GRAPHICS.md's "The game's colour filter at the scale"); the scene buffers (`scene_buffers()`: bossarea's first boss cutscene at 4x, Cortex
