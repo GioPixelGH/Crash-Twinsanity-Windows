@@ -128,6 +128,7 @@ off until you turn them on.
 - [x] A Dithering option ([#24]): the PS2 game shows its picture in 16-bit colour with a fine pattern to hide the steps, and
   the port reproduces it; turned off, the picture would keep its full colour.
 - [ ] A Credits page in the PC options, with everyone behind the Windows version.
+- [x] Quit to desktop in the options ([#33]).
 - [ ] The game closing after the end credits instead of going back to the Iceberg Lab, as reported in [#20].
 - [ ] A modding guide: the game's files, the community's tools for them, and how to share a mod.
 - [ ] The two cutscenes that still end a little differently when skipped than when played ([#9]).
@@ -169,6 +170,7 @@ differences as options on the PAL game ([#14]), the port's own texts in Brazilia
 [#24]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/24
 [#25]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/25
 [#28]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/28
+[#33]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/33
 
 ## Building on Windows
 

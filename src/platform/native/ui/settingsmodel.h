@@ -62,8 +62,8 @@ enum BindingColumn : u32
     BindingColumns,
 };
 
-// Portable mode's dialog (settings.cpp): none, the switch asked about, refused (the program's folder can't be written to), copying,
-// done (the game closes) or failed
+// The settings' dialogs (settings.cpp). Portable mode's: none, the switch asked about, refused (the program's folder can't be
+// written to), copying, done (the game closes) or failed. Quit to the desktop's question (yes, no)
 enum PortableDialog : u32
 {
     DialogNone,
@@ -72,6 +72,7 @@ enum PortableDialog : u32
     DialogCopying,
     DialogDone,
     DialogFailed,
+    DialogQuit,
 };
 
 // What the view draws this frame
@@ -119,6 +120,9 @@ class OverlayFrame;
 void DrawSettingsView(OverlayFrame& frame, std::vector<HitRegion>& regions);
 void DrawGameMenuChrome(OverlayFrame& frame, std::vector<HitRegion>& regions);
 void DrawCursor(OverlayFrame& frame, f32 x, f32 y, bool overClickable);
+// A row's description's width on the screen (reference pixels, the view's font and size: one line from x 360 of 1280)
+f32 DescriptionWidth(const std::string& gameText);
+constexpr f32 DescriptionRoom = 1280.0f - 360.0f - 10.0f;
 // The skip's hold bar under the letterbox's "hold any button to skip" while a button is held (progress 0-1)
 void DrawSkipProgress(OverlayFrame& frame, f32 progress);
 }

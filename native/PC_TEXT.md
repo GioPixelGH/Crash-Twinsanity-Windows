@@ -239,6 +239,9 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1C2 | original | d'origine | original | original | originale |
 | 0x1C3 | medium | moyenne | mittel | media | media |
 | 0x1C4 | long | longue | weit | larga | lunga |
+| 0x1C5 | quit to desktop | quitter vers le bureau | zum desktop beenden | salir al escritorio | esci al desktop |
+| 0x1C6 | closes the game as the window's close button does. progress not saved is lost. | ferme le jeu comme le bouton de la fenêtre. la progression non sauvegardée est perdue. | schließt das spiel wie der knopf des fensters. nicht gespeicherter fortschritt geht verloren. | cierra el juego como el botón de la ventana. el progreso no guardado se pierde. | chiude il gioco come il pulsante della finestra. i progressi non salvati vanno persi. |
+| 0x1C7 | quit the game now? progress not saved is lost. | quitter le jeu maintenant ? la progression non sauvegardée est perdue. | das spiel jetzt beenden? nicht gespeicherter fortschritt geht verloren. | ¿salir del juego ahora? el progreso no guardado se pierde. | uscire dal gioco adesso? i progressi non salvati vanno persi. |
 
 ## English (29 lines)
 

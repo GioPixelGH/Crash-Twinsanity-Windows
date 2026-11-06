@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <functional>
 #include <iterator>
@@ -165,6 +166,7 @@ void SetVibration(s32 value)
 void OpenScreenPosition();
 void SelectTab(u32 tab);
 void AskPortable(bool portable);
+void OpenDialog(PortableDialog dialog);
 
 // The display mode (window or fullscreen) and the window's size: the windows' sizes are the display choices but the last
 s32 WindowSizeChoice()
@@ -205,6 +207,8 @@ void Build()
         [](s32 value) { return Text(value != 0 ? GameTextYes : GameTextNo); });
     portable.shown = [] { return Native::PortableSupported(); };
     gameplay.push_back(portable);
+    // Quitting to the desktop (#33: asked first, then as the window's close button)
+    gameplay.push_back(Action(TextQuitDesktop, TextDescQuitDesktop, [] { OpenDialog(DialogQuit); }));
 
     std::vector<Row>& display = g_Rows[TabDisplay];
     Row mode = Choice(
@@ -1035,13 +1039,21 @@ void AskPortable(bool portable)
     }
 }
 
+// The quit's question (no chosen first)
+void OpenDialog(PortableDialog dialog)
+{
+    g_Dialog = dialog;
+    g_DialogOnYes = false;
+}
+
 // The dialog's input and the copy followed. Asked: left and right (or the mouse over a button) choose yes or no, select takes the
 // chosen one, back is no, a click takes its button; yes copies. Refused and failed go away on select or back; done closes the
-// game on either, or by itself after a few seconds (the old folder gets nothing more either way)
+// game on either, or by itself after a few seconds (the old folder gets nothing more either way). The quit's question as asked
+// (yes closes the game as the window's close button does: the saves and settings are written as they're made)
 void TakeDialogInput()
 {
     Hit hit = HitTest();
-    bool asked = g_Dialog == DialogAsk;
+    bool asked = g_Dialog == DialogAsk || g_Dialog == DialogQuit;
     if (asked && hit.region != nullptr && (g_MouseMoved || g_MouseClicked) &&
         (hit.region->kind == HitKind::DialogYes || hit.region->kind == HitKind::DialogNo))
     {
@@ -1091,6 +1103,19 @@ void TakeDialogInput()
         if (yes || no || std::chrono::duration<f32>(std::chrono::steady_clock::now() - g_DoneAt).count() >= CloseSeconds)
         {
             Native::QuitAfterPortableSwitch();
+        }
+
+        break;
+    case DialogQuit:
+        if (yes)
+        {
+            LogSettingChanges();
+            Native::EndSession("quit: to the desktop from the options");
+            std::_Exit(0);
+        }
+        else if (no)
+        {
+            g_Dialog = DialogNone;
         }
 
         break;
@@ -1367,6 +1392,7 @@ SettingsView CurrentSettingsView()
 
 const std::vector<Row>& SettingsRows(u32 page)
 {
+    Build();
     return g_Rows[page];
 }
 

@@ -428,9 +428,9 @@ void DialogButton(OverlayFrame& frame, f32 x, f32 y, u32 text, bool primary, Hit
     regions.push_back({kind, x, y, Width, Height, -1, -1, -1});
 }
 
-// Portable mode's dialog (settings.cpp) over the screen: its title and message, then yes and no (asked), OK (refused, failed, done:
-// the game closes, by itself after a few seconds) or the copy's bar and its megabytes. Done says where the old folder went, failed
-// what went wrong (in English, as the log has it)
+// The settings' dialogs (settings.cpp) over the screen. Portable mode's: its title and message, then yes and no (asked), OK
+// (refused, failed, done: the game closes, by itself after a few seconds) or the copy's bar and its megabytes. Done says where the
+// old folder went, failed what went wrong (in English, as the log has it). Quitting's question (yes and no)
 void DrawPortableDialog(OverlayFrame& frame, const SettingsView& view, const BoxStyle& panel, std::vector<HitRegion>& regions)
 {
     constexpr f32 Width = 660.0f;
@@ -446,7 +446,9 @@ void DrawPortableDialog(OverlayFrame& frame, const SettingsView& view, const Box
                   : view.dialog == DialogRefused ? TextPortableRefused
                   : view.dialog == DialogCopying ? TextPortableCopying
                   : view.dialog == DialogDone    ? TextPortableDone
+                  : view.dialog == DialogQuit    ? TextQuitAsk
                                                  : TextPortableFailed;
+    const u32 heading = view.dialog == DialogQuit ? TextQuitDesktop : TextPortable;
     std::string text = Sentence(Text(message));
     if (view.dialog == DialogDone)
     {
@@ -476,7 +478,7 @@ void DrawPortableDialog(OverlayFrame& frame, const SettingsView& view, const Box
     frame.Box(0.0f, 0.0f, ReferenceWidth, ReferenceHeight, dim);
     frame.Box(Left, top, Width, height, panel);
     f32 y = top + 32.0f + 18.0f;
-    frame.Text(Sentence(Text(TextPortable)), ReferenceWidth * 0.5f, y, title, OverlayAlign::Centre);
+    frame.Text(Sentence(Text(heading)), ReferenceWidth * 0.5f, y, title, OverlayAlign::Centre);
     y += 18.0f + 10.0f + LineHeight * 0.5f;
     for (const std::string& line : lines)
     {
@@ -495,6 +497,7 @@ void DrawPortableDialog(OverlayFrame& frame, const SettingsView& view, const Box
     switch (view.dialog)
     {
     case DialogAsk:
+    case DialogQuit:
         // The chosen one lit (left and right, or the mouse, choose it)
         DialogButton(frame, ReferenceWidth * 0.5f - 170.0f, bottomTop, GameTextYes, view.dialogOnYes, HitKind::DialogYes, regions);
         DialogButton(frame, ReferenceWidth * 0.5f + 30.0f, bottomTop, GameTextNo, !view.dialogOnYes, HitKind::DialogNo, regions);
@@ -1123,5 +1126,10 @@ void DrawCursor(OverlayFrame& frame, f32 x, f32 y, bool overClickable)
     f32 height = 44.0f * pulse;
     f32 width = height * 0.5f;
     frame.Image(OverlayImage::Cursor, x - width * 0.35f, y - height * 0.08f, width, height);
+}
+
+f32 DescriptionWidth(const std::string& gameText)
+{
+    return OverlayTextWidth(Sentence(gameText), Body(19.0f, Hex(0xd6e8ff)));
 }
 }

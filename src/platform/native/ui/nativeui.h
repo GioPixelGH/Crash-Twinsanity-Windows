@@ -251,6 +251,10 @@ enum NativeText : u32
     TextDistanceOriginal,
     TextDistanceMedium,
     TextDistanceLong,
+    // Quitting to the desktop (#33: settings.cpp's Gameplay page, settingsview.cpp's dialog)
+    TextQuitDesktop,
+    TextDescQuitDesktop,
+    TextQuitAsk,
     NativeTextEnd,
 };
 

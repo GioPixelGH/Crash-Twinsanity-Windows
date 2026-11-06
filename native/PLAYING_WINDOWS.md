@@ -96,7 +96,9 @@ resolution (1x to 8x the PS2's), widescreen (4:3, 16:9 or 21:9), the refresh rat
 (short, original, medium, long or unlimited; original, the default, is the PS2's: farther ones draw the grass and small
 things before you get close and the detailed models of trees and statues from farther, but draw more: unlimited about twice
 as much on the beach, slower on an older PC; short draws less), v-sync, a frames per second counter (**Show FPS**, off by default: in the top left corner), volumes, skipping cutscenes,
-faster loading, and optional fixes of the original game's bugs (off plays exactly like the PS2).
+faster loading, and optional fixes of the original game's bugs (off plays exactly like the PS2). At the bottom of Gameplay,
+**Quit to desktop** (it asks first, then closes the game as the
+window's close button or Alt+F4 does: progress since the last save is lost).
 
 The defaults are the game as the PS2 had it, in a 1280×720 window at twice the PS2's resolution and 60 Hz: cutscenes can't be
 skipped (the PS2 game couldn't; turn **Skip cutscenes** on to hold any button through them), the original bugs are kept, and

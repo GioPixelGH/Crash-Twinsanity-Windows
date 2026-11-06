@@ -2,6 +2,7 @@
 // code, the resolution setting's choices and file) and --dump-texts (every line of every language's text files as the native build
 // has them, the PC wording applied)
 #include "ui/pctext.h"
+#include "ui/settingsmodel.h"
 #include "ui/bindings.h"
 #include "ui/overlayinternal.h"
 
@@ -826,6 +827,41 @@ void TestControls()
 
 // The FPS counter: nothing shown with the option off or before its first half second, the frames a second of pictures shown at
 // 50, 59.94, 144 and 60 a second, and drawn in the window's own top left corner whatever the window's shape
+// Each settings row's description one line on the screen in every language (the view draws it from x 360, no wrapping)
+void TestDescriptions()
+{
+    u32 measured = 0;
+    f32 widest = 0.0f;
+    for (u32 page = 0; page < TabCount; page++)
+    {
+        for (const Row& row : SettingsRows(page))
+        {
+            for (u32 i = 0; i < g_NativeTextCount; i++)
+            {
+                if (row.description == 0 || g_NativeTexts[i].text != row.description)
+                {
+                    continue;
+                }
+
+                for (u32 language = 0; language < TextLanguages; language++)
+                {
+                    std::string text;
+                    ToGameText(g_NativeTexts[i].languages[language], &text);
+                    const f32 width = DescriptionWidth(text);
+                    widest = std::max(widest, width);
+                    Check(width > 0.0f && width <= DescriptionRoom, "description 0x%X in %s: %.0f of %.0f pixels", row.description,
+                          g_TextLanguages[language], width, DescriptionRoom);
+                    measured++;
+                }
+            }
+        }
+    }
+
+    Check(measured > 0, "descriptions measured: %u", measured);
+    Native::Log("ui self-test: %u settings descriptions in their languages one line each, the widest %.0f of %.0f pixels", measured,
+                widest, DescriptionRoom);
+}
+
 void TestFpsCounter()
 {
     SetOptionSaving(false);
@@ -1040,6 +1076,7 @@ bool RunCommand(const char* argument, int* status)
         TestResolution();
         TestControls();
         TestFpsCounter();
+        TestDescriptions();
         Native::Log("ui self-test: %s", g_Failures == 0 ? "passed" : "FAILED");
         *status = g_Failures == 0 ? 0 : 1;
         return true;
