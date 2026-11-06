@@ -150,7 +150,8 @@ LOG_START = [
     r"\] audio: none",
     r"\] game: Levels\\Earth\\Hub\\beach loaded in [\d.]+ s",
     r"\] performance: [\d.]+ fps over \d+ s of play, the slowest frame \d+ ms; a frame's work: the game [\d.]+ ms .*"
-    r"VU1 [\d.]+ ms, the render thread [\d.]+ ms, the graphics card [\d.]+ ms; the player in levels\\earth\\hub\\beach",
+    r"the window's present [\d.]+ ms, VU1 [\d.]+ ms, the render thread [\d.]+ ms \(the GS [\d.]+, OpenGL [\d.]+, waiting for "
+    r"the card [\d.]+, the picture handed over [\d.]+\), the graphics card [\d.]+ ms; the player in levels\\earth\\hub\\beach",
     rf"\] session: {DURATION}, {DURATION} of it played at [\d.]+ fps on average, \d+% of it below 57 fps .*"
     r"the slowest frame \d+ ms; a frame's work: .*, the graphics card [\d.]+ ms\n",
     rf"\] exit: the level sweep's run ended \(status 0\) after {DURATION}; the game's state ",
@@ -862,7 +863,11 @@ def dithering(exe, work, frame=300):
     """The Dithering option off (hwgs.cpp's full colour dithered draws): the beach's frame at a fixed time against the pictures
     check's, made as the PS2 (the default): that one 5 bits a channel (no low three bits), this one the frame's full colour (most
     channels' low bits set) and a little brighter (the truncation's floor gone): (passed, what happened)"""
-    ps2 = work / "pictures-checked-filter" / "frames" / f"frame_{frame:06d}.png"
+    # (The pictures check's folder: "checked-filter" against a reference from before 1.1.0, "checked" from 1.1.0 on: this run's,
+    # the newer one)
+    made = [path for path in (work / name / "frames" / f"frame_{frame:06d}.png"
+                              for name in ("pictures-checked-filter", "pictures-checked")) if path.exists()]
+    ps2 = max(made, key=lambda path: path.stat().st_mtime) if made else work / "pictures-checked" / "frames" / "none"
     folder = work / "dithering"
     if folder.exists():
         shutil.rmtree(folder)

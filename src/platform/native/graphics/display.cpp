@@ -5,6 +5,7 @@
 
 #include "hardware.h"
 #include "renderthread.h"
+#include "renderwork.h"
 #include "ee/vu.h"
 #include "ee/vu1translate.h"
 #include "png.h"
@@ -1125,6 +1126,8 @@ Picture g_PictureForCaller;
 // On the render thread: the frame's picture into its slot, then the settings applied (as ShowFrameHere does)
 void MakeShown(u64 frame)
 {
+    // (The log's split of the render thread's time: the picture handed over, its OpenGL calls and waits included)
+    WorkSpan work(Work::Picture);
     static const bool dumping = std::getenv("TWIN_DUMP_FRAMES") != nullptr;
     Shown& shown = g_Shown[frame % 3];
     g_PictureStale = true;
@@ -1244,6 +1247,13 @@ void ThreadedFrameStats(const Shown* shown)
 
 // Without the render thread: the picture read out and shown at once
 void ShowFrameHere();
+// The window's present's time (renderthread.h's PresentNanoseconds)
+std::atomic<u64> g_PresentNanoseconds{0};
+}
+
+u64 PresentNanoseconds()
+{
+    return g_PresentNanoseconds.load(std::memory_order_relaxed);
 }
 
 void ShowFrame()
@@ -1266,7 +1276,10 @@ void ShowFrame()
     {
         RenderWaitFrame(frame - 1);
         Shown& before = g_Shown[(frame - 1) % 3];
+        const auto presenting = std::chrono::steady_clock::now();
         PresentShown(before);
+        g_PresentNanoseconds += static_cast<u64>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - presenting).count());
         shown = &before;
     }
 
@@ -1288,6 +1301,16 @@ void ShowFrameHere()
     g_PictureStale = true;
     // The hardware renderer's picture is drawn straight from its target
     DisplayTexture gpu;
+    const auto presenting = std::chrono::steady_clock::now();
+    struct Presented
+    {
+        std::chrono::steady_clock::time_point from;
+        ~Presented()
+        {
+            g_PresentNanoseconds += static_cast<u64>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - from).count());
+        }
+    } presented{presenting};
     if (HardwareRendererActive() && HardwareDisplayTexture(&gpu))
     {
         if (g_Presenter.window != nullptr)

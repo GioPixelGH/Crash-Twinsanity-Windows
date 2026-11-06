@@ -63,6 +63,9 @@ void RenderQueueVif1(const u32* words, u32 count);
 u64 RenderBusyNanoseconds();
 u64 RenderWaitNanoseconds();
 u64 VuStageBusyNanoseconds();
+// The main thread's time showing pictures in the window (display.cpp: the window's drawing of the picture and the UI over it, and
+// its swap), part of the game's thread's work
+u64 PresentNanoseconds();
 
 // The threads the frames are made on: as $TWIN_RENDER_THREAD asks (for the log's start: "three: ... (the default)"), and as they
 // run now (the render thread may not have started)

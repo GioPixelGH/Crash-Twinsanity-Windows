@@ -1,6 +1,7 @@
 #include "renderthread.h"
 
 #include "hardware.h"
+#include "renderwork.h"
 #include "ee/gif.h"
 #include "ee/vif.h"
 
@@ -392,6 +393,8 @@ void RenderThread::Run()
     {
         t_OnRenderThread = true;
         UseRenderContext();
+        // Its time split by kind of work for the log (renderwork.h)
+        CountWorkOnThisThread();
     }
 
     for (;;)
@@ -410,6 +413,7 @@ void RenderThread::Run()
         }
 
         auto began = std::chrono::steady_clock::now();
+        SwitchWork(Work::Gs);
         Play(*chunk);
         if (next_ != nullptr)
         {
@@ -425,6 +429,7 @@ void RenderThread::Run()
             chunk->capacity = 0;
         }
 
+        SwitchWork(Work::None);
         busyNanoseconds += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - began).count();
         {
             std::lock_guard lock(lock_);

@@ -1,6 +1,7 @@
 #include "gl.h"
 
 #include "graphics/gputime.h"
+#include "graphics/renderwork.h"
 
 #include <SDL3/SDL.h>
 
@@ -64,6 +65,113 @@ bool Load(T& function, const char* name)
     }
 
     return true;
+}
+
+// The render thread's OpenGL calls counted as such while it emulates the GS (renderwork.h: the log's split of its time); a picture
+// read back is a wait for the card. OpenGL's own entry points behind them
+Gl g_Real;
+
+template <auto Member>
+struct Counted;
+
+template <typename R, typename... A, R (*Gl::*Member)(A...)>
+struct Counted<Member>
+{
+    template <NativeGraphics::Work Kind>
+    static R Call(A... arguments)
+    {
+        if (NativeGraphics::t_Work != NativeGraphics::Work::Gs)
+        {
+            return (g_Real.*Member)(arguments...);
+        }
+
+        NativeGraphics::WorkSpan span(Kind);
+        return (g_Real.*Member)(arguments...);
+    }
+};
+
+void CountCalls()
+{
+    using NativeGraphics::Work;
+    g_Real = g_Gl;
+#define TWIN_COUNTED(name, kind) g_Gl.name = &Counted<&Gl::name>::Call<Work::kind>
+    TWIN_COUNTED(GenTextures, OpenGl);
+    TWIN_COUNTED(DeleteTextures, OpenGl);
+    TWIN_COUNTED(BindTexture, OpenGl);
+    TWIN_COUNTED(TexImage2D, OpenGl);
+    TWIN_COUNTED(TexSubImage2D, OpenGl);
+    TWIN_COUNTED(TexParameteri, OpenGl);
+    TWIN_COUNTED(ActiveTexture, OpenGl);
+    TWIN_COUNTED(PixelStorei, OpenGl);
+    TWIN_COUNTED(GenFramebuffers, OpenGl);
+    TWIN_COUNTED(DeleteFramebuffers, OpenGl);
+    TWIN_COUNTED(BindFramebuffer, OpenGl);
+    TWIN_COUNTED(FramebufferTexture2D, OpenGl);
+    TWIN_COUNTED(CheckFramebufferStatus, OpenGl);
+    TWIN_COUNTED(BlitFramebuffer, OpenGl);
+    TWIN_COUNTED(ReadPixels, CardWait);
+    TWIN_COUNTED(ReadBuffer, OpenGl);
+    TWIN_COUNTED(DrawBuffer, OpenGl);
+    TWIN_COUNTED(Viewport, OpenGl);
+    TWIN_COUNTED(Scissor, OpenGl);
+    TWIN_COUNTED(Enable, OpenGl);
+    TWIN_COUNTED(Disable, OpenGl);
+    TWIN_COUNTED(BlendFuncSeparate, OpenGl);
+    TWIN_COUNTED(BlendEquationSeparate, OpenGl);
+    TWIN_COUNTED(BlendColor, OpenGl);
+    TWIN_COUNTED(ColorMask, OpenGl);
+    TWIN_COUNTED(DepthMask, OpenGl);
+    TWIN_COUNTED(DepthFunc, OpenGl);
+    TWIN_COUNTED(Clear, OpenGl);
+    TWIN_COUNTED(ClearColor, OpenGl);
+    TWIN_COUNTED(CreateShader, OpenGl);
+    TWIN_COUNTED(ShaderSource, OpenGl);
+    TWIN_COUNTED(CompileShader, OpenGl);
+    TWIN_COUNTED(GetShaderiv, OpenGl);
+    TWIN_COUNTED(GetShaderInfoLog, OpenGl);
+    TWIN_COUNTED(DeleteShader, OpenGl);
+    TWIN_COUNTED(CreateProgram, OpenGl);
+    TWIN_COUNTED(AttachShader, OpenGl);
+    TWIN_COUNTED(BindFragDataLocationIndexed, OpenGl);
+    TWIN_COUNTED(BindAttribLocation, OpenGl);
+    TWIN_COUNTED(LinkProgram, OpenGl);
+    TWIN_COUNTED(GetProgramiv, OpenGl);
+    TWIN_COUNTED(GetProgramInfoLog, OpenGl);
+    TWIN_COUNTED(UseProgram, OpenGl);
+    TWIN_COUNTED(GetUniformLocation, OpenGl);
+    TWIN_COUNTED(Uniform1i, OpenGl);
+    TWIN_COUNTED(Uniform1f, OpenGl);
+    TWIN_COUNTED(Uniform2f, OpenGl);
+    TWIN_COUNTED(Uniform3f, OpenGl);
+    TWIN_COUNTED(Uniform4f, OpenGl);
+    TWIN_COUNTED(Uniform1iv, OpenGl);
+    TWIN_COUNTED(GenVertexArrays, OpenGl);
+    TWIN_COUNTED(BindVertexArray, OpenGl);
+    TWIN_COUNTED(GenBuffers, OpenGl);
+    TWIN_COUNTED(BindBuffer, OpenGl);
+    TWIN_COUNTED(BufferData, OpenGl);
+    TWIN_COUNTED(VertexAttribPointer, OpenGl);
+    TWIN_COUNTED(VertexAttribIPointer, OpenGl);
+    TWIN_COUNTED(EnableVertexAttribArray, OpenGl);
+    TWIN_COUNTED(DrawArrays, OpenGl);
+    TWIN_COUNTED(Finish, CardWait);
+    TWIN_COUNTED(GetError, OpenGl);
+    TWIN_COUNTED(GetIntegerv, OpenGl);
+    TWIN_COUNTED(PointSize, OpenGl);
+    TWIN_COUNTED(LineWidth, OpenGl);
+    TWIN_COUNTED(Uniform4ui, OpenGl);
+    TWIN_COUNTED(Uniform1ui, OpenGl);
+    TWIN_COUNTED(StencilFunc, OpenGl);
+    TWIN_COUNTED(TexParameterf, OpenGl);
+    TWIN_COUNTED(GenerateMipmap, OpenGl);
+    TWIN_COUNTED(StencilOp, OpenGl);
+    TWIN_COUNTED(StencilMask, OpenGl);
+    TWIN_COUNTED(ClearStencil, OpenGl);
+    TWIN_COUNTED(Flush, OpenGl);
+    TWIN_COUNTED(FenceSync, OpenGl);
+    TWIN_COUNTED(WaitSync, OpenGl);
+    TWIN_COUNTED(DeleteSync, OpenGl);
+#undef TWIN_COUNTED
 }
 }
 
@@ -151,6 +259,11 @@ bool LoadGl()
     ok &= Load(g_Gl.FenceSync, "glFenceSync");
     ok &= Load(g_Gl.WaitSync, "glWaitSync");
     ok &= Load(g_Gl.DeleteSync, "glDeleteSync");
+    if (ok)
+    {
+        CountCalls();
+    }
+
     const char* caching = std::getenv("TWIN_HW_UNIFORM_CACHE");
     if (ok && (caching == nullptr || caching[0] != '0'))
     {

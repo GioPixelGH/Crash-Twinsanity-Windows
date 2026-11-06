@@ -392,10 +392,24 @@ person's name in it left out: "Headphones (someone's AirPods)"; the driver, its 
 While it runs, besides the game's trail (under "Debugging"): `game: LEVEL loaded in N s` for each loading (the title's and a
 level's, from the loading state to the next), and `performance:` a line a minute of play (play and the cutscenes, not the menus,
 the pause, the loadings or the movies): the frames a second, the slowest frame, a frame's work on each thread (the game's own
-and its waits for the others, VU1's, the render thread's; with fewer threads, which one has VU1 and the GS), the graphics card's
-own time a frame, and the player's chunk. The threads' counters are those they keep anyway (graphics/display.cpp's game work,
-renderthread.cpp's busy and wait times), a clock read and a few sums a frame: nothing is profiled.
-`$TWIN_PERFORMANCE_EVERY=SECONDS` sets the minute (the check's 10).
+and its waits for the others, the window's present, VU1's, the render thread's; with fewer threads, which one has VU1 and the
+GS), the graphics card's own time a frame, and the player's chunk. The threads' counters are those they keep anyway
+(graphics/display.cpp's game work, renderthread.cpp's busy and wait times), a clock read and a few sums a frame: nothing is
+profiled. `$TWIN_PERFORMANCE_EVERY=SECONDS` sets the minute (the check's 10).
+
+Since 1.2.0 the render thread's time is split (graphics/renderwork.cpp): `the render thread 10.7 ms (the GS 6.1, OpenGL 3.2,
+waiting for the card 0.4, the picture handed over 1.0)`. The GS is its emulation on the processor (the GIF's data, the hardware
+renderer's work deciding what to draw; with `$TWIN_RENDER_THREAD=vif` VIF1 and VU1 too), OpenGL the time inside OpenGL's calls
+the GS emulation makes (the driver's work: every entry point of hw/gl.cpp is counted), waiting for the card the pictures and GS
+memory read back (`glReadPixels`, `glFinish`: the thread stops until the card has drawn them), the picture handed over the
+frame's picture copied into the slot the window shows it from, and its wait for the window to have drawn the slot before. The
+GS's share is what's left of the render thread's time once the others are taken out. Each change is counted with the
+processor's time stamp counter (`rdtsc`, a few nanoseconds; twice an OpenGL call), turned into
+nanoseconds against the steady clock over the render thread's first 2 s. The window's present (`the window's present 1.2 ms`)
+is the game's thread's: the window's context drawing the picture and the UI over it and its swap (with vsync, the swap waits
+for the screen's refresh); since 1.2.0 it's taken out of the game's own time (1.1.0's "the game" had it in). A PC whose present
+takes long (a picture crossing from one graphics card to another, two screens on two adapters) shows it there; one whose driver
+is slow, in OpenGL; one whose processor is slow, in the GS.
 
 The graphics card's time (graphics/gputime.cpp) tells a render thread slow on the processor from one waiting on the card: the
 render thread's own time has the driver's work in it, and its waits for the card (a picture read back, a full queue), so 25 ms
