@@ -59,6 +59,8 @@ bool HardwareCopyDisplay(u32 slot, void* drawnFence, ShownTexture* shown);
 // filtering (0 the game's, 1 bilinear, 2 trilinear and anisotropic)
 void HardwareSetDither(int mode);
 void HardwareSetFiltering(int mode);
+// Anisotropic filtering's most samples for the game's mipmapped textures (1: off, the PS2's sampling; up to 16, the card's most)
+void HardwareSetAnisotropy(int samples);
 
 // Statistics: draws done by the GPU and left to the software rasteriser since the start, and the last reason for leaving one
 struct HardwareStats

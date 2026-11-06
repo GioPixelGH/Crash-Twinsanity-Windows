@@ -16,6 +16,9 @@ void NativeGraphicsSetDither(int mode);
 // Textures' filtering (the hardware renderer): 0 as the game asks (the PS2's), 1 bilinear everywhere, 2 trilinear with 16x
 // anisotropic filtering where the game's textures have mipmaps
 void NativeGraphicsSetTextureFiltering(int mode);
+// Anisotropic filtering of the game's mipmapped textures: 1 off (the PS2's sampling), 2, 4, 8 or 16 samples (the card's most at
+// most)
+void NativeGraphicsSetAnisotropy(int samples);
 
 // Textures upscaled when there's no replacement (the hardware renderer): 0 off, 1 2x, 2 4x
 bool NativeGraphicsSetTextureUpscale(int mode);

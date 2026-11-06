@@ -384,6 +384,9 @@ enum ProgramBits : u32
     BitFullColour = 1u << 24,
     // The game's colour filter: its palette's indexes the depth's bits 8-15 at the sample itself (DepthIndexColour)
     BitDepthIndex = 1u << 25,
+    // Anisotropic filtering (the PC option): the GS's level of detail kept along the texture's short axis, sampled along the
+    // long one (textureGrad's gradients scaled to the GS's level, the card's anisotropy on)
+    BitAniso = 1u << 26,
 };
 
 constexpr const char* VertexSource = R"(#version 330 core
@@ -541,6 +544,15 @@ void main()
     }
 #if DEPTHINDEX
     vec4 t = DepthIndexColour();
+#elif ANISO
+    // The card's level for the screen's gradients along their long axis made the GS's: the gradients scaled by the difference,
+    // so the card samples along the long axis at the GS's level (sharper as the surface turns away: anisotropic filtering)
+    vec2 along = dFdx(uv / texActual);
+    vec2 down = dFdy(uv / texActual);
+    vec2 texels = vec2(textureSize(tex, 0));
+    float card = log2(max(max(length(along * texels), length(down * texels)), 1e-6));
+    float toGs = exp2(lod - card);
+    vec4 t = floor(textureGrad(tex, uv / texActual, along * toGs, down * toGs) * 255.0 + 0.5);
 #else
     vec4 t = floor(textureLod(tex, uv / texActual, lod) * 255.0 + 0.5);
 #endif
@@ -1347,6 +1359,7 @@ private:
         u32 clut = 0;
         u64 targetsVersion = 0;
         int filterMode = 0;
+        int anisotropy = 1;
         int ditherMode = 0;
         Target* colour = nullptr;
         Target* depth = nullptr;
@@ -1511,6 +1524,32 @@ f32 VertexNudge()
 }
 int g_DitherMode = 2;
 int g_FilterMode = 0;
+// Anisotropic filtering's most samples (1: off, the PS2's; 2, 4, 8 or 16: the PC option, clamped to the card's most)
+int g_Anisotropy = 1;
+
+// The card's most samples (GL_MAX_TEXTURE_MAX_ANISOTROPY, core since 4.6 and EXT_texture_filter_anisotropic's before; 1 when it
+// has none), asked once, the renderer's context current, the first time the option filters a texture
+int AnisotropyMost()
+{
+    static const int most = [] {
+        GLfloat value = 0.0f;
+        auto getFloat = reinterpret_cast<void (*)(GLenum, GLfloat*)>(SDL_GL_GetProcAddress("glGetFloatv"));
+        Gl& gl = GetGl();
+        while (gl.GetError() != GL_NO_ERROR)
+        {
+        }
+
+        if (getFloat != nullptr)
+        {
+            getFloat(0x84FF, &value);
+        }
+
+        const int found = gl.GetError() == GL_NO_ERROR && value >= 1.0f ? static_cast<int>(value) : 1;
+        std::fprintf(stderr, "graphics: anisotropic filtering up to %dx on this card\n", found);
+        return found;
+    }();
+    return most;
+}
 
 HwGs::~HwGs()
 {
@@ -1626,6 +1665,7 @@ const Program& HwGs::ProgramFor(u32 bits)
     define("WRAPADD", (bits & BitWrapAdd) ? 1 : 0);
     define("NATIVEDEPTH", (bits & BitNativeDepth) ? 1 : 0);
     define("DEPTHINDEX", (bits & BitDepthIndex) ? 1 : 0);
+    define("ANISO", (bits & BitAniso) ? 1 : 0);
     GLuint vertex = CompileShader(GL_VERTEX_SHADER, VertexSource);
     GLuint fragment = CompileShader(GL_FRAGMENT_SHADER, header + FragmentSource);
     Gl& gl = GetGl();
@@ -4188,6 +4228,13 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
             key.lodL = state.l;
             key.mxl = state.mxl;
             program |= BitMipmap | (state.lodConstant ? BitLodConstant : 0);
+            // Anisotropic filtering (off: 1, the PS2's sampling): the game's bilinear mipmapped textures whose level of detail
+            // goes by the distance (the GS's own formula's)
+            if (g_Anisotropy > 1 && state.magLinear && !state.lodConstant && AnisotropyMost() > 1)
+            {
+                key.anisotropy = static_cast<u32>(std::min(g_Anisotropy, AnisotropyMost()));
+                program |= BitAniso;
+            }
         }
 
         s32 left = 0;
@@ -4752,6 +4799,7 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
         last_.clut = gs_.clutVersion();
         last_.targetsVersion = targetsVersion_;
         last_.filterMode = g_FilterMode;
+        last_.anisotropy = g_Anisotropy;
         last_.ditherMode = g_DitherMode;
         last_.colour = colour;
         last_.depth = depth;
@@ -4771,7 +4819,8 @@ bool HwGs::DrawLikeLast(const Gs::Gs::DrawState& state, const Gs::Vertex* vertex
     static const bool off = std::getenv("TWIN_HW_NO_FAST_DRAW") != nullptr;
     const LastDraw& last = last_;
     if (off || !last.valid || last.generation != gs_.stateGeneration() || last.clut != gs_.clutVersion() ||
-        last.targetsVersion != targetsVersion_ || last.filterMode != g_FilterMode || last.ditherMode != g_DitherMode)
+        last.targetsVersion != targetsVersion_ || last.filterMode != g_FilterMode || last.ditherMode != g_DitherMode ||
+        last.anisotropy != g_Anisotropy)
     {
         return false;
     }
@@ -5935,6 +5984,17 @@ void HardwareSetFiltering(int mode)
     }
 
     g_FilterMode = std::clamp(mode, 0, 2);
+}
+
+void HardwareSetAnisotropy(int samples)
+{
+    if (g_Hw != nullptr)
+    {
+        g_Hw->Flush();
+    }
+
+    // (The card's most is asked the first time a texture is filtered: AnisotropyMost)
+    g_Anisotropy = std::clamp(samples, 1, 16);
 }
 
 HardwareStats GetHardwareStats()

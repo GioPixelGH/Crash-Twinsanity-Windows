@@ -258,6 +258,8 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1D5 | português | português | português | português | português |
 | 0x1D6 | nederlands | nederlands | nederlands | nederlands | nederlands |
 | 0x1D7 | smaa | smaa | smaa | smaa | smaa |
+| 0x1D8 | anisotropic filtering | filtrage anisotrope | anisotrope filterung | filtrado anisotrópico | filtro anisotropico |
+| 0x1D9 | textures seen at an angle (floors, paths) sharper. off is the ps2's look. | textures vues de biais (sols, chemins) plus nettes. désactivé : comme la ps2. | texturen im schrägen winkel (böden, wege) schärfer. aus: wie die ps2. | texturas vistas en ángulo (suelos, caminos) más nítidas. desactivado: como la ps2. | texture viste di sbieco (pavimenti, sentieri) più nitide. disattivato: come la ps2. |
 
 ## English (29 lines)
 

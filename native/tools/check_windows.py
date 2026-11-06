@@ -238,6 +238,35 @@ def smaa(exe, work, frame=600):
     return 0.005 < share < 0.25 and abs(bright) < 0.5, what
 
 
+def anisotropy(exe, work, frame=600):
+    """Anisotropic filtering at 16x (hwgs.cpp's ANISO): the beach at a fixed time against the pictures check's frame (the option
+    off): some pixels changed (the far textures the game mipmaps), not many: (passed, what happened)"""
+    off = next((p for p in (work / n / "frames" / f"frame_{frame:06d}.png" for n in ("pictures-checked", "pictures-checked-filter"))
+                if p.exists()), None)
+    if off is None:
+        return False, "no picture of the option off (the pictures check's)"
+    folder = work / "anisotropy"
+    frames = folder / "frames"
+    picture = frames / f"frame_{frame:06d}.png"
+
+    if folder.exists():
+        shutil.rmtree(folder)
+    frames.mkdir(parents=True)
+    log = run_for(exe, folder / "run", ["anisotropic_filtering=4"],
+                  {"TWIN_FIXED_TIME": "1", "TWINSANITY_AUDIO": "frames", "TWIN_DUMP_FRAMES": f"{frames}:{frame}"},
+                  ["--quick", "--headless"], picture)
+    if not picture.exists():
+        return False, f"no frame {frame}"
+    _, _, a = frame_rgba(off)
+    _, _, b = frame_rgba(picture)
+    if len(a) != len(b):
+        return False, "the pictures' sizes differ"
+    changed = sum(1 for x, y in zip(a[::4], b[::4]) if x != y) / (len(a) // 4)
+    told = re.search(r"anisotropic filtering up to (\d+)x", log)
+    what = f"{changed:.2%} of the beach's bytes changed at 16x (the card's most {told.group(1) if told else '?'}x)"
+    return 0.0005 < changed < 0.2 and told is not None, what
+
+
 
 
 def other_disc_image(key, root=HERE):
@@ -1567,6 +1596,10 @@ def report(exe, reference, work, with_sweep, reference_name=None):
 
     ok, what = smaa(exe, work)
     print(f"smaa            {'ok' if ok else 'FAILED'}: {what}")
+    failed |= not ok
+
+    ok, what = anisotropy(exe, work)
+    print(f"anisotropy      {'ok' if ok else 'FAILED'}: {what}")
     failed |= not ok
 
     if with_sweep:

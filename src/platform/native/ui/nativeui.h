@@ -273,6 +273,9 @@ enum NativeText : u32
     TextLanguageDutch,
     // SMAA (the Display page)
     TextSmaa,
+    // Anisotropic filtering (the Display page)
+    TextAnisotropic,
+    TextDescAnisotropic,
     NativeTextEnd,
 };
 
@@ -416,6 +419,8 @@ enum Option : u32
     // The voices' language (languages.cpp): as the texts' (0, the language option's), or English, French, German, Italian or
     // Spanish (the language option's numbers); the game takes it when it starts
     OptionSpeechLanguage,
+    // Anisotropic filtering of the game's mipmapped textures (hwgs.cpp's ANISO): off (0, the PS2's sampling), 2x, 4x, 8x, 16x
+    OptionAnisotropy,
     OptionCount,
 };
 

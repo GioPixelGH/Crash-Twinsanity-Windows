@@ -790,6 +790,11 @@ void NativeGraphicsSetDither(int mode)
     NativeGraphics::RenderCall([mode] { NativeGraphics::HardwareSetDither(mode); });
 }
 
+void NativeGraphicsSetAnisotropy(int samples)
+{
+    NativeGraphics::RenderCall([samples] { NativeGraphics::HardwareSetAnisotropy(samples); });
+}
+
 void NativeGraphicsSetTextureFiltering(int mode)
 {
     NativeGraphics::RenderCall([mode] { NativeGraphics::HardwareSetFiltering(mode); });

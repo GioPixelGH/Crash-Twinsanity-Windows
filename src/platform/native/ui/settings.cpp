@@ -295,6 +295,11 @@ void Build()
         },
         [](s32 value) { SetOption(OptionAntiAliasing, AntiAliasingOrder[value]); }, AntiAliasingChoices - 1,
         [](s32 value) { return Text(AntiAliasingTexts[value]); }));
+    // Anisotropic filtering (THE LIST 9: off by default, the PS2's sampling)
+    display.push_back(Choice(
+        TextAnisotropic, TextDescAnisotropic, [] { return GetOption(OptionAnisotropy); },
+        [](s32 value) { SetOption(OptionAnisotropy, value); }, 4,
+        [](s32 value) { return value == 0 ? Text(0) : std::to_string(1 << value) + "x"; }));
     display.push_back(OptionChoice(TextDithering, TextDescDithering, OptionDithering, {TextDitherPs2, 0}));
     display.push_back(Choice(
         TextRenderDistance, TextDescRenderDistance,
@@ -758,6 +763,7 @@ void ResetTab(u32 tab)
         g_WidescreenTv = static_cast<u8>(DefaultOption(OptionWidescreen) != 0 ? 1 : 0);
         ResetOptions({OptionWidescreen, OptionUltrawide, OptionRefresh60, OptionTextureFilter, OptionCrtFilter, OptionTexturePack,
                       OptionTextureUpscale, OptionAntiAliasing, OptionVSync, OptionRenderDistance});
+        ResetOptions({OptionAnisotropy});
         break;
     case TabAudio:
         SetMusic(DefaultOption(OptionMusicVolume));
