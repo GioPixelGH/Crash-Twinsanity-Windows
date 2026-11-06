@@ -8,6 +8,7 @@
 #include "ui/overlay.h"
 
 #include "native.h"
+#include "updatecheck.h"
 #include "graphics/presenter.h"
 
 #include "game/gamecontroller.h"
@@ -80,7 +81,7 @@ std::string ProperWords(const std::string& text)
         {"hud", "HUD"},         {"ui", "UI"},           {"pc", "PC"},       {"fps", "FPS"},
         // The credits' names
         {"windows", "Windows"}, {"linux", "Linux"},     {"mac", "Mac"},     {"hd", "HD"},
-        {"twinsanity improved", "Twinsanity Improved"}, {"twinsanityevolved", "TwinsanityEvolved"},
+        {"twinsanity improved", "Twinsanity Improved"}, {"twinsanityevolved", "TwinsanityEvolved"}, {"github", "GitHub"},
         // Portable mode's: the folders' names, the stick, the dialog's button
         {"appdata", "AppData"}, {"user", "User"},       {"usb", "USB"},     {"program files", "Program Files"}, {"ok", "OK"},
     };
@@ -1065,6 +1066,27 @@ void DrawGameMenuChrome(OverlayFrame& frame, std::vector<HitRegion>& regions)
     if (controller == nullptr)
     {
         return;
+    }
+
+    // A newer release found by the update check (updatecheck.h): said in the main menu, at the top, "version 1.3.0 is out:
+    // options, gameplay." (the page's row is there; the text's x.y.z is the version)
+    std::string newer;
+    if (controller->State() == GameController::StateMainMenu && Native::NewerRelease(&newer, nullptr))
+    {
+        std::string notice = Sentence(Text(TextUpdateNotice));
+        const size_t mark = notice.find("x.y.z");
+        if (mark != std::string::npos)
+        {
+            notice.replace(mark, 5, newer);
+        }
+
+        TextStyle style = Body(19.0f, White, true);
+        const f32 width = OverlayTextWidth(notice, style) + 40.0f;
+        BoxStyle pill;
+        pill.fill = Hex(0x000000, 0.55f);
+        pill.radius = 18.0f;
+        frame.Box((ReferenceWidth - width) * 0.5f, 24.0f, width, 36.0f, pill);
+        frame.Text(notice, ReferenceWidth * 0.5f, 42.0f, style, OverlayAlign::Centre);
     }
 
     // The game's hints (OLEG's labels): the game draws them itself (their glyphs the controller's: SetPromptLabels), or the bar

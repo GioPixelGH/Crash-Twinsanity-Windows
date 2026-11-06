@@ -276,6 +276,12 @@ enum NativeText : u32
     // Anisotropic filtering (the Display page)
     TextAnisotropic,
     TextDescAnisotropic,
+    // The update check (the Gameplay page) and its notice in the main menu
+    TextUpdateCheck,
+    TextDescUpdateCheck,
+    TextUpdatePage,
+    TextDescUpdatePage,
+    TextUpdateNotice,
     NativeTextEnd,
 };
 
@@ -424,6 +430,8 @@ enum Option : u32
     // 32:9: the widescreen picture made 32:9 wide (as 21:9's: the projection, the 2D's squeeze, the movies' pillarbox); only while
     // widescreen is on, the 21:9 option off
     OptionSuperUltrawide,
+    // The update check (updatecheck.h): at each start, GitHub asked once for the latest release (off by default)
+    OptionUpdateCheck,
     OptionCount,
 };
 

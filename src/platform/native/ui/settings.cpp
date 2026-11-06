@@ -10,6 +10,7 @@
 
 #include "native.h"
 #include "renderdistance.h"
+#include "updatecheck.h"
 
 #include "game/controllers.h"
 #include "game/gamecontroller.h"
@@ -252,6 +253,13 @@ void Build()
         [](s32 value) { return Text(value != 0 ? GameTextYes : GameTextNo); });
     portable.shown = [] { return Native::PortableSupported(); };
     gameplay.push_back(portable);
+    // The update check (off by default; Windows' only: updatecheck.h), and the newer release's page once one's found
+    Row updates = Toggle(TextUpdateCheck, TextDescUpdateCheck, OptionUpdateCheck);
+    updates.shown = [] { return Native::UpdateCheckSupported(); };
+    gameplay.push_back(updates);
+    Row page = Action(TextUpdatePage, TextDescUpdatePage, [] { Native::OpenNewerReleasePage(); });
+    page.shown = [] { return Native::NewerRelease(nullptr, nullptr); };
+    gameplay.push_back(page);
     // The credits, and quitting to the desktop (#33: asked first, then as the window's close button)
     gameplay.push_back(Action(TextCredits, TextDescCredits, [] { OpenDialog(DialogCredits); }));
     gameplay.push_back(Action(TextQuitDesktop, TextDescQuitDesktop, [] { OpenDialog(DialogQuit); }));
@@ -799,6 +807,7 @@ void ResetTab(u32 tab)
         ResetOptions({OptionLanguage, OptionSkipCutscenes, OptionFastLoading, OptionRetailFixes, OptionPauseOnFocusLoss,
                       OptionDetailedLog});
         ResetOptions({OptionSpeechLanguage});
+        ResetOptions({OptionUpdateCheck});
         break;
     case TabAccessibility:
         ResetOptions({OptionCameraShake, OptionInvertCameraX, OptionInvertCameraY, OptionCameraSpeed, OptionStickDeadZone});

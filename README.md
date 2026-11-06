@@ -44,7 +44,12 @@ played from the start to the credits; the ones before were previews. Linux has n
 ## Is it safe?
 
 - The zip holds only the program built from this repository's code, the SDL 3 and FFmpeg libraries, two fonts and the
-  licences. There's no installer, and the program has no network code.
+  licences. There's no installer.
+- The program connects to the internet for one thing only, and only if you turn it on: **Check for updates** (Options >
+  Gameplay, off by default). Then, at each start, it asks GitHub once which version of this port is the latest (one request
+  to `api.github.com` for this repository's latest release: no personal data, no account), and the menu tells you when
+  there's a newer one. It never downloads, installs or runs anything: you update by downloading the zip yourself. With the
+  option off, the program makes no network connection at all.
 - The release page shows the zip's SHA-256, so you can check your download with `Get-FileHash`. Here is
   [VirusTotal's report on 1.0.12's download](https://www.virustotal.com/gui/url/6ed9050e25993157d30ef77a69c4b7e7aba61368c9669caca1caf95553cd1e90/detection).
 - The program isn't code-signed, so Windows may say "Windows protected your PC" the first time: choose **More info**, then
@@ -131,6 +136,7 @@ off until you turn them on.
 - [x] Quit to desktop in the options ([#33]).
 - [x] The texts' language and the voices' language as two options, with translated disc images recognised ([#25]).
 - [x] SMAA anti-aliasing, anisotropic filtering, and a 32:9 shape with the menus in the middle 16:9.
+- [x] An update check, off unless you turn it on: it only tells you a newer version is out.
 - [ ] The game closing after the end credits instead of going back to the Iceberg Lab, as reported in [#20].
 - [ ] A modding guide: the game's files, the community's tools for them, and how to share a mod.
 - [ ] The two cutscenes that still end a little differently when skipped than when played ([#9]).
@@ -250,6 +256,7 @@ repository shipped isn't included here: get it from its author.
 - [Crash Twinsanity Improved](https://github.com/AlexMollard/Crash-Twinsanity-Improved) by AlexMollard: the Mac port's
   optional fixes come from this mod. Its 21:9 mode is TechieSaru's fix, from the mod's PCSX2 patches.
 - CRASHARKI, for the HD texture pack the Mac port was tested with.
+- [SMAA](https://github.com/iryoku/smaa) by Jorge Jimenez, Jose I. Echevarria, Belen Masia, Fernando Navarro and Diego
   Gutierrez (MIT): the SMAA anti-aliasing choice.
 - [TwinsanityEvolved](https://github.com/menaman123/TwinsanityEvolved) by menaman123, another PC port: code under its MIT
   licence (the disc image's CRC-32 and SHA-1, and how a text bank's language is told, from its engine NativeEE), its notices kept;

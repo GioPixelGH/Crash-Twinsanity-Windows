@@ -6,8 +6,15 @@
   MPEG-2 decoder (`avcodec-63.dll`, `avutil-61.dll`), two fonts, the licences and a README. There's no installer, and it
   doesn't need administrator rights.
 - **What it does on your PC:** it reads your disc image, and it writes its settings, saves and logs only in
-  `%APPDATA%\Crash Twinsanity\`. The `--extract` command also writes to the folder you name. The program has no network code:
-  it never connects to the internet.
+  `%APPDATA%\Crash Twinsanity\`. The `--extract` command also writes to the folder you name.
+- **The network:** with its default settings the program never connects to the internet. One option does, and only when you
+  turn it on: **Check for updates** (Options > Gameplay, off by default). Turned on, each start makes one HTTPS request, in
+  the background, to GitHub's API for this repository's latest release
+  (`https://api.github.com/repos/GioPixelGH/Crash-Twinsanity-Windows/releases/latest`), through Windows' own WinHTTP. It sends
+  no personal data (no account, no cookies: only the program's name and version as its User-Agent, which GitHub requires) and
+  reads only the latest version's number and its page. When that version is newer, the main menu says so and Gameplay gets a
+  row that opens the release's page in your browser, only if you choose it. It never downloads, replaces or runs anything;
+  if there's no network, it only writes a line in the log. The code is `src/platform/native/updatecheck.cpp`.
 - **Check your download:** the release page shows the zip's SHA-256 next to the file, and the release notes repeat it. In
   PowerShell, `Get-FileHash Crash-Twinsanity-Windows.zip` must print the same value.
 - **Antivirus scans:** you can upload the zip to [VirusTotal](https://www.virustotal.com) yourself. Here is

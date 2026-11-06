@@ -260,6 +260,11 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1D7 | smaa | smaa | smaa | smaa | smaa |
 | 0x1D8 | anisotropic filtering | filtrage anisotrope | anisotrope filterung | filtrado anisotrópico | filtro anisotropico |
 | 0x1D9 | textures seen at an angle (floors, paths) sharper. off is the ps2's look. | textures vues de biais (sols, chemins) plus nettes. désactivé : comme la ps2. | texturen im schrägen winkel (böden, wege) schärfer. aus: wie die ps2. | texturas vistas en ángulo (suelos, caminos) más nítidas. desactivado: como la ps2. | texture viste di sbieco (pavimenti, sentieri) più nitide. disattivato: come la ps2. |
+| 0x1DA | check for updates | vérifier les mises à jour | nach updates suchen | buscar actualizaciones | controlla aggiornamenti |
+| 0x1DB | at each start, asks github for the latest version. it never downloads anything. | à chaque lancement, demande à github la dernière version. rien n'est téléchargé. | fragt bei jedem start github nach der neuesten version. lädt nie etwas herunter. | en cada inicio, pregunta a github por la última versión. nunca descarga nada. | a ogni avvio chiede a github l'ultima versione. non scarica mai niente. |
+| 0x1DC | new version's page | page de la nouvelle version | seite der neuen version | página de la nueva versión | pagina della nuova versione |
+| 0x1DD | opens the new version's page on github in your browser. | ouvre la page de la nouvelle version sur github dans ton navigateur. | öffnet die seite der neuen version auf github im browser. | abre la página de la nueva versión en github en tu navegador. | apre la pagina della nuova versione su github nel browser. |
+| 0x1DE | version x.y.z is out: options, gameplay. | la version x.y.z est sortie : options, jeu. | version x.y.z ist da: optionen, spiel. | ya está la versión x.y.z: opciones, juego. | è uscita la versione x.y.z: opzioni, gioco. |
 
 ## English (29 lines)
 

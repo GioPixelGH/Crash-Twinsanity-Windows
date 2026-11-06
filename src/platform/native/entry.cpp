@@ -6,6 +6,7 @@
 #include "platform/saves.h"
 #include "platform/system.h"
 #include "ui/nativeui.h"
+#include "updatecheck.h"
 
 #include <SDL3/SDL.h>
 
@@ -39,6 +40,12 @@ void StartLowMemory();
 // $TWIN_PROFILE (profiler_win32.cpp)
 void StartProfiler();
 #endif
+
+// The version (native/CMakeLists.txt's: this file's TWIN_PORT_VERSION), for the update check (updatecheck.h)
+const char* PortVersion()
+{
+    return TWIN_PORT_VERSION;
+}
 }
 
 namespace
@@ -228,6 +235,12 @@ int main(int argc, char** argv)
     Native::LogSessionSettings();
     Native::OpenDiscImage();
     NativeApplyDataFixups();
+    // The update check (off by default: updatecheck.h), on a thread of its own: the start never waits for it
+    if (NativeUi::IsOn(NativeUi::OptionUpdateCheck))
+    {
+        Native::StartUpdateCheck();
+    }
+
     // $TWIN_FIXED_TIME: the test runs' time (debug.h's g_DebugFixedTime): every frame takes exactly a frame's time and reads
     // finish when asked about, so what a frame draws doesn't depend on how fast the machine is (two builds compared frame by frame)
     if (const char* fixed = std::getenv("TWIN_FIXED_TIME"); fixed != nullptr && fixed[0] != '0')

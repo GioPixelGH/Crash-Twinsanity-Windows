@@ -267,6 +267,31 @@ def anisotropy(exe, work, frame=600):
     return 0.0005 < changed < 0.2 and told is not None, what
 
 
+def update_check(exe, work):
+    """The update check (updatecheck.cpp) without the network: GitHub's answer from a file ($TWIN_UPDATE_TEST), a newer release
+    (its page offered) and an older one (nothing), and the option off (no line): (passed, what happened)"""
+    folder = work / "update-check"
+    if folder.exists():
+        shutil.rmtree(folder)
+    folder.mkdir(parents=True)
+    answers = {"newer": '{"html_url": "https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases/tag/v9.9.0", "tag_name": "v9.9.0"}',
+               "older": '{"html_url": "https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases/tag/v0.9.0", "tag_name": "v0.9.0"}'}
+    said = {}
+    for name, body in list(answers.items()) + [("off", None)]:
+        answer = folder / f"{name}.json"
+        if body:
+            answer.write_text(body)
+        log = run_for(exe, folder / name, ["update_check=1"] if body else [],
+                      {"TWIN_UPDATE_TEST": str(answer)}, ["--headless", "--quiet-stubs"], None, 12)
+        said[name] = [line.split("] ", 1)[-1] for line in log.splitlines() if "update check:" in line]
+    newer = any("9.9.0 is out" in line and "releases/tag/v9.9.0" in line for line in said["newer"])
+    older = any("the latest release is 0.9.0" in line and "nothing newer" in line for line in said["older"])
+    off = not said["off"]
+    what = (f"a newer release {'offered' if newer else 'NOT offered'}, an older one {'not' if older else 'WRONGLY'} offered, "
+            f"the option off {'asks nothing' if off else 'ASKED'} (no network: $TWIN_UPDATE_TEST)")
+    return newer and older and off, what
+
+
 def resolution_steps(exe, work):
     """The Resolution row stepped 2x, 3x, 2x, 3x two frames apart ($TWIN_SETTINGS_LOG_TEST, a window): the renderer drawing at
     the chosen scale once, when the choice settles (1.1.0 drew at each step): (passed, what happened)"""
@@ -1607,6 +1632,10 @@ def report(exe, reference, work, with_sweep, reference_name=None):
 
     ok, what = anisotropy(exe, work)
     print(f"anisotropy      {'ok' if ok else 'FAILED'}: {what}")
+    failed |= not ok
+
+    ok, what = update_check(exe, work)
+    print(f"update check    {'ok' if ok else 'FAILED'}: {what}")
     failed |= not ok
 
     ok, what = resolution_steps(exe, work)

@@ -100,7 +100,10 @@ default, as the PS2: up to 16x sharpens the textures seen at an angle), scanline
 (short, original, medium, long or unlimited; original, the default, is the PS2's: farther ones draw the grass and small
 things before you get close and the detailed models of trees and statues from farther, but draw more: unlimited about twice
 as much on the beach, slower on an older PC; short draws less), v-sync, a frames per second counter (**Show FPS**, off by default: in the top left corner), volumes, skipping cutscenes,
-faster loading, and optional fixes of the original game's bugs (off plays exactly like the PS2). At the bottom of Gameplay,
+faster loading, and optional fixes of the original game's bugs (off plays exactly like the PS2). **Check for updates** (off by
+default): when you turn it on, each start asks GitHub, in the background, which version is the latest; a newer one is said in
+the main menu and Gameplay gets a row that opens its page in your browser. It never downloads or installs anything: you update
+by downloading the new zip yourself. At the bottom of Gameplay,
 **Credits** (who made the port and what it's built on) and **Quit to desktop** (it asks first, then closes the game as the
 window's close button or Alt+F4 does: progress since the last save is lost).
 
