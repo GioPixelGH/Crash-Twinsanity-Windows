@@ -267,6 +267,13 @@ def anisotropy(exe, work, frame=600):
     return 0.0005 < changed < 0.2 and told is not None, what
 
 
+def resolution_steps(exe, work):
+    """The Resolution row stepped 2x, 3x, 2x, 3x two frames apart ($TWIN_SETTINGS_LOG_TEST, a window): the renderer drawing at
+    the chosen scale once, when the choice settles (1.1.0 drew at each step): (passed, what happened)"""
+    log = run_for(exe, work / "resolution-steps", ["refresh_60hz=3"], {"TWIN_SETTINGS_LOG_TEST": "1"}, [], None, 90,
+                  resolution="scale=2\nwindow=1280x720\nfullscreen=0\n")
+    scales = re.findall(r"hardware renderer: drawing at (\d+)x", log)
+    return scales == ["2", "3"], f"the renderer's scales: {', '.join(scales) or 'none'} (2 at the start, 3 once chosen)"
 
 
 def other_disc_image(key, root=HERE):
@@ -1600,6 +1607,10 @@ def report(exe, reference, work, with_sweep, reference_name=None):
 
     ok, what = anisotropy(exe, work)
     print(f"anisotropy      {'ok' if ok else 'FAILED'}: {what}")
+    failed |= not ok
+
+    ok, what = resolution_steps(exe, work)
+    print(f"resolution      {'ok' if ok else 'FAILED'}: {what}")
     failed |= not ok
 
     if with_sweep:

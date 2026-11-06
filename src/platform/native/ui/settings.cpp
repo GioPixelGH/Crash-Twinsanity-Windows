@@ -69,6 +69,25 @@ constexpr s32 AntiAliasingOrder[] = {0, 1, 4, 2, 3};
 constexpr u32 AntiAliasingTexts[] = {0, TextFxaa, TextSmaa, TextSsaa2, TextSsaa4};
 constexpr s32 AntiAliasingChoices = static_cast<s32>(std::size(AntiAliasingOrder));
 
+// The resolution chosen while its row is stepped (THE LIST 41, #39): applied once the choice settles (the row left, the screen
+// closed, or PendingSeconds after the last step), not at each step (stepping left from 1x wraps round to 8x: a laptop's 451 MB
+// card drew 8x and back while its player went through the choices). -1: none waiting
+s32 g_PendingScale = -1;
+std::chrono::steady_clock::time_point g_PendingAt;
+constexpr f32 PendingSeconds = 0.75f;
+
+void ApplyPendingResolution()
+{
+    if (g_PendingScale < 0)
+    {
+        return;
+    }
+
+    Resolution resolution = CurrentResolution();
+    resolution.scale = Scales[std::clamp(g_PendingScale, 0, ScaleChoices - 1)];
+    g_PendingScale = -1;
+    SetResolution(resolution);
+}
 
 std::vector<Row> g_Rows[Pages];
 bool g_Built = false;
@@ -255,12 +274,13 @@ void Build()
     size.asksToKeep = true;
     size.shown = [] { return !CurrentResolution().fullscreen; };
     display.push_back(size);
+    // (Its choice applied once it settles, not at each step: THE LIST 41, PendingScale)
     display.push_back(Choice(
-        TextResolution, TextDescResolution, [] { return ScaleChoice(CurrentResolution()); },
+        TextResolution, TextDescResolution,
+        [] { return g_PendingScale >= 0 ? g_PendingScale : ScaleChoice(CurrentResolution()); },
         [](s32 value) {
-            Resolution resolution = CurrentResolution();
-            resolution.scale = Scales[value];
-            SetResolution(resolution);
+            g_PendingScale = value;
+            g_PendingAt = std::chrono::steady_clock::now();
         },
         ScaleChoices - 1, [](s32 value) {
             // The scale and the picture's size it draws at (the PAL frame's 640 x 512 times it): "2×  ·  1280 × 1024"
@@ -916,6 +936,7 @@ void SelectTab(u32 tab)
 
 void Close()
 {
+    ApplyPendingResolution();
     if (g_Keeping)
     {
         EndKeeping(false);
@@ -1553,6 +1574,17 @@ void SettingsFrame()
     }
 
     TakeInput();
+    // The resolution stepped to: applied once the row's left or the steps stop (THE LIST 41)
+    if (g_PendingScale >= 0)
+    {
+        const std::vector<Row>& rows = g_Rows[g_Tab];
+        const bool onRow = g_Open && g_Row >= 0 && static_cast<size_t>(g_Row) < rows.size() && rows[g_Row].label == TextResolution;
+        const f32 since = std::chrono::duration<f32>(std::chrono::steady_clock::now() - g_PendingAt).count();
+        if (!onRow || since >= PendingSeconds)
+        {
+            ApplyPendingResolution();
+        }
+    }
 }
 
 namespace

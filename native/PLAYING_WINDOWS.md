@@ -93,6 +93,7 @@ Options (from the main or pause menu) has PC settings: the **Text language** (En
 Windows' language by default) and the **Voice language** (the voices and the movies' sound: as the texts by default, or another
 one), both from the game's next start; a translated disc image that keeps its texts in another language's place shows that
 language's name (Brazilian Portuguese texts in the English slot read "português"). Window size or fullscreen, the internal
+resolution (1x to 8x the PS2's: the choice is applied when you stop on it, not at each step), widescreen (4:3, 16:9, 21:9 or
 32:9: at 32:9 the menus and the HUD stay in the middle 16:9), the refresh rate, texture filtering, **Anisotropic filtering** (off by
 default, as the PS2: up to 16x sharpens the textures seen at an angle), scanlines, texture packs, anti-aliasing
 (FXAA or SMAA on the picture, SMAA the sharper; or supersampling: SSAA 2x and 4x draw the picture 2 or 4 times larger, slower), **Dithering** (as the PS2, the default: its 16-bit picture with a fine pattern; or off: full colour), **Draw distance**
