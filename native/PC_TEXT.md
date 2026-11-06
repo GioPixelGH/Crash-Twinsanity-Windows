@@ -242,6 +242,15 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1C5 | quit to desktop | quitter vers le bureau | zum desktop beenden | salir al escritorio | esci al desktop |
 | 0x1C6 | closes the game as the window's close button does. progress not saved is lost. | ferme le jeu comme le bouton de la fenêtre. la progression non sauvegardée est perdue. | schließt das spiel wie der knopf des fensters. nicht gespeicherter fortschritt geht verloren. | cierra el juego como el botón de la ventana. el progreso no guardado se pierde. | chiude il gioco come il pulsante della finestra. i progressi non salvati vanno persi. |
 | 0x1C7 | quit the game now? progress not saved is lost. | quitter le jeu maintenant ? la progression non sauvegardée est perdue. | das spiel jetzt beenden? nicht gespeicherter fortschritt geht verloren. | ¿salir del juego ahora? el progreso no guardado se pierde. | uscire dal gioco adesso? i progressi non salvati vanno persi. |
+| 0x1C8 | credits | crédits | mitwirkende | créditos | riconoscimenti |
+| 0x1C9 | the people who made this port and the work it stands on. | les personnes qui ont fait ce portage et le travail sur lequel il repose. | die leute hinter dieser portierung und der arbeit, auf der sie aufbaut. | las personas que hicieron este port y el trabajo en el que se basa. | le persone che hanno fatto questo port e il lavoro su cui si basa. |
+| 0x1CA | the windows port | le portage windows | die windows-portierung | el port para windows | il port per windows |
+| 0x1CB | the decompilation | la décompilation | die dekompilierung | la descompilación | la decompilazione |
+| 0x1CC | the mac port | le portage mac | die mac-portierung | el port para mac | il port per mac |
+| 0x1CD | crash twinsanity improved's fixes and 21:9 | les corrections et le 21:9 de crash twinsanity improved | korrekturen und 21:9 aus crash twinsanity improved | las correcciones y el 21:9 de crash twinsanity improved | le correzioni e il 21:9 di crash twinsanity improved |
+| 0x1CE | the linux build | la version linux | die linux-version | la versión para linux | la versione per linux |
+| 0x1CF | tests and reports | tests et rapports | tests und berichte | pruebas e informes | prove e segnalazioni |
+| 0x1D0 | the hd texture pack | le pack de textures hd | das hd-texturpaket | el pack de texturas hd | il pacchetto di texture hd |
 
 ## English (29 lines)
 

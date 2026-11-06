@@ -127,7 +127,7 @@ off until you turn them on.
   renderer's buffers.
 - [x] A Dithering option ([#24]): the PS2 game shows its picture in 16-bit colour with a fine pattern to hide the steps, and
   the port reproduces it; turned off, the picture would keep its full colour.
-- [ ] A Credits page in the PC options, with everyone behind the Windows version.
+- [x] A Credits page in the PC options, with everyone behind the Windows version.
 - [x] Quit to desktop in the options ([#33]).
 - [ ] The game closing after the end credits instead of going back to the Iceberg Lab, as reported in [#20].
 - [ ] A modding guide: the game's files, the community's tools for them, and how to share a mod.

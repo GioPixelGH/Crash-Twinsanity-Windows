@@ -78,6 +78,9 @@ std::string ProperWords(const std::string& text)
         {"v-sync", "V-sync"},   {"esc", "Esc"},         {"fxaa", "FXAA"},   {"msaa", "MSAA"},         {"smaa", "SMAA"},
         {"crash", "Crash"},     {"cortex", "Cortex"},   {"nina", "Nina"},   {"wumpa", "Wumpa"},       {"tv", "TV"},
         {"hud", "HUD"},         {"ui", "UI"},           {"pc", "PC"},       {"fps", "FPS"},
+        // The credits' names
+        {"windows", "Windows"}, {"linux", "Linux"},     {"mac", "Mac"},     {"hd", "HD"},
+        {"twinsanity improved", "Twinsanity Improved"},
         // Portable mode's: the folders' names, the stick, the dialog's button
         {"appdata", "AppData"}, {"user", "User"},       {"usb", "USB"},     {"program files", "Program Files"}, {"ok", "OK"},
     };
@@ -428,9 +431,25 @@ void DialogButton(OverlayFrame& frame, f32 x, f32 y, u32 text, bool primary, Hit
     regions.push_back({kind, x, y, Width, Height, -1, -1, -1});
 }
 
+// The credits' parts and people (README.md's "Credits")
+struct Credit
+{
+    u32 part;
+    const char* people;
+};
+constexpr Credit Credits[] = {
+    {TextCreditsWindows, "GioPixelGH"},
+    {TextCreditsDecompilation, "Smartkin"},
+    {TextCreditsMac, "HAB3X"},
+    {TextCreditsImproved, "AlexMollard, TechieSaru"},
+    {TextCreditsLinux, "Gabriel-TwoBits"},
+    {TextCreditsTesters, "NitorikoSkye, SSStylishh, APerson7778, VenezuelanHell"},
+    {TextCreditsTextures, "CRASHARKI"},
+};
+
 // The settings' dialogs (settings.cpp) over the screen. Portable mode's: its title and message, then yes and no (asked), OK
 // (refused, failed, done: the game closes, by itself after a few seconds) or the copy's bar and its megabytes. Done says where the
-// old folder went, failed what went wrong (in English, as the log has it). Quitting's question (yes and no)
+// old folder went, failed what went wrong (in English, as the log has it). Quitting's question (yes and no), the credits (OK)
 void DrawPortableDialog(OverlayFrame& frame, const SettingsView& view, const BoxStyle& panel, std::vector<HitRegion>& regions)
 {
     constexpr f32 Width = 660.0f;
@@ -448,7 +467,7 @@ void DrawPortableDialog(OverlayFrame& frame, const SettingsView& view, const Box
                   : view.dialog == DialogDone    ? TextPortableDone
                   : view.dialog == DialogQuit    ? TextQuitAsk
                                                  : TextPortableFailed;
-    const u32 heading = view.dialog == DialogQuit ? TextQuitDesktop : TextPortable;
+    const u32 heading = view.dialog == DialogQuit ? TextQuitDesktop : view.dialog == DialogCredits ? TextCredits : TextPortable;
     std::string text = Sentence(Text(message));
     if (view.dialog == DialogDone)
     {
@@ -458,7 +477,23 @@ void DrawPortableDialog(OverlayFrame& frame, const SettingsView& view, const Box
     }
 
     f32 textWidth = Width - Pad * 2.0f;
-    std::vector<std::string> lines = Wrapped(text, textWidth, body);
+    std::vector<std::string> lines;
+    if (view.dialog == DialogCredits)
+    {
+        // The README's credits: each part's people (their own names, as they write them)
+        for (const Credit& credit : Credits)
+        {
+            for (const std::string& line : Wrapped(Sentence(Text(credit.part)) + ": " + credit.people, textWidth, body))
+            {
+                lines.push_back(line);
+            }
+        }
+    }
+    else
+    {
+        lines = Wrapped(text, textWidth, body);
+    }
+
     std::vector<std::string> notes;
     if (view.dialog == DialogDone && !view.backup.empty())
     {

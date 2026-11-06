@@ -207,7 +207,8 @@ void Build()
         [](s32 value) { return Text(value != 0 ? GameTextYes : GameTextNo); });
     portable.shown = [] { return Native::PortableSupported(); };
     gameplay.push_back(portable);
-    // Quitting to the desktop (#33: asked first, then as the window's close button)
+    // The credits, and quitting to the desktop (#33: asked first, then as the window's close button)
+    gameplay.push_back(Action(TextCredits, TextDescCredits, [] { OpenDialog(DialogCredits); }));
     gameplay.push_back(Action(TextQuitDesktop, TextDescQuitDesktop, [] { OpenDialog(DialogQuit); }));
 
     std::vector<Row>& display = g_Rows[TabDisplay];
@@ -1039,7 +1040,7 @@ void AskPortable(bool portable)
     }
 }
 
-// The quit's question (no chosen first)
+// The quit's question (no chosen first) or the credits
 void OpenDialog(PortableDialog dialog)
 {
     g_Dialog = dialog;
@@ -1049,7 +1050,8 @@ void OpenDialog(PortableDialog dialog)
 // The dialog's input and the copy followed. Asked: left and right (or the mouse over a button) choose yes or no, select takes the
 // chosen one, back is no, a click takes its button; yes copies. Refused and failed go away on select or back; done closes the
 // game on either, or by itself after a few seconds (the old folder gets nothing more either way). The quit's question as asked
-// (yes closes the game as the window's close button does: the saves and settings are written as they're made)
+// (yes closes the game as the window's close button does: the saves and settings are written as they're made); the credits go
+// away on select or back
 void TakeDialogInput()
 {
     Hit hit = HitTest();
@@ -1121,6 +1123,7 @@ void TakeDialogInput()
         break;
     case DialogRefused:
     case DialogFailed:
+    case DialogCredits:
         if (yes || no)
         {
             g_Dialog = DialogNone;

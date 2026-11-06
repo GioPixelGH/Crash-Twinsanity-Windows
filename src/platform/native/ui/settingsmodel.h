@@ -63,7 +63,7 @@ enum BindingColumn : u32
 };
 
 // The settings' dialogs (settings.cpp). Portable mode's: none, the switch asked about, refused (the program's folder can't be
-// written to), copying, done (the game closes) or failed. Quit to the desktop's question (yes, no)
+// written to), copying, done (the game closes) or failed. Quit to the desktop's question (yes, no), and the credits (OK)
 enum PortableDialog : u32
 {
     DialogNone,
@@ -73,6 +73,7 @@ enum PortableDialog : u32
     DialogDone,
     DialogFailed,
     DialogQuit,
+    DialogCredits,
 };
 
 // What the view draws this frame
