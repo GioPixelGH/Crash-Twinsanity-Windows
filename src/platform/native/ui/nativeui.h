@@ -265,6 +265,12 @@ enum NativeText : u32
     TextCreditsTesters,
     TextCreditsTextures,
     TextCreditsEvolved,
+    // The speech language (settings.cpp's Gameplay page) and the languages a text bank can be in besides the five (languages.cpp)
+    TextSpeechLanguage,
+    TextDescSpeechLanguage,
+    TextLanguageAsTexts,
+    TextLanguagePortuguese,
+    TextLanguageDutch,
     NativeTextEnd,
 };
 
@@ -388,8 +394,9 @@ enum Option : u32
     OptionMouseLook,
     OptionMouseSensitivity,
     OptionInvertMouseY,
-    // The game's language (its texts, its voices, its movies' sound): the computer's (0, as the PS2 took its own), English,
-    // French, German, Italian or Spanish; the game takes it when it starts (system.cpp's Platform::System::Language)
+    // The game's language (its texts, and its voices and movies' sound unless OptionSpeechLanguage chooses another): the
+    // computer's (0, as the PS2 took its own), English, French, German, Italian or Spanish; the game takes it when it starts
+    // (system.cpp's Platform::System::Language)
     OptionLanguage,
     // More of what the game does written to the log (trail.cpp), for bug reports
     OptionDetailedLog,
@@ -404,6 +411,9 @@ enum Option : u32
     // How far the game draws (renderdistance.h, HAB3X's): the original (0), short (1: 0.6 times the distances), medium (2: twice),
     // long (3: three times) or unlimited (4: no level of detail's cut-off, the far plane four times); codes, not the menu's order
     OptionRenderDistance,
+    // The voices' language (languages.cpp): as the texts' (0, the language option's), or English, French, German, Italian or
+    // Spanish (the language option's numbers); the game takes it when it starts
+    OptionSpeechLanguage,
     OptionCount,
 };
 
@@ -425,6 +435,10 @@ std::string TrailNow();
 // The log's start (sessionlog.cpp): every option as options.txt names it, and whether they're options.txt's or the defaults (a
 // first start), in two lines (options.cpp); the saved resolution or the defaults (resolution.cpp)
 void LogOptions();
+// The languages (languages.cpp): a text choice's bank's language by its content when it isn't the choice's name ("portuguese";
+// nullptr when it is, or isn't recognised; option 1-5), and the log's line about them (the disc open)
+const char* TextBankLanguage(s32 option);
+void LogLanguages();
 void LogResolution();
 // The settings changed since the log last gave them, a line each ("options: refresh_60hz 3 -> 1 (144 Hz -> 60 Hz)"): options.txt's
 // (options.cpp), the resolution and the display (resolution.cpp), the controls (bindings.cpp). Each change's value is compared with

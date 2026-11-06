@@ -129,6 +129,7 @@ off until you turn them on.
   the port reproduces it; turned off, the picture would keep its full colour.
 - [x] A Credits page in the PC options, with everyone behind the Windows version.
 - [x] Quit to desktop in the options ([#33]).
+- [x] The texts' language and the voices' language as two options, with translated disc images recognised ([#25]).
 - [ ] The game closing after the end credits instead of going back to the Iceberg Lab, as reported in [#20].
 - [ ] A modding guide: the game's files, the community's tools for them, and how to share a mod.
 - [ ] The two cutscenes that still end a little differently when skipped than when played ([#9]).
@@ -249,7 +250,7 @@ repository shipped isn't included here: get it from its author.
   optional fixes come from this mod. Its 21:9 mode is TechieSaru's fix, from the mod's PCSX2 patches.
 - CRASHARKI, for the HD texture pack the Mac port was tested with.
 - [TwinsanityEvolved](https://github.com/menaman123/TwinsanityEvolved) by menaman123, another PC port: code under its MIT
-  licence (the disc image's CRC-32 and SHA-1, from its engine NativeEE), its notices kept;
+  licence (the disc image's CRC-32 and SHA-1, and how a text bank's language is told, from its engine NativeEE), its notices kept;
   [`native/third_party/twinsanityevolved`](native/third_party/twinsanityevolved/README.md) lists what.
 
 **Contributors and testers of the Windows port:**

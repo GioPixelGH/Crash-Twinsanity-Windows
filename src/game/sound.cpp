@@ -1347,7 +1347,7 @@ GameSound* SoundById(u16 id)
     GameSound* sound = nullptr;
     GameResources* resources = G_GameResourcesObjectPointer;
     ResourceTable* sounds = resources->sounds;
-    ResourceTable* voices = resources->voices[g_CurrentLanguage];
+    ResourceTable* voices = resources->voices[SpeechLanguage()];
     if (id < sounds->bits.capacity)
     {
         u16 copy = id;

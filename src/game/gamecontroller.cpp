@@ -454,7 +454,7 @@ u32 GameController::Starting(TimeClock*)
     StringConstruct(&voices, SoundFolder);
     g_SaveManager = SaveManager::Construct(static_cast<SaveManager*>(MemoryAllocate(sizeof(SaveManager))), this);
     LoadTexts();
-    StringAppend(&voices, g_LanguageNames[g_CurrentLanguage]);
+    StringAppend(&voices, g_LanguageNames[SpeechLanguage()]);
     SetMusicBank(MusicBank);
     SetVoiceBank(voices.string);
     String icons;
@@ -1465,7 +1465,7 @@ u32 GameController::PlayMovie(TimeClock* clock, s32 delay, u32 index, u32 skippa
     {
         const GameMovie& movie = g_Movies[index];
         // The story's movies have an audio channel for each language
-        u32 channel = movie.bits.audioChannels == 1 ? 0 : g_CurrentLanguage;
+        u32 channel = movie.bits.audioChannels == 1 ? 0 : SpeechLanguage();
         movieFrame = frame;
         oleg.Hide(oleg.screens[OLEG::ScreenBlack], shortFade, 0);
         s32 width = movie.bits.width;

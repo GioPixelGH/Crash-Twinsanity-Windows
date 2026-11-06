@@ -672,7 +672,7 @@ SectionReader* CodeItemGetReader(CodeItem* item, s32, ItemHeader* header, s32* s
         return nullptr;
     }
 
-    u32 voices = VoicesSubsection + g_CurrentLanguage;
+    u32 voices = VoicesSubsection + SpeechLanguage();
     u32 kind = header->id;
     u32 start = header->offset;
     if (kind < CodeSubsectionCount)

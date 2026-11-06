@@ -36,6 +36,21 @@ extern "C"
     void UseLanguageTexts() RETAIL(FUN_00181aa8);
 }
 
+// The language the voices are spoken in (the voice bank, the levels' voices, the movies' sound channel): the one played in; the
+// native build's the speech language option's when one is chosen (src/platform/native/ui/languages.cpp, THE LIST 7)
+#ifdef TWIN_NATIVE
+u32 NativeSpeechLanguage(u32 language);
+inline u32 SpeechLanguage()
+{
+    return NativeSpeechLanguage(g_CurrentLanguage);
+}
+#else
+inline u32 SpeechLanguage()
+{
+    return g_CurrentLanguage;
+}
+#endif
+
 // A game text by its number (the code's text file's)
 inline const char* GameText(u32 text)
 {

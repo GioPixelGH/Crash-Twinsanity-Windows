@@ -460,6 +460,8 @@ void Native::OpenDiscImage()
     Log("disc image %s", LogPath(image).c_str());
     // What it is (discidentity.cpp): the whole image hashed once, on a thread of its own, in a player's start
     IdentifyDisc(image, GetSettings().headless ? DiscHashing::None : DiscHashing::Background);
+    // Its texts' languages by their content, and the voices' (languages.cpp)
+    NativeUi::LogLanguages();
 }
 
 // ---------------------------------------------------------------------------------------------------------- the system

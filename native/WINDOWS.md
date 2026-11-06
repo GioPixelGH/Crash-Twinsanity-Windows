@@ -404,6 +404,9 @@ and the dumps of that size. `--identify-disc` recognises the disc image given (`
 exits. The CRC-32 and SHA-1 code is TwinsanityEvolved's engine's (NativeEE, MIT: discimagehash.cpp, its notice kept;
 native/third_party/twinsanityevolved).
 
+`languages:` (languages.cpp, 1.2.0) says whether each text bank is in the language its name says (a bank's first lines against
+TwinsanityEvolved's words of each language, languageprobes.h) and which language the voices are in.
+
 While it runs, besides the game's trail (under "Debugging"): `game: LEVEL loaded in N s` for each loading (the title's and a
 level's, from the loading state to the next), and `performance:` a line a minute of play (play and the cutscenes, not the menus,
 the pause, the loadings or the movies): the frames a second, the slowest frame, a frame's work on each thread (the game's own

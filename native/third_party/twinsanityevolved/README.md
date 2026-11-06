@@ -9,3 +9,4 @@ What this port takes from it, each file keeping its copyright notice:
 | Ours | Theirs | Licence |
 |---|---|---|
 | src/platform/native/discimagehash.h, .cpp (the disc image's CRC-32 and SHA-1) | engine/app/host/disc_image_hash.h, .cpp | NativeEE's MIT |
+| src/platform/native/ui/languageprobes.h (a text bank's language by its words) | engine/app/host/language_probes.h | NativeEE's MIT |

@@ -149,6 +149,8 @@ LOG_START = [
     r"in %USERPROFILE%\\x\"",
     # (what the image is: its program and size; not hashed headless)
     r"\] disc: SLES_525\.68 \(VER 1\.01\), the retail PAL 1\.01 program",
+    # (the texts' and voices' languages: languages.cpp)
+    r"\] languages: the texts' banks as their names say; the voices as the texts",
     r"\] display: none",
     r"\] audio: none",
     # (each thread's first timer query never begun, $TWIN_GPU_TIME_TEST=stuck: left out, the card's time still known)

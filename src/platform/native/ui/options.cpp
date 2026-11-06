@@ -72,6 +72,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionShowFps, "show_fps", 0, 1},
     {OptionDithering, "dithering", 0, 1},
     {OptionRenderDistance, "render_distance", 0, 4},
+    {OptionSpeechLanguage, "speech_language", 0, 5},
 };
 
 s32 g_Values[OptionCount];
@@ -144,6 +145,7 @@ const char* ValueMeaning(const OptionInfo& info, s32 value)
     static constexpr const char* Filters[] = {"sharp", "smooth"};
     static constexpr const char* Hints[] = {"original", "bar"};
     static constexpr const char* AntiAliasing[] = {"off", "FXAA", "SSAA 2x", "SSAA 4x"};
+    static constexpr const char* Speech[] = {"as the texts", "English", "French", "German", "Italian", "Spanish"};
     static constexpr const char* Layouts[] = {"by the places", "Nintendo's"};
     static constexpr const char* Dithering[] = {"as the PS2", "off"};
     static constexpr const char* Distances[] = {"original", "short", "medium", "long", "unlimited"};
@@ -170,6 +172,8 @@ const char* ValueMeaning(const OptionInfo& info, s32 value)
         return pick(Dithering);
     case OptionRenderDistance:
         return pick(Distances);
+    case OptionSpeechLanguage:
+        return pick(Speech);
     default:
         return info.maximum == 1 ? pick(Toggle) : nullptr;
     }

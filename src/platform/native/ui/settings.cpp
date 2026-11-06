@@ -192,8 +192,28 @@ void Build()
             return pads != nullptr && pads->flags.vibration != 0 ? 1 : 0;
         },
         SetVibration, 1, [](s32 value) { return Text(value != 0 ? 1 : 0); }));
-    gameplay.push_back(OptionChoice(TextGameLanguage, TextDescGameLanguage, OptionLanguage,
-                                    {TextLanguageWindows, TextLanguageEnglish, TextLanguageFrench, TextLanguageGerman,
+    // The texts' language (and the voices', unless the next row chooses theirs: THE LIST 7). A slot whose texts are another
+    // language by their content (#25's Portuguese in the English slot: languages.cpp) is named by that language
+    gameplay.push_back(Choice(
+        TextGameLanguage, TextDescGameLanguage, [] { return GetOption(OptionLanguage); },
+        [](s32 value) { SetOption(OptionLanguage, value); }, 5, [](s32 value) {
+            constexpr u32 Names[] = {TextLanguageWindows, TextLanguageEnglish, TextLanguageFrench, TextLanguageGerman,
+                                     TextLanguageItalian, TextLanguageSpanish};
+            const char* content = TextBankLanguage(value);
+            if (content != nullptr && std::strcmp(content, "portuguese") == 0)
+            {
+                return Text(TextLanguagePortuguese);
+            }
+
+            if (content != nullptr && std::strcmp(content, "dutch") == 0)
+            {
+                return Text(TextLanguageDutch);
+            }
+
+            return Text(Names[std::clamp(value, 0, 5)]);
+        }));
+    gameplay.push_back(OptionChoice(TextSpeechLanguage, TextDescSpeechLanguage, OptionSpeechLanguage,
+                                    {TextLanguageAsTexts, TextLanguageEnglish, TextLanguageFrench, TextLanguageGerman,
                                      TextLanguageItalian, TextLanguageSpanish}));
     gameplay.push_back(Toggle(TextSkipCutscenes, TextDescSkip, OptionSkipCutscenes));
     gameplay.push_back(Toggle(TextFastLoading, TextDescFastLoading, OptionFastLoading));
@@ -736,6 +756,7 @@ void ResetTab(u32 tab)
         SetVibration(DefaultOption(OptionVibration));
         ResetOptions({OptionLanguage, OptionSkipCutscenes, OptionFastLoading, OptionRetailFixes, OptionPauseOnFocusLoss,
                       OptionDetailedLog});
+        ResetOptions({OptionSpeechLanguage});
         break;
     case TabAccessibility:
         ResetOptions({OptionCameraShake, OptionInvertCameraX, OptionInvertCameraY, OptionCameraSpeed, OptionStickDeadZone});

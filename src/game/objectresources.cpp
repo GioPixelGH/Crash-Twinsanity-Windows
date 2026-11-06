@@ -111,12 +111,12 @@ void ReleaseResource(ResourceTable* table, u16 id, Delete deleteResource)
 // The voices of the language played (none past the languages)
 ResourceTable* VoicesOf(GameResources* resources)
 {
-    if (resources->voices == nullptr || g_CurrentLanguage >= resources->languageCount)
+    if (resources->voices == nullptr || SpeechLanguage() >= resources->languageCount)
     {
         return nullptr;
     }
 
-    return resources->voices[g_CurrentLanguage];
+    return resources->voices[SpeechLanguage()];
 }
 
 // Sounds the game's table has are its own, the others the language's voices (no voices: retail reads the table at address 0)

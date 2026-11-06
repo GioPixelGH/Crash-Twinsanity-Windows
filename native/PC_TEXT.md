@@ -70,7 +70,7 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x119 | 120 hz | 120 hz | 120 hz | 120 hz | 120 hz |
 | 0x11A | 144 hz | 144 hz | 144 hz | 144 hz | 144 hz |
 | 0x11B | unlimited | illimitée | unbegrenzt | ilimitada | illimitata |
-| 0x11C | language | langue | sprache | idioma | lingua |
+| 0x11C | text language | langue des textes | textsprache | idioma de los textos | lingua dei testi |
 | 0x11D | as windows | comme windows | wie windows | como windows | come windows |
 | 0x11E | english | english | english | english | english |
 | 0x11F | français | français | français | français | français |
@@ -137,7 +137,7 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x15C | wait for the screen's refresh: no tearing. | synchronisé à l'écran: pas de déchirure. | auf den bildschirm warten: kein tearing. | sincronizar con la pantalla: sin cortes. | sincronizza con lo schermo: niente tearing. |
 | 0x15D | the look of an old crt television. | l'aspect d'une vieille télévision. | wie ein alter röhrenfernseher. | el aspecto de una tele antigua. | l'aspetto di un vecchio televisore. |
 | 0x15E | 50 hz is the original timing. above 60 needs a fast pc. | 50 hz est la cadence d'origine. au-delà de 60, un pc rapide. | 50 hz ist das original. über 60 braucht einen schnellen pc. | 50 hz es el ritmo original. más de 60 pide un pc rápido. | 50 hz è la frequenza originale. oltre 60 serve un pc veloce. |
-| 0x15F | texts, voices and movies. from the game's next start. | textes, voix et films. au prochain lancement du jeu. | texte, stimmen und filme. ab dem nächsten spielstart. | textos, voces y vídeos. al volver a abrir el juego. | testi, voci e filmati. dal prossimo avvio del gioco. |
+| 0x15F | the texts and title pictures, and the voices unless chosen below. from the next start. | les textes et les titres, et les voix sauf choix plus bas. au prochain lancement. | texte und titelbilder, die stimmen auch, außer unten gewählt. ab dem nächsten start. | los textos y los títulos, y las voces salvo que elijas abajo. al volver a abrir el juego. | i testi e i titoli, e le voci se non scelte sotto. dal prossimo avvio del gioco. |
 | 0x160 | move the picture on the screen. | déplacer l'image à l'écran. | das bild verschieben. | mover la imagen en pantalla. | sposta l'immagine sullo schermo. |
 | 0x161 | the music's volume. | le volume de la musique. | die lautstärke der musik. | el volumen de la música. | il volume della musica. |
 | 0x162 | the sound effects' volume. | le volume des sons. | die lautstärke der effekte. | el volumen de los efectos. | il volume degli effetti. |
@@ -252,6 +252,11 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1CF | tests and reports | tests et rapports | tests und berichte | pruebas e informes | prove e segnalazioni |
 | 0x1D0 | the hd texture pack | le pack de textures hd | das hd-texturpaket | el pack de texturas hd | il pacchetto di texture hd |
 | 0x1D1 | code from twinsanityevolved | du code de twinsanityevolved | code aus twinsanityevolved | código de twinsanityevolved | codice da twinsanityevolved |
+| 0x1D2 | voice language | langue des voix | sprache der stimmen | idioma de las voces | lingua delle voci |
+| 0x1D3 | the voices and the movies' sound: as the texts, or another. from the next start. | les voix et le son des films : comme les textes, ou une autre. au prochain lancement. | stimmen und ton der filme: wie die texte oder eine andere. ab dem nächsten start. | las voces y el sonido de los vídeos: como los textos u otro. al volver a abrir el juego. | le voci e l'audio dei filmati: come i testi, o un'altra. dal prossimo avvio del gioco. |
+| 0x1D4 | as the texts | comme les textes | wie die texte | como los textos | come i testi |
+| 0x1D5 | português | português | português | português | português |
+| 0x1D6 | nederlands | nederlands | nederlands | nederlands | nederlands |
 
 ## English (29 lines)
 
