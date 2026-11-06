@@ -50,7 +50,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionMouse, "mouse", 1, 1},
     {OptionTextureUpscale, "texture_upscale", 0, 2},
     {OptionTexturePack, "texture_pack", 1, 1},
-    {OptionAntiAliasing, "anti_aliasing", 0, 3},
+    {OptionAntiAliasing, "anti_aliasing", 0, 4},
     {OptionVSync, "vsync", 1, 1},
     {OptionMusicVolume, "music_volume", 10, 10},
     {OptionEffectsVolume, "effects_volume", 10, 10},
@@ -144,7 +144,7 @@ const char* ValueMeaning(const OptionInfo& info, s32 value)
     static constexpr const char* Languages[] = {"Windows'", "English", "French", "German", "Italian", "Spanish"};
     static constexpr const char* Filters[] = {"sharp", "smooth"};
     static constexpr const char* Hints[] = {"original", "bar"};
-    static constexpr const char* AntiAliasing[] = {"off", "FXAA", "SSAA 2x", "SSAA 4x"};
+    static constexpr const char* AntiAliasing[] = {"off", "FXAA", "SSAA 2x", "SSAA 4x", "SMAA"};
     static constexpr const char* Speech[] = {"as the texts", "English", "French", "German", "Italian", "Spanish"};
     static constexpr const char* Layouts[] = {"by the places", "Nintendo's"};
     static constexpr const char* Dithering[] = {"as the PS2", "off"};

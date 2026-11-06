@@ -11,6 +11,7 @@
 #include "png.h"
 #include "presenter.h"
 #include "settings.h"
+#include "smaa.h"
 #include "hw/hwgs.h"
 #include "hw/replace.h"
 #include "resolution.h"
@@ -379,6 +380,20 @@ void PresentTexture(GLuint texture, f32 u0, f32 v0, f32 u1, f32 v1, u32 pictureW
     s32 width = 0;
     s32 height = 0;
     SDL_GetWindowSizeInPixels(p.window, &width, &height);
+    // SMAA (the anti-aliasing option's 4): the picture anti-aliased at its own size first (smaa.cpp), then drawn in its place as
+    // the picture is (made smaller when it's larger than the window)
+    if (p.antiAliasing == 4)
+    {
+        if (GLuint smoothed = NativeGraphics::SmaaPicture(texture, u0, v0, u1, v1, pictureWidth, pictureHeight); smoothed != 0)
+        {
+            texture = smoothed;
+            u0 = 0.0f;
+            v0 = 0.0f;
+            u1 = 1.0f;
+            v1 = 1.0f;
+        }
+    }
+
     // The hardware renderer shares the context: its state isn't the presenter's
     gl.BindFramebuffer(0x8D40, 0);
     gl.Disable(0x0BE2);
@@ -795,8 +810,9 @@ bool NativeGraphicsSetTexturePack(bool on)
 bool NativeGraphicsSetAntiAliasing(int mode)
 {
     // 0 off, 1 FXAA on the shown picture, 2 and 3 supersampling (the internal scale 2 and 4 times the setting's, up to 8: every
-    // target is read as a texture as well, so multisampled ones would have to be resolved at each read)
-    if (mode < 0 || mode > 3)
+    // target is read as a texture as well, so multisampled ones would have to be resolved at each read), 4 SMAA on the shown
+    // picture (smaa.cpp)
+    if (mode < 0 || mode > 4)
     {
         return false;
     }

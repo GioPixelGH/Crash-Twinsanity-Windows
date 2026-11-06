@@ -133,7 +133,7 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x158 | smooth or sharp pixels when the picture is scaled. | pixels lissés ou nets à l'agrandissement. | weiche oder scharfe pixel beim skalieren. | píxeles suaves o nítidos al escalar. | pixel morbidi o nitidi nel ridimensionamento. |
 | 0x159 | smooth the game's textures at a larger size. | textures lissées en plus grand. | texturen größer und glatter. | texturas suavizadas a mayor tamaño. | texture levigate più grandi. |
 | 0x15A | use the textures of a texture pack. | utiliser un pack de textures. | texturen eines texturpakets nutzen. | usar un pack de texturas. | usa un pacchetto di texture. |
-| 0x15B | fxaa smooths the picture's edges. ssaa draws it 2 or 4 times larger and shrinks it: smoother, slower. | fxaa lisse les bords. ssaa dessine l'image 2 ou 4 fois plus grande puis la réduit : plus lisse, plus lent. | fxaa glättet kanten. ssaa zeichnet das bild 2- oder 4-mal größer, dann kleiner: glatter, langsamer. | fxaa suaviza bordes. ssaa dibuja la imagen 2 o 4 veces mayor y la reduce: más suave, más lento. | fxaa leviga i bordi. ssaa disegna l'immagine 2 o 4 volte più grande e la riduce: più liscia, più lenta. |
+| 0x15B | fxaa and smaa smooth the edges, smaa better. ssaa draws the picture 2 or 4 times larger: slower. | fxaa et smaa lissent les bords, smaa mieux. ssaa dessine l'image 2 ou 4 fois plus grande : plus lent. | fxaa und smaa glätten kanten, smaa besser. ssaa zeichnet das bild 2- oder 4-mal größer: langsamer. | fxaa y smaa suavizan bordes, smaa mejor. ssaa dibuja la imagen 2 o 4 veces mayor: más lento. | fxaa e smaa levigano i bordi, smaa meglio. ssaa disegna l'immagine 2 o 4 volte più grande: più lento. |
 | 0x15C | wait for the screen's refresh: no tearing. | synchronisé à l'écran: pas de déchirure. | auf den bildschirm warten: kein tearing. | sincronizar con la pantalla: sin cortes. | sincronizza con lo schermo: niente tearing. |
 | 0x15D | the look of an old crt television. | l'aspect d'une vieille télévision. | wie ein alter röhrenfernseher. | el aspecto de una tele antigua. | l'aspetto di un vecchio televisore. |
 | 0x15E | 50 hz is the original timing. above 60 needs a fast pc. | 50 hz est la cadence d'origine. au-delà de 60, un pc rapide. | 50 hz ist das original. über 60 braucht einen schnellen pc. | 50 hz es el ritmo original. más de 60 pide un pc rápido. | 50 hz è la frequenza originale. oltre 60 serve un pc veloce. |
@@ -257,6 +257,7 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1D4 | as the texts | comme les textes | wie die texte | como los textos | come i testi |
 | 0x1D5 | português | português | português | português | português |
 | 0x1D6 | nederlands | nederlands | nederlands | nederlands | nederlands |
+| 0x1D7 | smaa | smaa | smaa | smaa | smaa |
 
 ## English (29 lines)
 

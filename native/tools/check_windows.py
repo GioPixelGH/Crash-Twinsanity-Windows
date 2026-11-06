@@ -190,6 +190,56 @@ PORTABLE_LAUNCHER = ("import subprocess, sys\n"
                      "    sys.exit(99)\n")
 
 
+def run_for(exe, folder, options, env, args, until, seconds=120, resolution=None):
+    """The program run in a settings folder of its own (FOLDER/settings) until the file UNTIL is there (or it ends, or SECONDS):
+    its log's text"""
+    if folder.exists():
+        shutil.rmtree(folder)
+    settings = folder / "settings" / "Crash Twinsanity"
+    settings.mkdir(parents=True)
+    (settings / "disc_image.txt").write_text(disc_image() + "\n")
+    (settings / "options.txt").write_text("pause_on_focus_loss=0\n" + "".join(f"{o}\n" for o in options))
+    if resolution:
+        (settings / "resolution.txt").write_text(resolution)
+    full = dict(os.environ, HOME=str(folder / "settings"), APPDATA=str(folder / "settings"), **env)
+    with open(folder / "log.txt", "w") as log:
+        process = subprocess.Popen([str(exe), *args], env=full, stdout=log, stderr=subprocess.STDOUT, cwd=folder)
+        started = time.time()
+        while (until is None or not until.exists()) and process.poll() is None and time.time() - started < seconds:
+            time.sleep(1)
+        if until is not None and until.exists():
+            time.sleep(2)
+        process.kill()
+        process.wait()
+    return (folder / "log.txt").read_text(errors="replace")
+
+
+def smaa(exe, work, frame=600):
+    """The anti-aliasing option's SMAA (smaa.cpp): the beach at 1x in a 1280x720 window at a fixed time, anti-aliasing off and
+    SMAA, the window as shown ($TWIN_WINDOW_SHOTS): SMAA's shaders made, a few percent of the window's pixels changed (the
+    edges), the picture's brightness the same: (passed, what happened)"""
+    shots = {}
+    for name, value in (("off", 0), ("smaa", 4)):
+        folder = work / f"smaa-{name}"
+        shot = folder / f"window_{frame:06d}.png"
+        log = run_for(exe, folder, [f"anti_aliasing={value}", "widescreen=1"],
+                      {"TWIN_FIXED_TIME": "1", "TWINSANITY_AUDIO": "frames", "TWIN_WINDOW_SHOTS": f"{folder}:{frame}"}, ["--quick"],
+                      shot, resolution="scale=1\nwindow=1280x720\nfullscreen=0\n")
+        if not shot.exists():
+            return False, f"no window picture of frame {frame} ({name})"
+        if value == 4 and "SMAA 1x" not in log:
+            return False, "SMAA's shaders not made (its log line missing)"
+        shots[name] = frame_rgba(shot)
+    (w, h, a), (_, _, b) = shots["off"], shots["smaa"]
+    changed = sum(1 for x, y in zip(a, b) if x != y)
+    share = changed / len(a)
+    bright = (sum(b) - sum(a)) / len(a)
+    what = f"{share:.1%} of the window's bytes changed by SMAA (the edges), the brightness {bright:+.2f} of 255"
+    return 0.005 < share < 0.25 and abs(bright) < 0.5, what
+
+
+
+
 def other_disc_image(key, root=HERE):
     """Another disc image local.json may name ("disc_image_usa": the NTSC-U v2.00 disc), or None"""
     local = root / "local.json"
@@ -1513,6 +1563,10 @@ def report(exe, reference, work, with_sweep, reference_name=None):
 
     ok, what = disc_identity(exe, work)
     print(f"disc identity   {'ok' if ok else 'FAILED'}: {what}")
+    failed |= not ok
+
+    ok, what = smaa(exe, work)
+    print(f"smaa            {'ok' if ok else 'FAILED'}: {what}")
     failed |= not ok
 
     if with_sweep:

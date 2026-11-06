@@ -64,6 +64,12 @@ constexpr u32 DistanceOrder[] = {Native::DistanceShort, Native::DistanceOriginal
 constexpr u32 DistanceTexts[] = {TextDistanceShort, TextDistanceOriginal, TextDistanceMedium, TextDistanceLong, TextUnlimited};
 constexpr s32 DistanceChoices = static_cast<s32>(std::size(DistanceOrder));
 
+// The anti-aliasing's choices by cost, so right is smoother and slower (options.txt keeps its numbers: 4 is SMAA)
+constexpr s32 AntiAliasingOrder[] = {0, 1, 4, 2, 3};
+constexpr u32 AntiAliasingTexts[] = {0, TextFxaa, TextSmaa, TextSsaa2, TextSsaa4};
+constexpr s32 AntiAliasingChoices = static_cast<s32>(std::size(AntiAliasingOrder));
+
+
 std::vector<Row> g_Rows[Pages];
 bool g_Built = false;
 
@@ -280,8 +286,15 @@ void Build()
     // (The texture upscale isn't shown until the graphics have it: NativeGraphicsSetTextureUpscale takes only off.) The
     // anti-aliasing is FXAA on the shown picture, or supersampling (the render scale 2 or 4 times the resolution's, up to 8x
     // the PS2's, the picture made smaller as it's shown); there's no MSAA: PCSX2 dropped its own
-    display.push_back(
-        OptionChoice(TextAntiAliasing, TextDescAntiAliasing, OptionAntiAliasing, {0, TextFxaa, TextSsaa2, TextSsaa4}));
+    display.push_back(Choice(
+        TextAntiAliasing, TextDescAntiAliasing,
+        [] {
+            const s32 value = GetOption(OptionAntiAliasing);
+            const auto* at = std::find(std::begin(AntiAliasingOrder), std::end(AntiAliasingOrder), value);
+            return at != std::end(AntiAliasingOrder) ? static_cast<s32>(at - std::begin(AntiAliasingOrder)) : 0;
+        },
+        [](s32 value) { SetOption(OptionAntiAliasing, AntiAliasingOrder[value]); }, AntiAliasingChoices - 1,
+        [](s32 value) { return Text(AntiAliasingTexts[value]); }));
     display.push_back(OptionChoice(TextDithering, TextDescDithering, OptionDithering, {TextDitherPs2, 0}));
     display.push_back(Choice(
         TextRenderDistance, TextDescRenderDistance,

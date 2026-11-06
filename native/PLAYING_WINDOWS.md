@@ -94,7 +94,7 @@ Windows' language by default) and the **Voice language** (the voices and the mov
 one), both from the game's next start; a translated disc image that keeps its texts in another language's place shows that
 language's name (Brazilian Portuguese texts in the English slot read "português"). Window size or fullscreen, the internal
 resolution (1x to 8x the PS2's), widescreen (4:3, 16:9 or 21:9), the refresh rate, texture filtering, scanlines, texture packs, anti-aliasing
-(FXAA, or supersampling: SSAA 2x and 4x draw the picture 2 or 4 times larger, slower), **Dithering** (as the PS2, the default: its 16-bit picture with a fine pattern; or off: full colour), **Draw distance**
+(FXAA or SMAA on the picture, SMAA the sharper; or supersampling: SSAA 2x and 4x draw the picture 2 or 4 times larger, slower), **Dithering** (as the PS2, the default: its 16-bit picture with a fine pattern; or off: full colour), **Draw distance**
 (short, original, medium, long or unlimited; original, the default, is the PS2's: farther ones draw the grass and small
 things before you get close and the detailed models of trees and statues from farther, but draw more: unlimited about twice
 as much on the beach, slower on an older PC; short draws less), v-sync, a frames per second counter (**Show FPS**, off by default: in the top left corner), volumes, skipping cutscenes,
@@ -150,7 +150,7 @@ The game's code here is a decompilation for preservation and study; Crash Twinsa
 The folder carries SDL 3 (zlib licence), FFmpeg 9.0.2's libavcodec and libavutil (LGPL 2.1 or later: a decode-only build with
 just the MPEG-2 video decoder, its source https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz; `avcodec-63.dll` and `avutil-61.dll`
 are separate files you can replace with your own build of FFmpeg 9.x), the fonts Luckiest Guy (Apache 2.0) and Fredoka (SIL Open
-Font Licence), stb_truetype (public domain / MIT) and code from TwinsanityEvolved by menaman123 (MIT: `twinsanityevolved-README.md`
-says which); their licences are in the `licenses` folder, with the port's own
+Font Licence), stb_truetype (public domain / MIT), SMAA by Jorge Jimenez and others (MIT) and code from TwinsanityEvolved by
+menaman123 (MIT: `twinsanityevolved-README.md` says which); their licences are in the `licenses` folder, with the port's own
 (`Crash-Twinsanity-Windows-LICENSE.txt`: MIT for the Windows port's changes; the decompilation and the Mac port it's built on
 keep their authors' rights). The icon is the port's own drawing.

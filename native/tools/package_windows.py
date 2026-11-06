@@ -58,6 +58,8 @@ def main():
     for name in ("LICENSE-LuckiestGuy.txt", "OFL-Fredoka.txt", "README.md"):
         shutil.copy2(HERE / "native" / "third_party" / "fonts" / name, licenses / f"fonts-{name}")
     shutil.copy2(HERE / "native" / "third_party" / "stb" / "LICENSE.txt", licenses / "stb-LICENSE.txt")
+    # SMAA (iryoku's, MIT)
+    shutil.copy2(HERE / "native" / "third_party" / "smaa" / "LICENSE.txt", licenses / "SMAA-LICENSE.txt")
     # TwinsanityEvolved's MIT code (its README says which files)
     for name in ("LICENSE-TwinsanityEvolved.txt", "LICENSE-NativeEE.txt", "README.md"):
         shutil.copy2(HERE / "native" / "third_party" / "twinsanityevolved" / name, licenses / f"twinsanityevolved-{name}")

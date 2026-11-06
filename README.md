@@ -249,6 +249,7 @@ repository shipped isn't included here: get it from its author.
 - [Crash Twinsanity Improved](https://github.com/AlexMollard/Crash-Twinsanity-Improved) by AlexMollard: the Mac port's
   optional fixes come from this mod. Its 21:9 mode is TechieSaru's fix, from the mod's PCSX2 patches.
 - CRASHARKI, for the HD texture pack the Mac port was tested with.
+  Gutierrez (MIT): the SMAA anti-aliasing choice.
 - [TwinsanityEvolved](https://github.com/menaman123/TwinsanityEvolved) by menaman123, another PC port: code under its MIT
   licence (the disc image's CRC-32 and SHA-1, and how a text bank's language is told, from its engine NativeEE), its notices kept;
   [`native/third_party/twinsanityevolved`](native/third_party/twinsanityevolved/README.md) lists what.
