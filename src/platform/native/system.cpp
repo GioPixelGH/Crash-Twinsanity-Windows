@@ -338,6 +338,7 @@ std::string CheckDiscImage(const std::string& image)
     Native::Disc::Entry executable;
     if (!Native::Disc::Find("SLES_525.68", &executable))
     {
+        Native::LogRefusedDisc(image);
         Native::Disc::Close();
         return Format("%s isn't the PAL Crash Twinsanity disc (SLES-52568): there's no SLES_525.68 on it.", image.c_str());
     }
@@ -354,6 +355,7 @@ std::string CheckDiscImage(const std::string& image)
     case 0:
         return {};
     case 1:
+        Native::LogRefusedDisc(image);
         Native::Disc::Close();
         return Format("%s is another version of Crash Twinsanity, or a changed copy: this program needs the PAL release "
                       "(Europe/Australia, SLES-52568), whose SLES_525.68 has the SHA-1 "
@@ -456,6 +458,8 @@ void Native::OpenDiscImage()
 
     g_DiscImage = image;
     Log("disc image %s", LogPath(image).c_str());
+    // What it is (discidentity.cpp): the whole image hashed once, on a thread of its own, in a player's start
+    IdentifyDisc(image, GetSettings().headless ? DiscHashing::None : DiscHashing::Background);
 }
 
 // ---------------------------------------------------------------------------------------------------------- the system

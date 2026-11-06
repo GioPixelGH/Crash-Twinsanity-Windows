@@ -647,6 +647,7 @@ const NativeTextLine g_NativeTexts[] = {
     {TextCreditsLinux, {"the linux build", "la version linux", "die linux-version", "la versión para linux", "la versione per linux"}},
     {TextCreditsTesters, {"tests and reports", "tests et rapports", "tests und berichte", "pruebas e informes", "prove e segnalazioni"}},
     {TextCreditsTextures, {"the hd texture pack", "le pack de textures hd", "das hd-texturpaket", "el pack de texturas hd", "il pacchetto di texture hd"}},
+    {TextCreditsEvolved, {"code from twinsanityevolved", "du code de twinsanityevolved", "code aus twinsanityevolved", "código de twinsanityevolved", "codice da twinsanityevolved"}},
     {TextFxaa, {"fxaa", "fxaa", "fxaa", "fxaa", "fxaa"}},
     {TextMenuHints, {"menu hints", "aides des menus", "menühinweise", "ayudas de menú", "suggerimenti menu"}},
     {TextDescMenuHints, {"the menus' button hints: the game's own, or a bar at the bottom.", "les aides des boutons : celles du jeu, ou une barre en bas.", "die tastenhinweise: die des spiels oder eine leiste unten.", "las ayudas de botones: las del juego o una barra abajo.", "i suggerimenti dei tasti: quelli del gioco o una barra in basso."}},

@@ -251,6 +251,7 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1CE | the linux build | la version linux | die linux-version | la versión para linux | la versione per linux |
 | 0x1CF | tests and reports | tests et rapports | tests und berichte | pruebas e informes | prove e segnalazioni |
 | 0x1D0 | the hd texture pack | le pack de textures hd | das hd-texturpaket | el pack de texturas hd | il pacchetto di texture hd |
+| 0x1D1 | code from twinsanityevolved | du code de twinsanityevolved | code aus twinsanityevolved | código de twinsanityevolved | codice da twinsanityevolved |
 
 ## English (29 lines)
 

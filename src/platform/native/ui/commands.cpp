@@ -1069,6 +1069,22 @@ bool RunCommand(const char* argument, int* status)
         return true;
     }
 
+    // The disc image (--iso, $TWINSANITY_ISO or local.json's) recognised there and then, hashed (discidentity.cpp)
+    if (command == "--identify-disc")
+    {
+        const char* image = Native::GetSettings().discImage;
+        if (image == nullptr || !Native::Disc::Open(image))
+        {
+            Native::Log("no disc image to recognise (--iso, $TWINSANITY_ISO or local.json's disc_image)");
+            *status = 1;
+            return true;
+        }
+
+        Native::IdentifyDisc(image, Native::DiscHashing::Wait);
+        *status = 0;
+        return true;
+    }
+
     if (command == "--selftest-ui")
     {
         TestTexts();

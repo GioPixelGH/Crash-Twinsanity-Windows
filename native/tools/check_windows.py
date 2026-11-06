@@ -147,6 +147,8 @@ LOG_START = [
     r"\] texture pack: on, none installed",
     r"\] the last session \(log\.previous\.txt\): 1\.0\.18 for 13 min 33 s, ended in a crash: \"fatal exception 0xc0000005 .*"
     r"in %USERPROFILE%\\x\"",
+    # (what the image is: its program and size; not hashed headless)
+    r"\] disc: SLES_525\.68 \(VER 1\.01\), the retail PAL 1\.01 program",
     r"\] display: none",
     r"\] audio: none",
     # (each thread's first timer query never begun, $TWIN_GPU_TIME_TEST=stuck: left out, the card's time still known)
@@ -184,6 +186,41 @@ PORTABLE_LAUNCHER = ("import subprocess, sys\n"
                      "    sys.exit(subprocess.run(sys.argv[2:], startupinfo=none, timeout=float(sys.argv[1])).returncode)\n"
                      "except subprocess.TimeoutExpired:\n"
                      "    sys.exit(99)\n")
+
+
+def other_disc_image(key, root=HERE):
+    """Another disc image local.json may name ("disc_image_usa": the NTSC-U v2.00 disc), or None"""
+    local = root / "local.json"
+    image = json.loads(local.read_text()).get(key, "") if local.exists() else ""
+    return image if image and Path(image).exists() else None
+
+
+def disc_identity(exe, work):
+    """The disc images recognised (discidentity.cpp, --identify-disc: each hashed whole, a fresh settings folder each): local.json's
+    PAL image and, when it names one, the NTSC-U v2.00 image ("disc_image_usa"), each a retail disc of redump.org's:
+    (passed, what happened)"""
+    images = [("PAL", disc_image(), r"disc: the retail disc, SLES-52568 v1\.01 PAL .*redump\.org's disc 4514 \(checked in ([\d.]+) s\)")]
+    usa = other_disc_image("disc_image_usa")
+    if usa:
+        images.append(("NTSC-U", usa, r"disc: the retail disc, SLUS-20909 v2\.00 NTSC-U .*redump\.org's disc 13689 \(checked in ([\d.]+) s\)"))
+    said = []
+    for name, image, pattern in images:
+        folder = work / f"disc-identity-{name}"
+        if folder.exists():
+            shutil.rmtree(folder)
+        settings = folder / "settings" / "Crash Twinsanity"
+        settings.mkdir(parents=True)
+        env = dict(os.environ, HOME=str(folder / "settings"), APPDATA=str(folder / "settings"))
+        result = subprocess.run([str(exe), "--identify-disc", "--iso", image], env=env, capture_output=True, text=True,
+                                errors="replace", timeout=180, cwd=folder)
+        (folder / "log.txt").write_text(result.stdout + result.stderr)
+        found = re.search(pattern, result.stderr)
+        if not found:
+            return False, f"the {name} image not recognised as redump.org's dump (log: {folder / 'log.txt'})"
+        said.append(f"{name} retail ({found.group(1)} s)")
+    if not usa:
+        said.append("no NTSC-U image in local.json (disc_image_usa)")
+    return True, ", ".join(said)
 
 
 def disc_image(root=HERE):
@@ -1470,6 +1507,10 @@ def report(exe, reference, work, with_sweep, reference_name=None):
 
     ok, what = render_distance(exe, work)
     print(f"draw distance   {'ok' if ok else 'FAILED'}: {what}")
+    failed |= not ok
+
+    ok, what = disc_identity(exe, work)
+    print(f"disc identity   {'ok' if ok else 'FAILED'}: {what}")
     failed |= not ok
 
     if with_sweep:

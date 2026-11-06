@@ -264,6 +264,7 @@ enum NativeText : u32
     TextCreditsLinux,
     TextCreditsTesters,
     TextCreditsTextures,
+    TextCreditsEvolved,
     NativeTextEnd,
 };
 

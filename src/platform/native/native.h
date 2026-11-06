@@ -159,6 +159,20 @@ bool FindArchiveMod(const char* path, u32* start, u32* size);
 bool IsMod(u64 offset);
 }
 
+// The disc image recognised for the log (discidentity.cpp): the program its SYSTEM.CNF boots, its size and, once an image, its
+// CRC-32 and SHA-1 against redump.org's dumps ("disc: the retail disc, SLES-52568 v1.01 PAL ..."), kept in disc_identity.txt.
+// The disc open. Hashed on a thread of its own (a player's start), there and then (--identify-disc), or not (--headless's runs:
+// the checks)
+enum class DiscHashing
+{
+    Background,
+    Wait,
+    None,
+};
+void IdentifyDisc(const std::string& image, DiscHashing hashing);
+// A refused image's program and size (the dumps of that size), for the log
+void LogRefusedDisc(const std::string& image);
+
 // The sound processor's memory (the SPU2's 2 MB), where sound banks are streamed to: the audio side plays from it
 constexpr u32 SpuMemorySize = 0x200000;
 extern u8 g_SpuMemory[SpuMemorySize];

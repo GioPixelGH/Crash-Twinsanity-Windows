@@ -384,10 +384,25 @@ At the start, after the version's line (`Crash Twinsanity 1.0.19`: native/CMakeL
   saw with nothing after it, or no last line (closed from the Task Manager, a hang, the computer turned off). When the log goes
   to a terminal or a file, the settings folder's `log.txt` is the one read (the last start that wrote one).
 
-Then, as each is there: the disc image, FFmpeg's version, the graphics card (OpenGL's renderer and Windows' adapters, under
+Then, as each is there: the disc image and `disc:` what it is (below), FFmpeg's version, the graphics card (OpenGL's renderer and Windows' adapters, under
 "Debugging"), `display:` the screen the window is on (its number of the screens, its name as Windows has it, its desktop's size
 in pixels, refresh rate and scale, HDR on or off; "none" headless), `audio:` the device the sound goes to (SDL's name of it, a
 person's name in it left out: "Headphones (someone's AirPods)"; the driver, its rate, channels and buffer) or why there's none.
+
+The disc's line (discidentity.cpp, since 1.2.0) says what the image is, by its content, never its name: the program its
+SYSTEM.CNF boots (VER), whether that program's bytes are a retail one's (PAL 1.01's SLES_525.68, NTSC-U 2.00's SLUS_209.09, by
+their SHA-1), its size, and its CRC-32 and SHA-1 over the whole image against redump.org's dumps of the game (their disc pages,
+read 2026-11-06: PAL 1.01 disc 4514, NTSC-U 1.00 42680 and 2.00 13689, NTSC-J 1.00 26782, the two demo discs 35281 and 28365).
+`disc: the retail disc, SLES-52568 v1.01 PAL (Europe, Australia): its size, CRC-32 9055a7bc and SHA-1 are redump.org's disc
+4514`; `a modified copy of the PAL 1.01 disc: ... the image isn't one of redump.org's dumps (2,579,234,816 bytes; redump.org's
+disc 4514 has 2,558,263,296)` (a translation, a mod built into the ISO); `an unknown image: ...`. Only an image with a dump's size
+is hashed (otherwise it can't be one), once: on a thread of its own in Windows' background mode (its processor and disc
+priority below the game's; some 5 s for the PAL image here), its line logged when it's done (`(checked in 5.4 s)`), the hashes
+kept in the settings folder's `disc_identity.txt` by the image's size and date, so later starts say `(checked before)`. Runs
+with `--headless` (the checks) don't hash. An image the game refuses (another release) gets a line too: its program, its size
+and the dumps of that size. `--identify-disc` recognises the disc image given (`--iso`, ...) there and then, hashing it, and
+exits. The CRC-32 and SHA-1 code is TwinsanityEvolved's engine's (NativeEE, MIT: discimagehash.cpp, its notice kept;
+native/third_party/twinsanityevolved).
 
 While it runs, besides the game's trail (under "Debugging"): `game: LEVEL loaded in N s` for each loading (the title's and a
 level's, from the loading state to the next), and `performance:` a line a minute of play (play and the cutscenes, not the menus,

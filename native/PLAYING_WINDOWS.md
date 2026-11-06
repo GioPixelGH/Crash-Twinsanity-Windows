@@ -148,6 +148,7 @@ The game's code here is a decompilation for preservation and study; Crash Twinsa
 The folder carries SDL 3 (zlib licence), FFmpeg 9.0.2's libavcodec and libavutil (LGPL 2.1 or later: a decode-only build with
 just the MPEG-2 video decoder, its source https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz; `avcodec-63.dll` and `avutil-61.dll`
 are separate files you can replace with your own build of FFmpeg 9.x), the fonts Luckiest Guy (Apache 2.0) and Fredoka (SIL Open
-Font Licence) and stb_truetype (public domain / MIT); their licences are in the `licenses` folder, with the port's own
+Font Licence), stb_truetype (public domain / MIT) and code from TwinsanityEvolved by menaman123 (MIT: `twinsanityevolved-README.md`
+says which); their licences are in the `licenses` folder, with the port's own
 (`Crash-Twinsanity-Windows-LICENSE.txt`: MIT for the Windows port's changes; the decompilation and the Mac port it's built on
 keep their authors' rights). The icon is the port's own drawing.

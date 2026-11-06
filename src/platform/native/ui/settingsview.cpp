@@ -80,7 +80,7 @@ std::string ProperWords(const std::string& text)
         {"hud", "HUD"},         {"ui", "UI"},           {"pc", "PC"},       {"fps", "FPS"},
         // The credits' names
         {"windows", "Windows"}, {"linux", "Linux"},     {"mac", "Mac"},     {"hd", "HD"},
-        {"twinsanity improved", "Twinsanity Improved"},
+        {"twinsanity improved", "Twinsanity Improved"}, {"twinsanityevolved", "TwinsanityEvolved"},
         // Portable mode's: the folders' names, the stick, the dialog's button
         {"appdata", "AppData"}, {"user", "User"},       {"usb", "USB"},     {"program files", "Program Files"}, {"ok", "OK"},
     };
@@ -445,6 +445,7 @@ constexpr Credit Credits[] = {
     {TextCreditsLinux, "Gabriel-TwoBits"},
     {TextCreditsTesters, "NitorikoSkye, SSStylishh, APerson7778, VenezuelanHell"},
     {TextCreditsTextures, "CRASHARKI"},
+    {TextCreditsEvolved, "menaman123"},
 };
 
 // The settings' dialogs (settings.cpp) over the screen. Portable mode's: its title and message, then yes and no (asked), OK
