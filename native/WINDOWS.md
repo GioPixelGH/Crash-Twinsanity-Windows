@@ -428,8 +428,16 @@ the beach's some 250 calls a frame, every frame, cost the render thread 0.4-0.5 
 144 Hz); a frame in 8, flushed, costs nothing seen (70.1 fps and 14.3 ms against 1.0.19's 70.0 and 14.3, three runs each,
 alternated), and the minute's line still averages over 400 timed frames. The log says it once at the start, `graphics: the
 card's time measured by OpenGL's timer queries (64 bits), a frame in 8`; `unknown` (with a line saying why) when the driver
-has no timer entry points or no bits (`GL_QUERY_COUNTER_BITS` 0), its results never come (8192 waiting), or
-`$TWIN_GPU_TIME=0` (which leaves the entry points as they are: for measuring the timing's own cost). Measured on the beach in
+has no timer entry points or no bits (`GL_QUERY_COUNTER_BITS` 0), its results never come (8192 waiting: the line says how
+old the oldest is, the frames read with another context current and the queries left out), or `$TWIN_GPU_TIME=0` (which
+leaves the entry points as they are: for measuring the timing's own cost). The results are read in their order, so one that
+never comes held back every one after it: #32's log at 3x and 144 Hz had 8219 waiting 4 s into the title, the user's at 8x
+with SSAA 8357, and the card's time was unknown for the rest of the session (1.1.0). Since 1.2.0 a query whose result isn't
+there 120 frames after it was begun, while the next one's is, is left out (`graphics: a timer query's result not there N
+frames after it was begun, the next one's there: left out`, once a thread), and none is begun on a frame its thread ends with
+another context current (its results couldn't be read). The cause wasn't reproduced here (a query whose begin the driver
+refused is the likeliest: its result never comes); `$TWIN_GPU_TIME_TEST=stuck` makes each thread's first query one such, and
+the log's check has it. Measured on the beach in
 a 1280x720 window at 144 Hz (RTX 4070 SUPER): at 4x the render thread 14 ms a frame, the card 2.2 ms; at 1x with one thread,
 the game's thread 28 ms, the card 1.1 ms. Without a window (the checks) the card's time reads higher (2.2 ms at 1x against
 1.1): an idle card's lower clocks, most likely.

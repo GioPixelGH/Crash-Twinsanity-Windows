@@ -31,6 +31,9 @@ constexpr GLenum GL_QUERY_RESULT_AVAILABLE = 0x8867;
 constexpr u32 TimedEvery = 8;
 // Queries a thread has begun and not read past which its driver is taken never to give their results (some 30 timed frames)
 constexpr size_t MostWaiting = 8192;
+// A thread's frames after which a query's result not there yet, with a later one's there, is taken never to come (its begin
+// refused: no result ever, holding back every one after it): left out, the ones after it read
+constexpr u32 StuckFrames = 120;
 
 // OpenGL's own entry points: the work the timed ones give the card, and the queries'
 struct Real
@@ -91,6 +94,13 @@ void LoadReal()
 // A thread's queries: the context they're in (the one current when it first timed something: a span on another isn't timed),
 // whether the driver times there, its frames and whether this one's timed, the spans open (the outermost's query begun or not),
 // the queries begun and not read yet in their order, and those read, to use again
+struct Waiting
+{
+    GLuint query;
+    // The thread's frame it was begun in
+    u32 frame;
+};
+
 struct Timer
 {
     SDL_GLContext context = nullptr;
@@ -100,8 +110,12 @@ struct Timer
     bool timing = true;
     u32 depth = 0;
     bool began = false;
-    std::deque<GLuint> waiting;
+    std::deque<Waiting> waiting;
     std::vector<GLuint> spare;
+    // The frames its results couldn't be read (another context current), and the queries left out (their results never came)
+    u64 unread = 0;
+    u64 leftOut = 0;
+    bool stuckMade = false;
 };
 thread_local Timer t_Timer;
 std::atomic<u64> g_Nanoseconds{0};
@@ -236,8 +250,18 @@ void GpuTimeBegin()
         g_Real.GenQueries(1, &query);
     }
 
+    // $TWIN_GPU_TIME_TEST=stuck (the log's check): each thread's first query never begun, so its result never comes
+    static const bool stuckTest = std::getenv("TWIN_GPU_TIME_TEST") != nullptr &&
+                                  std::strcmp(std::getenv("TWIN_GPU_TIME_TEST"), "stuck") == 0;
+    if (stuckTest && !timer.stuckMade)
+    {
+        timer.stuckMade = true;
+        timer.waiting.push_back({query, timer.frames});
+        return;
+    }
+
     g_Real.BeginQuery(GL_TIME_ELAPSED, query);
-    timer.waiting.push_back(query);
+    timer.waiting.push_back({query, timer.frames});
     timer.began = true;
 }
 
@@ -260,35 +284,70 @@ void GpuTimeFrame()
 {
     Timer& timer = t_Timer;
     timer.timing = ++timer.frames % TimedEvery == 0;
-    if (!timer.usable || timer.depth != 0 || SDL_GL_GetCurrentContext() != timer.context)
+    if (!timer.usable || timer.depth != 0)
     {
         return;
     }
 
-    // The results there, in their order, up to the first one that isn't
+    // Its results are read on its own context only: with another current here, none is started until they can be read again
+    // (they'd pile up unread)
+    if (SDL_GL_GetCurrentContext() != timer.context)
+    {
+        timer.timing = false;
+        timer.unread++;
+        return;
+    }
+
+    // The results there, in their order, up to the first one that isn't; one not there after StuckFrames while the next one is
+    // never comes (a player's log at 3x and 144 Hz had 8219 waiting after 4 s of the title, the user's at 8x with SSAA 8357, the
+    // time unknown from then on): left out, the rest read
     u64 read = 0;
     while (!timer.waiting.empty())
     {
-        GLuint query = timer.waiting.front();
+        const Waiting oldest = timer.waiting.front();
         GLint available = 0;
-        g_Real.GetQueryObjectiv(query, GL_QUERY_RESULT_AVAILABLE, &available);
+        g_Real.GetQueryObjectiv(oldest.query, GL_QUERY_RESULT_AVAILABLE, &available);
         if (available == 0)
         {
-            break;
+            GLint nextAvailable = 0;
+            if (timer.frames - oldest.frame < StuckFrames || timer.waiting.size() < 2)
+            {
+                break;
+            }
+
+            g_Real.GetQueryObjectiv(timer.waiting[1].query, GL_QUERY_RESULT_AVAILABLE, &nextAvailable);
+            if (nextAvailable == 0)
+            {
+                break;
+            }
+
+            if (timer.leftOut++ == 0)
+            {
+                Native::Log("graphics: a timer query's result not there %u frames after it was begun, the next one's there: left "
+                            "out (the card's time a little short)",
+                            timer.frames - oldest.frame);
+            }
+
+            // (A new name for the next one: this one's may never be usable)
+            timer.waiting.pop_front();
+            continue;
         }
 
         GLuint64 nanoseconds = 0;
-        g_Real.GetQueryObjectui64v(query, GL_QUERY_RESULT, &nanoseconds);
+        g_Real.GetQueryObjectui64v(oldest.query, GL_QUERY_RESULT, &nanoseconds);
         read += nanoseconds;
         timer.waiting.pop_front();
-        timer.spare.push_back(query);
+        timer.spare.push_back(oldest.query);
     }
 
     // (Each timed frame stands for TimedEvery)
     g_Nanoseconds.fetch_add(read * TimedEvery, std::memory_order_relaxed);
     if (timer.waiting.size() > MostWaiting)
     {
-        Native::Log("graphics: %zu timer queries' results not there yet: the card's time unknown", timer.waiting.size());
+        Native::Log("graphics: %zu timer queries' results not there yet (the oldest begun %u frames ago; %llu frames with another "
+                    "context current, %llu queries left out): the card's time unknown",
+                    timer.waiting.size(), timer.frames - timer.waiting.front().frame,
+                    static_cast<unsigned long long>(timer.unread), static_cast<unsigned long long>(timer.leftOut));
         timer.usable = false;
         g_Failed = true;
     }

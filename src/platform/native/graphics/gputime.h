@@ -7,7 +7,9 @@
 // their results are read frames later, when GL_QUERY_RESULT_AVAILABLE says they're there: never waited for; each query's end is
 // sent at once (glFlush), or a driver could keep it until the next call while the card waits. One frame in 8 is timed on each
 // thread, counted 8 times (a query a call every frame cost the render thread 3%). See native/WINDOWS.md, "The log".
-// $TWIN_GPU_TIME=0 times nothing (the entry points as they are)
+// $TWIN_GPU_TIME=0 times nothing (the entry points as they are). A query whose result isn't there 120 frames after it was begun,
+// while the next one's is, is left out (its result would never come: the ones after it were held back, the time unknown after
+// 8192 of them); $TWIN_GPU_TIME_TEST=stuck makes each thread's first query one (never begun), for the log's check
 
 #include "common.h"
 

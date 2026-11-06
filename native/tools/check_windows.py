@@ -120,7 +120,8 @@ PORTABLE_DATA = {"options.txt": (b"# a test's\nshow_fps=1\npause_on_focus_loss=0
 # The log a player's start writes (sessionlog.cpp; native/WINDOWS.md, "The log"), started as Explorer starts it (its own log.txt
 # in the settings folder): the last session's log a 1.0.18 one that crashed, a path in the profile folder in its last line; a mod,
 # a few options. What the start's log must have (regular expressions, in its order), played on the beach for LOG_SECONDS with a
-# performance line every 10 s of play (the graphics card's time in it: the render thread's context times it, a hidden window's);
+# performance line every 10 s of play (the graphics card's time in it: the render thread's context times it, a hidden window's;
+# each thread's first timer query made one whose result never comes, $TWIN_GPU_TIME_TEST=stuck, the time known all the same);
 # then a start that ends on an error (a disc image that isn't there), its last lines; then the settings screen driven from the
 # main menu through changes ($TWIN_SETTINGS_LOG_TEST: settingsshots.cpp), each logged once as it was left, with a settings folder
 # of its own (LOG_SETTINGS_OPTIONS), and no other change line (LOG_SETTINGS_CHANGES of them)
@@ -148,6 +149,8 @@ LOG_START = [
     r"in %USERPROFILE%\\x\"",
     r"\] display: none",
     r"\] audio: none",
+    # (each thread's first timer query never begun, $TWIN_GPU_TIME_TEST=stuck: left out, the card's time still known)
+    r"\] graphics: a timer query's result not there \d+ frames after it was begun, the next one's there: left out",
     r"\] game: Levels\\Earth\\Hub\\beach loaded in [\d.]+ s",
     r"\] performance: [\d.]+ fps over \d+ s of play, the slowest frame \d+ ms; a frame's work: the game [\d.]+ ms .*"
     r"the window's present [\d.]+ ms, VU1 [\d.]+ ms, the render thread [\d.]+ ms \(the GS [\d.]+, OpenGL [\d.]+, waiting for "
@@ -612,7 +615,7 @@ def session_log(exe, work):
 
     status, log = run("start.txt", ["--iso", disc_image()],
                       {"TWIN_SWEEP_LEVEL": PORTABLE_CHUNK, "TWIN_SWEEP_SECONDS": str(LOG_SECONDS), "TWIN_SWEEP_TIMEOUT": "120",
-                       "TWIN_PERFORMANCE_EVERY": "10"}, 300)
+                       "TWIN_PERFORMANCE_EVERY": "10", "TWIN_GPU_TIME_TEST": "stuck"}, 300)
     results = [result("a start played", status, 0, log, LOG_START, changes=0)]
     status, log = run("error.txt", ["--iso", str(root / "missing image.iso")], {}, 60)
     results.append(result("a start ending on an error", status, 1, log, LOG_ERROR))
