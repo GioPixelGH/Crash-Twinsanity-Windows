@@ -6,6 +6,9 @@
 #include "ui/nativeui.h"
 #include "ui/overlayinternal.h"
 
+#include "fixes.h"
+
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <string>
@@ -79,6 +82,11 @@ void AddFpsCounter(std::vector<OverlayFrame::Command>* commands, int pixelWidth,
     ReferenceMapping(static_cast<f32>(pixelWidth), static_cast<f32>(pixelHeight), &scale, &offsetX, &offsetY);
     f32 left = -offsetX / scale + Margin;
     f32 top = -offsetY / scale + Margin;
+    // 32:9 (THE LIST 35): in the middle 16:9's corner, by the HUD, not the wide screen's
+    if (NativeFixes::SuperUltrawide())
+    {
+        left += std::max(0.0f, (static_cast<f32>(pixelWidth) - static_cast<f32>(pixelHeight) * 16.0f / 9.0f) * 0.5f) / scale;
+    }
     TextStyle style;
     style.font = OverlayFont::BodyBold;
     style.size = TextSize;

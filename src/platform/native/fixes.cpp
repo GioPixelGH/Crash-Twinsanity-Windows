@@ -72,7 +72,12 @@ bool RetailFixes()
 
 bool Ultrawide()
 {
-    return g_WidescreenTv != 0 && NativeUi::IsOn(NativeUi::OptionUltrawide);
+    return g_WidescreenTv != 0 && NativeUi::IsOn(NativeUi::OptionUltrawide) && !NativeUi::IsOn(NativeUi::OptionSuperUltrawide);
+}
+
+bool SuperUltrawide()
+{
+    return g_WidescreenTv != 0 && NativeUi::IsOn(NativeUi::OptionSuperUltrawide);
 }
 
 f32 WideTvAspect()
@@ -80,7 +85,9 @@ f32 WideTvAspect()
     // TechieSaru's 21:9 fix (Crash-Twinsanity-Improved's "PCSX2 patches", [Widescreen 21:9 Ultrawide]) writes 0x4015 and 0x5554
     // over the halves of 16:9's 0x3FE38E39 where the renderer loads it (0x19BB48, 0x1A074C, 0x1A07DC, 0x1A0DA0)
     constexpr f32 UltrawideAspect = 0x1.2AAAA8p+1f;
-    return Ultrawide() ? UltrawideAspect : WideAspect;
+    // 32:9 the same way, the game's projection and 2D squeeze (renderer.cpp's ScreenSqueeze) taking the shape
+    constexpr f32 SuperUltrawideAspect = 32.0f / 9.0f;
+    return SuperUltrawide() ? SuperUltrawideAspect : Ultrawide() ? UltrawideAspect : WideAspect;
 }
 
 bool SkipCutscenes()

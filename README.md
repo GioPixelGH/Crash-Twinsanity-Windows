@@ -130,6 +130,7 @@ off until you turn them on.
 - [x] A Credits page in the PC options, with everyone behind the Windows version.
 - [x] Quit to desktop in the options ([#33]).
 - [x] The texts' language and the voices' language as two options, with translated disc images recognised ([#25]).
+- [x] SMAA anti-aliasing, anisotropic filtering, and a 32:9 shape with the menus in the middle 16:9.
 - [ ] The game closing after the end credits instead of going back to the Iceberg Lab, as reported in [#20].
 - [ ] A modding guide: the game's files, the community's tools for them, and how to share a mod.
 - [ ] The two cutscenes that still end a little differently when skipped than when played ([#9]).

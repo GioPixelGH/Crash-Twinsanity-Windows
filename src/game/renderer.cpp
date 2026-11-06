@@ -502,7 +502,16 @@ extern "C" void SetUpFrame(RenderTargetDescription* target, u32 clearColor, u32 
 extern "C" void FitPlaceToScreen(u32 inPixels, const Vector2* anchor, Vector2* place)
 {
     f32 centre = anchor->x;
-    place->x = (place->x - centre) / ScreenSqueeze() + centre;
+    f32 to = centre;
+#ifdef TWIN_NATIVE
+    // 32:9 (THE LIST 35): a widget anchored to the screen's sides (the menus' hints, the loading screen's logo) kept to the middle
+    // 16:9's, as a 16:9 TV shows it; one anchored to the middle stays there
+    if (NativeFixes::SuperUltrawide())
+    {
+        to = 0.5f + (centre - 0.5f) * (WideAspect / NativeFixes::WideTvAspect());
+    }
+#endif
+    place->x = (place->x - centre) / ScreenSqueeze() + to;
     if (inPixels != 0)
     {
         ToPixels(place);

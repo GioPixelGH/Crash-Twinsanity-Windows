@@ -74,6 +74,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionRenderDistance, "render_distance", 0, 4},
     {OptionSpeechLanguage, "speech_language", 0, 5},
     {OptionAnisotropy, "anisotropic_filtering", 0, 4},
+    {OptionSuperUltrawide, "super_ultrawide", 0, 1},
 };
 
 s32 g_Values[OptionCount];

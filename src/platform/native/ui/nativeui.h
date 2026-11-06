@@ -421,6 +421,9 @@ enum Option : u32
     OptionSpeechLanguage,
     // Anisotropic filtering of the game's mipmapped textures (hwgs.cpp's ANISO): off (0, the PS2's sampling), 2x, 4x, 8x, 16x
     OptionAnisotropy,
+    // 32:9: the widescreen picture made 32:9 wide (as 21:9's: the projection, the 2D's squeeze, the movies' pillarbox); only while
+    // widescreen is on, the 21:9 option off
+    OptionSuperUltrawide,
     OptionCount,
 };
 

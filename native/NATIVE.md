@@ -238,8 +238,16 @@ The 21:9 option (`OptionUltrawide`, "ultrawide" in options.txt, off): with the g
 0x3FE38E39 where the renderer loads it (the view's projection in `SetRendererView` and `DrawRendererScene`, the 2D's squeeze in
 `FitPlaceToScreen`/`FitSizeToScreen`, `renderer.cpp`), and every movie pillarboxed to the middle three quarters (the patch's nop at
 0x2AF408, `MoviePlayer::Draw`). Checked with `--snapshots`: the beach's opening shows a wider view squeezed into the same picture.
-The option is the Display tab's "Widescreen" choice 21:9 (4:3, 16:9, 21:9; 21:9 is widescreen on and `OptionUltrawide`); the presenter (`ViewRect`, `graphics/display.cpp`) still shapes the picture 16:9:
+The option is the Display tab's "Widescreen" choice 21:9 (4:3, 16:9, 21:9, 32:9; 21:9 is widescreen on and `OptionUltrawide`); the presenter (`ViewRect`, `graphics/display.cpp`) still shapes the picture 16:9:
 `NativeFixes::Ultrawide()` tells both.
+
+32:9 (since 1.2.0, THE LIST 35, after TwinsanityEvolved 0.9.3's idea; `OptionSuperUltrawide`, "super_ultrawide", off): the same
+way at 32/9 (`WideTvAspect`: the projection and the 2D's squeeze), the window's picture 32:9 (`ViewRect`). The widgets anchored to
+the screen's sides (the menus' hints, the loading screen's logo) are kept to the middle 16:9's sides (`FitPlaceToScreen`: their
+anchor moved in by 16/32), as a 16:9 TV shows them; the pause page and the HUD, anchored to the middle, stay there at their 16:9
+size; the FPS counter sits in the middle 16:9's corner; each movie keeps its own shape in the middle (a 16:9 one half the width,
+a 4:3 one three eighths: `MoviePlayer::Draw`). Checked in a 1920x540 window: the beach shows more of the world at the sides, the
+pause page and its hints where 16:9 has them.
 
 Already in the port before these: the skip itself (condition 572, now any button held), movies answering it too, the faster loading
 and 60 Hz (their own options), widescreen at start-up, and movies at their own rate (the native player paces them by their

@@ -46,7 +46,9 @@ void Frame();
 
 // The 21:9 option (OptionUltrawide) and the game's widescreen setting both on: the widescreen picture is 21:9 (fixes.cpp)
 bool Ultrawide();
-// The widescreen TV's shape: 21:9 (the patch's 0x40155554) with Ultrawide, else 16:9 (WideAspect)
+// The 32:9 option (OptionSuperUltrawide, THE LIST 35) and the game's widescreen setting both on: the widescreen picture is 32:9
+bool SuperUltrawide();
+// The widescreen TV's shape: 32:9 with SuperUltrawide, 21:9 (the patch's 0x40155554) with Ultrawide, else 16:9 (WideAspect)
 f32 WideTvAspect();
 
 // A material item about to be read (its bytes, changed in place): opaque crates' shaders made shadow receivers
