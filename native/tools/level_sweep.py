@@ -142,7 +142,7 @@ def report(results, path):
             notes = result["fatal"][0].replace("[native] ", "")
         rows.append(f"| {world} | {area} | {name} | {status} | {result['load_seconds'] if result['load_seconds'] is not None else '-'} "
                     f"| {result['frames'] if result['frames'] is not None and result['outcome'] == 'ran' else '-'} | {notes} |")
-    Path(path).write_text("\n".join(rows) + "\n")
+    Path(path).write_text("\n".join(rows) + "\n", newline="\n")
 
 
 def main():
@@ -165,7 +165,7 @@ def main():
         results = json.loads((out / "results.json").read_text())
         for chunk, old in results.items():
             results[chunk] = parse(chunk, out / chunk.replace("\\", "_"), old["status"], old["wall"])
-        (out / "results.json").write_text(json.dumps(results, indent=1))
+        (out / "results.json").write_text(json.dumps(results, indent=1), newline="\n")
     if arguments.report:
         report(json.loads((out / "results.json").read_text()), arguments.report)
         return
@@ -183,7 +183,7 @@ def main():
         for future in concurrent.futures.as_completed(futures):
             result = future.result()
             results[result["chunk"]] = result
-            results_path.write_text(json.dumps(results, indent=1))
+            results_path.write_text(json.dumps(results, indent=1), newline="\n")
             print(f"{result['chunk']:42} {str(result['status']):8} {result['outcome']:28} load {result['load_seconds']} "
                   f"frees {result['stray_frees']} {result['fatal'][0][:90] if result['fatal'] else ''}", flush=True)
 

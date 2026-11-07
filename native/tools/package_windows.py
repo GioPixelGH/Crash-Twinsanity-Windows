@@ -5,7 +5,7 @@ build/native/dist/Crash Twinsanity/ and build/native/dist/Crash-Twinsanity-Windo
     .venv\\Scripts\\python.exe native\\tools\\package_windows.py [--build build/native/cmake]
 
 The folder holds CrashTwinsanity.exe, SDL's and FFmpeg's DLLs, the UI's fonts, the libraries' licences and the player's guide
-(native/PLAYING_WINDOWS.md as README.txt). Nothing of the game's: the player picks their own disc image. Nothing of a player's
+(native/PLAYING_WINDOWS.md as README.txt, native/MODDING.md as MODDING.txt). Nothing of the game's: the player picks their own disc image. Nothing of a player's
 either: the folder can be played from, and portable mode's portable.txt and User folder there (or a disc image) are left where
 they are and never zipped.
 """
@@ -82,6 +82,8 @@ def main():
             shutil.copy2(prebuilt, ffmpeg / "LICENSE-prebuilt.txt")
 
     shutil.copy2(HERE / "native" / "PLAYING_WINDOWS.md", folder / "README.txt")
+    # The modding guide beside it (README.txt links it)
+    shutil.copy2(HERE / "native" / "MODDING.md", folder / "MODDING.txt")
 
     archive = dist / "Crash-Twinsanity-Windows.zip"
     if archive.exists():

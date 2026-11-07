@@ -145,6 +145,8 @@ next start.
 
 ## Mods
 
+The modders' and players' side is [MODDING.md](MODDING.md); this is how the port does it.
+
 The settings folder's `mods` folder (`%APPDATA%\Crash Twinsanity\mods`) holds the mods (mods.h, mods.cpp), each a folder: a
 Crate Mod Loader Mod Crate (its `ModCrateInfo.txt`; `layer0\` the disc's files, `layer1\` the archive's, CRASH6\CRASH.BD's, by
 their paths; a crate one folder down, as a zip unpacks, is found too; one of another game, `Game=` not `CrashTS`, refused;
@@ -154,7 +156,7 @@ folders of those names (`mods\Levels\Earth\Hub\beach.rm2`, as before 1.2.0) are 
 case. `mods.txt` in the settings folder keeps their order (the first wins where two have a file) and switches; a mod not in it
 comes first and on; it's written only when the player changes something. The mods are looked at once, when the disc image is
 open (`Mods::Scan`, system.cpp's OpenDiscImage), and the log says each (`[native] mods: NAME (on): a Mod Crate by ..., N disc
-files, N archive files (N new)`) and each file used. A mod's SLES_525.68 and SYSTEM.CNF are never used (the program is the
+files, N archive files (N new)`) and each file used. A mod's SLES_525.68, SYSTEM.CNF and CRASH6\SYS\ (the I/O processor's modules, run as the PS2 runs them) are never used (the program is the
 port's, the game's data read from the player's disc): the log says what its executable changes (code and data, in words and
 places, compared section by section). While any mod is on, the memory card is a folder of their own (`memorycard-mods-` and
 their names; the level select's `...-level-select` beside it), so the player's saves never meet a mod's levels.

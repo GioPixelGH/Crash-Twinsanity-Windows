@@ -72,7 +72,7 @@ std::string CardName();
 // Whether the mods folder has been looked at (Scan)
 bool Scanned();
 // A file the mods on have for a disc path's parts (upper case, as disc.cpp's PathParts makes them: "FMV", "H01_A.PSS"): its file
-// and the mod's name, from the first that has it (never the executable or SYSTEM.CNF)
+// and the mod's name, from the first that has it (never the executable, SYSTEM.CNF or the I/O processor's modules, CRASH6\SYS)
 bool FindDiscFile(const std::vector<std::string>& parts, std::filesystem::path* file, std::string* mod);
 // The archive's files the mods on have, each from the first that has it: its key ("/LEVELS/EARTH/HUB/BEACH.RM2"), its name as the
 // archive's table would have it ("Levels\Earth\Hub\beach.rm2"), its file and the mod's name

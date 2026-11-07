@@ -103,7 +103,7 @@ mouse and controller, saves, cutscene skipping, community fixes):
 - **Mods:** each mod a folder in `%APPDATA%\Crash Twinsanity\mods` (a Crate Mod Loader Mod Crate as it comes, or files laid
   out as the disc's); a mod's zip or changed disc image imported from Options > Mods as only the files it changes; the Mods
   page orders them and turns each on or off; their saves on a memory card of their own. Files put straight in the mods
-  folder replace the disc's as before. `--list-files` and `--extract` help to start one.
+  folder replace the disc's as before. [native/MODDING.md](native/MODDING.md) is the modding guide.
 - **Portable mode** (Options > Gameplay, off by default): settings, saves and mods in a `User` folder beside the game, and the
   disc image found in the game's folder, to carry it on a USB stick.
 - **Fixes:**
@@ -120,6 +120,8 @@ mouse and controller, saves, cutscene skipping, community fixes):
 
 [native/WINDOWS.md](native/WINDOWS.md) explains each change, with the reasons and how they were tested.
 [native/PLAYING_WINDOWS.md](native/PLAYING_WINDOWS.md) is the player's guide: options, controls, saves, mods.
+[native/MODDING.md](native/MODDING.md) is the modding guide: what the port reads, the game's files, the community's tools,
+the limits and how to share a mod.
 
 ![cortexdimension](docs/screenshots/cortexdimension.jpg)
 
@@ -144,7 +146,8 @@ off until you turn them on.
 - [x] Mods as the community ships them ([#36]): sound effects right with a mod's levels, Mod Crates used as they come (new
   levels too), a mod's zip or changed disc image imported as only what it changes, a Mods page with an order and a switch
   for each, and their saves kept apart from yours.
-- [ ] A modding guide: the game's files, the community's tools for them, and how to share a mod.
+- [x] A modding guide ([native/MODDING.md](native/MODDING.md)): the game's files, the community's tools for them, and how to
+  share a mod.
 - [ ] The two cutscenes that still end a little differently when skipped than when played ([#9]).
 - [ ] A skip for the cutscenes that have none yet, like those of the first fight with Cortex and of Cavern Catastrophe ([#28]).
 - [x] The slide's long jump at any moment, or easier, as a game option ([#11], [#35]).

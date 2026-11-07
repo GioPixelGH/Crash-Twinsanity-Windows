@@ -746,7 +746,9 @@ std::string Native::Mods::CardName()
 
 bool Native::Mods::FindDiscFile(const std::vector<std::string>& parts, fs::path* file, std::string* mod)
 {
-    if (!g_Scanned || parts.empty() || (parts.size() == 1 && (parts[0] == Executable || parts[0] == "SYSTEM.CNF")))
+    // (The program, what the PS2 boots and the I/O processor's modules, which the port runs as the PS2 would: always the disc's)
+    if (!g_Scanned || parts.empty() || (parts.size() == 1 && (parts[0] == Executable || parts[0] == "SYSTEM.CNF")) ||
+        (parts.size() >= 2 && parts[0] == "CRASH6" && parts[1] == "SYS"))
     {
         return false;
     }

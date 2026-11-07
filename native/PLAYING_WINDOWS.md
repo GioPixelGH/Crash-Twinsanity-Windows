@@ -144,10 +144,10 @@ hundred megabytes the mod changes), and the zip or image can be deleted after. F
 Files put straight in the mods folder at their path (`mods\Levels\Earth\Hub\beach.rm2`) work too, as before 1.2.0.
 **Options > Mods** lists the mods: each off, or on in its place (on · 1 is the first). Where two mods change the same file,
 the first wins. A new mod comes first and on. The choices are kept in **mods.txt** in the settings folder (a line a mod, `on`
-or `off`, a tab, the mod's folder; `*` the files put straight in the mods folder) and used from the next start. While any mod is on, your saves go
-on a memory card of their own (`memorycard-mods-...` in the settings folder): your own saves are never touched, and they're
-back when the mods are off. A mod's changed game program (SLES_525.68) can't work here: this port has its own, and the log
-says what the mod changed in it.
+or `off`, a tab, the mod's folder; `*` the files put straight in the mods folder) and used from the next start.
+While any mod is on, your saves go on a memory card of their own (`memorycard-mods-...` in the settings folder): your own
+saves are never touched, and they're back when the mods are off. A mod's changed game program (SLES_525.68) can't work
+here: this port has its own, and the log says what the mod changed in it.
 
 To make a mod, get a file to change, from PowerShell or the Command Prompt in the game's folder:
 
@@ -156,7 +156,8 @@ To make a mod, get a file to change, from PowerShell or the Command Prompt in th
 
 The first lists the game's files; the second copies one from your disc image into the mods folder (a file already there is
 left alone). The log says which mods the game used. Turn a mod off in Options > Mods, or remove its folder, to play the
-original again.
+original again. [MODDING.md](MODDING.md) (MODDING.txt beside the game) is the modding guide: a first mod step by step, the
+game's files, the community's tools and the limits.
 
 ## If something goes wrong
 
