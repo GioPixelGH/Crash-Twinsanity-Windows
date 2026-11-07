@@ -254,6 +254,8 @@ void Build()
     // The slide jump (THE LIST 11, #11, #35): original, any moment, easier
     gameplay.push_back(OptionChoice(TextSlideJump, TextDescSlideJump, OptionSlideJump,
                                     {TextDistanceOriginal, TextSlideJumpAnyMoment, TextSlideJumpEasier}));
+    // The speedrun timer (THE LIST 13)
+    gameplay.push_back(Toggle(TextSpeedrunTimer, TextDescSpeedrunTimer, OptionSpeedrunTimer));
     // The level select (THE LIST 12, levelselect.cpp): the option, then (on) the level chosen and its start from the main menu, or
     // a line saying the main menu is where it starts from
     gameplay.push_back(Toggle(TextLevelSelect, TextDescLevelSelect, OptionLevelSelect));
@@ -842,6 +844,7 @@ void ResetTab(u32 tab)
         ResetOptions({OptionInfiniteLives});
         ResetOptions({OptionStrongMask});
         ResetOptions({OptionSlideJump});
+        ResetOptions({OptionSpeedrunTimer});
         ResetOptions({OptionLevelSelect});
         break;
     case TabAccessibility:
@@ -1641,8 +1644,10 @@ std::vector<HitRegion> g_MenuRegions;
 
 // The draw phase's part, after OLEG's widgets: the overlay's frame recorded (the settings screen, its regions kept for the next
 // frame's input; or the game's menus' bar of prompts) with the cursor over what can be clicked, and handed to the presenter
-void DrawAfterOleg(Renderer*)
+void DrawAfterOleg(Renderer* renderer)
 {
+    // The speedrun timer (the game option) in the game's own font
+    SpeedrunDraw(renderer);
     OverlayFrame& frame = RecordingFrame();
     frame.Clear();
     f32 mouseX = -1.0f;

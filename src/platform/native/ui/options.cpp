@@ -80,6 +80,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionStrongMask, "strong_mask", 0, 1},
     {OptionSlideJump, "slide_jump", 0, 2},
     {OptionLevelSelect, "level_select", 0, 1},
+    {OptionSpeedrunTimer, "speedrun_timer", 0, 1},
 };
 
 s32 g_Values[OptionCount];
@@ -434,6 +435,7 @@ void Frame()
     SettingsShotsFrame();
     PortableTestFrame();
     LevelSelectFrame();
+    SpeedrunFrame();
     MouseFrame();
     ApplyGameSettingsOnce();
     SettingsFrame();

@@ -218,6 +218,9 @@ leaving a save the game couldn't have made itself (`src/platform/native/gameopti
   jump's turn rate (`JumpController::Start`)); its height and length the slide jump's own. The log says each slide jump the
   option allowed. Checked with the pad script: a cross 3 frames into the slide does nothing at 0 and jumps at 1 and 2; one 26
   frames in jumps at 2.
+- The speedrun timer (`speedrun_timer`): real time from New Game in the game's own font at the top (`speedrun.cpp`, the game's
+  text queue as "press start"), a split at each level's end (play in another of the 16 levels, `g_AreaLevels`): the level and
+  its time shown under the timer for 5 s and logged; the credits stop it; the title resets it.
 - The level select (`level_select`; HAB3X's 944aa1c made an option): Gameplay then has a level row and "start the level"
   (from the main menu: elsewhere a line says so). The level starts from its first chunk as a new game does, the story and the
   open areas raised to it; its play's saves go to a card of its own (`memorycard-level-select` in the settings folder,

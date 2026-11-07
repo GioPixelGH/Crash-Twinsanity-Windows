@@ -675,6 +675,8 @@ const NativeTextLine g_NativeTexts[] = {
     {TextLevelSelectStart, {"start the level", "lancer le niveau", "level starten", "empezar el nivel", "inizia il livello"}},
     {TextLevelSelectFromMainMenu, {"from the main menu", "depuis le menu principal", "aus dem hauptmenü", "desde el menú principal", "dal menu principale"}},
     {TextDescLevelSelectFromMainMenu, {"quit to the main menu, then open the options there to start a level.", "quitte vers le menu principal, puis ouvre les options pour lancer un niveau.", "zum hauptmenü beenden und dort in den optionen ein level starten.", "sal al menú principal y abre allí las opciones para empezar un nivel.", "esci al menu principale e apri lì le opzioni per iniziare un livello."}},
+    {TextSpeedrunTimer, {"speedrun timer", "chrono speedrun", "speedrun-timer", "cronómetro speedrun", "cronometro speedrun"}},
+    {TextDescSpeedrunTimer, {"real time from new game, with each level's time as you finish it.", "temps réel depuis nouvelle partie, avec le temps de chaque niveau fini.", "echtzeit ab neues spiel, mit der zeit jedes beendeten levels.", "tiempo real desde nueva partida, con el tiempo de cada nivel al acabarlo.", "tempo reale da nuova partita, con il tempo di ogni livello finito."}},
     {TextFxaa, {"fxaa", "fxaa", "fxaa", "fxaa", "fxaa"}},
     {TextMenuHints, {"menu hints", "aides des menus", "menühinweise", "ayudas de menú", "suggerimenti menu"}},
     {TextDescMenuHints, {"the menus' button hints: the game's own, or a bar at the bottom.", "les aides des boutons : celles du jeu, ou une barre en bas.", "die tastenhinweise: die des spiels oder eine leiste unten.", "las ayudas de botones: las del juego o una barra abajo.", "i suggerimenti dei tasti: quelli del gioco o una barra in basso."}},

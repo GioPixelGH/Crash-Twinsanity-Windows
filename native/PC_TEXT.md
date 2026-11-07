@@ -279,6 +279,8 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1EA | start the level | lancer le niveau | level starten | empezar el nivel | inizia il livello |
 | 0x1EB | from the main menu | depuis le menu principal | aus dem hauptmenü | desde el menú principal | dal menu principale |
 | 0x1EC | quit to the main menu, then open the options there to start a level. | quitte vers le menu principal, puis ouvre les options pour lancer un niveau. | zum hauptmenü beenden und dort in den optionen ein level starten. | sal al menú principal y abre allí las opciones para empezar un nivel. | esci al menu principale e apri lì le opzioni per iniziare un livello. |
+| 0x1ED | speedrun timer | chrono speedrun | speedrun-timer | cronómetro speedrun | cronometro speedrun |
+| 0x1EE | real time from new game, with each level's time as you finish it. | temps réel depuis nouvelle partie, avec le temps de chaque niveau fini. | echtzeit ab neues spiel, mit der zeit jedes beendeten levels. | tiempo real desde nueva partida, con el tiempo de cada nivel al acabarlo. | tempo reale da nuova partita, con il tempo di ogni livello finito. |
 
 ## English (29 lines)
 

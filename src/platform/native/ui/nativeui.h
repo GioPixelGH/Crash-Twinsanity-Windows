@@ -300,6 +300,9 @@ enum NativeText : u32
     TextLevelSelectStart,
     TextLevelSelectFromMainMenu,
     TextDescLevelSelectFromMainMenu,
+    // The speedrun timer
+    TextSpeedrunTimer,
+    TextDescSpeedrunTimer,
     NativeTextEnd,
 };
 
@@ -458,6 +461,8 @@ enum Option : u32
     OptionSlideJump,
     // The level select (levelselect.cpp: from the main menu, a memory card of its own)
     OptionLevelSelect,
+    // The speedrun timer (speedrun.cpp)
+    OptionSpeedrunTimer,
     OptionCount,
 };
 
@@ -511,6 +516,10 @@ const char* LevelChunk(u32 level);
 bool CanStartLevel();
 void StartLevel(u32 level);
 void LevelSelectFrame();
+// The speedrun timer (speedrun.cpp, the game option): its frame's work (started at New Game, a split at each level's end, stopped
+// at the credits) and its text queued in the game's font after OLEG's widgets
+void SpeedrunFrame();
+void SpeedrunDraw(Renderer* renderer);
 // Once after the window lost the focus (the option on): the game pauses as for its start button
 bool TakeFocusPause();
 // With the cutscene skip option, "hold any button to skip" (features.cpp): any key, mouse button or pad button pressed after the
