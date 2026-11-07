@@ -104,6 +104,16 @@ SCENARIOS = [
      dict(options="skip_cutscenes=1\nretail_fixes=1\n", env={"TWIN_ROUTE_TRACE": "1", "TWIN_SWEEP_GAME_TIME": "1"},
           expect=[r"route trace: \S*EVILCRASH, step 1 .*the step itself taken \(bug fixes\)",
                   r"hop:   \S*EVILCRASH at \((4\d|5\d|6[0-5])\."])),
+    # Issue #32 (THE LIST 16): Ant Agony's walls and doors, 32 bit textures uploaded to 2800/4 each frame, were read from the
+    # buffer bossarea's sky is drawn into there (a target of that address and width left from earlier play), its clamped edge
+    # streaking their repeats; only a target's own drawing is a texture's source now (hwgs.cpp: Target::drawn). bossarea
+    # first, then corea loaded in the same run (the hop's load step): the sky still read from its buffer, the walls never
+    ("Ant Agony's walls after bossarea's sky, not read from its buffer (#32)", "Levels\\Earth\\Hub\\bossarea", 30,
+     "idle,wait5,load:Levels\\AltEarth\\Core\\corea,wait10",
+     dict(env={"TWIN_HW_SOURCE_TRACE": "1", "TWIN_SWEEP_GAME_TIME": "1"},
+          expect=[r"a 1024x1024 texture at 2800/4 \(psm 0\) read from the target 2800/4 \(psm 0",
+                  r"game: the player in levels\\altearth\\core\\corea"],
+          forbid=[r"a 256x\d+ texture at 2800/4 \(psm 0\) read from the target"])),
 ]
 # The pause menu's hints checked for each controller's prompts and the menu hints option (hintstest.cpp): the prompts' style
 # ($TWIN_UI_PROMPTS) and the option (options.txt's menu_hints: 0 the game's own hints, 1 the bar). The pause on the window's focus

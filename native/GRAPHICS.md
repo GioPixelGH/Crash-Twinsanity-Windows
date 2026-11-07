@@ -142,8 +142,10 @@ picture at the PS2's resolution, and `replayNNN_gpu.png`, the GPU's at the scale
 - Local memory and the targets: each 8 KB page records where its newest content is; a target is brought up to date from local
   memory before the GPU uses it, local memory from a target (at the PS2's resolution) before the CPU side reads or writes it
   (transfers, the CLUT, texture decoding, the display read, a software draw).
-- Textures: a target's own buffer in its own layout is sampled from the target; any other is decoded by the software GS's decoder
-  (every format, the CLUT, TEXA) and uploaded by 8x8 tiles as the draws reach them.
+- Textures: a target's own buffer in its own layout is sampled from the target where the target drew it (its `drawn` pages,
+  not memory's content loaded into it) and the texture doesn't repeat past its edge (the target's edge clamps); any other is
+  decoded by the software GS's decoder (every format, the CLUT, TEXA) and uploaded by 8x8 tiles as the draws reach them
+  ("Ant Agony's walls and doors", below).
 - The pixel pipeline in the shader as the GS defines it (TFX, fog, alpha test, FBA, 16 bit frames' dither and truncation; with the Dithering option off a 16 bit frame's dithered draws, the frame's copy into
   the buffer shown, keep their 8 bits a channel: BitFullColour);
   the alpha test's AFAIL by a second pass; depth as a 32 bit float written from the shader; blending by GL's dual source
@@ -236,17 +238,41 @@ picture at the PS2's resolution, and `replayNNN_gpu.png`, the GPU's at the scale
   splash is), 25 of 255 darker a channel; the frame's GS dump with and without them played by PCSX2 differs on the same 17 x 23
   pixels by the same 25. The PS2's GS draws those commands as we do; nothing to change.
 
-### Ant Agony's metal doors (#32, THE LIST 16): not reproduced yet (2026-11-07)
+### Ant Agony's walls and doors (#32, THE LIST 16): the cause (2026-11-07)
 
-NormanTheFox's screenshots (1.1.0 at 3x, FXAA, dithering off, a GTX 1650) show every metal door's texture streaked
-horizontally with a zigzag, and the lava walls and floor edges wrong. Measured here, without his exact places: Crash put in
-front of corea's first blast door (`$TWIN_HOP=idle,wait2,goto:-111.6:0.2:125,wait6`, `$TWIN_SWEEP_GAME_TIME`, frame 1060 at
-3x): the port's frame against PCSX2 drawing its GS dump at 3x, 1.9 of 255 apart on average on the PS2's grid, no block of 16 x
-16 PS2 pixels more than 12.2 (edges and filtering, not a texture's pattern); the frame's 59 image uploads all carry data the
-retail game's frame there uploads too (`run_pcsx2.py retail --start-chunk` corea, the player moved by PINE writes, its own GS
-dump); dithering off against on, a uniform 3.9 brighter, nothing local. So at that place nothing differs from the PS2's GS in
-the commands or in their drawing; whether the door is in that frame's view, and what his pictures show, is for a person to
-see (the test copy's notes say where to look, with 1.0.19 and 1.1.0's switches beside it).
+NormanTheFox's screenshots (1.1.0 at 3x, FXAA, dithering off, a GTX 1650) and the user's own of 2026-11-07 (the 1.2.0 test
+copy at 3x, crashlogs/issue32/antagony_utente_2026-11-07): every metal door's middle panel streaked horizontally in colours with
+a zigzag, the floors smeared, the lava cracks in blocks; right as the level starts, wrong once Crash walks on and never right
+again; PCSX2 right throughout. A first measurement (corea started on its own, Crash put in front of the first door at frame
+1060) found nothing: the defect needs play before Ant Agony.
+
+The cause, the hardware renderer's: Ant Agony's walls, floors and doors are 32 bit textures (256x64, 256x128 and 256x256)
+that the game uploads every frame to 2800/4, where it also draws the characters' shadows (a 16 bit S buffer). A texture whose
+address, width and colour class are a target's was sampled straight from that target (a buffer drawn on the GPU). bossarea's
+sky is drawn at 2800/4 as 32 bit colour ("Scenes drawn into narrow buffers", above) and that target stays for the rest of the
+session; after it, Ant Agony's textures were read from it. Their pages were loaded from memory into it first, the right
+texels (some 100,000 reads checked against local memory, all alike), but the target's edge clamps while the walls' and doors'
+textures repeat past their edges, and the test meant for that ("a repeating texture whose coordinates stay inside it")
+compared the region after it had been widened to the whole texture, so it always passed: each row's edge texel streaked
+across the repeats. Those that stayed inside were sampled at the target's scale, blocks of 3x3 replicated texels (the
+cracks' steps) instead of the GS's filter. The test comes with HAB3X's renderer (the import, cabe032): 1.0.19 has it, and
+with 1.1.0's five drawing switches off the broken frames are the same. Not the texture pack (there it replaces only the HUD's
+textures). In the players' sessions the target came from earlier play; what made their level's start right isn't measured.
+
+Measured (compare/tools/antagony.py: the same run drawn by the hardware renderer at 3x and by the software GS at 1x,
+`$TWIN_FIXED_TIME`, compared on the PS2's pixels in blocks of 8 x 8): bossarea for 5 s, then corea loaded in the same run (the
+hop's `load:` step), Crash walked by the pad script. Before the fix, 31 to 173 blocks more than 40 of 255 apart in every
+frame to the run's end, the worst 105 to 157; with no texture read from a target (`$TWIN_HW_NO_TARGET_TEXTURES`) none over 40;
+corea started on its own, the worst about 50 (Crash's shadow, the edges) and no wall. The port's GS dump of a broken frame
+(2000) replayed by PCSX2's software renderer: the same picture from the old build's dump and the fixed one's (the commands
+right), the old frame 3.89 of 255 from it (1.98% of the pixels more than 16 apart), the fixed one 2.86 (0.82%).
+
+The fix (hwgs.cpp): a target is a texture's source only where it drew (`Target::drawn`: set by MarkDrawn, cleared where
+memory's content is loaded into it, where the CPU writes and where another target draws) and, for a repeating texture, only
+when its coordinates stay inside it (the region before it's widened). Elsewhere the texture is decoded from memory's copy, as
+when no target is there. The same run after it: the worst 23 to 58, as corea started on its own. check_windows.py's scenario
+"Ant Agony's walls after bossarea's sky" (bossarea, then corea by the hop's load step, `$TWIN_HW_SOURCE_TRACE`): the sky still
+read from its buffer, the walls never (it fails on the old test).
 
 ### The characters' stepped edges at a higher scale: the causes (2026-11-01)
 

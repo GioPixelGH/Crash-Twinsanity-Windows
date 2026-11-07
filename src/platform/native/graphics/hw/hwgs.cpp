@@ -55,6 +55,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <set>
 #include <unordered_map>
 #include <vector>
 
@@ -240,6 +241,10 @@ struct Target
     Gs::PageSet valid;
     // The pages it holds newest with every other target's copy out of date (MarkDrawn has nothing to do there)
     Gs::PageSet owned;
+    // The pages whose content it drew itself (at its scale), not memory's loaded into it: only there is it a texture's source
+    // (THE LIST 16: textures the CPU uploads where an old buffer of the same address and width was, Ant Agony's walls at
+    // 2800/4 where bossarea's sky had been drawn, read from it at its scale were blocks of 3x3 replicated texels)
+    Gs::PageSet drawn;
     // A colour target's float buffer of wrapping sums not yet added to it (resolve), its framebuffers by depth-stencil buffer
     GLuint accum = 0;
     bool accumPending = false;
@@ -2915,6 +2920,7 @@ void HwGs::TargetFromMem(Target* target, const Gs::PageSet& pages)
 {
     Gl& gl = GetGl();
     stats.uploads++;
+    target->drawn &= ~pages;
     TraceConversion("into", target, pages);
     static const bool counting = std::getenv("TWIN_HW_STATS") != nullptr;
     if (counting)
@@ -3268,6 +3274,7 @@ void HwGs::ProcessWrites()
     {
         target->valid &= ~written;
         target->owned &= ~written;
+        target->drawn &= ~written;
     }
 }
 
@@ -3572,6 +3579,7 @@ void HwGs::Upload(Target* target, const Gs::PageSet& pages)
 
     Gs::PageSet uploaded = pages & target->pages;
     target->valid |= uploaded;
+    target->drawn &= ~uploaded;
     target->alphaVersion++;
     // Another target holding these pages newest has a copy elsewhere now
     for (auto& other : targets_)
@@ -3663,10 +3671,12 @@ void HwGs::MarkDrawn(Target* target, const Gs::PageSet& pages)
         {
             other->valid &= ~drawn;
             other->owned &= ~drawn;
+            other->drawn &= ~drawn;
         }
     }
 
     target->owned |= drawn;
+    target->drawn |= drawn;
 }
 
 bool HwGs::Fallback(const Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count, const Rect& rect, const char* why)
@@ -4245,6 +4255,10 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
         s32 t = 0;
         s32 r = 0;
         s32 b = 0;
+        // A repeating texture whose coordinates stay inside it (it doesn't repeat): only such a one may be read from a target
+        // below, whose edge clamps
+        bool insideS = false;
+        bool insideT = false;
         if (Gs::TextureRegionForDraw(state, vertexes, count, &l, &t, &r, &b))
         {
             // The region is the bilinear filter's (the texel before the first: -1 at 0); the nearest texels at UV coordinates,
@@ -4259,6 +4273,8 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
             // As the decoder takes it: a clamped coordinate's range clamped, a repeating one's whole unless it stays inside
             s32 w = static_cast<s32>(level.width);
             s32 h = static_cast<s32>(level.height);
+            insideS = l >= 0 && r < w;
+            insideT = t >= 0 && b < h;
             if (state.wms == Gs::WrapClamp || (l >= 0 && r < w))
             {
                 left = std::clamp(l, 0, w - 1);
@@ -4292,22 +4308,34 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
         // A target's own buffer in its own layout (no mipmaps; its rectangle within the target)
         Target* source = nullptr;
         u32 sourceClass = ClassOf(level.psm);
-        if (!depthIndex && level.cacheId == nullptr && !state.mipmapped && sourceClass != ClassNone && !IsDepthClass(sourceClass) &&
-            right >= left && bottom >= top)
+        // ($TWIN_HW_NO_TARGET_TEXTURES: never, every texture decoded from memory's copy: to tell this way's drawing from the
+        // decoder's)
+        static const bool noTargetTextures = std::getenv("TWIN_HW_NO_TARGET_TEXTURES") != nullptr;
+        if (!noTargetTextures && !depthIndex && level.cacheId == nullptr && !state.mipmapped && sourceClass != ClassNone &&
+            !IsDepthClass(sourceClass) && right >= left && bottom >= top)
         {
             for (auto& known : targets_)
             {
                 // The region the draw reads inside the target (a repeating texture whose coordinates stay inside it doesn't
-                // repeat)
+                // repeat; one whose coordinates go past it repeats, which the target's clamped edge can't: its region above is
+                // the whole texture, inside the target, so it's the coordinates that tell. THE LIST 16: Ant Agony's tiled walls
+                // and doors at 2800/4, read from bossarea's sky's buffer there once it had been drawn, were streaked from the
+                // clamped edge)
                 // (two texels past its edge allowed: a sprite's end coordinate is past its last pixel's and the region reaches
                 // one more for the filter; the filter's weight there is nothing and the sampler clamps)
                 if (known->complete && known->bp == level.bp && known->bw == level.bw && known->cls == sourceClass && left >= 0 &&
                     top >= 0 &&
                     static_cast<u32>(right) <= known->width + 1 && static_cast<u32>(bottom) <= known->height + 1 &&
-                    (state.wms == Gs::WrapClamp || static_cast<u32>(right) < level.width) &&
-                    (state.wmt == Gs::WrapClamp || static_cast<u32>(bottom) < level.height))
+                    (state.wms == Gs::WrapClamp || insideS) && (state.wmt == Gs::WrapClamp || insideT))
                 {
-                    source = known.get();
+                    // ... where it drew: memory's content loaded into it is decoded from memory, as with no target there
+                    Gs::PageSet regionPages;
+                    RectPages(known.get(), Rect{left, top, std::min(right, static_cast<s32>(known->width) - 1),
+                                                std::min(bottom, static_cast<s32>(known->height) - 1)}, regionPages);
+                    if ((regionPages & known->drawn).any())
+                    {
+                        source = known.get();
+                    }
                 }
             }
         }
@@ -4328,6 +4356,22 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
         }
         else if (source != nullptr)
         {
+            // $TWIN_HW_SOURCE_TRACE: each kind of texture read from a target rather than decoded from memory, once
+            static const bool sourceTrace = std::getenv("TWIN_HW_SOURCE_TRACE") != nullptr;
+            if (sourceTrace)
+            {
+                static std::set<u64> told;
+                const u64 kind = static_cast<u64>(level.bp) | static_cast<u64>(level.bw) << 14 | static_cast<u64>(level.psm) << 20 |
+                                 static_cast<u64>(source->psm) << 26 | static_cast<u64>(level.width) << 32 |
+                                 static_cast<u64>(level.height) << 44;
+                if (told.insert(kind).second)
+                {
+                    std::fprintf(stderr, "graphics: a %ux%u texture at %x/%u (psm %u) read from the target %x/%u (psm %u, %ux%u at %ux)\n",
+                                 level.width, level.height, level.bp, level.bw, level.psm, source->bp, source->bw, source->psm,
+                                 source->width, source->height, source->scale);
+                }
+            }
+
             repeatable = false;
             Gs::PageSet pages;
             RectPages(source, Rect{left, top, std::min(right, static_cast<s32>(source->width) - 1),

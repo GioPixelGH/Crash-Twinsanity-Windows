@@ -153,6 +153,8 @@ off until you turn them on.
 - [ ] The black screen at start on some AMD PCs ([#16]).
 - [x] The masks' invincibility particles kept when you move into the next area, a fix under the bug fixes option ([#18]).
 - [ ] Aku Aku missing in some cutscenes of Cavern Catastrophe and High Seas Hi-Jinks ([#18]): not found yet.
+- [x] Ant Agony's metal doors, walls and floors no longer streaked or blocky after playing other levels before it
+  ([#32]).
 - [ ] HD texture packs in BC7, and texture upscaling.
 - [ ] The characters' shadows drawn at the chosen resolution: they stay at the PS2's, softer than the rest of the picture at
   high resolutions.
@@ -181,6 +183,7 @@ differences as options on the PAL game ([#14]), the port's own texts in Brazilia
 [#25]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/25
 [#28]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/28
 [#30]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/30
+[#32]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/32
 [#33]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/33
 [#35]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/35
 

@@ -528,6 +528,10 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   Levels\Earth\Hub\bossarea` with `500-800:ly=0`. With the pictures above, a real run (a window or fullscreen, three threads) is
   the same place every time: a bug seen there is measured in the window as shown and in the picture drawn at once.
 - `$TWIN_FRAME_STATS`: each frame's time, VU1's work, the primitives, the render thread's time and the GPU renderer's batches, texture decodes, uploads, downloads and copies.
+- `$TWIN_HW_SOURCE_TRACE=1`: each kind of texture the hardware renderer samples straight from a target (a buffer it drew)
+  rather than decoding it from memory, logged once ("graphics: a 256x256 texture at 2800/4 (psm 0) read from the target ...");
+  `$TWIN_HW_NO_TARGET_TEXTURES=1`: none, every texture decoded from memory's copy (an effect's buffer then at the PS2's
+  resolution): to tell that way's drawing from the decoder's (GRAPHICS.md, "Ant Agony's walls and doors").
 - `$TWIN_RENDER_DISTANCE=far`: the draw distance's far plane its choice's even where the colour filter reads the depth
   (renderdistance.h, NATIVE.md's "Draw distance"): to see what it would change. The log's "render distance: the far plane Nx"
   lines say when the far plane moves.
@@ -562,7 +566,10 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   (`$TWIN_TEST_SOUND_DELAY`: from so many seconds).
 - The level sweep's tools for places it can't start in or reach: `$TWIN_HOP=cryscave,escape` takes the player through its
   chunk's link to each of those chunks in turn, as the game's WarpToChunkLinkTowardsPlayer places an instance (half a unit in
-  front of the link's load wall, where the link takes it). Other steps: `goto:X:Y:Z` puts the player there (its physics then
+  front of the link's load wall, where the link takes it; each chunk's links are logged as the player enters it, with their
+  walls' middles, a `fly` step's way through). Other steps: `load:Levels\AltEarth\Core\corea` loads that chunk as
+  `$TWIN_START_CHUNK` does, the chunks played before staying the renderer's history (check_windows.py's Ant Agony scenario:
+  bossarea's sky, then corea); `goto:X:Y:Z` puts the player there (its physics then
   move it from its last place: a wall on a long way stops it, a gap drops it); `fly:X:Y:Z[:SPEED]` takes it there in a straight
   line, a little further each frame (10 units a second), so it doesn't fall on the way and the chunk's triggers and links see it
   go by: a cutscene it starts plays, a link takes it into the next chunk (the flight ends there, or when the player is another),

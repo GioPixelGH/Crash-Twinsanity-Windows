@@ -689,6 +689,13 @@ def main():
     os.makedirs(os.path.dirname(settings), exist_ok=True)
     cards = f"{CONFIG}/memcards"
     os.makedirs(cards, exist_ok=True)
+    # A run's card left by a run with --stay (PCSX2 kept it open, so it couldn't go when that run ended): gone now, so this run
+    # never plays on its saves; still in use, that PCSX2 is still open
+    if os.path.exists(f"{cards}/{RUN_CARD}"):
+        try:
+            os.remove(f"{cards}/{RUN_CARD}")
+        except PermissionError:
+            raise SystemExit(f"{RUN_CARD} is in use: the PCSX2 a run with --stay left open is still running, close it first")
     user_cards = {name: os.path.getmtime(f"{cards}/{name}") for name in os.listdir(cards) if name != RUN_CARD}
     if args.card and os.path.realpath(os.path.dirname(os.path.abspath(args.card))) == os.path.realpath(cards):
         raise SystemExit("--card has to be a copy outside PCSX2's memory card folder")
@@ -1067,7 +1074,11 @@ def main():
         if os.path.exists(f"{cards}/{RUN_CARD}"):
             if args.card:
                 shutil.copy2(f"{cards}/{RUN_CARD}", args.card)
-            os.remove(f"{cards}/{RUN_CARD}")
+            if args.stay and result == "PLAYING":
+                # PCSX2 still has it open (Windows can't delete it): the next run removes it
+                print(f"{RUN_CARD} stays while PCSX2 is open; the next run removes it", flush=True)
+            else:
+                os.remove(f"{cards}/{RUN_CARD}")
 
         for name, mtime in user_cards.items():
             if os.path.getmtime(f"{cards}/{name}") != mtime:

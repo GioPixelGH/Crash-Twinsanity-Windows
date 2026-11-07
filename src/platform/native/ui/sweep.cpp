@@ -429,8 +429,21 @@ void HopFrame()
             const char* linked = link->linkedData != nullptr && link->linkedData->name.string != nullptr
                                      ? link->linkedData->name.string
                                      : "?";
-            Native::Log("hop:   linked to %s%s%s", linked, link->loadWall != nullptr ? "" : " (no wall)",
-                        link->flags.linkedRm2Loaded != 0 ? "" : " (not loaded)");
+            // (the load wall's middle: where a fly step goes through the link as a player walking would)
+            Vector4 middle = {0.0f, 0.0f, 0.0f, 1.0f};
+            if (link->loadWall != nullptr)
+            {
+                for (const Vector4& corner : link->loadWall->corners)
+                {
+                    middle.x += corner.x * 0.25f;
+                    middle.y += corner.y * 0.25f;
+                    middle.z += corner.z * 0.25f;
+                }
+            }
+
+            Native::Log("hop:   linked to %s%s%s, its wall's middle at (%.1f, %.1f, %.1f)", linked,
+                        link->loadWall != nullptr ? "" : " (no wall)", link->flags.linkedRm2Loaded != 0 ? "" : " (not loaded)",
+                        middle.x, middle.y, middle.z);
         }
 
         lastChunk = name;
@@ -726,6 +739,22 @@ void HopFrame()
 
         next++;
         lastHop = now + std::chrono::seconds(8);
+        return;
+    }
+
+    // "load:Levels\AltEarth\Core\corea": that chunk loaded as $TWIN_START_CHUNK loads one (the game's saved-level path), the
+    // chunks played before it staying the renderer's history (THE LIST 16: Ant Agony after bossarea's sky)
+    if (targets[next].rfind("load:", 0) == 0)
+    {
+        GameController* controller = G_GameController;
+        const std::string chunkName = targets[next].substr(5);
+        StringAssign(&controller->progress.startChunk, chunkName.c_str());
+        controller->states.entry = EntrySaved;
+        controller->saveController.Take(&controller->progress, controller->chunkManager, nullptr);
+        controller->SetNextState(GameController::StateLoadingLevel);
+        Native::Log("hop: loading %s from %s", chunkName.c_str(), name.c_str());
+        next++;
+        lastHop = now + std::chrono::seconds(2);
         return;
     }
 
