@@ -150,7 +150,7 @@ Crate Mod Loader Mod Crate (its `ModCrateInfo.txt`; `layer0\` the disc's files, 
 their paths; a crate one folder down, as a zip unpacks, is found too; one of another game, `Game=` not `CrashTS`, refused;
 `ModCrateSettings.txt`, Crate Mod Loader's settings of the game's code, doesn't apply), or a folder of files laid out as the
 disc's (`CRASH6\`, `FMV\`) and the archive's (`Levels\`, `Language\`, `Startup\`, `Extras\`). The mods folder's own files and
-folders of those names (`mods\Levels\Earth\Hubeach.rm2`, as before 1.2.0) are one more mod, "the loose files". Names in any
+folders of those names (`mods\Levels\Earth\Hub\beach.rm2`, as before 1.2.0) are one more mod, "the loose files". Names in any
 case. `mods.txt` in the settings folder keeps their order (the first wins where two have a file) and switches; a mod not in it
 comes first and on; it's written only when the player changes something. The mods are looked at once, when the disc image is
 open (`Mods::Scan`, system.cpp's OpenDiscImage), and the log says each (`[native] mods: NAME (on): a Mod Crate by ..., N disc
@@ -158,6 +158,23 @@ files, N archive files (N new)`) and each file used. A mod's SLES_525.68 and SYS
 port's, the game's data read from the player's disc): the log says what its executable changes (code and data, in words and
 places, compared section by section). While any mod is on, the memory card is a folder of their own (`memorycard-mods-` and
 their names; the level select's `...-level-select` beside it), so the player's saves never meet a mod's levels.
+
+Importing (modimport.cpp): a zip or an `.iso` in the mods folder becomes a mod folder of its name, from Options > Mods >
+Import mods (a thread of its own, the dialog's bar) or `--import-mods` (the console says each step; its exit status how many
+failed). A zip is unpacked (TwinsanityEvolved's zip reader and inflate, NativeEE's MIT: modzip.h, modinflate.h; its one top
+folder left out when every file is in it; a name leading out of the folder skipped). A disc image (ISO 9660, 2048-byte
+sectors) is compared with the player's disc (`Disc::FindOriginal`: the image's own files, whatever the mods): each disc
+file kept whole in `layer0\` when it differs or the disc hasn't it, CRASH6\CRASH.BD entry by entry through both tables
+(by name: an archive whose entries moved still compares) into `layer1\`, with a ModCrateInfo.txt of its name, so the result
+is a Mod Crate. Each import is written in `.importing-NAME` and takes the mod's place only once whole; `imported.txt` (the
+source's name, size and date) marks it, so an unchanged source isn't offered again; a folder of that name not made by an
+import stops it. An xdelta, PPF or BPS patch isn't applied here (a patcher makes the image first). Options > Mods (the
+settings' sixth tab, settings.cpp's BuildMods): Import mods while there's something to; each mod a choice, off or on in its
+place ("on · 1", the first; moving one shifts the others; its row's label and description its own, in the overlay's
+Windows-1252 with the prompts' glyphs made plain characters, cut to one line); Open the mods folder. Changes are saved to
+mods.txt and used from the next start (the mods are looked at once). check_windows' "mods import" line: a Mod Crate's zip
+and a small changed image (one archive file changed, one the disc's own, a disc file the disc hasn't) imported, then played
+with both on (the first by name wins, the card of both) and with mods.txt turning one off.
 
 `CrashTwinsanity.exe --list-files` lists the archive's files and `--extract=PATH` copies one (or one of the disc's) into the
 mods folder to be changed (commands.cpp); `native/tools/iso_extract.py IMAGE [--archive] --list` and `iso_extract.py IMAGE

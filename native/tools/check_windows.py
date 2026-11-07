@@ -15,6 +15,7 @@ FOLDER only the FPS counter's, with a window (the counter counts the pictures sh
 """
 import argparse
 import hashlib
+import io
 import json
 import os
 import re
@@ -22,6 +23,7 @@ import shutil
 import subprocess
 import sys
 import time
+import zipfile
 import zlib
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -369,6 +371,127 @@ def archive_file(path):
 # files, the sound banks Default.rm2's level loads at the start with their lengths (halfwords written to the sound memory) as the
 # disc's own give them (#36: each bank of a mod's file came as the one before it, cut to 1536)
 MOD_BANKS = {"0xe": 3072, "0x13": 4128}
+
+
+def small_iso(files):
+    """An ISO 9660 image of a few files ({"CRASH6/CRASH.BH": bytes, ...}: 2048-byte sectors, the volume descriptor, the
+    directories with their . and .. records, then the files), as a changed disc image would be laid out"""
+    def both16(value):
+        return value.to_bytes(2, "little") + value.to_bytes(2, "big")
+
+    def both32(value):
+        return value.to_bytes(4, "little") + value.to_bytes(4, "big")
+
+    def record(name, sector, size, directory):
+        name = name if isinstance(name, bytes) else name.encode("ascii")
+        length = 33 + len(name) + (len(name) + 1) % 2
+        return (bytes([length, 0]) + both32(sector) + both32(size) + bytes(7) + bytes([2 if directory else 0, 0, 0]) + both16(1) +
+                bytes([len(name)]) + name + bytes(length - 33 - len(name)))
+
+    folders = {"": {}}
+    for path in files:
+        parts = path.split("/")
+        for depth in range(1, len(parts)):
+            folders.setdefault("/".join(parts[:depth]), {})
+    names = sorted(folders)
+    sector = 18
+    places = {}
+    for name in names:
+        places[name] = sector
+        sector += 1
+    file_places = {}
+    for path in sorted(files):
+        file_places[path] = sector
+        sector += (len(files[path]) + 2047) // 2048 or 1
+    image = bytearray(sector * 2048)
+    for name in names:
+        parent = name.rsplit("/", 1)[0] if "/" in name else ""
+        data = record(b"\0", places[name], 2048, True) + record(b"\1", places[parent], 2048, True)
+        for child in names:
+            if child and (child.rsplit("/", 1)[0] if "/" in child else "") == name:
+                data += record(child.rsplit("/", 1)[-1], places[child], 2048, True)
+        for path in sorted(files):
+            if (path.rsplit("/", 1)[0] if "/" in path else "") == name:
+                data += record(path.rsplit("/", 1)[-1] + ";1", file_places[path], len(files[path]), False)
+        image[places[name] * 2048:places[name] * 2048 + len(data)] = data
+    for path, data in files.items():
+        image[file_places[path] * 2048:file_places[path] * 2048 + len(data)] = data
+    descriptor = bytearray(2048)
+    descriptor[0:7] = b"\x01CD001\x01"
+    descriptor[80:88] = both32(sector)
+    descriptor[128:132] = both16(2048)
+    descriptor[156:190] = record(b"\0", places[""], 2048, True)
+    image[16 * 2048:17 * 2048] = descriptor
+    image[17 * 2048:17 * 2048 + 7] = b"\xffCD001\x01"
+    return bytes(image)
+
+
+def small_archive(entries):
+    """An archive's table and data (CRASH.BH, CRASH.BD) of a few files ({"Language\\AgentLab\\English.txt": bytes})"""
+    table, data = bytearray(4), bytearray()
+    for name, content in entries.items():
+        table += len(name).to_bytes(4, "little") + name.encode("ascii") + len(data).to_bytes(4, "little") + len(content).to_bytes(4, "little")
+        data += content + bytes((-len(content)) % 2048)
+    return bytes(table), bytes(data)
+
+
+# The mods' import (modimport.cpp): a Mod Crate's zip and a changed disc image (MODS_IMPORT_IMAGE: one archive file changed, one
+# the disc's own, a disc file the disc hasn't) put in the mods folder and imported (--import-mods); then played with: the two in
+# the order a new mod takes (by name), then with mods.txt turning the image's off
+MODS_CHANGED_TEXT = b"a mod's text\n"
+
+
+def mods_import(exe, work):
+    """The import of a zip and a changed disc image, and the two mods used in their order and switches: (passed, what happened)"""
+    folder = work / "mods-import"
+    if folder.exists():
+        shutil.rmtree(folder)
+    settings = folder / "settings" / "Crash Twinsanity"
+    (settings / "mods").mkdir(parents=True)
+    (settings / "disc_image.txt").write_text(disc_image() + "\n")
+    (settings / "options.txt").write_text("pause_on_focus_loss=0\nlanguage=1\n")
+    crate = io.BytesIO()
+    with zipfile.ZipFile(crate, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("Example/ModCrateInfo.txt", "Name=Example\nAuthor=check_windows\nVersion=v1\nGame=CrashTS\n")
+        archive.writestr("Example/layer1/Language/AgentLab/English.txt", MODS_CHANGED_TEXT + b"from the crate\n")
+        archive.writestr("Example/layer1/Levels/added.rm2", b"a file the disc's archive hasn't")
+    (settings / "mods" / "Example.zip").write_bytes(crate.getvalue())
+    table, data = small_archive({"Language\\AgentLab\\English.txt": MODS_CHANGED_TEXT + b"from the image\n",
+                                 "Language\\AgentLab\\French.txt": archive_file("Language/AgentLab/French.txt")})
+    (settings / "mods" / "Changed.iso").write_bytes(small_iso({"CRASH6/CRASH.BH": table, "CRASH6/CRASH.BD": data,
+                                                              "FMV/ADDED.PSS": b"a disc file the disc hasn't"}))
+    env = dict(os.environ, HOME=str(folder / "settings"), APPDATA=str(folder / "settings"))
+    imported = subprocess.run([str(exe), "--headless", "--quiet-stubs", "--import-mods"], env=env, cwd=folder, capture_output=True,
+                              text=True, errors="replace", timeout=300)
+    mods_folder = settings / "mods"
+    made = {str(path.relative_to(mods_folder)).replace("\\", "/") for path in mods_folder.rglob("*") if path.is_file()}
+
+    def played(name):
+        """A start with the mods, its log"""
+        with open(folder / f"{name}.txt", "w") as log:
+            process = subprocess.Popen([str(exe), "--headless", "--quiet-stubs"], env=env, stdout=log, stderr=subprocess.STDOUT,
+                                       cwd=folder)
+            time.sleep(10)
+            process.kill()
+            process.wait()
+        return (folder / f"{name}.txt").read_text(errors="replace")
+
+    both = played("both")
+    (settings / "mods.txt").write_text("on\tExample\noff\tChanged\n")
+    one = played("one")
+    checks = {
+        "imported": imported.returncode == 0,
+        "the crate unpacked": {"Example/ModCrateInfo.txt", "Example/layer1/Language/AgentLab/English.txt"} <= made,
+        "the image as what differs": ({"Changed/layer1/Language/AgentLab/English.txt", "Changed/layer0/FMV/ADDED.PSS"} <= made and
+                                      "Changed/layer1/Language/AgentLab/French.txt" not in made),
+        "both on, the first by name": (re.search(r"AGENTLAB/ENGLISH\.TXT from .*Changed.*\(Changed\)", both) is not None and
+                                       "memorycard-mods-Changed+Example" in both and
+                                       "1 of them new" in both),
+        "mods.txt's order and switch": (re.search(r"AGENTLAB/ENGLISH\.TXT from .*Example.*\(Example\)", one) is not None and
+                                        "memorycard-mods-Example" in one and "Changed (off)" in one),
+    }
+    failed = [name for name, ok in checks.items() if not ok]
+    return not failed, ", ".join(checks) if not failed else "NOT: " + ", ".join(failed)
 
 
 def mods(exe, work):
@@ -1744,6 +1867,10 @@ def report(exe, reference, work, with_sweep, reference_name=None):
 
     ok, what = mods(exe, work)
     print(f"mods            {'ok' if ok else 'FAILED'}: {what}")
+    failed |= not ok
+
+    ok, what = mods_import(exe, work)
+    print(f"mods import     {'ok' if ok else 'FAILED'}: {what}")
     failed |= not ok
 
     if with_sweep:

@@ -5,10 +5,12 @@
 // controls tab is a table of the game's actions by the keyboard's two keys and the controller's button. It takes the keyboard
 // (arrows, Enter, Escape, Q/E or Tab for the tabs), the pads (the D-pad or the stick, A and B, the shoulders for the tabs) and the
 // mouse (hover, click, the wheel, the tabs and the arrows, a slider dragged) while it's open; the game reads nothing meanwhile
+#include "ui/pctext.h"
 #include "ui/settingsmodel.h"
 #include "ui/overlay.h"
 
 #include "native.h"
+#include "mods.h"
 #include "renderdistance.h"
 #include "updatecheck.h"
 
@@ -23,13 +25,16 @@
 #include <SDL3/SDL.h>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <functional>
 #include <iterator>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 // The graphics' texture and picture settings (src/platform/native/graphics/): until they're there these weak
@@ -56,7 +61,7 @@ namespace NativeUi
 namespace
 {
 // ------------------------------------------------------------------------------------------------------------------- the rows
-constexpr u32 TabTexts[Pages] = {TextTabGameplay, TextTabDisplay, TextTabAudio, TextControls, TextTabAccessibility};
+constexpr u32 TabTexts[Pages] = {TextTabGameplay, TextTabDisplay, TextTabAudio, TextControls, TextTabAccessibility, TextTabMods};
 constexpr u32 Columns = BindingColumns;
 // The draw distance's choices from the shortest to the farthest, so left is less and right more (options.txt keeps
 // renderdistance.h's codes, whatever this order)
@@ -203,6 +208,198 @@ s32 WindowSizeChoice()
     Resolution current = CurrentResolution();
     current.fullscreen = false;
     return DisplayChoice(current);
+}
+
+// ------------------------------------------------------------------------------------------------------------------ the mods
+// A mod's words for the overlay: its Windows-1252, the prompts' glyphs ([ ] { } \ ^ ...) made plain characters
+std::string OverlayWords(const std::string& utf8)
+{
+    std::string text;
+    ToGameText(utf8.c_str(), &text);
+    for (char& c : text)
+    {
+        if (c == '[' || c == '{')
+        {
+            c = '(';
+        }
+        else if (c == ']' || c == '}')
+        {
+            c = ')';
+        }
+        else if (std::strchr(PromptGlyphs, c) != nullptr)
+        {
+            c = ' ';
+        }
+    }
+
+    return text;
+}
+
+// A description cut to the view's one line
+std::string OneLine(std::string text)
+{
+    if (DescriptionWidth(text) <= DescriptionRoom)
+    {
+        return text;
+    }
+
+    while (!text.empty() && DescriptionWidth(text + "...") > DescriptionRoom)
+    {
+        text.pop_back();
+    }
+
+    return text + "...";
+}
+
+// The import under way on a thread of its own: each zip and disc image in turn, its progress and how it ended
+struct ImportState
+{
+    std::mutex lock;
+    std::atomic<bool> running{false};
+    std::atomic<bool> finished{false};
+    bool ok = true;
+    std::string source;
+    std::string failure;
+    double fraction = 0.0;
+};
+ImportState g_Import;
+
+void StartImport()
+{
+    if (g_Import.running)
+    {
+        return;
+    }
+
+    g_Import.running = true;
+    g_Import.finished = false;
+    g_Import.ok = true;
+    g_Import.failure.clear();
+    // (Left to end on its own: quitting during an import leaves its .importing- folder, removed by the next import)
+    std::thread([] {
+        for (const std::filesystem::path& source : Native::Mods::Importables())
+        {
+            {
+                std::lock_guard lock(g_Import.lock);
+                std::u8string name = source.filename().u8string();
+                g_Import.source = std::string(name.begin(), name.end());
+                g_Import.fraction = 0.0;
+            }
+
+            std::string error;
+            auto progress = [](const std::string&, double fraction) {
+                std::lock_guard lock(g_Import.lock);
+                g_Import.fraction = fraction;
+            };
+            if (!Native::Mods::Import(source, progress, &error))
+            {
+                std::lock_guard lock(g_Import.lock);
+                g_Import.ok = false;
+                g_Import.failure = g_Import.source + ": " + error;
+            }
+        }
+
+        g_Import.finished = true;
+        g_Import.running = false;
+    }).detach();
+}
+
+void OpenModsFolder()
+{
+    const std::filesystem::path folder = Native::Mods::Folder();
+    std::error_code ignored;
+    std::filesystem::create_directories(folder, ignored);
+    std::u8string path = folder.generic_u8string();
+    const std::string url = "file:///" + std::string(path.begin(), path.end());
+    Native::Log("mods: the mods folder opened");
+    SDL_OpenURL(url.c_str());
+}
+
+// The Mods page: import (while there's something to), each mod off or on in its place (the first wins: "on · 1"), the folder
+void BuildMods(std::vector<Row>& rows)
+{
+    Row import = Action(TextModsImport, TextDescModsImport, [] {
+        StartImport();
+        OpenDialog(DialogImporting);
+    });
+    const bool importable = !Native::Mods::Importables().empty();
+    import.shown = [importable] { return importable && !g_Import.finished; };
+    rows.push_back(import);
+    for (const Native::Mods::Mod& mod : Native::Mods::List())
+    {
+        const std::string id = mod.id;
+        auto index = [id]() -> s32 {
+            const auto& list = Native::Mods::List();
+            for (size_t i = 0; i < list.size(); i++)
+            {
+                if (list[i].id == id)
+                {
+                    return static_cast<s32>(i);
+                }
+            }
+
+            return -1;
+        };
+        const s32 count = static_cast<s32>(Native::Mods::List().size());
+        Row row = Choice(
+            TextModsLoose, 0,
+            [index] {
+                const s32 at = index();
+                return at >= 0 && Native::Mods::List()[static_cast<size_t>(at)].on ? at + 1 : 0;
+            },
+            [index](s32 value) {
+                const s32 at = index();
+                if (at < 0)
+                {
+                    return;
+                }
+
+                Native::Mods::SetOn(static_cast<size_t>(at), value != 0);
+                if (value != 0)
+                {
+                    Native::Mods::MoveTo(static_cast<size_t>(at), static_cast<size_t>(value - 1));
+                }
+            },
+            count, [](s32 value) { return value == 0 ? Text(0) : Text(1) + " \xB7 " + std::to_string(value); });
+        if (!id.empty())
+        {
+            const std::string name = OverlayWords(mod.name.empty() ? id : mod.name);
+            row.labelText = [name] { return name; };
+        }
+
+        row.descriptionText = [index] {
+            const s32 at = index();
+            if (at < 0)
+            {
+                return std::string();
+            }
+
+            const Native::Mods::Mod& mod = Native::Mods::List()[static_cast<size_t>(at)];
+            if (!mod.refusal.empty())
+            {
+                return OneLine(Text(TextModRefused) + " " + OverlayWords(mod.refusal));
+            }
+
+            std::string info;
+            for (const std::string& part : {mod.author, mod.version})
+            {
+                info += part.empty() ? "" : (info.empty() ? "" : ", ") + OverlayWords(part);
+            }
+
+            info += mod.description.empty() ? "" : (info.empty() ? "" : ": ") + OverlayWords(mod.description);
+            const bool program = std::any_of(mod.warnings.begin(), mod.warnings.end(),
+                                             [](const std::string& warning) { return warning.find("SLES_525.68") != std::string::npos; });
+            if (program)
+            {
+                info = Text(TextModProgram) + (info.empty() ? "" : " " + info);
+            }
+
+            return OneLine(info.empty() ? Text(TextDescModsOpenFolder) : info);
+        };
+        rows.push_back(row);
+    }
+
+    rows.push_back(Action(TextModsOpenFolder, TextDescModsOpenFolder, OpenModsFolder));
 }
 
 void Build()
@@ -441,11 +638,13 @@ void Build()
 
     for (u32 tab = 0; tab < TabCount; tab++)
     {
-        if (tab != TabControls)
+        if (tab != TabControls && tab != TabMods)
         {
             g_Rows[tab].push_back(Action(TextResetDefaults, TextDescResetDefaults, nullptr));
         }
     }
+
+    BuildMods(g_Rows[TabMods]);
 }
 
 bool Shown(const Row& row)
@@ -1238,9 +1437,19 @@ void TakeDialogInput()
         }
 
         break;
+    case DialogImporting:
+        if (g_Import.finished)
+        {
+            std::lock_guard lock(g_Import.lock);
+            g_Dialog = g_Import.ok ? DialogImported : DialogImportFailed;
+        }
+
+        break;
     case DialogRefused:
     case DialogFailed:
     case DialogCredits:
+    case DialogImported:
+    case DialogImportFailed:
         if (yes || no)
         {
             g_Dialog = DialogNone;
@@ -1500,7 +1709,15 @@ SettingsView CurrentSettingsView()
     view.dialog = g_Dialog;
     view.dialogPortable = g_DialogPortable;
     view.dialogOnYes = g_DialogOnYes;
-    if (g_Dialog != DialogNone)
+    if (g_Dialog == DialogImporting || g_Dialog == DialogImported || g_Dialog == DialogImportFailed)
+    {
+        std::lock_guard lock(g_Import.lock);
+        view.copied = static_cast<u64>(g_Import.fraction * 1000.0);
+        view.copyTotal = 1000;
+        view.backup = OverlayWords(g_Import.source);
+        view.failure = g_Import.failure;
+    }
+    else if (g_Dialog != DialogNone)
     {
         Native::PortableSwitchState(&view.copied, &view.copyTotal, &view.backup, &view.failure);
     }

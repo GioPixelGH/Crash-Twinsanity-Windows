@@ -597,6 +597,12 @@ bool Native::Disc::Find(const char* path, Entry* entry)
     return true;
 }
 
+bool Native::Disc::FindOriginal(const char* path, Entry* entry)
+{
+    const char* colon = std::strchr(path, ':');
+    return FindOnImage(colon != nullptr ? colon + 1 : path, entry);
+}
+
 u32 Native::Disc::Read(u64 offset, void* destination, u32 size)
 {
     if (offset >= ModBase)

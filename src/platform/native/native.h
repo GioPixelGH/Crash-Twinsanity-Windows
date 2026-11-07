@@ -148,6 +148,8 @@ struct Entry
 bool Open(const char* path);
 // A file's place in the image, false when there's none
 bool Find(const char* path, Entry* entry);
+// A file of the image itself, whatever the mods have (importing a changed image compares the two)
+bool FindOriginal(const char* path, Entry* entry);
 // Reads from the image: how many bytes were read
 u32 Read(u64 offset, void* destination, u32 size);
 // Closes the image (one that turned out not to be the game's), so another can be opened

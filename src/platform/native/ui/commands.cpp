@@ -7,6 +7,7 @@
 #include "ui/overlayinternal.h"
 
 #include "native.h"
+#include "mods.h"
 
 #include "game/clock.h"
 #include "game/controllers.h"
@@ -1053,6 +1054,14 @@ bool RunCommand(const char* argument, int* status)
     if (command.starts_with("--extract="))
     {
         *status = ExtractFile(std::string(command.substr(std::strlen("--extract="))));
+        return true;
+    }
+
+    // The mods folder's zips and disc images imported into mod folders (modimport.cpp), with the disc image the game would use
+    if (command == "--import-mods")
+    {
+        Native::OpenDiscImage();
+        *status = Native::Mods::ImportAll();
         return true;
     }
 

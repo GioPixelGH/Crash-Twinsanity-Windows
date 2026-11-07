@@ -101,8 +101,9 @@ mouse and controller, saves, cutscene skipping, community fixes):
   settings draw the grass and small things before you get close, at a cost on older PCs.
 - **Language option:** English, French, German, Italian or Spanish texts, voices and movies, chosen in Options.
 - **Mods:** each mod a folder in `%APPDATA%\Crash Twinsanity\mods` (a Crate Mod Loader Mod Crate as it comes, or files laid
-  out as the disc's), in an order with a switch each (`mods.txt`), their saves on a memory card of their own; files put
-  straight in the mods folder replace the disc's as before. `--list-files` and `--extract` help to start one.
+  out as the disc's); a mod's zip or changed disc image imported from Options > Mods as only the files it changes; the Mods
+  page orders them and turns each on or off; their saves on a memory card of their own. Files put straight in the mods
+  folder replace the disc's as before. `--list-files` and `--extract` help to start one.
 - **Portable mode** (Options > Gameplay, off by default): settings, saves and mods in a `User` folder beside the game, and the
   disc image found in the game's folder, to carry it on a USB stick.
 - **Fixes:**
@@ -141,7 +142,8 @@ off until you turn them on.
 - [x] Infinite lives, a stronger Aku Aku ([#30]) and a speedrun timer, as game options.
 - [ ] The game closing after the end credits instead of going back to the Iceberg Lab, as reported in [#20].
 - [x] Mods as the community ships them ([#36]): sound effects right with a mod's levels, Mod Crates used as they come (new
-  levels too), mods in an order with a switch each, and their saves kept apart from yours.
+  levels too), a mod's zip or changed disc image imported as only what it changes, a Mods page with an order and a switch
+  for each, and their saves kept apart from yours.
 - [ ] A modding guide: the game's files, the community's tools for them, and how to share a mod.
 - [ ] The two cutscenes that still end a little differently when skipped than when played ([#9]).
 - [ ] A skip for the cutscenes that have none yet, like those of the first fight with Cortex and of Cavern Catastrophe ([#28]).

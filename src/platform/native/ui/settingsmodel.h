@@ -39,6 +39,10 @@ struct Row
     std::function<bool()> shown;
     // A display row whose change asks to be kept (the revert countdown)
     bool asksToKeep;
+    // A row's label and description made when drawn (the Mods page's mods: their names and what they are), in the overlay's
+    // Windows-1252, instead of label's and description's texts
+    std::function<std::string()> labelText;
+    std::function<std::string()> descriptionText;
 };
 
 // The tabs (the research's categories, native/research/MODERN_CRASH_UI.md 3.2; the design's, native/design/options/SPEC.md)
@@ -49,6 +53,7 @@ enum Tab : u32
     TabAudio,
     TabControls,
     TabAccessibility,
+    TabMods,
     TabCount,
     Pages = TabCount,
 };
@@ -74,6 +79,11 @@ enum PortableDialog : u32
     DialogFailed,
     DialogQuit,
     DialogCredits,
+    // The Mods page's import: under way (its bar: copied of copyTotal thousandths, backup the source's name), done, or failed
+    // (failure what went wrong, in English)
+    DialogImporting,
+    DialogImported,
+    DialogImportFailed,
 };
 
 // What the view draws this frame

@@ -10,3 +10,5 @@ What this port takes from it, each file keeping its copyright notice:
 |---|---|---|
 | src/platform/native/discimagehash.h, .cpp (the disc image's CRC-32 and SHA-1) | engine/app/host/disc_image_hash.h, .cpp | NativeEE's MIT |
 | src/platform/native/ui/languageprobes.h (a text bank's language by its words) | engine/app/host/language_probes.h | NativeEE's MIT |
+| src/platform/native/modzip.h, .cpp (the mods' zips read: stored and deflated entries, ZIP64, every entry's CRC-32 checked; its file layer and CRC-32 ours, modzipio.h) | engine/app/host/mod_import/zip_reader.h, .cpp | NativeEE's MIT |
+| src/platform/native/modinflate.h, .cpp (DEFLATE decoded for the zips) | engine/app/host/mod_import/inflate.h, .cpp | NativeEE's MIT |

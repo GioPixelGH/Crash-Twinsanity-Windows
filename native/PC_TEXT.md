@@ -286,6 +286,17 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1F1 | shadows on crates | ombres sur les caisses | schatten auf kisten | sombras en las cajas | ombre sulle casse |
 | 0x1F2 | your shadow falls on the tops of crates too. from a level's next loading. | ton ombre tombe aussi sur le dessus des caisses. au prochain chargement d'un niveau. | dein schatten fällt auch auf kisten. ab dem nächsten laden eines levels. | tu sombra cae también sobre las cajas. desde la próxima carga de un nivel. | la tua ombra cade anche sopra le casse. dal prossimo caricamento di un livello. |
 | 0x1F3 | thanks | remerciements | dank | agradecimientos | ringraziamenti |
+| 0x1F4 | mods | mods | mods | mods | mod |
+| 0x1F5 | import mods | importer des mods | mods importieren | importar mods | importa mod |
+| 0x1F6 | turns the zips and disc images in the mods folder into mods. from the next start. | transforme les zip et images disque du dossier mods en mods. au prochain lancement. | macht aus den zips und disc-images im mods-ordner mods. ab dem nächsten start. | convierte los zip e imágenes de disco de la carpeta mods en mods. al volver a abrir el juego. | trasforma zip e immagini disco della cartella mods in mod. dal prossimo avvio del gioco. |
+| 0x1F7 | open the mods folder | ouvrir le dossier mods | mods-ordner öffnen | abrir la carpeta mods | apri la cartella mods |
+| 0x1F8 | put mods there. where two change a file, the first on wins. changes from the next start. | mets-y les mods. si deux changent un fichier, le premier activé gagne. au prochain lancement. | leg die mods dort ab. ändern zwei eine datei, gilt die erste aktive. ab dem nächsten start. | pon ahí los mods. si dos cambian un archivo, gana el primero activo. al volver a abrir el juego. | mettici le mod. se due cambiano un file, vince la prima attiva. dal prossimo avvio del gioco. |
+| 0x1F9 | files in the mods folder | fichiers du dossier mods | dateien im mods-ordner | archivos de la carpeta mods | file nella cartella mods |
+| 0x1FA | importing the mods: a disc image takes a minute or two. | import des mods : une image disque prend une minute ou deux. | mods werden importiert: ein disc-image dauert ein, zwei minuten. | importando los mods: una imagen de disco tarda un minuto o dos. | importazione delle mod: un'immagine disco richiede un minuto o due. |
+| 0x1FB | done: the mods are used from the next start of the game. | terminé : les mods sont utilisés au prochain lancement du jeu. | fertig: die mods gelten ab dem nächsten start des spiels. | hecho: los mods se usan al volver a abrir el juego. | fatto: le mod si usano dal prossimo avvio del gioco. |
+| 0x1FC | something couldn't be imported: the reason is in log.txt. | quelque chose n'a pas pu être importé : la raison est dans log.txt. | etwas konnte nicht importiert werden: der grund steht in log.txt. | algo no se pudo importar: el motivo está en log.txt. | qualcosa non è stato importato: il motivo è in log.txt. |
+| 0x1FD | can't be used: | inutilisable : | nicht nutzbar: | no se puede usar: | non utilizzabile: |
+| 0x1FE | its program changes don't apply. | ses changements du programme ne s'appliquent pas. | seine programmänderungen gelten nicht. | sus cambios del programa no se aplican. | le sue modifiche al programma non valgono. |
 
 ## English (29 lines)
 

@@ -311,6 +311,18 @@ enum NativeText : u32
     TextDescShadowsOnCrates,
     // The credits' thanks (settingsview.cpp's Credits)
     TextCreditsThanks,
+    // The Mods page (settings.cpp; mods.h)
+    TextTabMods,
+    TextModsImport,
+    TextDescModsImport,
+    TextModsOpenFolder,
+    TextDescModsOpenFolder,
+    TextModsLoose,
+    TextModsImporting,
+    TextModsImported,
+    TextModsImportFailed,
+    TextModRefused,
+    TextModProgram,
     NativeTextEnd,
 };
 

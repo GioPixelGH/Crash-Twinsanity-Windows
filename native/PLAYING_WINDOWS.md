@@ -132,12 +132,19 @@ Each mod is a folder of its own in **%APPDATA%\Crash Twinsanity\mods\**:
 
 - a **Mod Crate** (Crate Mod Loader's: a folder with `ModCrateInfo.txt`, `layer0` and `layer1`), unzipped as it comes, for
   example `mods\Padoru Pandemonium\`;
-- or a folder of changed files laid out as the game's: `mods\My mod\Levels\Earth\Hubeach.rm2` for a level,
+- or a folder of changed files laid out as the game's: `mods\My mod\Levels\Earth\Hub\beach.rm2` for a level,
   `mods\My mod\Language\AgentLab\Italian.txt` for texts, `mods\My mod\FMV\H01_A.PSS` for a movie.
 
-Files put straight in the mods folder at their path (`mods\Levels\Earth\Hubeach.rm2`) work too, as before 1.2.0. Where two
-mods change the same file, the first in **mods.txt** wins (in the settings folder: a line a mod, `on` or `off`, a tab, the
-mod's folder; `*` the files put straight in the mods folder). A new mod comes first and on. While any mod is on, your saves go
+A mod's **zip**, or a **changed disc image** (an `.iso` made with the community's tools, or patched with an xdelta, PPF or BPS
+file by a patcher first), can go straight in the mods folder too: **Options > Mods > Import mods** makes each a mod folder
+of its own (a zip unpacked; a disc image kept only as the files that differ from your disc, so a 4 GB image becomes the few
+hundred megabytes the mod changes), and the zip or image can be deleted after. From the command line:
+`.\CrashTwinsanity.exe --import-mods`.
+
+Files put straight in the mods folder at their path (`mods\Levels\Earth\Hub\beach.rm2`) work too, as before 1.2.0.
+**Options > Mods** lists the mods: each off, or on in its place (on · 1 is the first). Where two mods change the same file,
+the first wins. A new mod comes first and on. The choices are kept in **mods.txt** in the settings folder (a line a mod, `on`
+or `off`, a tab, the mod's folder; `*` the files put straight in the mods folder) and used from the next start. While any mod is on, your saves go
 on a memory card of their own (`memorycard-mods-...` in the settings folder): your own saves are never touched, and they're
 back when the mods are off. A mod's changed game program (SLES_525.68) can't work here: this port has its own, and the log
 says what the mod changed in it.
@@ -148,7 +155,7 @@ To make a mod, get a file to change, from PowerShell or the Command Prompt in th
     .\CrashTwinsanity.exe --extract=Language/AgentLab/Italian.txt
 
 The first lists the game's files; the second copies one from your disc image into the mods folder (a file already there is
-left alone). The log says which mods the game used. Remove the folder (or the file), or turn it off in mods.txt, to play the
+left alone). The log says which mods the game used. Turn a mod off in Options > Mods, or remove its folder, to play the
 original again.
 
 ## If something goes wrong

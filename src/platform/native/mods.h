@@ -9,7 +9,8 @@
 //   ModCrateSettings.txt (Crate Mod Loader's settings of the game's code) doesn't apply;
 // - a folder of files laid out as the disc's (CRASH6/MUSIC.MB, FMV/H01_A.PSS) and the archive's (Levels/..., Language/...).
 // The mods folder's own files and folders named as the disc's and the archive's (mods\Levels\..., as before 1.2.0) are one more,
-// "the loose files".
+// "the loose files". A zip (a Mod Crate's, or of such files) or a changed disc image put in the mods folder becomes a mod folder
+// when imported (Options > Mods, or --import-mods: modimport.cpp): a disc image as the files that differ from the player's disc.
 //
 // A file of the disc's or the archive's comes from the first mod on that has it, else from the disc. The archive's files a mod
 // adds (new levels) are found as its own are. A mod's SLES_525.68 is never used (the program is the port's, the game's data is
@@ -74,7 +75,7 @@ bool Scanned();
 // and the mod's name, from the first that has it (never the executable or SYSTEM.CNF)
 bool FindDiscFile(const std::vector<std::string>& parts, std::filesystem::path* file, std::string* mod);
 // The archive's files the mods on have, each from the first that has it: its key ("/LEVELS/EARTH/HUB/BEACH.RM2"), its name as the
-// archive's table would have it ("Levels\Earth\Hubeach.rm2"), its file and the mod's name
+// archive's table would have it ("Levels\Earth\Hub\beach.rm2"), its file and the mod's name
 struct ArchiveFile
 {
     std::string key;
@@ -87,5 +88,15 @@ std::vector<ArchiveFile> ArchiveFiles();
 std::string LogName(const std::string& id);
 // The mods folder (exists or not)
 std::filesystem::path Folder();
+
+// Importing: the mods folder's zips and disc images (.zip, .iso) not imported yet, or changed since
+std::vector<std::filesystem::path> Importables();
+// One imported into a mod folder of its own named as it is (the zip unpacked; the image's files that differ from the player's
+// disc, laid out as a Mod Crate), replacing one imported from it before; used from the next start. Progress (what's being done,
+// 0-1) on the thread it runs on. False with what went wrong, the mods folder as it was
+using ImportProgress = std::function<void(const std::string& stage, double fraction)>;
+bool Import(const std::filesystem::path& source, const ImportProgress& progress, std::string* error);
+// --import-mods: each importable one, said on the console and in the log; how many failed
+s32 ImportAll();
 
 }

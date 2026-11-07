@@ -471,8 +471,14 @@ void DrawPortableDialog(OverlayFrame& frame, const SettingsView& view, const Box
                   : view.dialog == DialogCopying ? TextPortableCopying
                   : view.dialog == DialogDone    ? TextPortableDone
                   : view.dialog == DialogQuit    ? TextQuitAsk
+                  : view.dialog == DialogImporting ? TextModsImporting
+                  : view.dialog == DialogImported  ? TextModsImported
+                  : view.dialog == DialogImportFailed ? TextModsImportFailed
                                                  : TextPortableFailed;
-    const u32 heading = view.dialog == DialogQuit ? TextQuitDesktop : view.dialog == DialogCredits ? TextCredits : TextPortable;
+    const bool importing = view.dialog == DialogImporting || view.dialog == DialogImported || view.dialog == DialogImportFailed;
+    const u32 heading = view.dialog == DialogQuit ? TextQuitDesktop : view.dialog == DialogCredits ? TextCredits
+                        : importing                ? TextModsImport
+                                                   : TextPortable;
     std::string text = Sentence(Text(message));
     if (view.dialog == DialogDone)
     {
@@ -505,9 +511,13 @@ void DrawPortableDialog(OverlayFrame& frame, const SettingsView& view, const Box
         lines.push_back(Sentence(Text(TextPortableBackup)));
         lines.push_back("\"" + view.backup + "\"");
     }
-    else if (view.dialog == DialogFailed && !view.failure.empty())
+    else if ((view.dialog == DialogFailed || view.dialog == DialogImportFailed) && !view.failure.empty())
     {
         notes = Wrapped(view.failure, textWidth, note);
+    }
+    else if (view.dialog == DialogImporting && !view.backup.empty())
+    {
+        notes = Wrapped(view.backup, textWidth, note);
     }
 
     f32 height = 32.0f + 36.0f + 10.0f + static_cast<f32>(lines.size()) * LineHeight + static_cast<f32>(notes.size()) * NoteHeight +
@@ -562,6 +572,27 @@ void DrawPortableDialog(OverlayFrame& frame, const SettingsView& view, const Box
         std::snprintf(megabytes, sizeof(megabytes), "%.1f / %.1f MB", static_cast<double>(view.copied) / (1024.0 * 1024.0),
                       static_cast<double>(view.copyTotal) / (1024.0 * 1024.0));
         frame.Text(megabytes, ReferenceWidth * 0.5f, bottomTop + 16.0f + 16.0f, note, OverlayAlign::Centre);
+        break;
+    }
+    case DialogImporting:
+    {
+        // The bar, and how far the import is
+        BoxStyle track;
+        track.fill = PillFill;
+        track.radius = 8.0f;
+        frame.Box(Left + Pad, bottomTop, textWidth, 16.0f, track);
+        f32 share = view.copyTotal != 0 ? std::min(1.0f, static_cast<f32>(view.copied) / static_cast<f32>(view.copyTotal)) : 0.0f;
+        if (share > 0.0f)
+        {
+            BoxStyle fill;
+            fill.fill = Orange;
+            fill.radius = 8.0f;
+            frame.Box(Left + Pad, bottomTop, std::max(16.0f, textWidth * share), 16.0f, fill);
+        }
+
+        char percent[16];
+        std::snprintf(percent, sizeof(percent), "%d%%", static_cast<int>(share * 100.0f));
+        frame.Text(percent, ReferenceWidth * 0.5f, bottomTop + 16.0f + 16.0f, note, OverlayAlign::Centre);
         break;
     }
     default:
@@ -905,7 +936,28 @@ void DrawSettingsView(OverlayFrame& frame, std::vector<HitRegion>& regions)
         }
 
         regions.push_back({HitKind::Row, rowLeft, std::max(top, rowsTop), rowWidth, RowHeight, index, -1, -1});
-        frame.Text(Sentence(Text(row.label)), rowLeft + RowPad, middle, Body(21.0f, colours.label));
+        if (row.labelText)
+        {
+            // A mod's name, cut short of the value
+            TextStyle style = Body(21.0f, colours.label);
+            std::string label = row.labelText();
+            const f32 room = valueCentre - ValueWidth * 0.5f - 24.0f - (rowLeft + RowPad);
+            if (OverlayTextWidth(label, style) > room)
+            {
+                while (!label.empty() && OverlayTextWidth(label + "...", style) > room)
+                {
+                    label.pop_back();
+                }
+
+                label += "...";
+            }
+
+            frame.Text(label, rowLeft + RowPad, middle, style);
+        }
+        else
+        {
+            frame.Text(Sentence(Text(row.label)), rowLeft + RowPad, middle, Body(21.0f, colours.label));
+        }
         switch (row.kind)
         {
         case RowChoice:
@@ -1018,7 +1070,9 @@ void DrawSettingsView(OverlayFrame& frame, std::vector<HitRegion>& regions)
     }
 
     // The description of the highlighted row (or what's waited for)
-    std::string description = view.capturing ? Text(TextPressKey) : Text(selectedRow.description);
+    std::string description = view.capturing                 ? Text(TextPressKey)
+                              : selectedRow.descriptionText ? selectedRow.descriptionText()
+                                                            : Text(selectedRow.description);
     TextStyle describe = Body(19.0f, Hex(0xd6e8ff));
     DescriptionLine(frame, Sentence(description), 360.0f, 612.0f + OverlayLineHeight(describe) * 0.5f, describe);
 
