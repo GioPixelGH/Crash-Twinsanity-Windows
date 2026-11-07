@@ -208,6 +208,10 @@ leaving a save the game couldn't have made itself (`src/platform/native/gameopti
   (`AddLivesCommand::Execute`) costs nothing: the lives panel shows as on any death, the count as it was, and a checkpoint
   restart never ends in a game over for want of lives (`RestartFromCheckpoint`). Lives given still count. The log says each
   death that cost none. Checked: Crash walked into the beach's sea (`TWIN_PAD_SCRIPT=650-1100:lx=255`), the count stays 5.
+- The stronger Aku Aku mask (`strong_mask`, #30): with one or two masks an explosion (TNT, Nitro, a bomb: `HitExplosion`)
+  takes the played character's mask as any hit does (one hit point: hit points are 1 + the masks) instead of dealing 100, and
+  the invincibility of three masks or the blink after a hit keeps explosions out (`CharacterAgent::Contact`; the bug fixes'
+  community change does that last part for everyone). Not under the bug fixes: the original game means explosions to kill.
 ## Bug fixes (optional)
 
 The "bug fixes" toggle on the settings' Gameplay tab (`OptionRetailFixes`, off by default) turns on fixes of retail bugs, in the

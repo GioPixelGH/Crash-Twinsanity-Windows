@@ -285,6 +285,9 @@ enum NativeText : u32
     // The game options (settings.cpp's Gameplay page): infinite lives
     TextInfiniteLives,
     TextDescInfiniteLives,
+    // The stronger Aku Aku mask
+    TextStrongMask,
+    TextDescStrongMask,
     NativeTextEnd,
 };
 
@@ -437,6 +440,8 @@ enum Option : u32
     OptionUpdateCheck,
     // The game options (gameoptions.h, all off by default): infinite lives
     OptionInfiniteLives,
+    // The stronger Aku Aku mask (#30)
+    OptionStrongMask,
     OptionCount,
 };
 

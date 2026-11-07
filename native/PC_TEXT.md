@@ -267,6 +267,8 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1DE | version x.y.z is out: options, gameplay. | la version x.y.z est sortie : options, jeu. | version x.y.z ist da: optionen, spiel. | ya está la versión x.y.z: opciones, juego. | è uscita la versione x.y.z: opzioni, gioco. |
 | 0x1DF | infinite lives | vies infinies | unendliche leben | vidas infinitas | vite infinite |
 | 0x1E0 | a death costs no life: the count stays where it is. off plays as the original. | une mort ne fait perdre aucune vie : le compteur ne bouge pas. désactivé : comme l'original. | ein tod kostet kein leben: der zähler bleibt. aus: wie das original. | morir no cuesta vidas: el contador no cambia. desactivado: como el original. | morire non costa vite: il conteggio resta. disattivato: come l'originale. |
+| 0x1E1 | stronger aku aku | aku aku plus fort | stärkerer aku aku | aku aku más fuerte | aku aku più forte |
+| 0x1E2 | aku aku's masks also take tnt and nitro blasts, as in the earlier crash games. | les masques d'aku aku encaissent aussi tnt et nitro, comme dans les anciens crash. | aku akus masken halten auch tnt und nitro aus, wie in den früheren crash-spielen. | las máscaras de aku aku aguantan también tnt y nitro, como en los crash anteriores. | le maschere di aku aku reggono anche tnt e nitro, come nei crash precedenti. |
 
 ## English (29 lines)
 

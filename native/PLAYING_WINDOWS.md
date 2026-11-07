@@ -114,6 +114,7 @@ faster loading and pausing in the background are on. **Reset to defaults** at th
 Game options (Options > Gameplay), all off unless you turn them on; your saves stay ones the original game could make:
 
 - **Infinite lives**: dying costs no life.
+- **Stronger Aku Aku**: with one or two masks, TNT and Nitro take a mask instead of a life, as in the earlier Crash games.
 The refresh rate is 50 Hz (the European PS2's), 60 Hz (the default), or 120 Hz, 144 Hz or unlimited for smoother play on a fast
 computer and a high refresh rate monitor (turn v-sync off for unlimited). The game runs at the same speed at any rate, and Crash
 jumps as far and as high as at 60 Hz; above 60 it goes only as fast as the computer can draw it.

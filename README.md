@@ -178,6 +178,7 @@ differences as options on the PAL game ([#14]), the port's own texts in Brazilia
 [#24]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/24
 [#25]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/25
 [#28]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/28
+[#30]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/30
 [#33]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/33
 
 ## Building on Windows

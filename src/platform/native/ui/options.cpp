@@ -77,6 +77,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionSuperUltrawide, "super_ultrawide", 0, 1},
     {OptionUpdateCheck, "update_check", 0, 1},
     {OptionInfiniteLives, "infinite_lives", 0, 1},
+    {OptionStrongMask, "strong_mask", 0, 1},
 };
 
 s32 g_Values[OptionCount];

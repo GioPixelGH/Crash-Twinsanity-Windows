@@ -13,3 +13,11 @@ namespace NativeGame
 bool InfiniteLives();
 }
 
+// The stronger Aku Aku mask (strong_mask, #30): with one or two masks an explosion (TNT, Nitro, a bomb) takes a mask as any hit
+// does instead of killing, and the invincibility of three masks or the blink after a hit keeps explosions out
+// (characterstate.cpp's CharacterAgent::Contact), as in the earlier Crash games
+namespace NativeGame
+{
+bool StrongMask();
+}
+

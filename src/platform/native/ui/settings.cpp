@@ -246,6 +246,8 @@ void Build()
     gameplay.push_back(Toggle(TextBugFixes, TextDescBugFixes, OptionRetailFixes));
     // The game options (gameoptions.h), each off by default: infinite lives (THE LIST 6)
     gameplay.push_back(Toggle(TextInfiniteLives, TextDescInfiniteLives, OptionInfiniteLives));
+    // The stronger Aku Aku mask (THE LIST 10, #30)
+    gameplay.push_back(Toggle(TextStrongMask, TextDescStrongMask, OptionStrongMask));
     gameplay.push_back(Toggle(TextPauseInactive, TextDescPauseInactive, OptionPauseOnFocusLoss));
     gameplay.push_back(Toggle(TextDetailedLog, TextDescDetailedLog, OptionDetailedLog));
     // Portable mode (portable.cpp; not an option of options.txt, which is in the folder it chooses): the mode in use, and stepping
@@ -811,6 +813,7 @@ void ResetTab(u32 tab)
         ResetOptions({OptionSpeechLanguage});
         ResetOptions({OptionUpdateCheck});
         ResetOptions({OptionInfiniteLives});
+        ResetOptions({OptionStrongMask});
         break;
     case TabAccessibility:
         ResetOptions({OptionCameraShake, OptionInvertCameraX, OptionInvertCameraY, OptionCameraSpeed, OptionStickDeadZone});

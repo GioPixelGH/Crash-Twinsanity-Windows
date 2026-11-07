@@ -27,6 +27,7 @@
 
 #ifdef TWIN_NATIVE
 #include "fixes.h"
+#include "gameoptions.h"
 #endif
 
 extern "C"
@@ -954,10 +955,20 @@ void CharacterAgent::Contact(const ContactMessage* message, InstanceContext* sen
     }
 
 #ifdef TWIN_NATIVE
+    // The stronger Aku Aku mask (the game option, THE LIST 10, #30): an explosion takes the played character's mask as any
+    // hit does (one hit point) when it has one or two, as in the earlier games, and is kept out by the invincibility below
+    const bool explosion = (message->hitKinds & HitExplosion) != 0;
+    const bool strongMask = explosion && NativeGame::StrongMask() && hit->instance != nullptr &&
+                            hit->instance == g_AgentsGameController->progress.Instance(g_AgentsGameController->progress.play.character);
+    if (strongMask && points > 1)
+    {
+        damage = 1;
+    }
+
     // With the bug fixes on, invincibility also keeps out explosions (the community mod's "Aku Aku invincibility that works", its
     // patch of 0x137590-0x137604): retail lets through any hit of 50 or more, and TNT, Nitro and bombs deal 100, so Crash died to
     // them with three masks (and while blinking after a hit). The other big hits (the instant deaths) still go through
-    bool keptOut = damage < InvincibleDamage || (NativeFixes::RetailFixes() && (message->hitKinds & HitExplosion) != 0);
+    bool keptOut = damage < InvincibleDamage || ((NativeFixes::RetailFixes() || strongMask) && explosion);
     if (hit->Invincible() != 0 && keptOut)
 #else
     if (hit->Invincible() != 0 && damage < InvincibleDamage)
