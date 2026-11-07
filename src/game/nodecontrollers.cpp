@@ -23,6 +23,15 @@
 #include <cstddef>
 #include <cstdint>
 
+#ifdef TWIN_NATIVE
+#include "game/chunkdata.h"
+#include "game/objects.h"
+#include "fixes.h"
+#include "native.h"
+
+#include <cstdlib>
+#endif
+
 // The controllers command 645 gives object nodes: the final boss's weapons, Aku Aku's mask, a path follower and the Humiliskate's
 // trails and sounds
 
@@ -472,6 +481,29 @@ void MaskController::Frame(TimeClock*)
         flags.unused7 = 0;
     }
 
+#ifdef TWIN_NATIVE
+    // $TWIN_MASK_TRACE: the controller every 30 frames (THE LIST 15, #18: Aku Aku in the scenes)
+    static const bool controllerTrace = std::getenv("TWIN_MASK_TRACE") != nullptr;
+    static const MaskController* firstTraced = nullptr;
+    static u32 controllerTraced = 0;
+    firstTraced = firstTraced != nullptr ? firstTraced : this;
+    controllerTraced += firstTraced == this ? 1 : 0;
+    if (controllerTrace && controllerTraced % 30 == 0)
+    {
+        auto nameOf = [](InstanceContext* instance) -> const char*
+        {
+            auto* object = instance != nullptr ? static_cast<ObjectNodeBase*>(GetGameNode(&instance->nodes, NodeObject)) : nullptr;
+            GameObject* source = object == nullptr ? nullptr : object->sourceNode != nullptr ? SourceObject(object->sourceNode) : object->object;
+            return source != nullptr && source->name.string != nullptr ? source->name.string : "none";
+        };
+        InstanceContext* player = PlayerInstance();
+        Native::Log("mask trace: %s, kind %u, state %u, watched %d, hidden %u, visible %u, its character %s%s, the player %s, hit points %u",
+                    nameOf(node->owner), static_cast<u32>(kind), static_cast<u32>(state), GameWatched() ? 1 : 0, static_cast<u32>(flags.hidden),
+                    static_cast<u32>(node->owner->flags.visible), nameOf(character), character == player ? " (the player)" : "",
+                    nameOf(player), player != nullptr ? PlayerHitPoints() : 0u);
+    }
+#endif
+
     switch (state)
     {
     case StateInactive:
@@ -784,10 +816,67 @@ void MaskController::StepInvincible()
     place->SyncPosition();
     Vector4 position = place->position;
     auto* characterNode = static_cast<ObjectNode*>(GetGameNode(NodesOf(character), NodeObject));
+#ifdef TWIN_NATIVE
+    // Bug fixes (THE LIST 15, #18): the invincibility's trails taken into the chunk the character moved into. Retail leaves their
+    // emitters in the chunk they started in: they're the controller's, not among the character's own trails, which the game moves
+    // when an instance changes chunk (ParticleTrails::ChangeChunk); the character's place, in the new chunk's frame, then seen
+    // through the old chunk's puts them past their cut-off distance from the camera and they stop, the mask still on (on the PS2
+    // too, in every level, for Aku Aku and Uka Uka). Moved as ChangeChunk moves an emitter, but left the game's own loose kind
+    // (as StartEmitter makes it), so the reset after a death still lets it go
+    if (NativeFixes::RetailFixes() && character->chunk != nullptr)
+    {
+        for (u32 index = 0; index < InvincibilityTrails; index++)
+        {
+            if (trailSlots[index] >= 0 && g_EmitterRuntimes[trailSlots[index]].chunk != character->chunk)
+            {
+                g_EmitterRuntimes[trailSlots[index]].chunk = character->chunk;
+            }
+        }
+    }
+#endif
     for (u32 index = 0; index < InvincibilityTrails; index++)
     {
         trailSlots[index] = UpdateTrail(&trails[index], characterNode, trailSlots[index]);
     }
+
+#ifdef TWIN_NATIVE
+    // $TWIN_MASK_TRACE: the invincibility's trails' emitters every 30 frames (THE LIST 15, #18)
+    static const bool maskTrace = std::getenv("TWIN_MASK_TRACE") != nullptr;
+    static u32 traced = 0;
+    if (maskTrace && traced++ % 30 == 0)
+    {
+        ChunkData* own = character->chunk;
+        for (u32 index = 0; index < InvincibilityTrails; index++)
+        {
+            s32 slot = trailSlots[index];
+            if (slot < 0)
+            {
+                Native::Log("mask trace: trail %u, no emitter", index);
+                continue;
+            }
+
+            bool released = false;
+            for (s32 at = g_TakenEmitterRuntimes; at < static_cast<s32>(MaxEmitterRuntimes); at++)
+            {
+                released = released || g_FreeEmitterRuntimes[at] == slot;
+            }
+
+            const EmitterRuntime& runtime = g_EmitterRuntimes[slot];
+            bool listed = false;
+            for (ChunkData* chunk = GetChunkList()->first; chunk != nullptr; chunk = chunk->next)
+            {
+                listed = listed || chunk == runtime.chunk;
+            }
+
+            Native::Log("mask trace: trail %u, emitter %d %s, its system %d (the trail's %d), enabled %d, phase %d, state %d, its chunk "
+                        "%s, the player's %s, drawn %u/%u, the camera %.1f",
+                        index, slot, released ? "released" : "taken", runtime.system, trails[index].system + 1, runtime.enabled,
+                        runtime.phase, runtime.state, listed ? runtime.chunk->name.string : "(not a loaded chunk)",
+                        own != nullptr ? own->name.string : "none", listed ? runtime.chunk->drawnFrame : 0u,
+                        own != nullptr ? own->drawnFrame : 0u, static_cast<double>(runtime.cameraDistance));
+        }
+    }
+#endif
 
     if (FlagsOf(character).visible)
     {

@@ -90,6 +90,13 @@ SCENARIOS = [
      dict(env={"TWIN_SCALE": "4", "TWIN_HW_MAX_TARGET": "1024"},
           expect=[r"hardware renderer: drawing at 4x", r"the target \w+/8 class \d+ \(2048x\d+ at the scale\) can't be drawn into",
                   r"left to the software GS: a target the graphics card can't hold at this scale"])),
+    # Issue #18 (THE LIST 15): the masks' invincibility trails taken into the next chunk with the player under Bug fixes (retail
+    # leaves their emitters in the chunk they started in, past their cut-off: the particles stop, the mask still on)
+    ("The mask's invincibility trails into another chunk (#18)", "Levels\\Earth\\Hub\\huba", 22,
+     "idle,wait3,mask,wait1,mask,wait1,mask,wait1,mask,wait2,hubb,wait4",
+     dict(options="skip_cutscenes=1\nretail_fixes=1\n", env={"TWIN_MASK_TRACE": "1"},
+          expect=[r"mask trace: trail 0, emitter \d+ taken, .*enabled 1, .*its chunk levels\\earth\\hub\\hubb, the player's "
+                  r"levels\\earth\\hub\\hubb"])),
 ]
 # The pause menu's hints checked for each controller's prompts and the menu hints option (hintstest.cpp): the prompts' style
 # ($TWIN_UI_PROMPTS) and the option (options.txt's menu_hints: 0 the game's own hints, 1 the bar). The pause on the window's focus

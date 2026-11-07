@@ -151,7 +151,8 @@ off until you turn them on.
 - [ ] Frame rates other than 60 checked through the game: the seal chase at 240 fps ([#17]), the cannon's bombs below 60 fps
   ([#12]).
 - [ ] The black screen at start on some AMD PCs ([#16]).
-- [ ] The masks' bugs ([#18]): those the PS2 game has too become fixes under the bug fixes option.
+- [x] The masks' invincibility particles kept when you move into the next area, a fix under the bug fixes option ([#18]).
+- [ ] Aku Aku missing in some cutscenes of Cavern Catastrophe and High Seas Hi-Jinks ([#18]): not found yet.
 - [ ] HD texture packs in BC7, and texture upscaling.
 - [ ] The characters' shadows drawn at the chosen resolution: they stay at the PS2's, softer than the rest of the picture at
   high resolutions.

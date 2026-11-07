@@ -12,6 +12,7 @@
 #include "game/agents.h"
 #include "game/behaviours.h"
 #include "game/chunkdata.h"
+#include "game/commands.h"
 #include "game/gamecontroller.h"
 #include "game/instances.h"
 #include "game/objectnode.h"
@@ -702,6 +703,18 @@ void HopFrame()
 
         next++;
         lastHop = now + std::chrono::seconds(8);
+        return;
+    }
+
+    // "mask": a mask picked up as an Aku Aku crate gives it (a hit point; the fourth makes the player invincible: THE LIST 15's
+    // trails, $TWIN_MASK_TRACE)
+    if (targets[next] == "mask")
+    {
+        alignas(PickUpHealthCommand) unsigned char command[sizeof(PickUpHealthCommand)] = {};
+        reinterpret_cast<PickUpHealthCommand*>(command)->ExecuteOn(nullptr);
+        Native::Log("hop: a mask picked up in %s", name.c_str());
+        next++;
+        lastHop = now - std::chrono::seconds(2);
         return;
     }
 
