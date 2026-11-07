@@ -111,6 +111,9 @@ The defaults are the game as the PS2 had it, in a 1280×720 window at twice the 
 skipped (the PS2 game couldn't; turn **Skip cutscenes** on to hold any button through them), the original bugs are kept, and
 faster loading and pausing in the background are on. **Reset to defaults** at the bottom of each tab puts it back to these.
 
+Game options (Options > Gameplay), all off unless you turn them on; your saves stay ones the original game could make:
+
+- **Infinite lives**: dying costs no life.
 The refresh rate is 50 Hz (the European PS2's), 60 Hz (the default), or 120 Hz, 144 Hz or unlimited for smoother play on a fast
 computer and a high refresh rate monitor (turn v-sync off for unlimited). The game runs at the same speed at any rate, and Crash
 jumps as far and as high as at 60 Hz; above 60 it goes only as fast as the computer can draw it.

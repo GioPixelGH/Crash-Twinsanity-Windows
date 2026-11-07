@@ -265,6 +265,8 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1DC | new version's page | page de la nouvelle version | seite der neuen version | página de la nueva versión | pagina della nuova versione |
 | 0x1DD | opens the new version's page on github in your browser. | ouvre la page de la nouvelle version sur github dans ton navigateur. | öffnet die seite der neuen version auf github im browser. | abre la página de la nueva versión en github en tu navegador. | apre la pagina della nuova versione su github nel browser. |
 | 0x1DE | version x.y.z is out: options, gameplay. | la version x.y.z est sortie : options, jeu. | version x.y.z ist da: optionen, spiel. | ya está la versión x.y.z: opciones, juego. | è uscita la versione x.y.z: opzioni, gioco. |
+| 0x1DF | infinite lives | vies infinies | unendliche leben | vidas infinitas | vite infinite |
+| 0x1E0 | a death costs no life: the count stays where it is. off plays as the original. | une mort ne fait perdre aucune vie : le compteur ne bouge pas. désactivé : comme l'original. | ein tod kostet kein leben: der zähler bleibt. aus: wie das original. | morir no cuesta vidas: el contador no cambia. desactivado: como el original. | morire non costa vite: il conteggio resta. disattivato: come l'originale. |
 
 ## English (29 lines)
 

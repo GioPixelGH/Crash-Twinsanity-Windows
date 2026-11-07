@@ -244,6 +244,8 @@ void Build()
     gameplay.push_back(Toggle(TextSkipCutscenes, TextDescSkip, OptionSkipCutscenes));
     gameplay.push_back(Toggle(TextFastLoading, TextDescFastLoading, OptionFastLoading));
     gameplay.push_back(Toggle(TextBugFixes, TextDescBugFixes, OptionRetailFixes));
+    // The game options (gameoptions.h), each off by default: infinite lives (THE LIST 6)
+    gameplay.push_back(Toggle(TextInfiniteLives, TextDescInfiniteLives, OptionInfiniteLives));
     gameplay.push_back(Toggle(TextPauseInactive, TextDescPauseInactive, OptionPauseOnFocusLoss));
     gameplay.push_back(Toggle(TextDetailedLog, TextDescDetailedLog, OptionDetailedLog));
     // Portable mode (portable.cpp; not an option of options.txt, which is in the folder it chooses): the mode in use, and stepping
@@ -808,6 +810,7 @@ void ResetTab(u32 tab)
                       OptionDetailedLog});
         ResetOptions({OptionSpeechLanguage});
         ResetOptions({OptionUpdateCheck});
+        ResetOptions({OptionInfiniteLives});
         break;
     case TabAccessibility:
         ResetOptions({OptionCameraShake, OptionInvertCameraX, OptionInvertCameraY, OptionCameraSpeed, OptionStickDeadZone});

@@ -43,6 +43,7 @@
 #include <cstdint>
 
 #ifdef TWIN_NATIVE
+#include "gameoptions.h"
 #include "ui/nativeui.h"
 #endif
 
@@ -1119,7 +1120,12 @@ u32 GameController::EndWhackaworm()
 
 u32 GameController::RestartFromCheckpoint()
 {
+#ifdef TWIN_NATIVE
+    // Infinite lives (the game option): no game over for want of lives, the count left as it is (none: the last life goes on)
+    if (progress.counts.lives == 0 && !NativeGame::InfiniteLives())
+#else
     if (progress.counts.lives == 0)
+#endif
     {
         return ForceGameOver();
     }

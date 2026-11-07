@@ -1,6 +1,7 @@
 // The native build's optional bug fixes: whether they're on, and the ones made on the data the game reads from the disc
 #include "fixes.h"
 
+#include "gameoptions.h"
 #include "native.h"
 #include "ui/nativeui.h"
 

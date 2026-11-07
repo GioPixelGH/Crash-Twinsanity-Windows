@@ -199,6 +199,15 @@ Watch for `(address + A - 1) & ~(A - 1)` with a 32 bit `A`: its mask clears an a
   `reinterpret_cast<T*>(u32)`), from clang's AST. Run it after pulling upstream changes: it should print nothing.
 - `native/tools/datastats.py`: the data the native build brings over from the split (`asm/data/`), by section.
 
+## Game options (1.2.0)
+
+Changes to the experience with the original content only, each off by default (options.txt's keys; Options > Gameplay), none
+leaving a save the game couldn't have made itself (`src/platform/native/gameoptions.h`):
+
+- Infinite lives (`infinite_lives`, THE LIST 6; TwinsanityEvolved's idea): the played character's death script's -1 life
+  (`AddLivesCommand::Execute`) costs nothing: the lives panel shows as on any death, the count as it was, and a checkpoint
+  restart never ends in a game over for want of lives (`RestartFromCheckpoint`). Lives given still count. The log says each
+  death that cost none. Checked: Crash walked into the beach's sea (`TWIN_PAD_SCRIPT=650-1100:lx=255`), the count stays 5.
 ## Bug fixes (optional)
 
 The "bug fixes" toggle on the settings' Gameplay tab (`OptionRetailFixes`, off by default) turns on fixes of retail bugs, in the

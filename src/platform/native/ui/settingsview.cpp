@@ -82,6 +82,7 @@ std::string ProperWords(const std::string& text)
         // The credits' names
         {"windows", "Windows"}, {"linux", "Linux"},     {"mac", "Mac"},     {"hd", "HD"},
         {"twinsanity improved", "Twinsanity Improved"}, {"twinsanityevolved", "TwinsanityEvolved"}, {"github", "GitHub"},
+        // The game options' names
         // Portable mode's: the folders' names, the stick, the dialog's button
         {"appdata", "AppData"}, {"user", "User"},       {"usb", "USB"},     {"program files", "Program Files"}, {"ok", "OK"},
     };

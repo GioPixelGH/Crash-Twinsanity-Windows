@@ -18,6 +18,11 @@
 #include "game/string.h"
 #include "game/widgets.h"
 
+#ifdef TWIN_NATIVE
+#include "gameoptions.h"
+#include "native.h"
+#endif
+
 // The commands that ask the game's controllers: the game controller's requests, the video controller, the music, the player, the
 // custom pickups and projectiles
 
@@ -270,6 +275,16 @@ void AddLivesCommand::Execute(TimeClock*, BehaviourRunner* runner, BehaviourLeve
     GameController* controller = G_GameController;
     InstanceContext* owner = runner->agentNode->owner;
     InstanceContext* played = controller->progress.Instance(controller->progress.play.character);
+#ifdef TWIN_NATIVE
+    // Infinite lives (the game option, THE LIST 6): the played character's death costs none; the lives panel shows as on any
+    // death, its count as it was
+    if (lives < 0 && owner == played && NativeGame::InfiniteLives())
+    {
+        Native::Log("infinite lives: a death that cost no life (still %u)", controller->progress.counts.lives);
+        controller->oleg.AddLives(0, 0);
+        return;
+    }
+#endif
     if (lives > 0 || owner == played)
     {
         controller->oleg.AddLives(lives, 0);

@@ -282,6 +282,9 @@ enum NativeText : u32
     TextUpdatePage,
     TextDescUpdatePage,
     TextUpdateNotice,
+    // The game options (settings.cpp's Gameplay page): infinite lives
+    TextInfiniteLives,
+    TextDescInfiniteLives,
     NativeTextEnd,
 };
 
@@ -432,6 +435,8 @@ enum Option : u32
     OptionSuperUltrawide,
     // The update check (updatecheck.h): at each start, GitHub asked once for the latest release (off by default)
     OptionUpdateCheck,
+    // The game options (gameoptions.h, all off by default): infinite lives
+    OptionInfiniteLives,
     OptionCount,
 };
 
