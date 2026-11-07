@@ -21,6 +21,15 @@
 #include <cstddef>
 #include <cstdint>
 
+#ifdef TWIN_NATIVE
+#include "fixes.h"
+#include "game/navigation.h"
+#include "native.h"
+
+#include <cmath>
+#include <cstdlib>
+#endif
+
 // The commands that set an agent's focus (an instance or a position), its agent references and its stored position from
 // designators, keys, messages and linked objects, set and change counters, unlink and run behaviours on linked objects, restart
 // the behaviour, turn and warp; and the object node's slot animation
@@ -777,6 +786,9 @@ void SetFocusPositionCommand::Execute(TimeClock*, BehaviourRunner* runner, Behav
         }
     }
 
+#ifdef TWIN_NATIVE
+    const Vector4 aimed = position;
+#endif
     if (options.straightAhead)
     {
         ObjectPlace* place = instance->place;
@@ -791,6 +803,43 @@ void SetFocusPositionCommand::Execute(TimeClock*, BehaviourRunner* runner, Behav
         position.y = own.y + forward.y * distance;
         position.z = own.z + forward.z * distance;
         position.w = 1.0f;
+#ifdef TWIN_NATIVE
+        // Bug fixes (THE LIST 37): a route's step aimed at straight ahead (the step's distance along the agent's facing) lands off
+        // the step whenever the agent doesn't face it closely, and a route whose next move waits for the agent to be inside the
+        // step's circle then never goes on: Bandicoot Pursuit's Evil Crash, placed facing away from his first step, stands for
+        // good 1.53 off it (71.6, 2.6, -93.2), on the PS2 too (the retail PAL game in PCSX2). With the fix, a straight-ahead point
+        // farther from the step than half its radius gives way to the step itself, as the route's own position puts it.
+        // (TwinsanityEvolved 0.9.3 found it; its method, our code.) $TWIN_ROUTE_TRACE logs such steps, every 30th time
+        static const bool routeTrace = std::getenv("TWIN_ROUTE_TRACE") != nullptr;
+        static u32 outside = 0;
+        Route* route = node->waypoints != nullptr ? node->waypoints->route : nullptr;
+        if (route != nullptr && (designator == DesignatesCurrentStep || designator == DesignatesNextStep) &&
+            (routeTrace || NativeFixes::RetailFixes()))
+        {
+            u8 index = designator == DesignatesCurrentStep || node->waypoints->routeIndex == 0 ? node->waypoints->routeIndex
+                                                                                               : node->waypoints->routeIndex - 1;
+            const Vector4 step = route->PositionAt(index)->position;
+            f32 pointAway = std::sqrt((position.x - step.x) * (position.x - step.x) + (position.z - step.z) * (position.z - step.z));
+            bool off = step.w * 0.5f < pointAway;
+            if (routeTrace && off && outside++ % 30 == 0)
+            {
+                f32 agentAway = std::sqrt((own.x - step.x) * (own.x - step.x) + (own.z - step.z) * (own.z - step.z));
+                GameObject* object = node->sourceNode != nullptr ? SourceObject(node->sourceNode) : node->object;
+                Native::Log("route trace: %s, step %u (radius %.2f) at (%.1f, %.1f, %.1f): the straight-ahead point %.2f from it, the "
+                            "agent %.2f, at (%.1f, %.1f, %.1f)%s",
+                            object != nullptr && object->name.string != nullptr ? object->name.string : "?", index,
+                            static_cast<double>(step.w), static_cast<double>(step.x), static_cast<double>(step.y),
+                            static_cast<double>(step.z), static_cast<double>(pointAway), static_cast<double>(agentAway),
+                            static_cast<double>(own.x), static_cast<double>(own.y), static_cast<double>(own.z),
+                            NativeFixes::RetailFixes() ? ", the step itself taken (bug fixes)" : "");
+            }
+
+            if (off && NativeFixes::RetailFixes())
+            {
+                position = aimed;
+            }
+        }
+#endif
     }
 
     switch (target.slot)

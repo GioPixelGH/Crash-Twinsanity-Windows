@@ -97,6 +97,13 @@ SCENARIOS = [
      dict(options="skip_cutscenes=1\nretail_fixes=1\n", env={"TWIN_MASK_TRACE": "1"},
           expect=[r"mask trace: trail 0, emitter \d+ taken, .*enabled 1, .*its chunk levels\\earth\\hub\\hubb, the player's "
                   r"levels\\earth\\hub\\hubb"])),
+    # THE LIST 37: Bandicoot Pursuit's Evil Crash, whose first route step taken straight ahead misses it, stands for good (on the
+    # PS2 too); under Bug fixes the step itself is his target and he follows Cortex (Crash put on the checkpoint crate, then the pad)
+    ("Bandicoot Pursuit's Evil Crash follows Cortex under Bug fixes", "Levels\\AltEarth\\Hub\\altdoc", 14,
+     "idle,wait2,goto:75.3:2.6:-100.8,wait2,goto:62.49:1.6:-100.8,wait4,objects",
+     dict(options="skip_cutscenes=1\nretail_fixes=1\n", env={"TWIN_ROUTE_TRACE": "1", "TWIN_SWEEP_GAME_TIME": "1"},
+          expect=[r"route trace: \S*EVILCRASH, step 1 .*the step itself taken \(bug fixes\)",
+                  r"hop:   \S*EVILCRASH at \((4\d|5\d|6[0-5])\."])),
 ]
 # The pause menu's hints checked for each controller's prompts and the menu hints option (hintstest.cpp): the prompts' style
 # ($TWIN_UI_PROMPTS) and the option (options.txt's menu_hints: 0 the game's own hints, 1 the bar). The pause on the window's focus
