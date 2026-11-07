@@ -281,6 +281,8 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1EC | quit to the main menu, then open the options there to start a level. | quitte vers le menu principal, puis ouvre les options pour lancer un niveau. | zum hauptmenü beenden und dort in den optionen ein level starten. | sal al menú principal y abre allí las opciones para empezar un nivel. | esci al menu principale e apri lì le opzioni per iniziare un livello. |
 | 0x1ED | speedrun timer | chrono speedrun | speedrun-timer | cronómetro speedrun | cronometro speedrun |
 | 0x1EE | real time from new game, with each level's time as you finish it. | temps réel depuis nouvelle partie, avec le temps de chaque niveau fini. | echtzeit ab neues spiel, mit der zeit jedes beendeten levels. | tiempo real desde nueva partida, con el tiempo de cada nivel al acabarlo. | tempo reale da nuova partita, con il tempo di ogni livello finito. |
+| 0x1EF | drop shadow | ombre au sol | bodenschatten | sombra bajo el personaje | ombra a terra |
+| 0x1F0 | a round shadow under you while you're in the air, to see where you'll land. | une ombre ronde sous toi en l'air, pour voir où tu vas atterrir. | ein runder schatten unter dir in der luft, um zu sehen, wo du landest. | una sombra redonda bajo ti en el aire, para ver dónde caerás. | un'ombra rotonda sotto di te in aria, per vedere dove atterrerai. |
 
 ## English (29 lines)
 

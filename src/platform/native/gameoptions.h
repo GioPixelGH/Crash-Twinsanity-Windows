@@ -37,3 +37,10 @@ void SetSlideSteering(bool steering);
 bool SlideSteering();
 }
 
+// The drop shadow (drop_shadow, #11, #35): a round shadow on the ground under the played character while it's off the ground,
+// as Crash 4's (shadows.cpp's CastDropShadow: drawn as the game's shadows are)
+namespace NativeGame
+{
+bool DropShadow();
+}
+

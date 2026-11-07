@@ -218,6 +218,10 @@ leaving a save the game couldn't have made itself (`src/platform/native/gameopti
   jump's turn rate (`JumpController::Start`)); its height and length the slide jump's own. The log says each slide jump the
   option allowed. Checked with the pad script: a cross 3 frames into the slide does nothing at 0 and jumps at 1 and 2; one 26
   frames in jumps at 2.
+- The drop shadow (`drop_shadow`, #11, #35): while the played character is off the ground, a round shadow straight down under
+  it (a cylinder's volume of 0.5, 20 down, as the game's own shadow circles: `CastDropShadow` in `shadows.cpp`), so the spot it
+  lands on is marked whatever the lighting's slant; drawn as the game's shadows are, on the surfaces that take them. Checked:
+  Crash's fall onto the beach at the start shows the disc under him.
 - The speedrun timer (`speedrun_timer`): real time from New Game in the game's own font at the top (`speedrun.cpp`, the game's
   text queue as "press start"), a split at each level's end (play in another of the 16 levels, `g_AreaLevels`): the level and
   its time shown under the timer for 5 s and logged; the credits stop it; the title resets it.

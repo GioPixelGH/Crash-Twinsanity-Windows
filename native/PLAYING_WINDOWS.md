@@ -116,6 +116,7 @@ Game options (Options > Gameplay), all off unless you turn them on; your saves s
 - **Infinite lives**: dying costs no life.
 - **Stronger Aku Aku**: with one or two masks, TNT and Nitro take a mask instead of a life, as in the earlier Crash games.
 - **Slide jump**: the long jump from a slide at any moment of it, or easier (also just after the slide, and steered in the air).
+- **Drop shadow**: a round shadow under you while you're in the air, to see where you'll land.
 - **Speedrun timer**: real time from New Game at the top of the screen, with each level's time as you finish it.
 - **Level select**: start any level from the main menu (Options > Gameplay > Level). What you save in such a game is kept
   apart from your own saves, which come back once you're at the title again.

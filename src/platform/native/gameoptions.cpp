@@ -48,3 +48,9 @@ bool NativeGame::SlideSteering()
     return g_SlideSteering;
 }
 
+// The drop shadow
+bool NativeGame::DropShadow()
+{
+    return NativeUi::IsOn(NativeUi::OptionDropShadow);
+}
+

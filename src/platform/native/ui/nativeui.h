@@ -303,6 +303,9 @@ enum NativeText : u32
     // The speedrun timer
     TextSpeedrunTimer,
     TextDescSpeedrunTimer,
+    // The drop shadow
+    TextDropShadow,
+    TextDescDropShadow,
     NativeTextEnd,
 };
 
@@ -463,6 +466,9 @@ enum Option : u32
     OptionLevelSelect,
     // The speedrun timer (speedrun.cpp)
     OptionSpeedrunTimer,
+    // The drop shadow under the player (dropshadow.cpp)
+    OptionDropShadow,
+    // The player's shadow on crates' tops too
     OptionCount,
 };
 

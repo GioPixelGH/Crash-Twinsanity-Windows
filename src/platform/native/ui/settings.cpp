@@ -254,6 +254,8 @@ void Build()
     // The slide jump (THE LIST 11, #11, #35): original, any moment, easier
     gameplay.push_back(OptionChoice(TextSlideJump, TextDescSlideJump, OptionSlideJump,
                                     {TextDistanceOriginal, TextSlideJumpAnyMoment, TextSlideJumpEasier}));
+    // The drop shadow (THE LIST 14, #11, #35)
+    gameplay.push_back(Toggle(TextDropShadow, TextDescDropShadow, OptionDropShadow));
     // The speedrun timer (THE LIST 13)
     gameplay.push_back(Toggle(TextSpeedrunTimer, TextDescSpeedrunTimer, OptionSpeedrunTimer));
     // The level select (THE LIST 12, levelselect.cpp): the option, then (on) the level chosen and its start from the main menu, or
@@ -844,6 +846,7 @@ void ResetTab(u32 tab)
         ResetOptions({OptionInfiniteLives});
         ResetOptions({OptionStrongMask});
         ResetOptions({OptionSlideJump});
+        ResetOptions({OptionDropShadow});
         ResetOptions({OptionSpeedrunTimer});
         ResetOptions({OptionLevelSelect});
         break;

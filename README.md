@@ -155,7 +155,7 @@ off until you turn them on.
 - [ ] HD texture packs in BC7, and texture upscaling.
 - [ ] The characters' shadows drawn at the chosen resolution: they stay at the PS2's, softer than the rest of the picture at
   high resolutions.
-- [ ] A landing shadow ([#11]).
+- [x] A drop shadow under you in the air, and your shadow on crates, as game options ([#11], [#35]).
 - [ ] Better speed on older PCs ([#23], [#12]): since 1.1.0 the render thread, measured as the limit there, is about a
   quarter lighter and VU1's thread about a tenth; more needs deeper changes to the renderer.
 - [ ] Achievements in the game, kept on your PC (RetroAchievements doesn't award them for ports).
