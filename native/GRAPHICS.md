@@ -236,6 +236,18 @@ picture at the PS2's resolution, and `replayNNN_gpu.png`, the GPU's at the scale
   splash is), 25 of 255 darker a channel; the frame's GS dump with and without them played by PCSX2 differs on the same 17 x 23
   pixels by the same 25. The PS2's GS draws those commands as we do; nothing to change.
 
+### Ant Agony's metal doors (#32, THE LIST 16): not reproduced yet (2026-11-07)
+
+NormanTheFox's screenshots (1.1.0 at 3x, FXAA, dithering off, a GTX 1650) show every metal door's texture streaked
+horizontally with a zigzag, and the lava walls and floor edges wrong. Measured here, without his exact places: Crash put in
+front of corea's first blast door (`$TWIN_HOP=idle,wait2,goto:-111.6:0.2:125,wait6`, `$TWIN_SWEEP_GAME_TIME`, frame 1060 at
+3x): the port's frame against PCSX2 drawing its GS dump at 3x, 1.9 of 255 apart on average on the PS2's grid, no block of 16 x
+16 PS2 pixels more than 12.2 (edges and filtering, not a texture's pattern); the frame's 59 image uploads all carry data the
+retail game's frame there uploads too (`run_pcsx2.py retail --start-chunk` corea, the player moved by PINE writes, its own GS
+dump); dithering off against on, a uniform 3.9 brighter, nothing local. So at that place nothing differs from the PS2's GS in
+the commands or in their drawing; whether the door is in that frame's view, and what his pictures show, is for a person to
+see (the test copy's notes say where to look, with 1.0.19 and 1.1.0's switches beside it).
+
 ### The characters' stepped edges at a higher scale: the causes (2026-11-01)
 
 Players saw every character's outline stepped at a high resolution (#15, #19, #24; the player's own fullscreen 2560x1440 at

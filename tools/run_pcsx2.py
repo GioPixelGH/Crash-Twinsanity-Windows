@@ -18,7 +18,7 @@ its own, and whatever the run put into PCSX2's config goes again afterwards.
 does: the path written below the executable (0xFF000), the progress's start chunk made it, the next state the level's loading.
 --write writes words (hex, or floats with an f: -9f) at the symbol's address and its hops (each >offset follows the pointer
 found), WHEN seconds after the start or, pN, N seconds after the game first plays; --dump-ram keeps the EE's 32 MB in a file then
-(the run stays on past the game's first play until the last of them is done).
+(the run stays on past the game's first play until the last of them, and of --screenshot's and --gsdump's, is done).
 
 --watch prints a word of the map's symbol whenever it changes (a breadcrumb the code under test writes, say; every >offset
 follows the pointer found so far: G_GameReadersStorages>0x18>0x4 is storage 0's current reader's vtable). --snapshot T saves
@@ -1011,8 +1011,8 @@ def main():
                     pine.write32(controller + 0x14, 0)
 
                 playing_since = playing_since or time.time()
-                # (on while a --write or a --dump-ram after the first play is still to come)
-                if time.time() - playing_since > 3 and not writes and not ram_dumps:
+                # (on while a --write, a --dump-ram, a screenshot or a GS dump after the first play is still to come)
+                if time.time() - playing_since > 3 and not writes and not ram_dumps and not screenshots and not gsdumps:
                     manager = pine.read32(symbols["G_ChunkManager"])
                     count = pine.read32(manager) & 0xFFFF
                     chunks = [pine.string(pine.read32(manager + 4 + 4 * i)) for i in range(min(count, 8))]
