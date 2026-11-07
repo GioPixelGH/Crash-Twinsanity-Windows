@@ -212,6 +212,12 @@ leaving a save the game couldn't have made itself (`src/platform/native/gameopti
   takes the played character's mask as any hit does (one hit point: hit points are 1 + the masks) instead of dealing 100, and
   the invincibility of three masks or the blink after a hit keeps explosions out (`CharacterAgent::Contact`; the bug fixes'
   community change does that last part for everyone). Not under the bug fixes: the original game means explosions to kill.
+- The slide jump (`slide_jump`, #11, #35): original (0: the long jump only once the slide's steering is over,
+  `CrouchController::Slide`'s `mayJump`), any moment (1: from its first moment too) or easier (2: any moment, the jump pressed
+  within a quarter second of getting up from the slide still the slide's (`JumpController::Grounded`), steered in the air at a
+  jump's turn rate (`JumpController::Start`)); its height and length the slide jump's own. The log says each slide jump the
+  option allowed. Checked with the pad script: a cross 3 frames into the slide does nothing at 0 and jumps at 1 and 2; one 26
+  frames in jumps at 2.
 ## Bug fixes (optional)
 
 The "bug fixes" toggle on the settings' Gameplay tab (`OptionRetailFixes`, off by default) turns on fixes of retail bugs, in the

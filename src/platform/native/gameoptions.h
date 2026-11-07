@@ -21,3 +21,19 @@ namespace NativeGame
 bool StrongMask();
 }
 
+// The slide jump (slide_jump, #11, #35): 0 the original (the long jump only after the slide's first steering moment), 1 from any
+// moment of the slide, 2 easier (any moment, the jump pressed a quarter second after the slide, getting up, still counted, steered
+// in the air as a jump is); its height and distance stay the original's (charactermoves.cpp). The easier slide jump's late
+// press: set for the jump's frame while the character gets up from a slide within SlideJumpLateSeconds (characterframe.cpp), so
+// JumpController::Grounded takes the jump as the slide's. The slide's steering moment (CrouchController::Slide, the frame's): a
+// slide jump taken then is the option's (the log says so)
+namespace NativeGame
+{
+u32 SlideJump();
+constexpr f32 SlideJumpLateSeconds = 0.25f;
+void SetSlideJumpLate(bool late);
+bool SlideJumpLate();
+void SetSlideSteering(bool steering);
+bool SlideSteering();
+}
+

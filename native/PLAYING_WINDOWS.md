@@ -115,6 +115,7 @@ Game options (Options > Gameplay), all off unless you turn them on; your saves s
 
 - **Infinite lives**: dying costs no life.
 - **Stronger Aku Aku**: with one or two masks, TNT and Nitro take a mask instead of a life, as in the earlier Crash games.
+- **Slide jump**: the long jump from a slide at any moment of it, or easier (also just after the slide, and steered in the air).
 The refresh rate is 50 Hz (the European PS2's), 60 Hz (the default), or 120 Hz, 144 Hz or unlimited for smoother play on a fast
 computer and a high refresh rate monitor (turn v-sync off for unlimited). The game runs at the same speed at any rate, and Crash
 jumps as far and as high as at 60 Hz; above 60 it goes only as fast as the computer can draw it.

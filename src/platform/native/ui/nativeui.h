@@ -288,6 +288,11 @@ enum NativeText : u32
     // The stronger Aku Aku mask
     TextStrongMask,
     TextDescStrongMask,
+    // The slide jump and its choices
+    TextSlideJump,
+    TextDescSlideJump,
+    TextSlideJumpAnyMoment,
+    TextSlideJumpEasier,
     NativeTextEnd,
 };
 
@@ -442,6 +447,8 @@ enum Option : u32
     OptionInfiniteLives,
     // The stronger Aku Aku mask (#30)
     OptionStrongMask,
+    // The slide jump (#11, #35): 0 the original, 1 any moment, 2 easier
+    OptionSlideJump,
     OptionCount,
 };
 

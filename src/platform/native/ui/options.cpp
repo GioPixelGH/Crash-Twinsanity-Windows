@@ -78,6 +78,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionUpdateCheck, "update_check", 0, 1},
     {OptionInfiniteLives, "infinite_lives", 0, 1},
     {OptionStrongMask, "strong_mask", 0, 1},
+    {OptionSlideJump, "slide_jump", 0, 2},
 };
 
 s32 g_Values[OptionCount];
@@ -152,6 +153,7 @@ const char* ValueMeaning(const OptionInfo& info, s32 value)
     static constexpr const char* AntiAliasing[] = {"off", "FXAA", "SSAA 2x", "SSAA 4x", "SMAA"};
     static constexpr const char* Speech[] = {"as the texts", "English", "French", "German", "Italian", "Spanish"};
     static constexpr const char* Anisotropy[] = {"off", "2x", "4x", "8x", "16x"};
+    static constexpr const char* SlideJumps[] = {"original", "any moment", "easier"};
     static constexpr const char* Layouts[] = {"by the places", "Nintendo's"};
     static constexpr const char* Dithering[] = {"as the PS2", "off"};
     static constexpr const char* Distances[] = {"original", "short", "medium", "long", "unlimited"};
@@ -182,6 +184,8 @@ const char* ValueMeaning(const OptionInfo& info, s32 value)
         return pick(Speech);
     case OptionAnisotropy:
         return pick(Anisotropy);
+    case OptionSlideJump:
+        return pick(SlideJumps);
     default:
         return info.maximum == 1 ? pick(Toggle) : nullptr;
     }

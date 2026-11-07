@@ -14,6 +14,11 @@
 #include <cstddef>
 #include <cstdint>
 
+#ifdef TWIN_NATIVE
+#include "gameoptions.h"
+#include "native.h"
+#endif
+
 extern "C"
 {
     // The up axis (0, 1, 0, 1), twice, as the controllers' start-up (InitCharacterControllerGlobals) sets it: the normal of the
@@ -298,7 +303,13 @@ void CrouchController::Slide(f32 turn, s32 time, u32, s32* next)
     s32 steerTicks = TicksOf(properties->GetFloat(PropSlideSteerSeconds));
     s32 elapsed = time - stateStart;
     bool steering = elapsed < steerTicks;
+#ifdef TWIN_NATIVE
+    // The slide jump (the game option, THE LIST 11, #11): from any moment of the slide, its steering's too
+    bits.mayJump = !steering || NativeGame::SlideJump() != 0;
+    NativeGame::SetSlideSteering(steering);
+#else
     bits.mayJump = !steering;
+#endif
     s32 rate;
     f32 speed;
     if (slideSpeed < SlowSpeed)
@@ -789,6 +800,13 @@ s32 JumpController::Start(TimeClock* clock, u32 kind, u32 maxed, u32 midFall)
         state = StateRisingSlide;
         air = properties->GetFloat(PropSlideAirSpeed);
         turn = TaggedProperty(properties, TaggedSlideTurn);
+#ifdef TWIN_NATIVE
+        // The slide jump made easier (THE LIST 11, #35): steered in the air as a jump is, its height and length the slide's
+        if (NativeGame::SlideJump() == 2)
+        {
+            turn = TaggedProperty(properties, TaggedJumpTurn);
+        }
+#endif
         break;
     case KindLaunch:
         turn = TaggedProperty(properties, TaggedJumpTurn);
@@ -909,6 +927,10 @@ void JumpController::Grounded(TimeClock* clock, u32 mayJump, u32 cross, s32* nex
     auto* part = static_cast<CharacterPart*>(agent->part);
     u32 kind = part->bits.attackKind;
     bool sliding = kind == AttackSlide || kind == AttackSlideVariant;
+#ifdef TWIN_NATIVE
+    // The slide jump made easier (THE LIST 11, #35): the jump pressed just after the slide (getting up) is still the slide's
+    sliding = sliding || NativeGame::SlideJumpLate();
+#endif
     bool canJump;
     if (part->flags.onGround != 0)
     {
@@ -944,6 +966,14 @@ void JumpController::Grounded(TimeClock* clock, u32 mayJump, u32 cross, s32* nex
     u32 fits = agent->FitsAt(FitSlideJump, 0, &g_JumpUp, nullptr);
     if (sliding && fits != 0)
     {
+#ifdef TWIN_NATIVE
+        // (The slide jump option's jumps said in the log: one the original wouldn't take)
+        if (NativeGame::SlideJumpLate() || (NativeGame::SlideJump() != 0 && NativeGame::SlideSteering()))
+        {
+            Native::Log("slide jump: a long jump %s (the slide jump option)",
+                        NativeGame::SlideJumpLate() ? "pressed just after the slide" : "from the slide's steering");
+        }
+#endif
         *next = Start(clock, KindSlide, 0, 0);
         return;
     }

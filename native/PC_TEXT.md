@@ -269,6 +269,10 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1E0 | a death costs no life: the count stays where it is. off plays as the original. | une mort ne fait perdre aucune vie : le compteur ne bouge pas. désactivé : comme l'original. | ein tod kostet kein leben: der zähler bleibt. aus: wie das original. | morir no cuesta vidas: el contador no cambia. desactivado: como el original. | morire non costa vite: il conteggio resta. disattivato: come l'originale. |
 | 0x1E1 | stronger aku aku | aku aku plus fort | stärkerer aku aku | aku aku más fuerte | aku aku più forte |
 | 0x1E2 | aku aku's masks also take tnt and nitro blasts, as in the earlier crash games. | les masques d'aku aku encaissent aussi tnt et nitro, comme dans les anciens crash. | aku akus masken halten auch tnt und nitro aus, wie in den früheren crash-spielen. | las máscaras de aku aku aguantan también tnt y nitro, como en los crash anteriores. | le maschere di aku aku reggono anche tnt e nitro, come nei crash precedenti. |
+| 0x1E3 | slide jump | saut glissé | rutschsprung | salto deslizante | salto in scivolata |
+| 0x1E4 | the long jump from a slide: at any moment of it, or easier (a later press, steered in the air). | le saut long depuis une glissade : à tout moment, ou plus facile (plus tard, dirigé en l'air). | der weitsprung aus dem rutschen: jederzeit oder leichter (später drücken, in der luft lenken). | el salto largo al deslizarte: en cualquier momento, o más fácil (más tarde, dirigido en el aire). | il salto lungo dalla scivolata: in qualunque momento, o più facile (più tardi, guidato in aria). |
+| 0x1E5 | any moment | à tout moment | jederzeit | en cualquier momento | in qualunque momento |
+| 0x1E6 | easier | plus facile | leichter | más fácil | più facile |
 
 ## English (29 lines)
 

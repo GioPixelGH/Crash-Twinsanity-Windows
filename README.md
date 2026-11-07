@@ -141,7 +141,7 @@ off until you turn them on.
 - [ ] A modding guide: the game's files, the community's tools for them, and how to share a mod.
 - [ ] The two cutscenes that still end a little differently when skipped than when played ([#9]).
 - [ ] A skip for the cutscenes that have none yet, like those of the first fight with Cortex and of Cavern Catastrophe ([#28]).
-- [ ] The slide's long jump at any moment, as a game option ([#11]).
+- [x] The slide's long jump at any moment, or easier, as a game option ([#11], [#35]).
 - [x] Draw distance as a PC option (from HAB3X's Mac port): farther than the PS2's draws the grass and small things before
   you get close, at a cost on older PCs.
 - [ ] Level select, as a game option.
@@ -180,6 +180,7 @@ differences as options on the PAL game ([#14]), the port's own texts in Brazilia
 [#28]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/28
 [#30]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/30
 [#33]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/33
+[#35]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/35
 
 ## Building on Windows
 

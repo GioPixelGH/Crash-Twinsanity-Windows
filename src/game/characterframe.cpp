@@ -26,6 +26,10 @@
 #include <cstddef>
 #include <cstdint>
 
+#ifdef TWIN_NATIVE
+#include "gameoptions.h"
+#endif
+
 extern "C"
 {
     // A pickup's object node put in a state (pickups.cpp's PickupObjectNode::SetState)
@@ -290,7 +294,16 @@ void CharacterAgent::JumpFrame(TimeClock* clock, CharacterPart* part)
 
     u32 kind = AttackKind(part);
     u32 mayJump = crouch != nullptr ? crouch->bits.mayJump : 1;
+#ifdef TWIN_NATIVE
+    // The slide jump made easier (THE LIST 11, #35): getting up from a slide for SlideJumpLateSeconds still takes a slide jump
+    NativeGame::SetSlideJumpLate(NativeGame::SlideJump() == 2 && crouch != nullptr &&
+                                 crouch->bits.state == CrouchController::StateGettingUp &&
+                                 clock->time - crouch->stateStart < static_cast<s32>(NativeGame::SlideJumpLateSeconds * g_ClockUnitsPerSecond));
+#endif
     jump->Frame(buttons.cross, buttons.circle, clock, mayJump);
+#ifdef TWIN_NATIVE
+    NativeGame::SetSlideJumpLate(false);
+#endif
     u32 state = jump->bits.state;
     kind = KindWhile(kind, state == JumpController::StateKneeDropHang || state == JumpController::StateKneeDrop, AttackWalkInto,
                      AttackSlam);
