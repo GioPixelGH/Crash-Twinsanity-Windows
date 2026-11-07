@@ -13,6 +13,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
 
 #ifdef TWIN_NATIVE
 #include "gameoptions.h"
@@ -337,11 +339,34 @@ void CrouchController::Slide(f32 turn, s32 time, u32, s32* next)
             // Steered: turning to the slide's direction over the seconds left of the steering
             f32 elapsedSeconds = static_cast<f32>(elapsed) * g_SecondsPerClockUnit;
             f32 secondsLeft = static_cast<f32>(steerTicks) * g_SecondsPerClockUnit - elapsedSeconds;
+#ifdef TWIN_NATIVE
+            // The steering's last frame turns over the time left before it ends: a frame that ends a sliver before it (an uneven
+            // frame's clock advance: TwinsanityEvolved 0.9.3's 60 Hz frames are 149 clock units, its last steering frame 9 units
+            // short of the end) gets a rate many times the angle and swings the slide far past the stick's direction. The time left kept at half the frame at least (THE LIST
+            // 36): the PAL disc's 50 Hz ends on half a frame exactly and whole 60 Hz frames (150 units) on a whole one, both
+            // unchanged; only a sliver is. $TWIN_SLIDE_STEERING=retail keeps it (for comparison); $TWIN_SLIDE_TRACE logs each
+            // steering frame and the facing's angle from the slide's direction as the steering ends
+            static const bool retailSteering = std::getenv("TWIN_SLIDE_STEERING") != nullptr &&
+                                               std::strcmp(std::getenv("TWIN_SLIDE_STEERING"), "retail") == 0;
+            if (!retailSteering && secondsLeft < g_FrameSeconds * 0.5f)
+            {
+                secondsLeft = g_FrameSeconds * 0.5f;
+            }
+#endif
             ObjectPlace* place = agent->instance->place;
             RotateAndTranslate(place);
             s32 angle;
             SignedAngleAboutY(&angle, &slideDirection, RowOf(&place->matrix, 2));
             rate = static_cast<s32>(static_cast<f32>(angle) / secondsLeft);
+#ifdef TWIN_NATIVE
+            static const bool steeringTrace = std::getenv("TWIN_SLIDE_TRACE") != nullptr;
+            if (steeringTrace)
+            {
+                Native::Log("slide trace: steering, %d of %d clock units, %.4f s left, the angle %.1f degrees, the rate %d, the turn %.4f",
+                            elapsed, steerTicks, static_cast<double>(secondsLeft), static_cast<double>(angle) * 360.0 / 65536.0, rate,
+                            static_cast<double>(turn));
+            }
+#endif
             if (rate < 0)
             {
                 rate = -rate;
@@ -354,6 +379,28 @@ void CrouchController::Slide(f32 turn, s32 time, u32, s32* next)
 
         speed = properties->GetFloat(PropSlideSpeed);
     }
+
+#ifdef TWIN_NATIVE
+    // $TWIN_SLIDE_TRACE: the facing's angle from the slide's direction as the steering ends (the 60 Hz swing's measure)
+    static const bool slideTrace = std::getenv("TWIN_SLIDE_TRACE") != nullptr;
+    static const CrouchController* traced = nullptr;
+    static bool tracedSteering = false;
+    if (slideTrace)
+    {
+        if (traced == this && tracedSteering && !steering)
+        {
+            ObjectPlace* place = agent->instance->place;
+            RotateAndTranslate(place);
+            s32 angle;
+            SignedAngleAboutY(&angle, &slideDirection, RowOf(&place->matrix, 2));
+            Native::Log("slide trace: the steering over, the facing %.1f degrees from the slide's direction (the frame %.4f s)",
+                        static_cast<double>(angle) * 360.0 / 65536.0, static_cast<double>(turn));
+        }
+
+        traced = this;
+        tracedSteering = steering;
+    }
+#endif
 
     s32 slideTurn = *MultiplyAngle(&rate, turn);
     auto* part = static_cast<CharacterPart*>(agent->part);
