@@ -70,6 +70,13 @@ u64 TestFrameTicks(const GameTimeController* controller)
 }
 }
 
+#ifdef TWIN_NATIVE
+u64 GameClockTicks()
+{
+    return Now();
+}
+#endif
+
 EABI_EXPORT(FUN_00191dd8, TimeClockAdvanceBy);
 EABI_EXPORT(FUN_00192360, GameTimeHasTimeLeft);
 

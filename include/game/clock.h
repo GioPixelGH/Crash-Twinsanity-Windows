@@ -109,4 +109,6 @@ extern "C"
 // Natively, whether the frames are past the PS2's 60 a second (Options > Display's 120 Hz, 144 Hz and unlimited: the game clock's
 // frames a second): the character's steps then make up for being shorter than 60 Hz's (CharacterAgent::Move)
 bool FramesPast60();
+// The game clock's ticks now (Platform::Time's): the test runs' under $TWIN_FIXED_TIME, a frame's worth more each frame
+u64 GameClockTicks();
 #endif

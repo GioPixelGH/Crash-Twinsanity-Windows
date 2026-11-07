@@ -12,6 +12,7 @@
 #include "game/agents.h"
 #include "game/behaviours.h"
 #include "game/chunkdata.h"
+#include "game/clock.h"
 #include "game/commands.h"
 #include "game/gamecontroller.h"
 #include "game/instances.h"
@@ -22,6 +23,7 @@
 #include "game/reference.h"
 #include "game/string.h"
 #include "graphics/presenter.h"
+#include "platform/time.h"
 
 #include <chrono>
 #include <cmath>
@@ -39,7 +41,28 @@ namespace NativeUi
 {
 namespace
 {
-using Clock = std::chrono::steady_clock;
+// The sweep's clock: real time, or with $TWIN_SWEEP_GAME_TIME the game clock's ticks (with $TWIN_FIXED_TIME a frame's worth each
+// frame), so a run's hops and waits come at the same frames every run and two runs' pictures can be compared frame by frame
+struct Clock
+{
+    using duration = std::chrono::steady_clock::duration;
+    using rep = duration::rep;
+    using period = duration::period;
+    using time_point = std::chrono::time_point<Clock>;
+    static constexpr bool is_steady = true;
+
+    static time_point now()
+    {
+        static const bool gameTime = std::getenv("TWIN_SWEEP_GAME_TIME") != nullptr;
+        if (gameTime)
+        {
+            return time_point(std::chrono::duration_cast<duration>(
+                std::chrono::duration<double>(static_cast<double>(GameClockTicks()) / Platform::Time::TicksPerSecond)));
+        }
+
+        return time_point(std::chrono::steady_clock::now().time_since_epoch());
+    }
+};
 
 bool g_Read = false;
 std::string g_Level;

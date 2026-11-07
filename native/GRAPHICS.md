@@ -228,6 +228,13 @@ picture at the PS2's resolution, and `replayNNN_gpu.png`, the GPU's at the scale
   8x that shadow made larger, where PCSX2's hardware renderer (its native scaling off by default) draws the chain at its
   scale, a sharp outline. Drawing it at the scale needs the depth copy made on the GPU (it's read from local memory now:
   scaled up from there the volumes' test leaves streaks, `TWIN_HW_NATIVE_SMALL=0`).
+- Checked (1.2.0, THE LIST 39): TwinsanityEvolved 0.9.1 removed a dark Crash-shaped shadow under the 10th Dimension's water
+  while he drowns, its own renderer's (its stencil lost the casters' mark where the water, which writes no depth, was drawn over
+  Crash). Ours draws what the GS draws: Crash drowned in alta (`$TWIN_HOP=idle,wait2,fly:100:2:-70:20` with
+  `$TWIN_SWEEP_GAME_TIME`, two runs identical frame for frame), the same frame with the characters' shadows and without
+  (`$TWIN_NO_SHADOWS`): while he sinks the only difference is 17 x 23 PS2 pixels at the picture's bottom centre (where his
+  splash is), 25 of 255 darker a channel; the frame's GS dump with and without them played by PCSX2 differs on the same 17 x 23
+  pixels by the same 25. The PS2's GS draws those commands as we do; nothing to change.
 
 ### The characters' stepped edges at a higher scale: the causes (2026-11-01)
 

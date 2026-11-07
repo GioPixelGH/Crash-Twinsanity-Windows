@@ -14,6 +14,8 @@
 #include "retail/libc.h"
 
 #ifdef TWIN_NATIVE
+#include <cstdlib>
+
 #include "gameoptions.h"
 #include "game/agents.h"
 #include "game/characters.h"
@@ -673,6 +675,14 @@ void ChunkShadows::Swap()
 
 void ChunkShadows::Draw(const Vector4* planes, const Matrix4x4*, const Matrix4x4* view)
 {
+#ifdef TWIN_NATIVE
+    // $TWIN_NO_SHADOWS: the characters' shadows not drawn, for a test's comparison of what they darken (THE LIST 39)
+    static const bool noShadows = std::getenv("TWIN_NO_SHADOWS") != nullptr;
+    if (noShadows)
+    {
+        return;
+    }
+#endif
     Matrix4x4 frame;
     InitIdentityMatrix(&frame);
     for (u32 index = 0; index < *currentCount; index++)

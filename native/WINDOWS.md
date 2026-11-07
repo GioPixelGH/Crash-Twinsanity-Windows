@@ -571,7 +571,7 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   move); `objects` logs the
   instances of its chunk (their objects' names and places); `on:mine` puts it 2 units above the nearest instance whose
   object's name holds "mine" (`on:mine:5`: 5 units) and `bring:mine` puts that instance where the player is instead; `idle`
-  stops the scripted input and `input` starts it again; `wait5` waits 5 s; `die` drops it to its death; `mask` gives it a mask as an Aku Aku crate does (the fourth in a row makes it invincible); `scripts:director`
+  stops the scripted input and `input` starts it again; `wait5` waits 5 s; `die` drops it to its death; `mask` gives it a mask as an Aku Aku crate does (the fourth in a row makes it invincible); with `$TWIN_SWEEP_GAME_TIME=1` the steps' waits and flights go by the game clock instead of real time, so a run with `$TWIN_FIXED_TIME=1` and `$TWINSANITY_AUDIO=frames` makes the same pictures every time (two builds', or two switches', compared frame by frame); `$TWIN_NO_SHADOWS` leaves the characters' shadows out, to compare what they darken; `scripts:director`
   logs the behaviour scripts of the instances whose object's name holds "director" (each runner's graphs, the state they're in,
   every state's bodies: condition, commands, jump) and `state:GRAPH:3` makes the runner that runs a graph whose name holds GRAPH
   jump to its state 3, as a body's jump would (a boss beaten without playing it: check_windows.py's Dingodile). Down a slide (Slip
