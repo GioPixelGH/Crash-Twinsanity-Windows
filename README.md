@@ -277,6 +277,7 @@ repository shipped isn't included here: get it from its author.
   graphics, the physics past 60 Hz, many suggestions), [SSStylishh](https://github.com/SSStylishh) (played it to the end),
   [APerson7778](https://github.com/APerson7778) (mouse look) and [VenezuelanHell](https://github.com/VenezuelanHell) (older
   AMD drivers).
+- [Onaga00](https://github.com/Onaga00), with thanks.
 
 Bug reports, suggestions and pull requests are welcome: see [CONTRIBUTING.md](.github/CONTRIBUTING.md).
 

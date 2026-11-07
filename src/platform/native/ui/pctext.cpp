@@ -698,6 +698,7 @@ const NativeTextLine g_NativeTexts[] = {
     {TextPortableRefused, {"the game's folder can't be written to (is it in program files?). move the game's folder somewhere else first.", "impossible d'écrire dans le dossier du jeu (est-il dans program files ?). déplace d'abord le dossier du jeu ailleurs.", "in den ordner des spiels kann nicht geschrieben werden (liegt er in program files?). verschiebe ihn zuerst woandershin.", "no se puede escribir en la carpeta del juego (¿está en program files?). mueve antes la carpeta del juego a otro sitio.", "nella cartella del gioco non si può scrivere (è in program files?). sposta prima la cartella del gioco altrove."}},
     {TextPortableFailed, {"the copy didn't work, so nothing changed: the reason is in log.txt.", "la copie n'a pas marché, rien n'a changé : la raison est dans log.txt.", "das kopieren hat nicht geklappt, nichts wurde geändert: der grund steht in log.txt.", "la copia no ha funcionado y nada ha cambiado: el motivo está en log.txt.", "la copia non è riuscita e non è cambiato nulla: il motivo è in log.txt."}},
     {TextOk, {"ok", "ok", "ok", "aceptar", "ok"}},
+    {TextCreditsThanks, {"thanks", "remerciements", "dank", "agradecimientos", "ringraziamenti"}},
 };
 const u32 g_NativeTextCount = sizeof(g_NativeTexts) / sizeof(g_NativeTexts[0]);
 const char* const g_TextLanguages[TextLanguages] = {"English", "French", "German", "Spanish", "Italian"};

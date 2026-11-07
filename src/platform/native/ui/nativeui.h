@@ -309,6 +309,8 @@ enum NativeText : u32
     // The shadows on crates
     TextShadowsOnCrates,
     TextDescShadowsOnCrates,
+    // The credits' thanks (settingsview.cpp's Credits)
+    TextCreditsThanks,
     NativeTextEnd,
 };
 

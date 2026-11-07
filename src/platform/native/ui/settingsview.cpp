@@ -449,6 +449,7 @@ constexpr Credit Credits[] = {
     {TextCreditsTesters, "NitorikoSkye, SSStylishh, APerson7778, VenezuelanHell"},
     {TextCreditsTextures, "CRASHARKI"},
     {TextCreditsEvolved, "menaman123"},
+    {TextCreditsThanks, "Onaga00"},
 };
 
 // The settings' dialogs (settings.cpp) over the screen. Portable mode's: its title and message, then yes and no (asked), OK

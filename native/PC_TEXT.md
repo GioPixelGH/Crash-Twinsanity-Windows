@@ -285,6 +285,7 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1F0 | a round shadow under you while you're in the air, to see where you'll land. | une ombre ronde sous toi en l'air, pour voir où tu vas atterrir. | ein runder schatten unter dir in der luft, um zu sehen, wo du landest. | una sombra redonda bajo ti en el aire, para ver dónde caerás. | un'ombra rotonda sotto di te in aria, per vedere dove atterrerai. |
 | 0x1F1 | shadows on crates | ombres sur les caisses | schatten auf kisten | sombras en las cajas | ombre sulle casse |
 | 0x1F2 | your shadow falls on the tops of crates too. from a level's next loading. | ton ombre tombe aussi sur le dessus des caisses. au prochain chargement d'un niveau. | dein schatten fällt auch auf kisten. ab dem nächsten laden eines levels. | tu sombra cae también sobre las cajas. desde la próxima carga de un nivel. | la tua ombra cade anche sopra le casse. dal prossimo caricamento di un livello. |
+| 0x1F3 | thanks | remerciements | dank | agradecimientos | ringraziamenti |
 
 ## English (29 lines)
 
