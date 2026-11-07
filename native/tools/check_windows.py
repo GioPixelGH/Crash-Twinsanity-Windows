@@ -214,13 +214,16 @@ PORTABLE_LAUNCHER = ("import subprocess, sys\n"
                      "    sys.exit(99)\n")
 
 
-def run_for(exe, folder, options, env, args, until, seconds=120, resolution=None):
-    """The program run in a settings folder of its own (FOLDER/settings) until the file UNTIL is there (or it ends, or SECONDS):
-    its log's text"""
+def run_for(exe, folder, options, env, args, until, seconds=120, resolution=None, files=None):
+    """The program run in a settings folder of its own (FOLDER/settings, with FILES: {path in it: bytes}) until the file UNTIL is
+    there (or it ends, or SECONDS): its log's text"""
     if folder.exists():
         shutil.rmtree(folder)
     settings = folder / "settings" / "Crash Twinsanity"
     settings.mkdir(parents=True)
+    for name, data in (files or {}).items():
+        (settings / name).parent.mkdir(parents=True, exist_ok=True)
+        (settings / name).write_bytes(data)
     (settings / "disc_image.txt").write_text(disc_image() + "\n")
     (settings / "options.txt").write_text("pause_on_focus_loss=0\n" + "".join(f"{o}\n" for o in options))
     if resolution:
@@ -350,6 +353,48 @@ def game_options(exe, work):
     }
     failed = [name for name, ok in checks.items() if not ok]
     return not failed, ", ".join(checks) if not failed else "NOT: " + ", ".join(failed)
+
+
+def archive_file(path):
+    """A file of the disc's archive (CRASH6/CRASH.BD's, by CRASH.BH's table), read with iso_extract.py's reading"""
+    sys.path.insert(0, str(HERE / "native" / "tools"))
+    import iso_extract
+    with open(disc_image(), "rb") as image:
+        offset, size = {name.lower(): place for name, place in iso_extract.archive_files(image).items()}[path.lower()]
+        image.seek(offset)
+        return image.read(size)
+
+
+# The mods (mods.cpp, disc.cpp; native/MODDING.md): the disc's own Startup/Default.rm2 and beach.rm2 as the mods folder's loose
+# files, the sound banks Default.rm2's level loads at the start with their lengths (halfwords written to the sound memory) as the
+# disc's own give them (#36: each bank of a mod's file came as the one before it, cut to 1536)
+MOD_BANKS = {"0xe": 3072, "0x13": 4128}
+
+
+def mods(exe, work):
+    """The mods: the disc's own files as mods, read as the disc's are: the archive's table made again with them, the sound banks of
+    Default.rm2 as long as the disc's (#36), the saves on the mods' own card: (passed, what happened)"""
+    files = {"mods/Startup/Default.rm2": archive_file("Startup/Default.rm2"),
+             "mods/Levels/Earth/Hub/beach.rm2": archive_file("Levels/Earth/Hub/beach.rm2")}
+    log = run_for(exe, work / "mods-same", [], {"TWIN_SOUND_CHECK": "1"},
+                  ["--headless", "--quiet-stubs"], None, 12, files=files)
+    banks, waiting = {}, None
+    for line in log.splitlines():
+        asked = re.search(r"sound check: bank (0x[0-9a-f]+) to be read", line)
+        written = re.search(r"sound check: core 1's DMA writes 0x[0-9a-f]+, (\d+) halfwords", line)
+        if asked:
+            waiting = asked.group(1)
+        elif written and waiting:
+            banks.setdefault(waiting, int(written.group(1)))
+            waiting = None
+    checks = {
+        "the archive's table made again with 2": "the archive's table made again: 2 of its files from mods" in log,
+        "Default.rm2's banks as the disc's (#36)": all(banks.get(bank) == length for bank, length in MOD_BANKS.items()),
+        "the saves on memorycard-mods-loose": "the saves go on memorycard-mods-loose" in log,
+    }
+    failed = [name for name, ok in checks.items() if not ok]
+    said = ", ".join(f"bank {bank} {banks.get(bank, 'none')}" for bank in MOD_BANKS)
+    return not failed, (", ".join(checks) if not failed else "NOT: " + ", ".join(failed)) + f" ({said})"
 
 
 def other_disc_image(key, root=HERE):
@@ -1695,6 +1740,10 @@ def report(exe, reference, work, with_sweep, reference_name=None):
 
     ok, what = game_options(exe, work)
     print(f"game options    {'ok' if ok else 'FAILED'}: {what}")
+    failed |= not ok
+
+    ok, what = mods(exe, work)
+    print(f"mods            {'ok' if ok else 'FAILED'}: {what}")
     failed |= not ok
 
     if with_sweep:

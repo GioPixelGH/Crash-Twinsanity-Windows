@@ -37,7 +37,7 @@ in the **User** folder beside the game (below):
 | The disc image's path | `disc_image.txt` |
 | Texture packs | `textures\SLES-52568\replacements\` (PCSX2's layout: a PCSX2 pack's `replacements` folder works as it is) |
 | The log | `log.txt` (when the game wasn't started from a terminal), the run before's `log.previous.txt` |
-| Mods (files read instead of the game's: below) | `mods\` |
+| Mods (files read instead of the game's: below), their order and switches | `mods\`, `mods.txt` |
 
 Saving works like a PC game: no memory card screens. Save from the pause menu or at the game's save points; load from the
 main menu.
@@ -128,15 +128,28 @@ jumps as far and as high as at 60 Hz; above 60 it goes only as fast as the compu
 
 ## Mods
 
-A changed copy of one of the game's files in **%APPDATA%\Crash Twinsanity\mods\** at its path is read instead of it:
-`mods\Language\AgentLab\Italian.txt` for texts, `mods\Levels\Earth\Hub\beach.rm2` for a level, `mods\FMV\H01_A.PSS` for a
-movie. To get a file to change, from PowerShell or the Command Prompt in the game's folder:
+Each mod is a folder of its own in **%APPDATA%\Crash Twinsanity\mods\**:
+
+- a **Mod Crate** (Crate Mod Loader's: a folder with `ModCrateInfo.txt`, `layer0` and `layer1`), unzipped as it comes, for
+  example `mods\Padoru Pandemonium\`;
+- or a folder of changed files laid out as the game's: `mods\My mod\Levels\Earth\Hubeach.rm2` for a level,
+  `mods\My mod\Language\AgentLab\Italian.txt` for texts, `mods\My mod\FMV\H01_A.PSS` for a movie.
+
+Files put straight in the mods folder at their path (`mods\Levels\Earth\Hubeach.rm2`) work too, as before 1.2.0. Where two
+mods change the same file, the first in **mods.txt** wins (in the settings folder: a line a mod, `on` or `off`, a tab, the
+mod's folder; `*` the files put straight in the mods folder). A new mod comes first and on. While any mod is on, your saves go
+on a memory card of their own (`memorycard-mods-...` in the settings folder): your own saves are never touched, and they're
+back when the mods are off. A mod's changed game program (SLES_525.68) can't work here: this port has its own, and the log
+says what the mod changed in it.
+
+To make a mod, get a file to change, from PowerShell or the Command Prompt in the game's folder:
 
     .\CrashTwinsanity.exe --list-files
     .\CrashTwinsanity.exe --extract=Language/AgentLab/Italian.txt
 
 The first lists the game's files; the second copies one from your disc image into the mods folder (a file already there is
-left alone). The log says which mods the game used. Remove the folder (or the file) to play the original again.
+left alone). The log says which mods the game used. Remove the folder (or the file), or turn it off in mods.txt, to play the
+original again.
 
 ## If something goes wrong
 

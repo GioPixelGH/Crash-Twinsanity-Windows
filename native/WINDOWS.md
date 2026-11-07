@@ -145,17 +145,34 @@ next start.
 
 ## Mods
 
-A file in the settings folder's `mods` folder (`%APPDATA%\Crash Twinsanity\mods`) at the path of one of the game's files is read
-instead of it, in any case, whether it's one of the disc's (`mods\FMV\H01_A.PSS`, the music's banks) or one of its archive's
-(CRASH6\CRASH.BD: `mods\Levels\Earth\Hub\beach.rm2`, `mods\Language\AgentLab\English.txt`, the fonts, the startup
-files...). The log says each one used (`[native] mods: ...`). `CrashTwinsanity.exe --list-files` lists the
-archive's files and `--extract=PATH` copies one (or one of the disc's) into the mods folder to be changed (commands.cpp);
-`native/tools/iso_extract.py IMAGE [--archive] --list` and `iso_extract.py IMAGE [--archive] PATH OUT` do the same without the
-game. The disc.cpp side: a
-disc file's mod is given a place past 16 GB (a GB each, its sectors still 32 bit for the I/O processor), an archive file's one
-past the image's end within 4 GB of the archive's start (filestream.cpp's `FileStreamOpen` takes its start and size), and
-`Native::Disc::Read` reads them from the files. The game's own code does what it would with the original (a file it doesn't
-ask for can't be added: the archive's table is the game's list).
+The settings folder's `mods` folder (`%APPDATA%\Crash Twinsanity\mods`) holds the mods (mods.h, mods.cpp), each a folder: a
+Crate Mod Loader Mod Crate (its `ModCrateInfo.txt`; `layer0\` the disc's files, `layer1\` the archive's, CRASH6\CRASH.BD's, by
+their paths; a crate one folder down, as a zip unpacks, is found too; one of another game, `Game=` not `CrashTS`, refused;
+`ModCrateSettings.txt`, Crate Mod Loader's settings of the game's code, doesn't apply), or a folder of files laid out as the
+disc's (`CRASH6\`, `FMV\`) and the archive's (`Levels\`, `Language\`, `Startup\`, `Extras\`). The mods folder's own files and
+folders of those names (`mods\Levels\Earth\Hubeach.rm2`, as before 1.2.0) are one more mod, "the loose files". Names in any
+case. `mods.txt` in the settings folder keeps their order (the first wins where two have a file) and switches; a mod not in it
+comes first and on; it's written only when the player changes something. The mods are looked at once, when the disc image is
+open (`Mods::Scan`, system.cpp's OpenDiscImage), and the log says each (`[native] mods: NAME (on): a Mod Crate by ..., N disc
+files, N archive files (N new)`) and each file used. A mod's SLES_525.68 and SYSTEM.CNF are never used (the program is the
+port's, the game's data read from the player's disc): the log says what its executable changes (code and data, in words and
+places, compared section by section). While any mod is on, the memory card is a folder of their own (`memorycard-mods-` and
+their names; the level select's `...-level-select` beside it), so the player's saves never meet a mod's levels.
+
+`CrashTwinsanity.exe --list-files` lists the archive's files and `--extract=PATH` copies one (or one of the disc's) into the
+mods folder to be changed (commands.cpp); `native/tools/iso_extract.py IMAGE [--archive] --list` and `iso_extract.py IMAGE
+[--archive] PATH OUT` do the same without the game.
+
+The disc.cpp side: a disc file's mod is given a place past 16 GB (a GB each, its sectors still 32 bit for the I/O processor).
+The archive's files' mods follow the archive's own data in a copy of it at 12 GB: while any mod has one, `CRASH6\CRASH.BD` is
+found there (its size the data's and the mods'), and `CRASH6\CRASH.BH`, the archive's table, is made again with their starts
+and sizes and the files they add (new levels: the game's own table is its list of files), as Crate Mod Loader rebuilds it
+for the PS2. Before 1.2.0 an archive file's mod was placed past the image's end and only FileStreamOpen knew it: the I/O
+processor's STREAM.IRX, which reads the sound banks, refuses an offset past the file's size it was given and reads on from
+where it was, so each sound bank of a mod's level came as the bank before it, cut to its first 3 KB (#36's garbled sounds;
+the "mods" line of check_windows puts the disc's own Default.rm2 and beach.rm2 in a mods folder and checks two of
+Default.rm2's banks' lengths). STREAM.IRX counts in signed 32 bits (a size of 0xffff0000 crashed it): the archive with its
+mods should stay under 2 GB, and the log says when it doesn't.
 
 ## Portable mode
 
@@ -378,6 +395,7 @@ At the start, after the version's line (`Crash Twinsanity 1.0.19`: native/CMakeL
 - `threads:` the threads asked for: three by default, one with `$TWIN_RENDER_THREAD=0` (the one-thread .bat's).
 - `variables:` every `TWIN_` and `TWINSANITY_` variable set, with its value.
 - `mods:` the mods folder's files (their paths in it, the first 20, then how many more), or none.
+  Once the disc is open, a line each mod (on, off, refused; what it has), what its executable changes, the card its saves go on.
 - `texture pack:` on or off and whether there's a textures folder (once it's read, `texture pack: N replacement textures in`).
 - `the last session (log.previous.txt): VERSION for TIME, ...`: how the session before ended, from its log's end: its window
   closed (`quit`), another way out (`exit: ...`), an error (`fatal: ...`), a crash (`fatal exception ...`), a hang the hang watch

@@ -3,6 +3,7 @@
 #include "graphics/renderthread.h"
 #include "graphics/window.h"
 #include "native.h"
+#include "mods.h"
 #include "ui/nativeui.h"
 #include "platform/io.h"
 #include "platform/memory.h"
@@ -460,6 +461,8 @@ void Native::OpenDiscImage()
     Log("disc image %s", LogPath(image).c_str());
     // What it is (discidentity.cpp): the whole image hashed once, on a thread of its own, in a player's start
     IdentifyDisc(image, GetSettings().headless ? DiscHashing::None : DiscHashing::Background);
+    // The mods folder's mods on (mods.cpp): read instead of the disc's files from here, their saves on a card of their own
+    Mods::Scan();
     // Its texts' languages by their content, and the voices' (languages.cpp)
     NativeUi::LogLanguages();
 }

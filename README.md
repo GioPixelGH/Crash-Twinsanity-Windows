@@ -100,8 +100,9 @@ mouse and controller, saves, cutscene skipping, community fixes):
 - **Draw distance option** (from HAB3X's Mac port): short, original (the default), medium, long or unlimited; the farther
   settings draw the grass and small things before you get close, at a cost on older PCs.
 - **Language option:** English, French, German, Italian or Spanish texts, voices and movies, chosen in Options.
-- **Mods:** files in `%APPDATA%\Crash Twinsanity\mods` replace the disc's, including files inside the game's archive.
-  `--list-files` and `--extract` help to start one.
+- **Mods:** each mod a folder in `%APPDATA%\Crash Twinsanity\mods` (a Crate Mod Loader Mod Crate as it comes, or files laid
+  out as the disc's), in an order with a switch each (`mods.txt`), their saves on a memory card of their own; files put
+  straight in the mods folder replace the disc's as before. `--list-files` and `--extract` help to start one.
 - **Portable mode** (Options > Gameplay, off by default): settings, saves and mods in a `User` folder beside the game, and the
   disc image found in the game's folder, to carry it on a USB stick.
 - **Fixes:**
@@ -139,6 +140,8 @@ off until you turn them on.
 - [x] An update check, off unless you turn it on: it only tells you a newer version is out.
 - [x] Infinite lives, a stronger Aku Aku ([#30]) and a speedrun timer, as game options.
 - [ ] The game closing after the end credits instead of going back to the Iceberg Lab, as reported in [#20].
+- [x] Mods as the community ships them ([#36]): sound effects right with a mod's levels, Mod Crates used as they come (new
+  levels too), mods in an order with a switch each, and their saves kept apart from yours.
 - [ ] A modding guide: the game's files, the community's tools for them, and how to share a mod.
 - [ ] The two cutscenes that still end a little differently when skipped than when played ([#9]).
 - [ ] A skip for the cutscenes that have none yet, like those of the first fight with Cortex and of Cavern Catastrophe ([#28]).
@@ -186,6 +189,7 @@ differences as options on the PAL game ([#14]), the port's own texts in Brazilia
 [#32]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/32
 [#33]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/33
 [#35]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/35
+[#36]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/36
 
 ## Building on Windows
 

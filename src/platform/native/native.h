@@ -152,9 +152,9 @@ bool Find(const char* path, Entry* entry);
 u32 Read(u64 offset, void* destination, u32 size);
 // Closes the image (one that turned out not to be the game's), so another can be opened
 void Close();
-// Mods (disc.cpp): a file of the archive (CRASH6\CRASH.BD's: "Levels\Earth\Hub\beach.rm2") in the settings folder's mods
-// folder at its path: its start (from the archive's) and size, past the image's end; whether an image offset is a mod's (read
-// whatever the file it was opened as says its size is)
+// Mods (disc.cpp, mods.h): a file of the archive (CRASH6\CRASH.BD's: "Levels\Earth\Hub\beach.rm2") from a mod: its start in the
+// archive's copy (past its own data, the archive's table made again with it) and size; whether an image offset is in the archive's
+// copy or a disc file's mod (read whatever the file it was opened as says its size is)
 bool FindArchiveMod(const char* path, u32* start, u32* size);
 bool IsMod(u64 offset);
 }

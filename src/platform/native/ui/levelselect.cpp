@@ -11,6 +11,7 @@
 #include "ui/nativeui.h"
 
 #include "native.h"
+#include "mods.h"
 
 #include "game/gamecontroller.h"
 #include "game/oleg.h"
@@ -83,7 +84,7 @@ void StartLevel(u32 level)
     }
 
     // The play's saves on a card of their own from here (its progress isn't one a played game has)
-    Native::UseMemoryCard("memorycard-level-select");
+    Native::UseMemoryCard(Native::Mods::AnyUsed() ? (Native::Mods::CardName() + "-level-select").c_str() : "memorycard-level-select");
     g_Session = true;
     controller->saveController.Restore(0, &controller->progress, controller->chunkManager);
     controller->ResetGame(EntryNewGame);
@@ -124,7 +125,7 @@ void LevelSelectFrame()
     {
         // Back at the title: the player's card again
         g_Session = false;
-        Native::UseMemoryCard("memorycard");
+        Native::UseMemoryCard(Native::Mods::CardName().c_str());
         Native::Log("level select: its play over, the player's own saves again");
     }
 }
