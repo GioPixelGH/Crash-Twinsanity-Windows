@@ -273,6 +273,12 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1E4 | the long jump from a slide: at any moment of it, or easier (a later press, steered in the air). | le saut long depuis une glissade : à tout moment, ou plus facile (plus tard, dirigé en l'air). | der weitsprung aus dem rutschen: jederzeit oder leichter (später drücken, in der luft lenken). | el salto largo al deslizarte: en cualquier momento, o más fácil (más tarde, dirigido en el aire). | il salto lungo dalla scivolata: in qualunque momento, o più facile (più tardi, guidato in aria). |
 | 0x1E5 | any moment | à tout moment | jederzeit | en cualquier momento | in qualunque momento |
 | 0x1E6 | easier | plus facile | leichter | más fácil | più facile |
+| 0x1E7 | start any level from the main menu. what you save then is kept apart from your saves. | lancer n'importe quel niveau depuis le menu principal. ses sauvegardes restent à part. | jedes level aus dem hauptmenü starten. was du dann speicherst, bleibt getrennt. | empezar cualquier nivel desde el menú principal. lo que guardes entonces queda aparte. | inizia qualsiasi livello dal menu principale. ciò che salvi allora resta separato. |
+| 0x1E8 | level | niveau | level | nivel | livello |
+| 0x1E9 | the level to start, from its beginning. the story is opened up to it. | le niveau à lancer, depuis son début. l'histoire est ouverte jusqu'à lui. | das level, von seinem anfang an. die geschichte ist bis dorthin offen. | el nivel que empezar, desde el principio. la historia se abre hasta él. | il livello da iniziare, dal suo inizio. la storia è aperta fino a lì. |
+| 0x1EA | start the level | lancer le niveau | level starten | empezar el nivel | inizia il livello |
+| 0x1EB | from the main menu | depuis le menu principal | aus dem hauptmenü | desde el menú principal | dal menu principale |
+| 0x1EC | quit to the main menu, then open the options there to start a level. | quitte vers le menu principal, puis ouvre les options pour lancer un niveau. | zum hauptmenü beenden und dort in den optionen ein level starten. | sal al menú principal y abre allí las opciones para empezar un nivel. | esci al menu principale e apri lì le opzioni per iniziare un livello. |
 
 ## English (29 lines)
 

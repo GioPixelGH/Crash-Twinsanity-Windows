@@ -144,7 +144,7 @@ off until you turn them on.
 - [x] The slide's long jump at any moment, or easier, as a game option ([#11], [#35]).
 - [x] Draw distance as a PC option (from HAB3X's Mac port): farther than the PS2's draws the grass and small things before
   you get close, at a cost on older PCs.
-- [ ] Level select, as a game option.
+- [x] Level select, as a game option (its saves kept apart from yours).
 - [x] Anti-aliasing by supersampling (2x, 4x).
 - [ ] Eight save slots.
 - [ ] Frame rates other than 60 checked through the game: the seal chase at 240 fps ([#17]), the cannon's bombs below 60 fps

@@ -159,6 +159,12 @@ bool FindArchiveMod(const char* path, u32* start, u32* size);
 bool IsMod(u64 offset);
 }
 
+// The memory card's folder in the settings folder (memorycard.cpp): "memorycard", or another one a session's saves go to so the
+// player's are never touched (the level select's "memorycard-level-select"); the files open on the card are left as they are, so
+// it's changed only where nothing is being saved (the main menu, a level's loading)
+void UseMemoryCard(const char* name);
+const char* MemoryCardName();
+
 // The disc image recognised for the log (discidentity.cpp): the program its SYSTEM.CNF boots, its size and, once an image, its
 // CRC-32 and SHA-1 against redump.org's dumps ("disc: the retail disc, SLES-52568 v1.01 PAL ..."), kept in disc_identity.txt.
 // The disc open. Hashed on a thread of its own (a player's start), there and then (--identify-disc), or not (--headless's runs:

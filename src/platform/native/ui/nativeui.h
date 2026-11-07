@@ -293,6 +293,13 @@ enum NativeText : u32
     TextDescSlideJump,
     TextSlideJumpAnyMoment,
     TextSlideJumpEasier,
+    // The level select: the option (its name the older TextLevelSelect), the level chosen, starting it, or where it starts from
+    TextDescLevelSelect,
+    TextLevelSelectLevel,
+    TextDescLevelSelectLevel,
+    TextLevelSelectStart,
+    TextLevelSelectFromMainMenu,
+    TextDescLevelSelectFromMainMenu,
     NativeTextEnd,
 };
 
@@ -449,6 +456,8 @@ enum Option : u32
     OptionStrongMask,
     // The slide jump (#11, #35): 0 the original, 1 any moment, 2 easier
     OptionSlideJump,
+    // The level select (levelselect.cpp: from the main menu, a memory card of its own)
+    OptionLevelSelect,
     OptionCount,
 };
 
@@ -493,6 +502,15 @@ void ApplyGameSettingsOnce();
 // (GameController::Update): the fullscreen toggle, the mute, the 60 Hz pacing
 void StartOptions();
 void Frame();
+// The level select (levelselect.cpp, the game option): the game's levels (their names the code file's texts from LevelNameTexts),
+// each one's first chunk, whether a level can be started now (the option on, the main menu), a level started (its saves on a card
+// of their own until the title), and its frame's work (the player's card again at the title)
+constexpr u32 LevelCount = 16;
+constexpr u32 LevelNameTexts = 0x47;
+const char* LevelChunk(u32 level);
+bool CanStartLevel();
+void StartLevel(u32 level);
+void LevelSelectFrame();
 // Once after the window lost the focus (the option on): the game pauses as for its start button
 bool TakeFocusPause();
 // With the cutscene skip option, "hold any button to skip" (features.cpp): any key, mouse button or pad button pressed after the

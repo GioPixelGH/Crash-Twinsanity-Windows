@@ -79,6 +79,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionInfiniteLives, "infinite_lives", 0, 1},
     {OptionStrongMask, "strong_mask", 0, 1},
     {OptionSlideJump, "slide_jump", 0, 2},
+    {OptionLevelSelect, "level_select", 0, 1},
 };
 
 s32 g_Values[OptionCount];
@@ -432,6 +433,7 @@ void Frame()
     PhysicsTestFrame();
     SettingsShotsFrame();
     PortableTestFrame();
+    LevelSelectFrame();
     MouseFrame();
     ApplyGameSettingsOnce();
     SettingsFrame();

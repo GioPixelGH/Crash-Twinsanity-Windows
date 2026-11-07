@@ -193,6 +193,9 @@ void OpenScreenPosition();
 void SelectTab(u32 tab);
 void AskPortable(bool portable);
 void OpenDialog(PortableDialog dialog);
+void Close();
+// The level select's level (its row's choice, kept while the program runs)
+s32 g_LevelSelectChoice = 0;
 
 // The display mode (window or fullscreen) and the window's size: the windows' sizes are the display choices but the last
 s32 WindowSizeChoice()
@@ -251,6 +254,27 @@ void Build()
     // The slide jump (THE LIST 11, #11, #35): original, any moment, easier
     gameplay.push_back(OptionChoice(TextSlideJump, TextDescSlideJump, OptionSlideJump,
                                     {TextDistanceOriginal, TextSlideJumpAnyMoment, TextSlideJumpEasier}));
+    // The level select (THE LIST 12, levelselect.cpp): the option, then (on) the level chosen and its start from the main menu, or
+    // a line saying the main menu is where it starts from
+    gameplay.push_back(Toggle(TextLevelSelect, TextDescLevelSelect, OptionLevelSelect));
+    Row levelSelectLevel = Choice(
+        TextLevelSelectLevel, TextDescLevelSelectLevel, [] { return g_LevelSelectChoice; },
+        [](s32 value) { g_LevelSelectChoice = value; }, static_cast<s32>(LevelCount) - 1,
+        [](s32 value) { return Text(LevelNameTexts + static_cast<u32>(value)); });
+    levelSelectLevel.shown = [] { return IsOn(OptionLevelSelect); };
+    gameplay.push_back(levelSelectLevel);
+    Row levelSelectStart = Action(TextLevelSelectStart, TextDescLevelSelectLevel, [] {
+        if (CanStartLevel())
+        {
+            Close();
+            StartLevel(static_cast<u32>(g_LevelSelectChoice));
+        }
+    });
+    levelSelectStart.shown = [] { return CanStartLevel(); };
+    gameplay.push_back(levelSelectStart);
+    Row levelSelectElsewhere = Action(TextLevelSelectFromMainMenu, TextDescLevelSelectFromMainMenu, [] {});
+    levelSelectElsewhere.shown = [] { return IsOn(OptionLevelSelect) && !CanStartLevel(); };
+    gameplay.push_back(levelSelectElsewhere);
     gameplay.push_back(Toggle(TextPauseInactive, TextDescPauseInactive, OptionPauseOnFocusLoss));
     gameplay.push_back(Toggle(TextDetailedLog, TextDescDetailedLog, OptionDetailedLog));
     // Portable mode (portable.cpp; not an option of options.txt, which is in the folder it chooses): the mode in use, and stepping
@@ -818,6 +842,7 @@ void ResetTab(u32 tab)
         ResetOptions({OptionInfiniteLives});
         ResetOptions({OptionStrongMask});
         ResetOptions({OptionSlideJump});
+        ResetOptions({OptionLevelSelect});
         break;
     case TabAccessibility:
         ResetOptions({OptionCameraShake, OptionInvertCameraX, OptionInvertCameraY, OptionCameraSpeed, OptionStickDeadZone});

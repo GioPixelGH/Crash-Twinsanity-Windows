@@ -86,9 +86,13 @@ bool CardThere(s32 port, s32 slot)
     return port == 0 && slot == 0;
 }
 
+// The card's folder in the settings folder: "memorycard", or another while a session mustn't touch the player's saves (the
+// level select's: UseMemoryCard)
+std::string g_CardName = "memorycard";
+
 fs::path Root()
 {
-    fs::path root = fs::path(Native::SettingsFolder()) / "memorycard";
+    fs::path root = fs::path(Native::SettingsFolder()) / g_CardName;
     std::error_code ignored;
     fs::create_directories(root, ignored);
     return root;
@@ -481,4 +485,22 @@ void NativeSaveTrace(const char* format, ...)
     std::vsnprintf(line, sizeof(line), format, arguments);
     va_end(arguments);
     Native::Log("save code: %s", line);
+}
+
+void Native::UseMemoryCard(const char* name)
+{
+    if (g_CardName == name)
+    {
+        return;
+    }
+
+    g_CardName = name;
+    g_CurrentDirectory = "/";
+    CardChanged();
+    Log("memory card: the settings folder's %s from now on", name);
+}
+
+const char* Native::MemoryCardName()
+{
+    return g_CardName.c_str();
 }

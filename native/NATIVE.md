@@ -218,6 +218,12 @@ leaving a save the game couldn't have made itself (`src/platform/native/gameopti
   jump's turn rate (`JumpController::Start`)); its height and length the slide jump's own. The log says each slide jump the
   option allowed. Checked with the pad script: a cross 3 frames into the slide does nothing at 0 and jumps at 1 and 2; one 26
   frames in jumps at 2.
+- The level select (`level_select`; HAB3X's 944aa1c made an option): Gameplay then has a level row and "start the level"
+  (from the main menu: elsewhere a line says so). The level starts from its first chunk as a new game does, the story and the
+  open areas raised to it; its play's saves go to a card of its own (`memorycard-level-select` in the settings folder,
+  `Native::UseMemoryCard`) until the game is back at the title, so the player's saves never get a progress no played game has.
+  `$TWIN_LEVEL_SELECT_TEST=N` starts level N from the main menu (the checks).
+
 ## Bug fixes (optional)
 
 The "bug fixes" toggle on the settings' Gameplay tab (`OptionRetailFixes`, off by default) turns on fixes of retail bugs, in the
