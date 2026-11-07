@@ -108,7 +108,8 @@ void MaterialRead(u8* data, u32 size)
     constexpr u32 SettingsBytes = 30;
     constexpr u32 ShadowReceiverSetting = 24;
     constexpr u32 AfterSettings = 4 + 16 + 16 + 16 + 4 + 4;
-    if (!RetailFixes() || size < 16)
+    // (The bug fixes' change, and the shadows on crates game option's: THE LIST 38, from a level's next load)
+    if ((!RetailFixes() && !NativeGame::ShadowsOnCrates()) || size < 16)
     {
         return;
     }
@@ -166,6 +167,13 @@ void MaterialRead(u8* data, u32 size)
         if (shader[0] == 0 && shader[ShadowReceiverSetting] == 0)
         {
             shader[ShadowReceiverSetting] = 1;
+            // ($TWIN_FIXES_TRACE: each crate material made a shadow receiver said, its option's check)
+            static const bool tracing = std::getenv("TWIN_FIXES_TRACE") != nullptr;
+            if (tracing)
+            {
+                Native::Log("fixes: a crate material's shader made a shadow receiver (%.*s)", static_cast<int>(nameLength),
+                            reinterpret_cast<const char*>(data + 16));
+            }
         }
     }
 }

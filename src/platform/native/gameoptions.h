@@ -44,3 +44,9 @@ namespace NativeGame
 bool DropShadow();
 }
 
+// The played character's shadow on the tops of crates too (shadows_on_crates; the PS2 draws none there): the crates' opaque
+// materials made shadow receivers (fixes.cpp's MaterialRead, the community mod's change)
+namespace NativeGame
+{
+bool ShadowsOnCrates();
+}

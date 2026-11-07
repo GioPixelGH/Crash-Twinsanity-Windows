@@ -306,6 +306,9 @@ enum NativeText : u32
     // The drop shadow
     TextDropShadow,
     TextDescDropShadow,
+    // The shadows on crates
+    TextShadowsOnCrates,
+    TextDescShadowsOnCrates,
     NativeTextEnd,
 };
 
@@ -469,6 +472,7 @@ enum Option : u32
     // The drop shadow under the player (dropshadow.cpp)
     OptionDropShadow,
     // The player's shadow on crates' tops too
+    OptionShadowsOnCrates,
     OptionCount,
 };
 

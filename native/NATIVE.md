@@ -222,6 +222,9 @@ leaving a save the game couldn't have made itself (`src/platform/native/gameopti
   it (a cylinder's volume of 0.5, 20 down, as the game's own shadow circles: `CastDropShadow` in `shadows.cpp`), so the spot it
   lands on is marked whatever the lighting's slant; drawn as the game's shadows are, on the surfaces that take them. Checked:
   Crash's fall onto the beach at the start shows the disc under him.
+- Shadows on crates (`shadows_on_crates`, THE LIST 38; TwinsanityEvolved 0.9.3's idea): the crates' opaque materials made
+  shadow receivers (the community mod's change, also in the bug fixes: `MaterialRead`), from a level's next loading. Checked:
+  the beach's 47 crate shaders change (`TWIN_FIXES_TRACE` names them).
 - The speedrun timer (`speedrun_timer`): real time from New Game in the game's own font at the top (`speedrun.cpp`, the game's
   text queue as "press start"), a split at each level's end (play in another of the 16 levels, `g_AreaLevels`): the level and
   its time shown under the timer for 5 s and logged; the credits stop it; the title resets it.
@@ -230,6 +233,9 @@ leaving a save the game couldn't have made itself (`src/platform/native/gameopti
   open areas raised to it; its play's saves go to a card of its own (`memorycard-level-select` in the settings folder,
   `Native::UseMemoryCard`) until the game is back at the title, so the player's saves never get a progress no played game has.
   `$TWIN_LEVEL_SELECT_TEST=N` starts level N from the main menu (the checks).
+
+check_windows' "game options" line runs the first, the slide jump, the speedrun timer, the shadows on crates and the level
+select's cases.
 
 ## Bug fixes (optional)
 

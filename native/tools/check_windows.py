@@ -301,6 +301,33 @@ def resolution_steps(exe, work):
     return scales == ["2", "3"], f"the renderer's scales: {', '.join(scales) or 'none'} (2 at the start, 3 once chosen)"
 
 
+def game_options(exe, work):
+    """The game options of 1.2.0 (gameoptions.h), each run headless at a fixed time: Crash walked into the beach's sea
+    ($TWIN_PAD_SCRIPT) with infinite lives, the speedrun timer and the shadows on crates on (the bug fixes off): the death costs no
+    life, the play restarts, the timer starts at New Game, crates' materials take shadows; a slide jumped from its first moment
+    with the slide jump "any moment"; the level select's test start of the Iceberg Lab from the main menu on its own card:
+    (passed, what happened)"""
+    fixed = {"TWIN_FIXED_TIME": "1", "TWINSANITY_AUDIO": "frames"}
+    sea = run_for(exe, work / "game-options-sea",
+                  ["infinite_lives=1", "speedrun_timer=1", "shadows_on_crates=1", "retail_fixes=0"],
+                  dict(fixed, TWIN_PAD_SCRIPT="650-1100:lx=255", TWIN_FIXES_TRACE="1"), ["--quick", "--headless"], None, 45)
+    slide = run_for(exe, work / "game-options-slide", ["slide_jump=1"],
+                    dict(fixed, TWIN_PAD_SCRIPT="1100-1200:ly=0;1150-1158:circle;1153-1160:cross"), ["--quick", "--headless"],
+                    None, 40)
+    level = run_for(exe, work / "game-options-level", ["level_select=1"], {"TWIN_LEVEL_SELECT_TEST": "4"}, ["--headless"], None,
+                    40)
+    checks = {
+        "a death free": "infinite lives: a death that cost no life" in sea and "game: restarting" in sea,
+        "the timer started": "speedrun: the timer started (New Game)" in sea,
+        "crates take shadows": "made a shadow receiver" in sea,
+        "a slide jump from its first moment": "slide jump: a long jump from the slide's steering" in slide,
+        "the level select's Iceberg Lab on its own card": ("memorycard-level-select" in level and
+                                                            "Levels\\Ice\\Hub\\labext loaded" in level),
+    }
+    failed = [name for name, ok in checks.items() if not ok]
+    return not failed, ", ".join(checks) if not failed else "NOT: " + ", ".join(failed)
+
+
 def other_disc_image(key, root=HERE):
     """Another disc image local.json may name ("disc_image_usa": the NTSC-U v2.00 disc), or None"""
     local = root / "local.json"
@@ -1640,6 +1667,10 @@ def report(exe, reference, work, with_sweep, reference_name=None):
 
     ok, what = resolution_steps(exe, work)
     print(f"resolution      {'ok' if ok else 'FAILED'}: {what}")
+    failed |= not ok
+
+    ok, what = game_options(exe, work)
+    print(f"game options    {'ok' if ok else 'FAILED'}: {what}")
     failed |= not ok
 
     if with_sweep:

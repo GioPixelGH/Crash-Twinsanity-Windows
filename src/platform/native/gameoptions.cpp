@@ -54,3 +54,8 @@ bool NativeGame::DropShadow()
     return NativeUi::IsOn(NativeUi::OptionDropShadow);
 }
 
+// The shadows on crates
+bool NativeGame::ShadowsOnCrates()
+{
+    return NativeUi::IsOn(NativeUi::OptionShadowsOnCrates);
+}

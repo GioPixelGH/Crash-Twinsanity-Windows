@@ -82,6 +82,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionLevelSelect, "level_select", 0, 1},
     {OptionSpeedrunTimer, "speedrun_timer", 0, 1},
     {OptionDropShadow, "drop_shadow", 0, 1},
+    {OptionShadowsOnCrates, "shadows_on_crates", 0, 1},
 };
 
 s32 g_Values[OptionCount];
