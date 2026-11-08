@@ -18,6 +18,10 @@
 #include "game/rigidbody.h"
 #include "game/scenery.h"
 
+#ifdef TWIN_NATIVE
+#include "cutsceneskip.h"
+#endif
+
 // The commands that attach instances to an agent's instance and let them go (dropped, thrown, launched), link and spring them,
 // turn an instance with the one it hangs from, set volume controllers, send user messages and trigger the instances around; and
 // the module's statics
@@ -124,6 +128,13 @@ GameEvent* MakeMessage(u32 message, InstanceContext* sender)
 
 void SendMessage(GameEvent* event, InstanceContext* target)
 {
+#ifdef TWIN_NATIVE
+    // The cutscene skip (THE LIST 28, cutsceneskip.h): what a cutscene's agent messages is one of the cutscene's agents
+    if (event != nullptr && event->argument != nullptr)
+    {
+        NoteCutsceneAgent(static_cast<InstanceContext*>(event->argument->object), target);
+    }
+#endif
     Reference* handle = event != nullptr ? AddEventReference(event) : nullptr;
     QueueEvent(target, &handle);
 }

@@ -22,6 +22,10 @@
 #include <cstdint>
 
 #ifdef TWIN_NATIVE
+#include "cutsceneskip.h"
+#endif
+
+#ifdef TWIN_NATIVE
 #include "fixes.h"
 #include "game/navigation.h"
 #include "native.h"
@@ -442,7 +446,16 @@ void RunOn(ObjectNode* node, ObjectNode* other, InstanceContext* instance, Scrip
         other->sourceNode = node;
     }
 
+#ifdef TWIN_NATIVE
+    // The cutscene skip (THE LIST 28, cutsceneskip.h): a behaviour a cutscene's agent starts on another, taken up (not refused
+    // for the one it runs), makes that one of the cutscene's agents
+    if (CallVirtual<u32>(other, other->vtable, ObjectNode::StartBehaviourSlot, starter, instance, 1u, slot.runnerSlot) != 0)
+    {
+        NoteCutsceneAgent(node->owner, other->owner);
+    }
+#else
     CallVirtual<u32>(other, other->vtable, ObjectNode::StartBehaviourSlot, starter, instance, 1u, slot.runnerSlot);
+#endif
 }
 }
 

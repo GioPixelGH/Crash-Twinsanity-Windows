@@ -19,6 +19,7 @@
 #include "game/widgets.h"
 
 #ifdef TWIN_NATIVE
+#include "cutsceneskip.h"
 #include "gameoptions.h"
 #include "native.h"
 #endif
@@ -100,9 +101,26 @@ void UnlinkCharactersCommand::Execute(TimeClock*, BehaviourRunner* runner, Behav
 }
 
 // The watching screen shown over half the seconds given (and hidden the same way)
-void CutsceneStartCommand::Execute(TimeClock*, BehaviourRunner*, BehaviourLevel*)
+void CutsceneStartCommand::Execute(TimeClock*, BehaviourRunner* runner, BehaviourLevel*)
 {
+#ifdef TWIN_NATIVE
+    // The cutscene skip (THE LIST 28, cutsceneskip.h): the runner's agent is the cutscene's director, and the graphs it runs say
+    // whether the cutscene may be skipped
+    u32 state = G_GameController->State();
+    if (state == GameController::StatePlaying)
+    {
+        ForgetCutsceneAgents();
+    }
+
     G_GameController->StartCutscene(static_cast<s32>(seconds * 0.5f * g_ClockUnitsPerSecond));
+    if (state == GameController::StatePlaying || state == GameController::StateWatching)
+    {
+        NoteCutsceneDirector(runner->agentNode->owner);
+        NoteCutsceneSite(runner);
+    }
+#else
+    G_GameController->StartCutscene(static_cast<s32>(seconds * 0.5f * g_ClockUnitsPerSecond));
+#endif
 }
 
 void CutsceneEndCommand::Execute(TimeClock*, BehaviourRunner*, BehaviourLevel*)
@@ -199,6 +217,13 @@ void QueueObjectVideoCommand::Execute(TimeClock*, BehaviourRunner* runner, Behav
 
 void QueueVideoCommand::Execute(TimeClock* clock, BehaviourRunner* runner, BehaviourLevel*)
 {
+#ifdef TWIN_NATIVE
+    // A skipped cutscene's speech track isn't queued (cutsceneskip.h; CutsceneMusicReady answers ready)
+    if (CutsceneSkips(runner->agentNode) != 0)
+    {
+        return;
+    }
+#endif
     s32 trackNumber = track.IntWith(static_cast<ObjectNode*>(runner->agentNode)->PacketProperties());
     QueueMovie(G_VideoController, trackNumber, clock, flags.loops);
 }

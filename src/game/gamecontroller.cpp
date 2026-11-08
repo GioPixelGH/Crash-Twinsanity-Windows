@@ -43,6 +43,7 @@
 #include <cstdint>
 
 #ifdef TWIN_NATIVE
+#include "cutsceneskip.h"
 #include "gameoptions.h"
 #include "ui/nativeui.h"
 #endif
@@ -413,6 +414,15 @@ u32 GameController::Update(u32 keepFreed)
     }
 
     oleg.Update(&g_GlobalClock, pad, character);
+#ifdef TWIN_NATIVE
+    // The cutscene skip's end once play starts again, or given back when it stalls (THE LIST 28, cutsceneskip.h)
+    StepCutsceneSkip(State(), NextState());
+    if (CutsceneSkipStalled() != 0)
+    {
+        EndCutsceneSkip();
+        oleg.Hide(oleg.screens[OLEG::ScreenBlack], static_cast<s32>(g_ClockUnitsPerSecond * FadeSeconds), 0);
+    }
+#endif
     if (State() != StatePlaying && State() != StateWatching)
     {
         return 0;
@@ -1039,6 +1049,14 @@ u32 GameController::EndCutscene(s32 duration)
     u32 state = State();
     if (state == StateWatching)
     {
+#ifdef TWIN_NATIVE
+        // A skip is over with the cutscene (what starts after its end keeps its waits: cutsceneskip.h), the screen shown again
+        if (CutsceneSkipping() != 0)
+        {
+            EndCutsceneSkip();
+            oleg.Hide(oleg.screens[OLEG::ScreenBlack], static_cast<s32>(g_ClockUnitsPerSecond * FadeSeconds), 0);
+        }
+#endif
         flags.unused3 = 0;
         SetNextState(StateStartingPlay);
         oleg.Hide(oleg.screens[OLEG::ScreenCutscene], duration, 0);
@@ -1323,6 +1341,26 @@ u32 GameController::Watching(TimeClock* clock)
     {
         G_VideoController->Skip();
     }
+
+#ifdef TWIN_NATIVE
+    // The cutscene skip of the scenes no skip rule (condition 572) ends (THE LIST 28, cutsceneskip.h): held as the skip option
+    // has it, the cutscene's waits end in their order from here, the screen black meanwhile (shown again at its end)
+    if (CutsceneSkipping() == 0 && CutsceneSkipAsked() != 0)
+    {
+        StartCutsceneSkip();
+        if (CutsceneSkipping() != 0)
+        {
+            // as FadingOut fades to black (the fader's colours a script's fade may have set otherwise)
+            u32 hidden;
+            u32 shown;
+            GetColor(&hidden, ColourTransparentBlack);
+            GetColor(&shown, ColourBlack);
+            oleg.fader.hiddenColour = hidden;
+            oleg.fader.shownColour = shown;
+            oleg.Show(oleg.screens[OLEG::ScreenBlack], static_cast<s32>(g_ClockUnitsPerSecond * ShortFadeSeconds), 0);
+        }
+    }
+#endif
 
     return NoState;
 }

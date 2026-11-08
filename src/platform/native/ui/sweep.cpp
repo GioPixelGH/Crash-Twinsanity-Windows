@@ -6,6 +6,7 @@
 // skipping the cutscenes ("hold any button to skip": cross is held 1 s each cycle)
 #include "ui/bindings.h"
 
+#include "cutsceneskip.h"
 #include "native.h"
 
 #include "game/agentlab.h"
@@ -14,6 +15,8 @@
 #include "game/chunkdata.h"
 #include "game/clock.h"
 #include "game/commands.h"
+#include "game/events.h"
+#include "game/memory.h"
 #include "game/gamecontroller.h"
 #include "game/instances.h"
 #include "game/objectnode.h"
@@ -591,6 +594,43 @@ void HopFrame()
         return;
     }
 
+    // "tell:NAME" (or "tell:NAME:MESSAGE"): user message MESSAGE (87) sent to the instances of the player's chunk whose object's
+    // name holds NAME, from none, as a trigger tells it (a scene's director started where its trigger is out of a test's reach:
+    // TwinsanityEvolved's tests start them so, native/tools/check_cutscene_skips.py)
+    if (targets[next].rfind("tell:", 0) == 0)
+    {
+        std::string wanted = targets[next].substr(5);
+        u32 message = 87;
+        size_t colon = wanted.find(':');
+        if (colon != std::string::npos)
+        {
+            message = static_cast<u32>(std::atoi(wanted.c_str() + colon + 1));
+            wanted.resize(colon);
+        }
+
+        std::transform(wanted.begin(), wanted.end(), wanted.begin(), [](unsigned char c) { return std::tolower(c); });
+        InstanceList list = {chunk, wanted, {}};
+        ForEachLiveInstance(ListInstance, &list);
+        for (InstanceContext* instance : list.found)
+        {
+            Reference* argument = nullptr;
+            auto* event = GameEvent::Construct(static_cast<GameEvent*>(MemoryAllocate(sizeof(GameEvent))), message, &argument,
+                                               ObjectNodeKinds);
+            Reference* handle = AddEventReference(event);
+            QueueEvent(instance, &handle);
+            Native::Log("hop: message %u sent to %s in %s", message, ObjectNameOf(instance), name.c_str());
+        }
+
+        if (list.found.empty())
+        {
+            Native::Log("hop: no instance of an object named like %s in %s", wanted.c_str(), name.c_str());
+        }
+
+        next++;
+        lastHop = now;
+        return;
+    }
+
     // "scripts:NAME": the behaviour runners of the instances of the player's chunk whose object's name holds NAME logged (each
     // level's graph and state, the graph's states). "state:GRAPH:N": the runner's level that runs a graph whose name holds GRAPH
     // (the first of the player's chunk) made to jump to the graph's state N (where playing it out can't take a test: a boss
@@ -933,13 +973,14 @@ void LogSceneInstance(InstanceContext* instance, void*)
 
 void SceneStateFrame()
 {
-    // $TWIN_SCENE_STATE=SECONDS: that long into the play after it (1.5 s by default)
+    // $TWIN_SCENE_STATE=SECONDS: that long into the play after it (1.5 s by default), counted in game frames (60 a second), so
+    // two runs with $TWIN_FIXED_TIME take it at the same frame (native/tools/check_cutscene_skips.py)
     static const char* setting = std::getenv("TWIN_SCENE_STATE");
     static const bool wanted = setting != nullptr;
     static const f32 after = setting != nullptr && std::atof(setting) > 0.0 ? static_cast<f32>(std::atof(setting)) : 1.5f;
     static bool inScene = false;
     static bool pending = false;
-    static Clock::time_point ended;
+    static u32 frames = 0;
     GameController* controller = G_GameController;
     if (!wanted || controller == nullptr)
     {
@@ -947,7 +988,6 @@ void SceneStateFrame()
     }
 
     u32 state = controller->State();
-    Clock::time_point now = Clock::now();
     if (state == GameController::StateWatching)
     {
         inScene = true;
@@ -959,17 +999,23 @@ void SceneStateFrame()
     {
         inScene = false;
         pending = true;
-        ended = now;
+        frames = 0;
     }
 
+    // Twice, a second apart: what changes between the two goes on by itself (an idle loop, a patrol), what doesn't is what the
+    // scene left
+    static u32 taken = 0;
+    taken = frames == 0 ? 0 : taken;
     InstanceContext* player = ScenePlayer();
-    if (!pending || state != GameController::StatePlaying || std::chrono::duration<f32>(now - ended).count() < after ||
+    frames += pending && state == GameController::StatePlaying ? 1 : 0;
+    if (!pending || state != GameController::StatePlaying || static_cast<f32>(frames) < (after + static_cast<f32>(taken)) * 60.0f ||
         player == nullptr)
     {
         return;
     }
 
-    pending = false;
+    taken++;
+    pending = taken < 2;
     CharacterAgent* agent = ScenePlayerAgent();
     ObjectPlace* place = player->place;
     place->SyncPosition();
@@ -982,6 +1028,26 @@ void SceneStateFrame()
                 agent != nullptr ? agent->buttons.locked.value : 0u, place->position.x, place->position.y, place->position.z,
                 runners.c_str());
     ForEachLiveInstance(LogSceneInstance, nullptr);
+    // The last cutscene's agents (cutsceneskip.cpp's), where they are and what they run (the skip's check: watched and skipped
+    // compared, native/tools/check_cutscene_skips.py)
+    const InstanceContext* agents[128];
+    u32 count = LastCutsceneAgents(agents, 128);
+    for (u32 index = 0; index < count; index++)
+    {
+        auto* agent = const_cast<InstanceContext*>(agents[index]);
+        if (agent == player || agent->place == nullptr)
+        {
+            continue;
+        }
+
+        ObjectPlace* at = agent->place;
+        at->SyncPosition();
+        bool runsScene = false;
+        std::string agentRunners = RunnersOf(agent, &runsScene);
+        Native::Log("scene state: agent %s at (%.2f, %.2f, %.2f), visible %u:%s", OwnNameOf(agent).c_str(), at->position.x,
+                    at->position.y, at->position.z, static_cast<u32>(agent->flags.visible), agentRunners.c_str());
+    }
+
     Native::Log("scene state: end");
 }
 

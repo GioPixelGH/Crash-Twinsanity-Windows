@@ -30,6 +30,7 @@
 #include <cstdint>
 
 #ifdef TWIN_NATIVE
+#include "cutsceneskip.h"
 #include "fixes.h"
 #include "ui/nativeui.h"
 #endif
@@ -592,9 +593,14 @@ f32 IntProperty0Bit0ClearCondition::Check(GameNode* node, BehaviourLevel*, const
     return YesNo((Node(node)->properties->GetInt(0) & 1) == 0);
 }
 
-f32 CutsceneMusicReadyCondition::Check(GameNode*, BehaviourLevel*, const u32*)
+f32 CutsceneMusicReadyCondition::Check(GameNode* node, BehaviourLevel*, const u32*)
 {
+#ifdef TWIN_NATIVE
+    // Ready at once for a skipped cutscene, whose speech track isn't played (cutsceneskip.h)
+    return YesNo(VideoReady(G_VideoController) != 0 || CutsceneSkips(node) != 0);
+#else
     return YesNo(VideoReady(G_VideoController) != 0);
+#endif
 }
 
 // The rigid body has a physics body
@@ -787,6 +793,13 @@ f32 NoOpCutsceneSkippedCondition::Check(GameNode*, BehaviourLevel*, const u32*)
     // key, mouse button or pad button pressed after the cutscene began and held 1 s: ui/features.cpp)
     if (NativeUi::IsOn(NativeUi::OptionSkipCutscenes) && Parameter() != 0)
     {
+        // A skip rule polled: the scene is the rule's to skip, not the waits' (cutsceneskip.h), unless the scene's skip is the
+        // waits' (one the rule leaves unlike watched: THE LIST 22)
+        if (NoteCutsceneSkipRule() == 0)
+        {
+            return 0.0f;
+        }
+
         if (!NativeUi::SkipHoldComplete())
         {
             return 0.0f;
@@ -1536,7 +1549,13 @@ f32 IsSquarePressedCondition::Check(GameNode*, BehaviourLevel*, const u32*)
 f32 IsTrianglePressedCondition::Check(GameNode*, BehaviourLevel*, const u32*)
 {
 #ifdef TWIN_NATIVE
-    // In a cutscene the game's own triangle skips take any button ("press any button to skip")
+    // In a cutscene the game's own triangle skips take any button ("press any button to skip"); polled in one, a skip rule
+    // (cutsceneskip.h)
+    if (G_GameController != nullptr && G_GameController->State() == GameController::StateWatching && NoteCutsceneSkipRule() == 0)
+    {
+        return GetButtonPressure(PadOf(Parameter()), PadTriangle);
+    }
+
     if (NativeUi::CutsceneSkipPressed())
     {
         return 1.0f;

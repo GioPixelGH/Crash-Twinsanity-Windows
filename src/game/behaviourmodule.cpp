@@ -7,6 +7,10 @@
 #include "game/place.h"
 #include "game/resources.h"
 
+#ifdef TWIN_NATIVE
+#include "cutsceneskip.h"
+#endif
+
 // The rest of the behaviours' runtime module (the runners' motion, retail's 0x209xxx to 0x20FFA0): the events that start a
 // behaviour on the node they reach and tell of a noise, the AgentLab items' builder's destructor, an iterator over pointer arrays
 // nothing makes, and the module's statics
@@ -69,8 +73,18 @@ void ScriptEvent::Apply(ObjectNodeBase* node, GameResources* resources)
     auto* found = index != NoScriptId ? static_cast<ScriptStarter*>(scripts->items[index & ResourceIndexMask]) : nullptr;
     if (found != nullptr)
     {
+#ifdef TWIN_NATIVE
+        // The cutscene skip (THE LIST 28, cutsceneskip.h): a behaviour a cutscene's agent starts here, taken up (not refused for
+        // the one the node runs), makes the node's instance one of the cutscene's agents
+        if (CallVirtual<u32>(node, node->vtable, ObjectNode::StartBehaviourSlot, found, originator, u32{bits.forced},
+                             u32{slot}) != 0)
+        {
+            NoteCutsceneAgent(originator, node->owner);
+        }
+#else
         CallVirtual<u32>(node, node->vtable, ObjectNode::StartBehaviourSlot, found, originator, u32{bits.forced},
                          u32{slot});
+#endif
     }
 }
 

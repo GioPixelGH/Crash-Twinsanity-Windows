@@ -688,8 +688,17 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
 - `$TWIN_SCENE_STATE` (ui/sweep.cpp, with the sweep): what a cutscene leaves behind, 1.5 s into the play after it
   (`=SECONDS`: that long): the player's locked inputs (`ffffffff` all), place and behaviours (each runner's levels' graphs and
   states), every instance whose object node takes its object from another's (an actor a scene didn't give back), every instance
-  running a scene's graph (CUTSCENE or _CS in its name). A scene played out against the same skipped tells what the skip leaves
-  undone; the angry skunk, played out, matches the PS2 game's memory after it (PCSX2 below).
+  running a scene's graph (CUTSCENE or _CS in its name), and every agent of the last cutscene (cutsceneskip.cpp's: where it is,
+  whether it's drawn, its runners); twice, the second a second after the first, both counted in game frames (60 a second, so two
+  runs with `$TWIN_FIXED_TIME` take them at the same frame). A scene played out against the same skipped tells what the skip
+  leaves undone; the angry skunk, played out, matches the PS2 game's memory after it (PCSX2 below).
+- The cutscene skip's checks (cutsceneskip.cpp, NATIVE.md "The waits' skip"): `$TWIN_SKIP_ALL_SCENES=1` lets the waits' skip end
+  every cutscene, checked or not; `$TWIN_SKIP_WAITS_FIRST=1` makes it go first where a skip rule is polled too; `$TWIN_HOP`'s
+  `tell:NAME` (or `tell:NAME:MESSAGE`) sends user message MESSAGE (87) to the instances of the player's chunk whose object's name
+  holds NAME, as a trigger tells them (a cutscene's director started where a test can't walk to its trigger).
+  `native/tools/check_cutscene_skips.py [NAME...] [--waits]` plays each cutscene of its list watched and skipped (and skipped by
+  the waits) from the same start and compares what each leaves; its runs' folders and settings are absolute paths, and each run
+  is given the disc image (`$TWIN_TEST_PICK`), so a missed settings folder can't open the disc image dialog.
 - `$TWIN_SCRIPT_DUMP=6147,6149` (or `all`; levelrecipes.cpp): those behaviour scripts logged as the game reads them and as the
   level recipes edit them: each state (the start marked, its bits: the child script in the top half), each body's condition (its
   ID and parameter, ! inverted, its interval) and jump, each command's ID and argument words. commands.h and conditions.h name the

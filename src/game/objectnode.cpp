@@ -25,6 +25,10 @@
 #include <cstddef>
 #include <cstdint>
 
+#ifdef TWIN_NATIVE
+#include "cutsceneskip.h"
+#endif
+
 namespace
 {
 
@@ -371,7 +375,16 @@ void ObjectNodeBase::OnTriggerMessage(u32 received)
         ResourceTable* scripts = G_GameResourcesObjectPointer->scripts;
         auto* starter = id != NoScriptId ? static_cast<ScriptStarter*>(scripts->items[id & ResourceIndexMask]) : nullptr;
         u32 runner = behaviour->runner;
+#ifdef TWIN_NATIVE
+        // The cutscene skip (THE LIST 28, cutsceneskip.h): a cutscene agent's message starting a behaviour this takes up (not one
+        // refused for the behaviour it runs) makes this one of the cutscene's agents
+        if (CallVirtual<u32>(this, vtable, StartBehaviourSlot, starter, messageSender, 0u, runner) != 0)
+        {
+            NoteCutsceneAgent(messageSender, owner);
+        }
+#else
         CallVirtual<u32>(this, vtable, StartBehaviourSlot, starter, messageSender, 0u, runner);
+#endif
         return;
     }
 }

@@ -159,13 +159,54 @@ roofcor2, the player is Cortex already, and the scene's switch from Nina is neve
 chase as a player does (`fly` steps).
 
 The scenes no rule skips (`TWIN_FIXES_TEST=skips` lists them): the developers wrote no skip for them (no condition 572 or
-Triangle rule in the scene, the state that runs it or the one that runs that), so the mod's way of restoring skips, and the skip
-here, can't reach them: Cavern Catastrophe's five (COM_CAVERN_CUTSCENE_A, B, C, L02D_A, L02D_B), the training scene F (Jungle
+Triangle rule in the scene, the state that runs it or the one that runs that), so the mod's way of restoring skips can't reach
+them (the waits' skip below ends most of them now): Cavern Catastrophe's five (COM_CAVERN_CUTSCENE_A, B, C, L02D_A, L02D_B), the training scene F (Jungle
 Bungle), the Tiki Mon's entrance (N. Sanity hub), Henchmania's intro and N. Brio's and N. Tropy's wins, the Mecha-Bandicoot
 training scene (E3), Totem Hokum's scene E, Dingodile's victory, the Slip Slide shed (COM_MOULIN_CUTSCENE_L05B), the Iceberg
 Lab's inside (H02B, which never plays), the boiler room's Cortex pipe scene, the Psychetron's Evil Crash cuddle (H04A), the bus
 chase, Evil Crash's house (H04C), the blimp leaving the Iceberg Lab, and the final boss's four (intro, two rounds' ends, end);
 and the two the mod leaves unskippable on purpose (the party arena, the totem's fall). The movies all skip.
+
+The waits' skip (THE LIST 28 and 22; `src/platform/native/cutsceneskip.cpp`, TwinsanityEvolved's by menaman123's permission,
+menaman123/TwinsanityEvolved#19, its MIT licence among the release's). Every in-game cutscene is scripted: a director's behaviour
+runs `CutsceneStart`, a timeline of waits, its actors' behaviours and `CutsceneEnd`. Held as the skip option has it (any button,
+1 s; the game's "hold any button to skip" in the letterbox), the skip ends the cutscene's timed waits one after another at the
+frames they end at when watched: every frame, the soonest wait among the cutscene's agents (a packet's delay, an interpolation's or
+a turn's end, a time condition, an animation a condition waits for, an untimed move's end stepped ahead and put back:
+`SkippedMoveEndFrame`) is found, and the frames before it are passed for the agents alone (their time a frame on, their own
+updates run: moves, animations, physics, the triggers they cross; not their scripts nor anything else's), so the scripts reach
+their end in a few frames and leave what they leave watched. The agents are the director, every instance a cutscene agent starts a
+behaviour on or messages (behaviourmodule.cpp, commandsfocus.cpp, objectnode.cpp, commandsattach.cpp), what a trigger tells
+because an agent crossed it (messagetriggers.cpp) and the player; their sounds and the speech track aren't played
+(`CutsceneMusicReady` answers ready), the screen is black meanwhile (gamecontroller.cpp). Where a skip rule is polled (condition
+572, or the triangle in a cutscene) the scene stays the rule's, unless the table says the waits' skip goes first.
+
+Which cutscenes it ends is a table (`cutsceneskiptable.h`, made by `native/tools/cutscene_skip_table.py` from TwinsanityEvolved's
+census of the disc's 51 scripted cutscenes, each by its site and the graphs only it runs): only those checked here; the rest play
+as watched (the log names them once: "plays as watched"), the title's flyby and the two level transitions never.
+`native/tools/check_cutscene_skips.py --waits` plays each cutscene three times from the same start (the level sweep's, the
+director told its trigger's message where a test can't walk there: `$TWIN_HOP`'s `tell:` step), watched, skipped as the option
+does it and skipped by the waits, and compares what each leaves (`$TWIN_SCENE_STATE`: the player, the actors taking another's
+object or running a scene, every agent of the cutscene, where it is and what its runners run, 0.5 s into the play after it and a
+second later: what changed between the two goes on by itself and is compared by its graphs alone). Checked 2026-11-08 and skipped
+by the waits, those no rule skipped: Cavern Catastrophe's cavern director (its scene in cavbridg; started in cortthro or
+antfight it plays none, and started in escape or cryscave the game stops at once, watched too: those starts lack what play
+brings), the Tiki Mon, Henchmania's fight's start,
+the falling totem, inside the Iceberg Lab, Evil Crash's cuddle, the bus chase, Evil Crash's house,
+the party arena before the Mecha-Bandicoot fight, the airship to the Iceberg Lab, the crow's nest. Where a rule skipped, it left
+a difference in 13 (an actor still the director's for seconds, Crash stopped elsewhere in Classroom Chaos: THE LIST 22): the emu
+farmer, the totem on the bear ride, Dingodile's fight's intro, the Psychetron, Uka Uka's fight's start, the Iceberg Lab's exit,
+the Academy's hub, the tied totem, the walrus, Classroom Chaos' start, the angry skunk, the penguin, the training on the beach;
+and later Dingodile's hut (Dingodile and the snowball left elsewhere; by the waits only Cortex of l05brawl differs, falling
+through its floor in both runs: the test starts in gpa01 without the ball's arrival, as TwinsanityEvolved notes) and Rooftop
+Rampage's start (the blimp left shown and flying); and in 6 a polled rule never skipped (the triangle polled in the cutscene for
+something else): the sentry's look, the dorm room, Rockslide Rumble's start, the bell tower, Aku Aku on the beach, the core's
+entrance. In those 21 the waits' skip goes first, and ends them as watched. The rule's skip stays where it ends the cutscene as
+watched too: the bear (THE LIST 22's other scene), Slip Slide's start, Uka Uka's defeat. Not skippable yet: the training on the high path (Coco's creature
+0.9 units off), Henchmania's start and the treasure room (an actor in another graph after), the Cortex pipe (the skip stalls and
+gives the scene back), the Mecha-Bandicoot fight's start, the final boss's, and those the director's message doesn't start (the
+Psychetron room's two, the shed, the beehive, the play fight, the Cortex follow): their rules skip them as before, or they play
+whole.
 
 ## Native bugs found by the level sweep
 

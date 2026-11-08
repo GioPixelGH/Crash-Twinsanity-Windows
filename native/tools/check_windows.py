@@ -41,16 +41,17 @@ SCENARIOS = [
     ("Dingodile beaten, the boiler room's lock and the Academy (1.0.7)", "Levels\\school\\Boiler\\boiler_6", 65,
      "wait20,state:dingodile_bossfight_director_activated:3,wait12,boil2lck,wait5,sch_hub,wait8"),
     # Issue #9: the angry skunk's scene skipped, then the skunk attacked at once, while it still plays the scene's behaviour (left
-    # taking its object from the scene's director it was drawn as Crash, or crashed on an "OGI" read past the director's models)
+    # taking its object from the scene's director it was drawn as Crash, or crashed on an "OGI" read past the director's models).
+    # Since THE LIST 28 the scene's skip is the waits' (cutsceneskip.cpp: its rule's left the skunk the director's for a while)
     ("The skunk's scene skipped, the skunk attacked at once (#9)", "Levels\\Earth\\Hub\\highpath", 30,
      "idle,goto:-9:-4:-50,input,on:skunk:0,wait3,on:skunk:0,wait3,on:skunk:0,wait3",
      dict(SKIPPING, env={"TWIN_SKIP_TEST": "0.2"},
-          expect=[r"skip: .*COM_ANGRY_SKUNK_CUSCENE_MAIN skipped: .*given back as they finish: .*act_GLOBAL_SKUNK"])),
+          expect=[r"cutscene skip: skipped, \d+ agents: .*act_GLOBAL_SKUNK"])),
     # ... and given back its own object once it's done (the training scene before it too: Coco's creature, Crash), as the scene
     # played out leaves them
     ("The skunk's scene skipped, the skunk given back (#9)", "Levels\\Earth\\Hub\\highpath", 30, "idle,goto:-9:-4:-50,wait15",
      dict(SKIPPING, env={"TWIN_SKIP_TEST": "0.2", "TWIN_SCENE_STATE": "10"},
-          expect=[r"skip: .* after the skip, actors given their own object back: .*act_GLOBAL_SKUNK",
+          expect=[r"cutscene skip: skipped, \d+ agents: .*act_GLOBAL_SKUNK",
                   r"scene state: the player \|Highpath\|act_CRASH, inputs locked 00000000"],
           forbid=[r"scene state: .* takes its object from", r"inputs locked ffffffff"])),
     # Issue #9: Cortex chased by the bear (Doc Amok), the scene skipped: the controls stayed locked
@@ -62,22 +63,23 @@ SCENARIOS = [
     # Issue #9: Rooftop Rampage's scene in roofcor2 skipped as a player reaches it, as Nina (flown through the bus chase from its
     # start, into roofcor2 by its link): the scene makes Cortex the player, whose idle after it was the director's slot, Nina's
     # scene behaviour, which left him driven by its animations, unable to move (started in roofcor2 he's the player already); and
-    # its drones, the director's linked objects, never got the scene's messages that send them at Cortex
+    # its drones, the director's linked objects, never got the scene's messages that send them at Cortex. Since THE LIST 28 the
+    # scene's skip is the waits' (the rooftop director's scenes: its rule left the blimp shown in roof01): the scene's own
+    # messages reach the drones (among the skip's agents) and its own switch makes Cortex the player
     ("Rooftop Rampage's scene skipped arriving as Nina, Cortex moves (#9)", "Levels\\school\\RoofTop\\buschase", 80,
      "idle,wait2,fly:1.2:-3:160:25,fly:11:-3:167:25,fly:26.6:-4:168.5:15,wait2,fly:37.6:-0.5:47:10,roofcor2,wait3,"
      "fly:-9:-1:1:10,fly:5.5:-1:0:5,input,wait3,moved:2",
      dict(SKIPPING, env={"TWIN_SKIP_TEST": "0.2", "TWIN_SCENE_STATE": "3", "TWIN_TRIGGER_PLAN": "list"},
-          expect=[r"skip: .*COM_CUTSCENE_H03D skipped: .*messages [\d, ]*287 to its linked objects, .*the character switched as "
-                  r"it ends; .*\|BusChase\|act_NINA1",
-                  r"\|RoofCor2\|act_CORTEX asked for its slot 12, given its own object back: its own COM_CORTEX_IDLE",
+          expect=[r"cutscene skip: skipped, \d+ agents: \|RoofCor2\|CutsceneH03D\|act_ROOFTOP_CUTSCENE_DIRECTOR .*act_DRONE",
                   r"scene state: the player \|RoofCor2\|act_CORTEX, inputs locked 00000000",
                   r"hop: the player \S+act_CORTEX moved [\d.]+ units since the last step, at least"])),
     # Issue #9: the Academy hub's first scene skipped (its triggers stepped into): its staircase, the director's linked object,
-    # never got the scene's message that extends it, so the Boiler Room couldn't be reached
+    # never got the scene's message that extends it, so the Boiler Room couldn't be reached. Since THE LIST 28 the scene's skip
+    # is the waits': the scene's own message reaches it (the staircase among the skip's agents)
     ("The Academy's first scene skipped, its staircase extended (#9)", "Levels\\school\\Sch_Hub\\sch_hub", 45,
      "idle,wait40,scripts:staircase",
      dict(SKIPPING, env={"TWIN_SKIP_TEST": "1", "TWIN_TRIGGER_PLAN": "0,1", "TWIN_TRIGGER_EVERY": "14"},
-          expect=[r"skip: .*COM_SCHOOL_HUB_CUTSCENE_H03A skipped: .*messages 4 to its linked objects",
+          expect=[r"cutscene skip: skipped, \d+ agents: .*act_EXTENDING_SPIRAL_STAIRCASE",
                   r"act_EXTENDING_SPIRAL_STAIRCASE's runner 0"])),
     # Issue #19: the options' 6x and 8x drawn by the hardware renderer whole (its targets fit this PC's graphics card); and a
     # target the card can't hold ($TWIN_HW_MAX_TARGET makes the 4x frame one) drawn by the software GS instead (HAB3X's 148af1e)

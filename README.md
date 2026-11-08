@@ -148,8 +148,11 @@ off until you turn them on.
   for each, and their saves kept apart from yours.
 - [x] A modding guide ([native/MODDING.md](native/MODDING.md)): the game's files, the community's tools for them, and how to
   share a mod.
-- [ ] The two cutscenes that still end a little differently when skipped than when played ([#9]).
-- [ ] A skip for the cutscenes that have none yet, like those of the first fight with Cortex and of Cavern Catastrophe ([#28]).
+- [x] The two cutscenes that ended a little differently when skipped than when played ([#9]): Classroom Chaos' start now ends as
+  when played, and so does the bear's.
+- [x] A skip for most cutscenes that had none ([#28]), like Cavern Catastrophe's, the Tiki Mon's, the party before the first
+  fight with Cortex and Henchmania's fight: their waits ended in order, as TwinsanityEvolved does it, each checked to end as
+  when played. A few still play whole until they're checked, like the first fight with Cortex's start and the final boss's.
 - [x] The slide's long jump at any moment, or easier, as a game option ([#11], [#35]).
 - [x] Draw distance as a PC option (from HAB3X's Mac port): farther than the PS2's draws the grass and small things before
   you get close, at a cost on older PCs.
@@ -279,6 +282,8 @@ repository shipped isn't included here: get it from its author.
   Gutierrez (MIT): the SMAA anti-aliasing choice.
 - [TwinsanityEvolved](https://github.com/menaman123/TwinsanityEvolved) by menaman123, another PC port: code under its MIT
   licence (the disc image's CRC-32 and SHA-1, and how a text bank's language is told, from its engine NativeEE), its notices kept;
+  and, with menaman123's permission ([TwinsanityEvolved#19](https://github.com/menaman123/TwinsanityEvolved/issues/19)), its
+  cutscene skip and its census of the game's cutscenes, under its MIT licence;
   [`native/third_party/twinsanityevolved`](native/third_party/twinsanityevolved/README.md) lists what.
 
 **Contributors and testers of the Windows port:**

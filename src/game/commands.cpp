@@ -2,6 +2,10 @@
 
 #include "game/memory.h"
 
+#ifdef TWIN_NATIVE
+#include "cutsceneskip.h"
+#endif
+
 namespace
 {
 template <typename T>
@@ -113,6 +117,13 @@ u32 DoParticleCommand::Size()
 
 void DoSoundCommand::Execute(TimeClock*, BehaviourRunner* runner, BehaviourLevel*)
 {
+#ifdef TWIN_NATIVE
+    // A skipped cutscene's agent's sounds aren't played (cutsceneskip.h)
+    if (CutsceneSkips(runner->agentNode) != 0)
+    {
+        return;
+    }
+#endif
     CallVirtual<void>(this, vtable, ExecuteOnSlot, runner->agentNode);
 }
 

@@ -5,6 +5,10 @@
 #include "game/memory.h"
 #include "game/reference.h"
 
+#ifdef TWIN_NATIVE
+#include "cutsceneskip.h"
+#endif
+
 // The message triggers' nodes (game/instances.h): what enters, stays in and leaves a trigger's box sent its messages as events
 
 extern "C"
@@ -49,6 +53,11 @@ void TellInstances(MessageTriggerNode* node, const u16* message, InstanceContext
             told = MakeEvent(*message, instance, kinds);
         }
 
+#ifdef TWIN_NATIVE
+        // The cutscene skip (THE LIST 28, cutsceneskip.h): what a cutscene agent's entry makes the trigger tell is one of the
+        // cutscene's agents (the message is the agent's)
+        NoteCutsceneTold(instance, node->instances[index]);
+#endif
         Queue(node->instances[index], told);
     }
 }
@@ -159,11 +168,19 @@ void MessageTriggerNode::BeginCheck()
 
 void MessageTriggerNode::EnteredFirstTime(InstanceContext* instance)
 {
+#ifdef TWIN_NATIVE
+    // The cutscene skip (cutsceneskip.h): an entry or an exit while it passes a frame of its agents is waited for
+    NoteCutscenePassedEvent();
+#endif
     events[FirstEntryMessage] = Tell(messages[FirstEntryMessage], instance, events[FirstEntryMessage]);
 }
 
 void MessageTriggerNode::EnteredEveryTime(InstanceContext* instance)
 {
+#ifdef TWIN_NATIVE
+    // The cutscene skip (cutsceneskip.h): an entry or an exit while it passes a frame of its agents is waited for
+    NoteCutscenePassedEvent();
+#endif
     events[EveryEntryMessage] = Tell(messages[EveryEntryMessage], instance, events[EveryEntryMessage]);
 }
 
@@ -174,5 +191,9 @@ void MessageTriggerNode::EnteredOrStayed(InstanceContext* instance)
 
 void MessageTriggerNode::Left(InstanceContext* instance)
 {
+#ifdef TWIN_NATIVE
+    // The cutscene skip (cutsceneskip.h): an entry or an exit while it passes a frame of its agents is waited for
+    NoteCutscenePassedEvent();
+#endif
     TellInto(this, ExitMessage, instance);
 }
