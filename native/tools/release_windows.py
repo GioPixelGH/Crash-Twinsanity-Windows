@@ -51,8 +51,9 @@ LINUX = HERE / "build" / "native" / "linux"
 APPIMAGE_NAME = "Crash-Twinsanity-Linux-x86_64.AppImage"
 APPIMAGE = LINUX / APPIMAGE_NAME
 LINUX_PROGRAM = LINUX / "crash-twinsanity"
-# The DLLs the program may import: Windows' own (the UCRT's API sets among them), SDL and FFmpeg's, which the zip has
-ALLOWED_IMPORTS = re.compile(r"^(KERNEL32|WINMM|SDL3|avcodec-\d+|avutil-\d+|api-ms-win-crt-[a-z]+-l1-1-0)\.dll$", re.I)
+# The DLLs the program may import: Windows' own (the UCRT's API sets among them; WinHTTP for the update check, since 1.2.0),
+# SDL and FFmpeg's, which the zip has
+ALLOWED_IMPORTS = re.compile(r"^(KERNEL32|WINMM|WINHTTP|SDL3|avcodec-\d+|avutil-\d+|api-ms-win-crt-[a-z]+-l1-1-0)\.dll$", re.I)
 # The retail executable's sections whose bytes the program mustn't carry (native/WINDOWS.md, "The game's data from the disc")
 GAME_SECTIONS = (".data", ".rodata", ".sdata", ".vutext", ".vudata")
 
