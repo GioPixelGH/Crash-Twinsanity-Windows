@@ -160,7 +160,8 @@ off until you turn them on.
   ([#12]).
 - [ ] The black screen at start on some AMD PCs ([#16]).
 - [x] The masks' invincibility particles kept when you move into the next area, a fix under the bug fixes option ([#18]).
-- [ ] Aku Aku missing in some cutscenes of Cavern Catastrophe and High Seas Hi-Jinks ([#18]): not found yet.
+- [x] With two masks, Aku Aku's stars back after a cutscene, a fix under the bug fixes option ([#18]).
+- [ ] Aku Aku in cutscenes ([#18]): the original game hides the mask in every cutscene, on the PS2 too.
 - [x] Ant Agony's metal doors, walls and floors no longer streaked or blocky after playing other levels before it
   ([#32]).
 - [ ] HD texture packs in BC7, and texture upscaling.

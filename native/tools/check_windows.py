@@ -99,6 +99,12 @@ SCENARIOS = [
      dict(options="skip_cutscenes=1\nretail_fixes=1\n", env={"TWIN_MASK_TRACE": "1"},
           expect=[r"mask trace: trail 0, emitter \d+ taken, .*enabled 1, .*its chunk levels\\earth\\hub\\hubb, the player's "
                   r"levels\\earth\\hub\\hubb"])),
+    # Issue #18 (THE LIST 15): with two masks, the stars put back on Aku Aku after a cutscene under Bug fixes (retail hides the
+    # mask while the game is watched, destroying its boost trail, and shows it again without: on the PS2 too). The skunk's scene
+    # on the high path, a mask given before it (the sweep's start has one)
+    ("The two masks' stars back after a cutscene (#18)", "Levels\\Earth\\Hub\\highpath", 40, "idle,mask,wait3,goto:-9:-4:-50,wait30",
+     dict(options="retail_fixes=1\n", env={"TWIN_MASK_TRACE": "1"},
+          expect=[r"mask trace: shown again after the game was watched, state 4, its stars on"], forbid=[r"its stars off"])),
     # THE LIST 37: Bandicoot Pursuit's Evil Crash, whose first route step taken straight ahead misses it, stands for good (on the
     # PS2 too); under Bug fixes the step itself is his target and he follows Cortex (Crash put on the checkpoint crate, then the pad)
     ("Bandicoot Pursuit's Evil Crash follows Cortex under Bug fixes", "Levels\\AltEarth\\Hub\\altdoc", 14,

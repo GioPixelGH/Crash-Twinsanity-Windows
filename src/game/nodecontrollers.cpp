@@ -477,19 +477,68 @@ void MaskController::Frame(TimeClock*)
             node->owner->flags.visible = 1;
         }
 
+#ifdef TWIN_NATIVE
+        // Bug fixes (THE LIST 15, #18): the two masks' stars back after a cutscene. Hiding the mask as the game is watched
+        // destroys its node's trails, the boost trail among them, and retail shows it again without it: two masks then look like
+        // one until the hit points change (on the PS2 too). Put back as Boost puts it (its node's trails are that trail alone in
+        // this state: destroyed first, so one Boost made while hidden isn't doubled)
+        if (NativeFixes::RetailFixes() && state == StateGotBoostedMask)
+        {
+            DestroyParticleTrails(node);
+            CallVirtual<u32>(node, node->vtable, ObjectNode::AddParticleTrailSlot, &boostTrail);
+        }
+
+        // $TWIN_MASK_TRACE: how it's shown again (check_windows.py's scenario)
+        static const bool shownTrace = std::getenv("TWIN_MASK_TRACE") != nullptr;
+        if (shownTrace)
+        {
+            Native::Log("mask trace: shown again after the game was watched, state %u, its stars %s", static_cast<u32>(state),
+                        state != StateGotBoostedMask ? "(not two masks)" : node->particleTrails != nullptr ? "on" : "off");
+        }
+#endif
+
         flags.hidden = 0;
         flags.unused7 = 0;
     }
 
 #ifdef TWIN_NATIVE
-    // $TWIN_MASK_TRACE: the controller every 30 frames (THE LIST 15, #18: Aku Aku in the scenes)
-    static const bool controllerTrace = std::getenv("TWIN_MASK_TRACE") != nullptr;
-    static const MaskController* firstTraced = nullptr;
-    static u32 controllerTraced = 0;
-    firstTraced = firstTraced != nullptr ? firstTraced : this;
-    controllerTraced += firstTraced == this ? 1 : 0;
-    if (controllerTrace && controllerTraced % 30 == 0)
+    // $TWIN_MASK_TRACE: each controller whenever what it shows changes (its state, the game watched, hidden, visible, its
+    // character, the player, the hit points: THE LIST 15, #18: Aku Aku in the scenes)
+    struct Traced
     {
+        const MaskController* controller;
+        u64 shown;
+    };
+    static const bool controllerTrace = std::getenv("TWIN_MASK_TRACE") != nullptr;
+    static Traced traced[8] = {};
+    static u32 reused = 0;
+    Traced* slot = nullptr;
+    u64 shown = 0;
+    if (controllerTrace)
+    {
+        InstanceContext* player = PlayerInstance();
+        shown = (static_cast<u64>(state) | static_cast<u64>(GameWatched() ? 1 : 0) << 4 | static_cast<u64>(flags.hidden) << 5 |
+                 static_cast<u64>(node->owner->flags.visible) << 6 | static_cast<u64>(node->particleTrails != nullptr ? 1 : 0) << 7 |
+                 static_cast<u64>(player != nullptr ? PlayerHitPoints() : 0u) << 8) ^
+                (static_cast<u64>(reinterpret_cast<std::uintptr_t>(character)) << 16) ^
+                (static_cast<u64>(reinterpret_cast<std::uintptr_t>(player)) << 20);
+        for (Traced& entry : traced)
+        {
+            slot = slot == nullptr && entry.controller == this ? &entry : slot;
+        }
+
+        for (Traced& entry : traced)
+        {
+            slot = slot == nullptr && entry.controller == nullptr ? &entry : slot;
+        }
+
+        slot = slot != nullptr ? slot : &traced[reused++ % 8];
+    }
+
+    if (slot != nullptr && (slot->controller != this || slot->shown != shown))
+    {
+        slot->controller = this;
+        slot->shown = shown;
         auto nameOf = [](InstanceContext* instance) -> const char*
         {
             auto* object = instance != nullptr ? static_cast<ObjectNodeBase*>(GetGameNode(&instance->nodes, NodeObject)) : nullptr;
@@ -497,10 +546,11 @@ void MaskController::Frame(TimeClock*)
             return source != nullptr && source->name.string != nullptr ? source->name.string : "none";
         };
         InstanceContext* player = PlayerInstance();
-        Native::Log("mask trace: %s, kind %u, state %u, watched %d, hidden %u, visible %u, its character %s%s, the player %s, hit points %u",
+        Native::Log("mask trace: %s, kind %u, state %u, watched %d, hidden %u, visible %u, trails %u, its character %s%s, the player %s, "
+                    "hit points %u",
                     nameOf(node->owner), static_cast<u32>(kind), static_cast<u32>(state), GameWatched() ? 1 : 0, static_cast<u32>(flags.hidden),
-                    static_cast<u32>(node->owner->flags.visible), nameOf(character), character == player ? " (the player)" : "",
-                    nameOf(player), player != nullptr ? PlayerHitPoints() : 0u);
+                    static_cast<u32>(node->owner->flags.visible), node->particleTrails != nullptr ? 1u : 0u, nameOf(character),
+                    character == player ? " (the player)" : "", nameOf(player), player != nullptr ? PlayerHitPoints() : 0u);
     }
 #endif
 
