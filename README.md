@@ -188,8 +188,9 @@ Done:
   first fight with Cortex and Henchmania's fight: their waits ended in order, as TwinsanityEvolved does it, each checked to
   end as when played.
 - [x] The masks' invincibility particles kept when you move into the next area, a fix under the bug fixes option ([#18]).
-- [x] With two masks, Aku Aku's stars back after a cutscene, a fix under the bug fixes option ([#18]). Aku Aku hidden during
-  the cutscenes with the black bars stays so: the original game hides him there on purpose, on the PS2 too.
+- [x] With two masks, Aku Aku's stars back after a cutscene, a fix under the bug fixes option ([#18]).
+- [ ] Aku Aku disappearing in two cutscenes, by Cavern Catastrophe's excavator and at Dingodile's house ([#18]): not solved
+  yet, to compare with the original game.
 - [x] Bandicoot Pursuit's Evil Crash following his route instead of standing still, a fix under the bug fixes option (found by
   TwinsanityEvolved).
 - [x] Ant Agony's metal doors, walls and floors no longer streaked or blocky ([#32]).
