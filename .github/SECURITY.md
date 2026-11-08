@@ -6,8 +6,14 @@
   MPEG-2 decoder (`avcodec-63.dll`, `avutil-61.dll`), two fonts, the licences and a README. There's no installer, and it
   doesn't need administrator rights. The Linux AppImage (since 1.2.0) holds the same program built for Linux, SDL 3 and
   FFmpeg's two libraries, the fonts and the licences; its settings, saves and logs are in `~/.config/crash-twinsanity/`.
-- **What it does on your PC:** it reads your disc image, and it writes its settings, saves and logs only in
-  `%APPDATA%\Crash Twinsanity\`. The `--extract` command also writes to the folder you name.
+- **What it does on your PC:** it reads your disc image, and it writes its settings, saves, logs and imported mods only in
+  `%APPDATA%\Crash Twinsanity\` (in portable mode, the `User` folder beside the program; on Linux,
+  `~/.config/crash-twinsanity/`). The `--extract` command also writes to the folder you name.
+- **Mods are data, never programs:** the game reads a mod's levels, textures, sounds, music and texts in place of the disc's.
+  A mod's own executable, `SYSTEM.CNF` and the disc's I/O processor modules are never used, so no code of a mod's is run (a
+  crafted file that makes the program run code anyway is a security problem: please report it as below). Importing a mod's
+  zip or changed disc image (Options > Mods) only unpacks or compares its files into the mods folder; a file name that would
+  lead out of it is skipped.
 - **The network:** with its default settings the program never connects to the internet. One option does, and only when you
   turn it on: **Check for updates** (Options > Gameplay, off by default). Turned on, each start makes one HTTPS request, in
   the background, to GitHub's API for this repository's latest release

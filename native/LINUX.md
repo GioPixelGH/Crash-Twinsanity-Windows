@@ -18,8 +18,9 @@ checked by native/tools/release_windows.py. Playing it is in "Playing from the A
    remembers it; `--iso PATH` gives one on the command line.
 
 What it needs: an x86-64 PC with OpenGL 3.3 (Mesa or the graphics card's own driver); a distribution with glibc 2.38 or
-later: Ubuntu 24.04, Linux Mint 22, Debian 13, Fedora 39, Arch and the ones after them, not Ubuntu 22.04 or Debian 12 (their
-glibc is older; SteamOS should have it, untried so far); and FUSE, which most desktops have for AppImages. Without FUSE (it
+later: Ubuntu 24.04, Linux Mint 22, Debian 13, Fedora 39, Arch and the ones after them, not Ubuntu 22.04, Linux Mint 21 or
+Debian 12 (their glibc is older: there, build the program yourself, below; SteamOS should have it, untried so far); and
+FUSE, which most desktops have for AppImages. Without FUSE (it
 says so when started from a terminal), `./Crash-Twinsanity-Linux-x86_64.AppImage --appimage-extract-and-run` runs it all the
 same. Everything else is inside: SDL3, FFmpeg's two libraries, the fonts and the licences; nothing of the game's.
 
@@ -34,7 +35,7 @@ Not tried on a Deck yet: **testers wanted**. An issue with your `log.txt` (above
 the most.
 
 On a Deck the game starts fullscreen, on the Deck's own 1280 x 800 screen, at 2x the PS2's resolution (the first start's
-defaults: Options > Graphics changes them, and the Reset puts these back). The picture is 16:9 (or 4:3), with thin bars above
+defaults: Options > Display changes them, and the Reset puts these back). The picture is 16:9 (or 4:3), with thin bars above
 and below on the 16:10 screen. The log's `system:` line names the Deck's model (`Jupiter` the LCD one, `Galileo` the OLED
 one); `$TWIN_STEAM_DECK=1` makes another computer start as a Deck, `0` a Deck as a PC.
 
@@ -67,7 +68,7 @@ Library). The game's own buttons, as on the PS2 (all can be changed in Options >
 
 The back buttons (L4, L5, R4, R5) and the trackpads do nothing unless Steam's layout gives them a button. Holding any
 button for a second skips a cutscene when Options > Gameplay > Skip cutscenes is on. Speed on the Deck isn't measured yet:
-if it's slow, Options > Graphics' resolution at 1x is the lightest.
+if it's slow, Options > Display's resolution at 1x is the lightest.
 
 ## Building and running
 
@@ -86,6 +87,11 @@ You need about 3 GB of disk space, your PAL disc image (SLES-52568) and an inter
 
    The second command's libraries are SDL's backends, which it loads at run time. SDL's configure stops when one is missing
    and names it. libmpc3 is for the PS2 toolchain's compiler (step 2), which loads it from the system.
+
+   On distributions too old for the AppImage (Ubuntu 22.04, Linux Mint 21, Debian 12): clang 21 from
+   [apt.llvm.org](https://apt.llvm.org/) (its packages for jammy and bookworm), the same libraries otherwise. The PS2
+   toolchain's compiler needs only glibc 2.17 (with libmpc3, libmpfr6 and libgmp10). A program built there runs on that
+   system and newer ones. Not tried on those distributions yet.
 
 2. **Get the PS2 toolchain**: `ps2dev-ubuntu-latest.tar.gz` from
    [ps2dev's latest release](https://github.com/ps2dev/ps2dev/releases/tag/latest), extracted anywhere. The native build uses
@@ -160,8 +166,8 @@ second one rebuilds only what changed; `docker volume ls` lists them (`crash-twi
 removing one starts it again from nothing. The split has to be made first, as for any build: the copy takes `SLES_525.68` and
 `asm/` along, and they stay in the volume, on your computer.
 
-`--check --iso IMAGE` then runs native/tools/check_linux.py in the same image: what the AppImage holds and loads, the glibc it
-needs, its version, and a start as a player's, headless on Xvfb with Mesa's software OpenGL, the beach played for 20 seconds
+`--check --iso IMAGE` then runs native/tools/check_linux.py in the same image: what the AppImage holds and loads, its licences,
+the glibc it needs, its version, and a start as a player's, headless on Xvfb with Mesa's software OpenGL, the beach played for 20 seconds
 from your disc image (mounted read-only). release_windows.py check does both (native/WINDOWS.md, "Releasing").
 
 Ubuntu 24.04 because it's where ps2dev's own Linux toolchain is built (its EE compiler, which the layout tools ask for its

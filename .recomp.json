@@ -25,11 +25,11 @@
     { "label": "Full playthrough, part 2 (Italian)", "url": "https://www.youtube.com/watch?v=qvhJDY744mo" }
   ],
   "help": [
-    "Testing on AMD graphics cards",
-    "Testing on handhelds (ROG Ally, Steam Deck)",
+    "Testing the Linux AppImage on the Steam Deck",
+    "Testing on AMD graphics cards and Windows handhelds (ROG Ally)",
     "Testing the Linux AppImage on more distributions",
     "Bug reports with the game's log"
   ],
   "tags": ["PAL", "60fps", "widescreen", "mods", "texture-packs", "AI-assisted"],
-  "notes": "Plays from start to credits, played by hand and by testers. A steady 60 fps, or 50, 120, 144 Hz and unlimited at the same game speed; up to 8x the PS2's resolution with supersampling, the characters drawn as on the PS2, widescreen and 21:9, a draw distance and a dithering option; keyboard, mouse and controllers with their own button prompts; a PC options screen; an optional cutscene skip and the retail bug fixes; a mods folder and PCSX2's texture packs. The SHA-1 is of the disc's executable, SLES_525.68, which the program checks, not of the disc image. Next: the GitHub issues (AMD graphics, suggestions)."
+  "notes": "Plays from start to credits, played by hand and by testers. A steady 60 fps, or 50, 120, 144 Hz and unlimited at the same game speed; up to 8x the PS2's resolution with FXAA, SMAA or supersampling, anisotropic filtering, the characters drawn as on the PS2, widescreen, 21:9 and 32:9, a draw distance and a dithering option; keyboard, mouse and controllers with their own button prompts; a PC options screen with separate text and voice languages; game options, off by default (infinite lives, a stronger Aku Aku, the slide jump at any moment, level select, a speedrun timer, a drop shadow), an optional cutscene skip and the retail bug fixes; mods (Crate Mod Loader's Mod Crates, and zips or modified disc images imported as only what they change) and PCSX2's texture packs; a Linux AppImage with the Steam Deck's defaults (not tried on a Deck yet). The SHA-1 is of the disc's executable, SLES_525.68, which the program checks, not of the disc image. Next: the North American v2.00 disc and a faster renderer as an option for weaker PCs."
 }

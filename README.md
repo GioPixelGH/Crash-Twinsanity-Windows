@@ -2,11 +2,11 @@
 
 # Crash Twinsanity for Windows
 
-Crash Twinsanity (PlayStation 2, PAL) running natively on 64-bit Windows, without an emulator.
+Crash Twinsanity (PlayStation 2, PAL) running natively on 64-bit Windows and Linux, without an emulator.
 
 [![Latest release](https://img.shields.io/github/v/release/GioPixelGH/Crash-Twinsanity-Windows?style=flat-square)](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases/latest)
 [![Licence: MIT for the port's changes](https://img.shields.io/badge/licence-MIT%20%28the%20port%27s%20changes%29-blue?style=flat-square)](#licence)
-![Platform](https://img.shields.io/badge/platform-Windows%20x64-blue?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20Linux%20x64-blue?style=flat-square)
 
 
 This is a Windows port of [HAB3X's Crash Twinsanity for Mac](https://github.com/HAB3X/Crash-Twinsanity-Mac). The Mac port runs
@@ -20,6 +20,7 @@ Windows needs, makes it run at a steady 60 fps, and fixes the crashes found by p
 
 > [!IMPORTANT]
 > **No game data is included.** You need your own copy of the PAL game (Europe/Australia, SLES-52568) as a disc image.
+> A translated or modded copy of the PAL disc works too; the North American disc doesn't yet (it's on the roadmap).
 > Crash Twinsanity and Crash Bandicoot are trademarks of Activision. PlayStation is a trademark of Sony Interactive
 > Entertainment. This is a fan project, not affiliated with or endorsed by either. Please don't ask for the game's files or
 > disc images in the issues: such requests are closed.
@@ -32,15 +33,18 @@ The [latest release](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/rele
 played from the start to the credits; the ones before were previews.
 
 For Linux and the Steam Deck, since 1.2.0 the release also has `Crash-Twinsanity-Linux-x86_64.AppImage`: mark it executable
-and run it (64-bit Linux with glibc 2.38 or later: Ubuntu 24.04, Linux Mint 22, Debian 13, Fedora 39, Arch and later ones).
-How to add it to a Steam Deck as a non-Steam game is in [native/LINUX.md](native/LINUX.md); it hasn't been tried on a Deck
-yet, so **testers are wanted**.
+and run it (64-bit Linux with glibc 2.38 or later: Ubuntu 24.04, Linux Mint 22, Debian 13, Fedora 39, Arch and later ones;
+on older ones, such as Ubuntu 22.04, Debian 12 and Linux Mint 21, LINUX.md explains how to build it yourself). How to add it
+to a Steam Deck as a non-Steam game is in [native/LINUX.md](native/LINUX.md); it hasn't been tried on a Deck yet, so
+**testers are wanted**.
 
 ### Requirements
 
 - 64-bit Windows 10 or 11 (or 64-bit Linux, for the AppImage).
 - A graphics card with OpenGL 3.3 (any from the last ten years).
-- A disc image of **your own** PAL copy of the game (Europe/Australia, SLES-52568), as an `.iso` (or `.bin`/`.img`).
+- A disc image of **your own** PAL copy of the game (Europe/Australia, SLES-52568), as an `.iso` (or `.bin`/`.img`). A
+  translated or modded copy of it works too; the log says which it is (the retail disc, a modified copy or an unknown image,
+  by redump.org's dumps).
 - A keyboard and mouse, or a controller: Xbox, PlayStation, Switch and most others work out of the box.
 
 ![Menu](docs/screenshots/menu.jpg)
@@ -94,17 +98,31 @@ mouse and controller, saves, cutscene skipping, community fixes):
   - Frame pacing and file access.
   - A crash report with a backtrace and the area the player was in.
 - **Speed:** a steady 60 fps everywhere tested. The game, the PS2's vector unit (VU1) and the graphics now run on three
-  threads, and the renderer's hot paths are faster.
+  threads, and the renderer's hot paths are faster. The graphics' shader programs are made when the game starts, so
+  reaching a new area doesn't pause for them.
 - **Frame rates:** 50, 60, 120 and 144 Hz, or unlimited, at the same game speed.
-- **Anti-aliasing by supersampling:** SSAA 2x and 4x (Options > Display > Anti-aliasing) draw the picture 2 or 4 times
-  larger, up to 8x the PS2's, and shrink it to the window: smoother edges, more work for the graphics card.
+- **Anti-aliasing:** FXAA, SMAA ([iryoku's](https://github.com/iryoku/smaa): smoother edges than FXAA), and SSAA 2x and 4x
+  (Options > Display > Anti-aliasing), which draw the picture 2 or 4 times larger, up to 8x the PS2's, and shrink it to the
+  window: the smoothest edges, more work for the graphics card.
+- **Anisotropic filtering** (off by default, 2x to 16x): textures seen at an angle stay sharper.
+- **32:9** for super-ultrawide screens, besides 4:3, 16:9 and 21:9, with the menus and the HUD in the middle 16:9.
 - **Dithering option:** as the PS2 (its 16-bit picture with a fine pattern, the default) or off, for the picture's full
   colour.
 - **Resolution:** 1x to 8x the PS2's (6x and 8x added); a buffer the graphics card can't hold at the chosen scale is drawn
   by the software renderer instead of failing.
 - **Draw distance option** (from HAB3X's Mac port): short, original (the default), medium, long or unlimited; the farther
   settings draw the grass and small things before you get close, at a cost on older PCs.
-- **Language option:** English, French, German, Italian or Spanish texts, voices and movies, chosen in Options.
+- **Text language and voice language:** two options (English, French, German, Italian or Spanish each), so English texts
+  with French voices, say; a translated disc's texts are recognised by their language ([#25]).
+- **Game options** (Options > Gameplay, all off by default, so the game stays the original): infinite lives, a stronger Aku
+  Aku that takes TNT and Nitro blasts ([#30]), the slide's long jump at any moment or easier ([#11], [#35]), level select
+  (from HAB3X's Mac port, on a memory card of its own), a speedrun timer, a drop shadow under you in the air, and your shadow
+  on crates.
+- **Cutscene skip for many more scenes:** besides the developers' own skips, those they never wrote are skipped by ending the
+  scene's waits in order (TwinsanityEvolved's skip, with its author's permission), each one checked to end as when watched
+  ([#28]).
+- **Quit to desktop, a Credits page, and an update check** (Options > Gameplay; the update check is Windows only, off by
+  default, and only tells you a newer version is out).
 - **Mods:** each mod a folder in `%APPDATA%\Crash Twinsanity\mods` (a Crate Mod Loader Mod Crate as it comes, or files laid
   out as the disc's); a mod's zip or changed disc image imported from Options > Mods as only the files it changes; the Mods
   page orders them and turns each on or off; their saves on a memory card of their own. Files put straight in the mods
@@ -119,9 +137,13 @@ mouse and controller, saves, cutscene skipping, community fixes):
   - The characters drawn as on the PS2 at high resolutions: the game's distance haze and the first boss's sky at the chosen
     resolution (no more stepped outlines), the colours VU1 writes after sending its vertices (no more patches on the
     bodies), triangles thinner than a PS2 pixel (no more thin black lines), textures' detail for the chosen resolution.
+  - Ant Agony's metal doors, walls and floors, read from an old buffer of the first boss's area ([#32]).
+  - Under the Bug fixes option (off by default), three bugs of the PS2 game itself: the masks' invincibility particles lost
+    in the next area and two masks' stars lost after a cutscene ([#18]), and Bandicoot Pursuit's Evil Crash standing still.
 - **Controllers:** a modern controller's round stick is mapped to the PS2 stick's square, so Crash runs on diagonals too.
 - **The game's data from your disc:** the program carries none of the game's data. It reads the data from your disc image's
-  executable when it starts, checks that it's the PAL release, and says so clearly when the disc image is wrong.
+  executable when it starts, checks that it's the PAL release, and says so clearly when the disc image is wrong. The log
+  says what the image is: the retail disc, a modified copy or an unknown image, by redump.org's dumps.
 
 [native/WINDOWS.md](native/WINDOWS.md) explains each change, with the reasons and how they were tested.
 [native/PLAYING_WINDOWS.md](native/PLAYING_WINDOWS.md) is the player's guide: options, controls, saves, mods.
@@ -132,8 +154,9 @@ the limits and how to share a mod.
 
 ## Roadmap
 
-What comes next, roughly from the quickest job to the longest. The game stays the original by default: new game options are
-off until you turn them on.
+The game stays the original by default: new game options are off until you turn them on.
+
+Done:
 
 - [x] The characters drawn as on the PS2 at high resolutions ([#15], [#19], [#24]): no more stepped outlines, patches on
   the bodies or thin black lines.
@@ -141,13 +164,19 @@ off until you turn them on.
   renderer's buffers.
 - [x] A Dithering option ([#24]): the PS2 game shows its picture in 16-bit colour with a fine pattern to hide the steps, and
   the port reproduces it; turned off, the picture would keep its full colour.
+- [x] Draw distance as a PC option (from HAB3X's Mac port): farther than the PS2's draws the grass and small things before
+  you get close, at a cost on older PCs.
+- [x] Anti-aliasing by supersampling (2x, 4x).
 - [x] A Credits page in the PC options, with everyone behind the Windows version.
 - [x] Quit to desktop in the options ([#33]).
 - [x] The texts' language and the voices' language as two options, with translated disc images recognised ([#25]).
 - [x] SMAA anti-aliasing, anisotropic filtering, and a 32:9 shape with the menus in the middle 16:9.
+- [x] The resolution applied when you stop on it, not at each step through the choices ([#39]).
 - [x] An update check, off unless you turn it on: it only tells you a newer version is out.
 - [x] Infinite lives, a stronger Aku Aku ([#30]) and a speedrun timer, as game options.
-- [ ] The game closing after the end credits instead of going back to the Iceberg Lab, as reported in [#20].
+- [x] The slide's long jump at any moment, or easier, as a game option ([#11], [#35]).
+- [x] A drop shadow under you in the air, and your shadow on crates, as game options ([#11], [#35]).
+- [x] Level select, as a game option (its saves kept apart from yours).
 - [x] Mods as the community ships them ([#36]): sound effects right with a mod's levels, Mod Crates used as they come (new
   levels too), a mod's zip or changed disc image imported as only what it changes, a Mods page with an order and a switch
   for each, and their saves kept apart from yours.
@@ -155,39 +184,44 @@ off until you turn them on.
   share a mod.
 - [x] The two cutscenes that ended a little differently when skipped than when played ([#9]): Classroom Chaos' start now ends as
   when played, and so does the bear's.
-- [x] A skip for most cutscenes that had none ([#28]), like Cavern Catastrophe's, the Tiki Mon's, the party before the first
-  fight with Cortex and Henchmania's fight: their waits ended in order, as TwinsanityEvolved does it, each checked to end as
-  when played. A few still play whole until they're checked, like the first fight with Cortex's start and the final boss's.
-- [x] The slide's long jump at any moment, or easier, as a game option ([#11], [#35]).
-- [x] Draw distance as a PC option (from HAB3X's Mac port): farther than the PS2's draws the grass and small things before
-  you get close, at a cost on older PCs.
-- [x] Level select, as a game option (its saves kept apart from yours).
-- [x] Anti-aliasing by supersampling (2x, 4x).
+- [x] A skip for many cutscenes that had none ([#28]), like one of Cavern Catastrophe's, the Tiki Mon's, the party before the
+  first fight with Cortex and Henchmania's fight: their waits ended in order, as TwinsanityEvolved does it, each checked to
+  end as when played.
+- [x] The masks' invincibility particles kept when you move into the next area, a fix under the bug fixes option ([#18]).
+- [x] With two masks, Aku Aku's stars back after a cutscene, a fix under the bug fixes option ([#18]). Aku Aku hidden during
+  the cutscenes with the black bars stays so: the original game hides him there on purpose, on the PS2 too.
+- [x] Bandicoot Pursuit's Evil Crash following his route instead of standing still, a fix under the bug fixes option (found by
+  TwinsanityEvolved).
+- [x] Ant Agony's metal doors, walls and floors no longer streaked or blocky ([#32]).
+- [x] Fewer pauses when you reach a new area ([#23]): the graphics' shaders are made when the game starts instead of the
+  first time something needs them.
+- [x] A log that says what your disc image is, where the renderer's time goes, and what a slow frame was doing.
+- [x] A Linux download ([#34]): an AppImage beside the Windows zip, and the Steam Deck's defaults (fullscreen on its screen,
+  the Xbox's button prompts) with the steps to add it as a non-Steam game. Steam Deck testers wanted.
+
+Next, roughly from the quickest job to the longest (plans, not promises):
+
+- [ ] A 16:10 shape for the Steam Deck's screen (the picture is 16:9 there now, with thin bars above and below).
+- [ ] The game closing after the end credits instead of going back to the Iceberg Lab, as reported in [#20].
 - [ ] Eight save slots.
+- [ ] A skip for the cutscenes that still play whole, like the first fight with Cortex's start and the final boss's ([#28]).
 - [ ] Frame rates other than 60 checked through the game: the seal chase at 240 fps ([#17]), the cannon's bombs below 60 fps
   ([#12]).
 - [ ] The black screen at start on some AMD PCs ([#16]).
-- [x] The masks' invincibility particles kept when you move into the next area, a fix under the bug fixes option ([#18]).
-- [x] With two masks, Aku Aku's stars back after a cutscene, a fix under the bug fixes option ([#18]).
-- [ ] Aku Aku in cutscenes ([#18]): the original game hides the mask in every cutscene, on the PS2 too.
-- [x] Ant Agony's metal doors, walls and floors no longer streaked or blocky after playing other levels before it
-  ([#32]).
 - [ ] HD texture packs in BC7, and texture upscaling.
 - [ ] The characters' shadows drawn at the chosen resolution: they stay at the PS2's, softer than the rest of the picture at
   high resolutions.
-- [x] A drop shadow under you in the air, and your shadow on crates, as game options ([#11], [#35]).
-- [x] Fewer pauses when you reach a new area ([#23]): the graphics' shaders are made when the game starts instead of the
-  first time something needs them, and the log says where a slow frame's time went.
-- [x] A Linux download ([#34]): an AppImage beside the Windows zip, and the Steam Deck's defaults (fullscreen on its screen,
-  the Xbox's button prompts) with the steps to add it as a non-Steam game. Steam Deck testers wanted.
-- [ ] Better speed on older PCs ([#23], [#12]): since 1.1.0 the render thread, measured as the limit there, is about a
-  quarter lighter and VU1's thread about a tenth; more needs deeper changes to the renderer.
+- [ ] The North American disc, NTSC-U v2.00 ([#14]): aimed at the next major version.
+- [ ] A faster renderer as an option for weaker PCs ([#23], [#37], [#39]): the game's models and scenes drawn straight on
+  the graphics card instead of emulating the PS2's graphics chip a shape at a time; aimed at the next major version.
 - [ ] Achievements in the game, kept on your PC (RetroAchievements doesn't award them for ports).
 - [ ] Subtitles for the cutscenes ([#11]).
 
 Maybe later: fast-forwarding cutscenes as well as skipping them ([#9]), two-player co-op, some of the NTSC-U release's
-differences as options on the PAL game ([#14]), the port's own texts in Brazilian Portuguese if someone translates them
-([#25]), and character packs from the other Crash games (a mod: it needs those games' discs).
+differences as options on the PAL disc ([#14]; playing the North American disc itself is on the roadmap above), progress
+kept when you go back to an area: crates broken, cutscenes seen, challenges done ([#38]), the port's own texts in Brazilian
+Portuguese if someone translates them ([#25]), and character packs from the other Crash games (a mod: it needs those games'
+discs).
 
 [#9]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/9
 [#11]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/11
@@ -209,6 +243,9 @@ differences as options on the PAL game ([#14]), the port's own texts in Brazilia
 [#34]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/34
 [#35]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/35
 [#36]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/36
+[#37]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/37
+[#38]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/38
+[#39]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/39
 
 ## Building on Windows
 
