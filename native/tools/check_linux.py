@@ -8,6 +8,7 @@ release_windows.py check runs them (build_linux_docker.py --check). A line a che
 - libraries: the AppImage holds SDL3, libavcodec and libavutil, and the program loads nothing else but what every Linux has
   (package_linux.py's SYSTEM_LIBRARIES): checked on the files extracted (--appimage-extract);
 - glibc: the newest version of the C library its files need, which says on which systems it runs;
+- licences: the licences it carries (LICENCES), the MIT code's in the program among them;
 - start: the AppImage run as a player runs it (extracting itself, FUSE isn't there in a container) with a settings folder of its
   own in FOLDER, headless on Xvfb with Mesa's software OpenGL, the disc image given: the beach played for 20 seconds, no fatal
   error, the log saying it runs from the AppImage.
@@ -26,6 +27,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import package_linux  # noqa: E402
 
 BUNDLED = re.compile(r"^(libSDL3\.so\.0|libavcodec\.so\.\d+|libavutil\.so\.\d+)$")
+# The licences the AppImage must carry: the port's, the bundled libraries' and fonts', and the MIT code's built into the program
+# (SMAA's, TwinsanityEvolved's: menaman123's permission asks for his licence beside the program), as the zip's licenses folder
+LICENCES = ("Crash-Twinsanity-Windows-LICENSE.txt", "SDL3-LICENSE.txt", "ffmpeg", "stb-LICENSE.txt",
+            "fonts-LICENSE-LuckiestGuy.txt", "fonts-OFL-Fredoka.txt", "SMAA-LICENSE.txt",
+            "twinsanityevolved-LICENSE-TwinsanityEvolved.txt", "twinsanityevolved-LICENSE-NativeEE.txt")
 # The beach (its chunk as the sweep names it) played for this long, drawn at 1x (Mesa on the processor); the run's own limit
 # (the sweep's) and the process's
 LEVEL = "Levels\\Earth\\Hub\\Beach"
@@ -68,6 +74,11 @@ def main():
     failed |= bool(stray or outside)
     glibc = package_linux.needed_glibc([program] + [root / "usr" / "lib" / name for name in libraries])
     print(f"{'glibc':15} {glibc[0]}.{glibc[1]} or later")
+    folder = root / "usr" / "share" / "licenses" / package_linux.NAME
+    missing = [name for name in LICENCES if not (folder / name).exists()]
+    print(f"{'licences':15} {len(LICENCES) - len(missing)} of {len(LICENCES)}"
+          f"{': FAILED, missing ' + ', '.join(missing) if missing else ''}")
+    failed |= bool(missing)
 
     # A player's start: the settings folder a new one, the disc image given, the beach played headless
     home = work / "home"

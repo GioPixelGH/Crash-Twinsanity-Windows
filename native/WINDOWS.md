@@ -875,7 +875,8 @@ repetitive, none of the microcode: runs of small integers, the standard library'
 names the decompilation's C++ spells out). Then, since 1.2.0, the Linux AppImage (native/LINUX.md, "In Docker"; Docker
 Desktop has to be running): built afresh in Docker (`build_linux_docker.py --configure`) and checked there
 (`check_linux.py`: it holds SDL3 and FFmpeg's two libraries and loads nothing else but what every Linux has, the glibc it needs,
-its version, and the beach played from it for 20 seconds, headless on Xvfb with Mesa, the disc image mounted read-only), its
+its licences (the MIT code's in the program too), its version, and the beach played from it for 20 seconds, headless on Xvfb
+with Mesa, the disc image mounted read-only), its
 program searched for the game's blocks as the zip's is (none the Windows program of the same commit or the last release's
 hasn't). Its lines start with `linux`; `--no-linux` releases the zip alone, when Docker isn't there. It prints the commit and
 both files' SHA-256. `publish` makes the release (`vVERSION`; with `--preview` a preview, GitHub's pre-release, as every
