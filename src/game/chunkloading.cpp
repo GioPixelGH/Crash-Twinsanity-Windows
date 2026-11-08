@@ -427,6 +427,10 @@ extern "C"
 
     bool UpdateChunkLoading(ChunkLoadingManager* manager, bool now, u8* read)
     {
+#ifdef TWIN_NATIVE
+        // Its time for the log's slow frames (native.h)
+        Native::GameWorkSpan span(Native::GameWork::ChunkLoading);
+#endif
         u32 firstMode = manager->bits.mode;
         bool waits = firstMode == LoadingKnownAtOnce || firstMode == LoadingAllAtOnce;
         bool pending;

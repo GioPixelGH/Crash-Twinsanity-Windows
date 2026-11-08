@@ -32,6 +32,13 @@ void CountWorkOnThisThread();
 Work SwitchWork(Work to);
 // The nanoseconds counted to a kind of work so far
 u64 WorkNanoseconds(Work kind);
+// The GS's shader programs made so far (hwgs.cpp's ProgramFor: one for each new combination of the GS's states, compiled and
+// linked when first drawn with) and their time (part of OpenGL's), for the log's slow frames
+void CountProgramMade(u64 nanoseconds);
+u64 ProgramsMade();
+u64 ProgramNanoseconds();
+// The longest program's time since the last call (the performance lines')
+u64 TakeLongestProgram();
 
 class WorkSpan
 {

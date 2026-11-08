@@ -135,6 +135,36 @@ Comparing two builds' pictures: `$TWIN_FIXED_TIME=1` with `$TWINSANITY_AUDIO=fra
 gives the same frames run after run (with the sound in real time, a run's speed changes what the game does with it after a
 few hundred frames).
 
+### Hitches
+
+THE LIST 19 (#23: frames of 0.25-1.8 s as new areas load, GNRTX-3's i7-2600 and GT 730 on NVIDIA 472.12, his first 1.1.0
+session; #32: drops to 24 fps at 60). Measured once with the log's slow frames (below, "The log") and `$TWIN_PROFILE`, here
+(i7-8700K, RTX 4070 SUPER) through the hub's links (`$TWIN_HOP=huba,hubb,huba,beach` from the beach) with the driver's shader
+cache emptied (`__GL_SHADER_DISK_CACHE_PATH` an empty folder: as a first start after an update finds it):
+
+- The chunks' loading is spread over frames already: the game's background work fills what's left of a frame up to 1.7 ms
+  before its end (context.cpp's budgets, the PS2's), at most 12 ms a frame here at a chunk change, no step of it over 0.2 ms;
+  the disc's reads 1-2 ms a frame (the image in the system's cache). The profile: the game's thread 70% waiting for the
+  vertical blank, the loading not among its busy functions.
+- What made the frames wait were the hardware renderer's shader programs, one for each new combination of the GS's states,
+  compiled and linked the first time it's drawn (hwgs.cpp's ProgramFor) while the game waits for the render thread: the first
+  frame of play 156-247 ms (11 programs in 119 ms), then 42 ms (2), the first frame in huba 29 ms (1); 25 programs in all,
+  11-23 ms each. The driver's own disk cache makes the next sessions' quick, but every first session of a version (its
+  shaders' source changes) and every driver update pays them, and an old card and driver far more than these.
+- So each start now makes them before anything's drawn (display.cpp's WarmPrograms): those the player's sessions made
+  (`shaders.txt` in the settings folder: each one made while playing is added; another version's list starts again) and this
+  version's own list (KnownPrograms: those check_windows' runs and the hub's walk drew with, the default options); all asked
+  for first (the driver compiles them on its own threads where it has KHR_ or ARB_parallel_shader_compile), then waited for,
+  at the start. Measured: the 25 made at the start in 172 ms (274 one after another; left to their first draw instead, that
+  frame still waited 76 ms for the driver), the slowest frame of the walk 30 ms instead of 247, no program made while playing.
+  A first session (no shaders.txt, the driver's cache empty): this version's 41 made at the start in 277 ms, none while
+  playing, the slowest frame the first of play, 43 ms (OpenGL 33.5 ms, the driver's first drawing; no program made).
+- The frames' times were taken as the game's thread began waiting for the vertical blank, so a frame after one that had
+  waited long counted that wait: 26-29 ms "frames" while a chunk loaded, at 60 frames a second all the same. They're taken as
+  each frame's let go now (display.cpp's WaitForVBlank).
+- Not changed: the disc's reads stay synchronous (a read ahead would help only a slow drive: nothing measured here says so;
+  a player's slow frames say "reading the disc" when it does), and the loading's budget stays the game's.
+
 ## Languages
 
 The PAL game has five: English, French, German, Italian and Spanish, each with its texts (the archive's Language folders), its
@@ -472,6 +502,21 @@ is the game's thread's: the window's context drawing the picture and the UI over
 for the screen's refresh); since 1.2.0 it's taken out of the game's own time (1.1.0's "the game" had it in). A PC whose present
 takes long (a picture crossing from one graphics card to another, two screens on two adapters) shows it there; one whose driver
 is slow, in OpenGL; one whose processor is slow, in the GS.
+
+Since 1.2.0 a frame of play over 50 ms gets a line of its own (at most 10 a minute of play, the rest counted in the next):
+`slow frame: 180 ms in levels\earth\hub\huba; the game 150.2 ms (its loading 140.0 ms, of it the chunks' 138.5 ms, their
+longest step 120.3 ms; reading the disc 2.1 ms) and 3.0 ms waiting, the window's present 1.1 ms; the render thread 20.4 ms (the
+GS 12.0, OpenGL 7.2 with 2 shader programs made in 5.0 ms, waiting for the card 0.1, the picture handed over 1.1)`. The game's
+loading is its background work while it plays (game/context.cpp's BackgroundWork: the chunks' loaders and readers, the
+instances destroyed, the resources' steps, the disk pool's compaction), the chunks' share and their longest step
+(chunkloading.cpp's UpdateChunkLoading: a reader handing over a file's section is one), reading the disc the game's reads of the
+image (stream.cpp: synchronous, a slow drive's seeks show here), the shader programs the hardware renderer's new combinations of
+the GS's states compiled and linked the first time they're drawn (hwgs.cpp's ProgramFor: OpenGL's driver work). The render
+thread's numbers are its work in the same time (it draws the frame before). `$TWIN_SLOW_FRAME_MS` sets the 50 (a fast PC's
+measures). After each performance line, when the hardware renderer made shader programs since the last (a first start, an
+option drawing new combinations): `graphics: 3 shader programs made since, 45.2 ms in all, the longest 18.1 ms`; at its start,
+`graphics: 31 shader programs made at the start in 180 ms (25 listed in shaders.txt, 31 this version's own)`. THE LIST 19's
+hitches (#23, #32) were measured with these; "Hitches" under "Speed" has what they were.
 
 The graphics card's time (graphics/gputime.cpp) tells a render thread slow on the processor from one waiting on the card: the
 render thread's own time has the driver's work in it, and its waits for the card (a picture read back, a full queue), so 25 ms

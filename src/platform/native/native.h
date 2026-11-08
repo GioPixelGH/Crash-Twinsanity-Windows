@@ -122,6 +122,30 @@ void LogSessionSettings();
 // A frame of the game's (the wait for the vertical blank, the game's thread; the game's thread's work so far): the frames timed
 // while the game is played, a line of performance a minute of play ($TWIN_PERFORMANCE_EVERY seconds)
 void SessionFrame(u64 gameWorkNanoseconds);
+// The game thread's work a slow frame's line splits (sessionlog.cpp; a frame of play over 50 ms): the background work while the
+// game plays (game/context.cpp's BackgroundWork: the chunks' loading, the instances destroyed, the resources' steps, the disk's
+// compaction) and of it the chunks' loading (chunkloading.cpp's UpdateChunkLoading: its loaders, and its readers a file's section
+// at a time), with its longest step; and the game's reads of the disc image (stream.cpp's, wherever they're made: the readers'
+// blocks, the loading screens': any thread). The rest only on the game's thread
+enum class GameWork : u32
+{
+    Background,
+    ChunkLoading,
+    Reading,
+};
+void CountGameWork(GameWork kind, u64 nanoseconds);
+class GameWorkSpan
+{
+public:
+    explicit GameWorkSpan(GameWork kind);
+    ~GameWorkSpan();
+    GameWorkSpan(const GameWorkSpan&) = delete;
+    GameWorkSpan& operator=(const GameWorkSpan&) = delete;
+
+private:
+    GameWork kind_;
+    s64 start_;
+};
 // The session's end, once whichever way it ends: its summary (its time, its play's frame rate) and the line saying how it ended
 // (format: "quit: the window closed", "exit: ..."), with its time and where the game was; EndSessionSummary only the summary
 // (Fatal's line follows it). Crashes: the summary written as the crash report is (no locks, no memory)

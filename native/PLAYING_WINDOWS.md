@@ -38,6 +38,7 @@ in the **User** folder beside the game (below):
 | Texture packs | `textures\SLES-52568\replacements\` (PCSX2's layout: a PCSX2 pack's `replacements` folder works as it is) |
 | The log | `log.txt` (when the game wasn't started from a terminal), the run before's `log.previous.txt` |
 | Mods (files read instead of the game's: below), their order and switches | `mods\`, `mods.txt` |
+| The graphics' shaders made at each start, so play doesn't stop to make them (made again if deleted) | `shaders.txt` |
 
 Saving works like a PC game: no memory card screens. Save from the pause menu or at the game's save points; load from the
 main menu.

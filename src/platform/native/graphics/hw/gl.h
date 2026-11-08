@@ -122,6 +122,8 @@ struct Gl
     GLsync (*FenceSync)(GLenum, GLbitfield);
     void (*WaitSync)(GLsync, GLbitfield, GLuint64);
     void (*DeleteSync)(GLsync);
+    // KHR_ or ARB_parallel_shader_compile's (null without either): the driver compiling the shader programs on threads of its own
+    void (*MaxShaderCompilerThreads)(GLuint);
 };
 
 // The entry points (loaded the first time, with a context current); false when one is missing

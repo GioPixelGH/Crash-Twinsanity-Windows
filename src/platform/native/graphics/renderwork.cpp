@@ -105,4 +105,36 @@ u64 WorkNanoseconds(Work kind)
     return static_cast<u64>(static_cast<double>(g_Ticks[static_cast<u32>(kind)].load(std::memory_order_relaxed)) *
                             NanosecondsPerTick());
 }
+
+namespace
+{
+std::atomic<u64> g_ProgramsMade{0};
+std::atomic<u64> g_ProgramNanoseconds{0};
+std::atomic<u64> g_LongestProgram{0};
+}
+
+void CountProgramMade(u64 nanoseconds)
+{
+    g_ProgramsMade.fetch_add(1, std::memory_order_relaxed);
+    g_ProgramNanoseconds.fetch_add(nanoseconds, std::memory_order_relaxed);
+    u64 longest = g_LongestProgram.load(std::memory_order_relaxed);
+    while (nanoseconds > longest && !g_LongestProgram.compare_exchange_weak(longest, nanoseconds, std::memory_order_relaxed))
+    {
+    }
+}
+
+u64 TakeLongestProgram()
+{
+    return g_LongestProgram.exchange(0, std::memory_order_relaxed);
+}
+
+u64 ProgramsMade()
+{
+    return g_ProgramsMade.load(std::memory_order_relaxed);
+}
+
+u64 ProgramNanoseconds()
+{
+    return g_ProgramNanoseconds.load(std::memory_order_relaxed);
+}
 }

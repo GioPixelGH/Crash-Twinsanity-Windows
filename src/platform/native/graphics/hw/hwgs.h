@@ -24,6 +24,13 @@ namespace NativeGraphics
 bool StartHardwareRenderer(u32 scale);
 void StopHardwareRenderer();
 bool HardwareRendererActive();
+// The shader programs, one for each combination of the GS's states drawn with (its bits): a hook told of each new one made while
+// drawing (the frame waits for its compiling), and a list's made at once (a start's, before anything's drawn, so play doesn't wait
+// for them: their compiling asked for and not waited for, a driver that compiles on threads of its own going on meanwhile; one
+// that fails is made again when drawn with). The bits mean something for one source only (its hash). On the renderer's thread
+void HardwareSetProgramHook(void (*made)(u32 sourceHash, u32 bits));
+u32 HardwareProgramSourceHash();
+u32 HardwareWarmPrograms(const std::vector<u32>& bits);
 void HardwareSetScale(u32 scale);
 u32 HardwareScale();
 

@@ -259,6 +259,17 @@ bool LoadGl()
     ok &= Load(g_Gl.FenceSync, "glFenceSync");
     ok &= Load(g_Gl.WaitSync, "glWaitSync");
     ok &= Load(g_Gl.DeleteSync, "glDeleteSync");
+    // (Not needed: hwgs.cpp's programs made at the start compiled on the driver's threads where it has them)
+    g_Gl.MaxShaderCompilerThreads = nullptr;
+    if (SDL_GL_ExtensionSupported("GL_KHR_parallel_shader_compile"))
+    {
+        Load(g_Gl.MaxShaderCompilerThreads, "glMaxShaderCompilerThreadsKHR");
+    }
+    else if (SDL_GL_ExtensionSupported("GL_ARB_parallel_shader_compile"))
+    {
+        Load(g_Gl.MaxShaderCompilerThreads, "glMaxShaderCompilerThreadsARB");
+    }
+
     if (ok)
     {
         CountCalls();

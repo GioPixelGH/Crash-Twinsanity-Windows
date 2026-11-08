@@ -226,6 +226,27 @@ u64 g_LastPresent = 0;
 u64 g_LastGpu = 0;
 // Seconds of play a performance line ($TWIN_PERFORMANCE_EVERY)
 double g_PerformanceEvery = 60.0;
+// The slow frames' lines: a frame of play over this long ($TWIN_SLOW_FRAME_MS: a fast PC's measures), at most so many lines a
+// minute of play (the rest counted in the next)
+double g_SlowFrameSeconds = 0.050;
+constexpr u32 SlowFramesAMinute = 10;
+u32 g_SlowFramesLogged = 0;
+u32 g_SlowFramesUnlogged = 0;
+// The game thread's work they split (native.h's GameWork): the background work's and the chunks' loading's so far, the chunks'
+// loading's longest step since the last frame, and the counts at the last frame
+u64 g_BackgroundNanoseconds = 0;
+u64 g_ChunkNanoseconds = 0;
+u64 g_LongestChunkStep = 0;
+// (Any thread's reads: atomic)
+std::atomic<u64> g_ReadingNanoseconds{0};
+u64 g_LastBackground = 0;
+u64 g_LastChunk = 0;
+u64 g_LastReading = 0;
+u64 g_LastPrograms = 0;
+u64 g_LastProgramNanoseconds = 0;
+// The shader programs made by the last performance line
+u64 g_MinutePrograms = 0;
+u64 g_MinuteProgramNanoseconds = 0;
 std::atomic<bool> g_Ended{false};
 bool g_LogToFile = false;
 
@@ -319,6 +340,52 @@ void LogPerformance()
     Native::Log("performance: %.1f fps over %s of play, the slowest frame %.0f ms; a frame's work: %s; the player in %s",
                 static_cast<double>(g_Minute.frames) / g_Minute.seconds, played, g_Minute.slowest * 1000.0, work,
                 chunk != nullptr ? chunk : "?");
+    // The shader programs the hardware renderer made since the last line (the first time each new combination of the GS's states
+    // was drawn): a driver slow to compile them makes the frames they're made in slow
+    const u64 programs = NativeGraphics::ProgramsMade();
+    const u64 programNanoseconds = NativeGraphics::ProgramNanoseconds();
+    const u64 longest = NativeGraphics::TakeLongestProgram();
+    if (programs != g_MinutePrograms)
+    {
+        Native::Log("graphics: %llu shader program%s made since, %.1f ms in all, the longest %.1f ms",
+                    static_cast<unsigned long long>(programs - g_MinutePrograms), programs - g_MinutePrograms == 1 ? "" : "s",
+                    static_cast<double>(programNanoseconds - g_MinuteProgramNanoseconds) / 1e6, static_cast<double>(longest) / 1e6);
+    }
+
+    g_MinutePrograms = programs;
+    g_MinuteProgramNanoseconds = programNanoseconds;
+}
+
+// A frame of play over SlowFrameSeconds: where its time went, the game thread's (its background loading, of it the chunks', their
+// longest step; its wait for the render thread; the window's present) and the render thread's in the same time (the GS emulated,
+// OpenGL's calls with the shader programs made, the card waited for, the picture handed over) and VU1's when it has a thread
+void LogSlowFrame(double seconds, u64 game, u64 waited, u64 present, u64 background, u64 chunk, u64 longest, u64 reading, u64 vu,
+                  u64 render, u64 openGl, u64 cardWait, u64 picture, u64 programs, u64 programNanoseconds)
+{
+    auto ms = [](u64 nanoseconds) { return static_cast<double>(nanoseconds) / 1e6; };
+    const u64 gameOwn = game > waited + present ? game - waited - present : 0;
+    const u64 gs = render > openGl + cardWait + picture ? render - openGl - cardWait - picture : 0;
+    char vuText[48] = "";
+    if (NativeGraphics::ThreadsNow() == NativeGraphics::Threads::Three)
+    {
+        std::snprintf(vuText, sizeof(vuText), ", VU1 %.1f ms", ms(vu));
+    }
+
+    char unlogged[64] = "";
+    if (g_SlowFramesUnlogged != 0)
+    {
+        std::snprintf(unlogged, sizeof(unlogged), " (and %u more over %.0f ms the minute before)", g_SlowFramesUnlogged,
+                      g_SlowFrameSeconds * 1000.0);
+        g_SlowFramesUnlogged = 0;
+    }
+
+    const char* where = NativeUi::TrailChunk();
+    Native::Log("slow frame: %.0f ms in %s; the game %.1f ms (its loading %.1f ms, of it the chunks' %.1f ms, their longest step %.1f "
+                "ms; reading the disc %.1f ms) and %.1f ms waiting, the window's present %.1f ms; the render thread %.1f ms (the GS %.1f, "
+                "OpenGL %.1f with %llu shader program%s made in %.1f ms, waiting for the card %.1f, the picture handed over %.1f)%s%s",
+                seconds * 1000.0, where != nullptr ? where : "?", ms(gameOwn), ms(background), ms(chunk), ms(longest), ms(reading), ms(waited),
+                ms(present), ms(render), ms(gs), ms(openGl), static_cast<unsigned long long>(programs), programs == 1 ? "" : "s",
+                ms(programNanoseconds), ms(cardWait), ms(picture), vuText, unlogged);
 }
 
 // --------------------------------------------------------------------------------------------------------------- the start
@@ -807,6 +874,11 @@ void Native::LogSessionStart(int argc, char** argv)
         g_PerformanceEvery = std::atof(every);
     }
 
+    if (const char* slow = std::getenv("TWIN_SLOW_FRAME_MS"); slow != nullptr && std::atof(slow) > 0.0)
+    {
+        g_SlowFrameSeconds = std::atof(slow) / 1000.0;
+    }
+
     std::time_t now = std::time(nullptr);
     std::tm local{};
     LocalTime(now, &local);
@@ -838,6 +910,34 @@ void Native::LogSessionSettings()
     LogLastSession();
 }
 
+void Native::CountGameWork(GameWork kind, u64 nanoseconds)
+{
+    if (kind == GameWork::Background)
+    {
+        g_BackgroundNanoseconds += nanoseconds;
+    }
+    else if (kind == GameWork::Reading)
+    {
+        g_ReadingNanoseconds.fetch_add(nanoseconds, std::memory_order_relaxed);
+    }
+    else
+    {
+        g_ChunkNanoseconds += nanoseconds;
+        g_LongestChunkStep = std::max(g_LongestChunkStep, nanoseconds);
+    }
+}
+
+Native::GameWorkSpan::GameWorkSpan(GameWork kind)
+    : kind_(kind), start_(std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now().time_since_epoch()).count())
+{
+}
+
+Native::GameWorkSpan::~GameWorkSpan()
+{
+    const s64 end = std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now().time_since_epoch()).count();
+    CountGameWork(kind_, end > start_ ? static_cast<u64>(end - start_) : 0);
+}
+
 void Native::SessionFrame(u64 gameWorkNanoseconds)
 {
     const Clock::time_point now = Clock::now();
@@ -853,9 +953,27 @@ void Native::SessionFrame(u64 gameWorkNanoseconds)
     const u64 picture = NativeGraphics::WorkNanoseconds(NativeGraphics::Work::Picture);
     const u64 present = NativeGraphics::PresentNanoseconds();
     const u64 gpu = NativeGraphics::GpuBusyNanoseconds();
+    const u64 programs = NativeGraphics::ProgramsMade();
+    const u64 programNanoseconds = NativeGraphics::ProgramNanoseconds();
     if (inPlay && g_LastInPlay && g_LastFrame != Clock::time_point{})
     {
         const double seconds = std::chrono::duration<double>(now - g_LastFrame).count();
+        if (seconds > g_SlowFrameSeconds)
+        {
+            if (g_SlowFramesLogged < SlowFramesAMinute)
+            {
+                g_SlowFramesLogged++;
+                LogSlowFrame(seconds, gameWorkNanoseconds - g_LastGame, waited - g_LastWaited, present - g_LastPresent,
+                             g_BackgroundNanoseconds - g_LastBackground, g_ChunkNanoseconds - g_LastChunk, g_LongestChunkStep,
+                             g_ReadingNanoseconds.load(std::memory_order_relaxed) - g_LastReading, vu - g_LastVu, render - g_LastRender, openGl - g_LastOpenGl, cardWait - g_LastCardWait,
+                             picture - g_LastPicture, programs - g_LastPrograms, programNanoseconds - g_LastProgramNanoseconds);
+            }
+            else
+            {
+                g_SlowFramesUnlogged++;
+            }
+        }
+
         for (Span* span : {&g_Minute, &g_Play})
         {
             span->seconds += seconds;
@@ -894,9 +1012,16 @@ void Native::SessionFrame(u64 gameWorkNanoseconds)
         {
             LogPerformance();
             g_Minute = {};
+            g_SlowFramesLogged = 0;
         }
     }
 
+    g_LastBackground = g_BackgroundNanoseconds;
+    g_LastChunk = g_ChunkNanoseconds;
+    g_LastReading = g_ReadingNanoseconds.load(std::memory_order_relaxed);
+    g_LongestChunkStep = 0;
+    g_LastPrograms = programs;
+    g_LastProgramNanoseconds = programNanoseconds;
     g_LastFrame = now;
     g_LastInPlay = inPlay;
     g_LastGame = gameWorkNanoseconds;

@@ -37,6 +37,7 @@
 #include "xxhash.h"
 
 #include "../png.h"
+#include "../renderwork.h"
 
 #include "../hardware.h"
 #include "../gs/backend.h"
@@ -48,6 +49,7 @@
 #include <algorithm>
 #include <atomic>
 #include <bit>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -1081,6 +1083,11 @@ void main()
 struct Program
 {
     GLuint id = 0;
+    // Made at the start (WarmPrograms) and not drawn with yet: its compile and link asked for, its status and uniforms not, its
+    // shaders kept for their messages
+    bool pending = false;
+    GLuint vertex = 0;
+    GLuint fragment = 0;
     GLint viewSize;
     GLint viewOrigin;
     GLint depthCopy;
@@ -1306,6 +1313,16 @@ private:
     void MarkDrawn(Target* target, const FewPages& few);
     bool Fallback(const Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count, const Rect& rect, const char* why);
     const Program& ProgramFor(u32 bits);
+    // A program's shaders compiled and linked without asking how it went (a driver that compiles on threads of its own goes on
+    // meanwhile), and its status and uniforms taken (false when it didn't compile or link: its messages printed)
+    Program StartProgram(u32 bits);
+    bool FinishProgram(Program& p);
+
+public:
+    // The programs of a list made now, before anything's drawn with them (those already made left); how many were started
+    u32 WarmPrograms(const std::vector<u32>& list);
+
+private:
     GLuint FramebufferFor(Target* colour, Target* depth);
     GLuint CopyOf(Target* target);
     GLuint CopyTarget(Target* target, const Rect* region = nullptr);
@@ -1521,6 +1538,12 @@ std::atomic<bool> g_HwActive{false};
 constexpr GLint BigViewSize = 16384;
 constexpr GLint BigViewOrigin = 4096;
 // Where a vertex goes past x / 16 * scale + 0.5, in pixels (TWIN_HW_VERTEX_OFFSET, 256ths)
+// The hook told of each program made while drawing (StartHardwareRenderer's caller's: the next start makes it first)
+void (*g_ProgramMade)(u32 sourceHash, u32 bits) = nullptr;
+
+// The programs' source (the vertex and fragment shaders, $TWIN_HW_VERTEX_OFFSET's shift): a list of programs' bits is for it only
+u32 ProgramSourceHash();
+
 f32 VertexNudge()
 {
     static const f32 nudge = std::getenv("TWIN_HW_VERTEX_OFFSET") != nullptr ? static_cast<f32>(std::atof(std::getenv("TWIN_HW_VERTEX_OFFSET"))) / 256.0f
@@ -1637,14 +1660,9 @@ bool HwGs::Init()
     return true;
 }
 
-const Program& HwGs::ProgramFor(u32 bits)
+// A program's defines: the GS's states its bits say
+std::string ProgramDefines(u32 bits)
 {
-    auto found = programs_.find(bits);
-    if (found != programs_.end())
-    {
-        return found->second;
-    }
-
     std::string header = "#version 330 core\n";
     auto define = [&](const char* name, u32 value) { header += "#define " + std::string(name) + " " + std::to_string(value) + "\n"; };
     define("TEXTURED", (bits & BitTextured) ? 1 : 0);
@@ -1671,13 +1689,81 @@ const Program& HwGs::ProgramFor(u32 bits)
     define("NATIVEDEPTH", (bits & BitNativeDepth) ? 1 : 0);
     define("DEPTHINDEX", (bits & BitDepthIndex) ? 1 : 0);
     define("ANISO", (bits & BitAniso) ? 1 : 0);
-    GLuint vertex = CompileShader(GL_VERTEX_SHADER, VertexSource);
-    GLuint fragment = CompileShader(GL_FRAGMENT_SHADER, header + FragmentSource);
+    return header;
+}
+
+u32 ProgramSourceHash()
+{
+    // (FNV-1a over the shaders and the defines of no bits and of every bit: what the bits mean)
+    static const u32 hash = [] {
+        u32 h = 2166136261u;
+        auto mix = [&h](const std::string& text) {
+            for (char c : text)
+            {
+                h = (h ^ static_cast<u8>(c)) * 16777619u;
+            }
+        };
+        mix(VertexSource);
+        mix(FragmentSource);
+        mix(ProgramDefines(0));
+        mix(ProgramDefines(~0u));
+        return h;
+    }();
+    return hash;
+}
+
+Program HwGs::StartProgram(u32 bits)
+{
+    const std::string header = ProgramDefines(bits);
     Gl& gl = GetGl();
     Program p;
-    p.id = LinkProgram(vertex, fragment, true);
-    gl.DeleteShader(vertex);
-    gl.DeleteShader(fragment);
+    p.vertex = gl.CreateShader(GL_VERTEX_SHADER);
+    const char* vertexText = VertexSource;
+    gl.ShaderSource(p.vertex, 1, &vertexText, nullptr);
+    gl.CompileShader(p.vertex);
+    p.fragment = gl.CreateShader(GL_FRAGMENT_SHADER);
+    const std::string fragmentSource = header + FragmentSource;
+    const char* fragmentText = fragmentSource.c_str();
+    gl.ShaderSource(p.fragment, 1, &fragmentText, nullptr);
+    gl.CompileShader(p.fragment);
+    p.id = gl.CreateProgram();
+    gl.AttachShader(p.id, p.vertex);
+    gl.AttachShader(p.id, p.fragment);
+    gl.BindFragDataLocationIndexed(p.id, 0, 0, "outColour");
+    gl.BindFragDataLocationIndexed(p.id, 0, 1, "outFactor");
+    gl.LinkProgram(p.id);
+    p.pending = true;
+    return p;
+}
+
+bool HwGs::FinishProgram(Program& p)
+{
+    Gl& gl = GetGl();
+    GLint linked = 0;
+    gl.GetProgramiv(p.id, GL_LINK_STATUS, &linked);
+    if (!linked)
+    {
+        char log[2048];
+        for (GLuint shader : {p.vertex, p.fragment})
+        {
+            GLint compiled = 0;
+            gl.GetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+            if (!compiled)
+            {
+                gl.GetShaderInfoLog(shader, sizeof(log), nullptr, log);
+                std::fprintf(stderr, "graphics: hardware shader: %s\n", log);
+            }
+        }
+
+        gl.GetProgramInfoLog(p.id, sizeof(log), nullptr, log);
+        std::fprintf(stderr, "graphics: hardware program: %s\n", log);
+        return false;
+    }
+
+    gl.DeleteShader(p.vertex);
+    gl.DeleteShader(p.fragment);
+    p.vertex = 0;
+    p.fragment = 0;
     p.viewSize = gl.GetUniformLocation(p.id, "viewSize");
     p.viewOrigin = gl.GetUniformLocation(p.id, "viewOrigin");
     p.depthCopy = gl.GetUniformLocation(p.id, "depthCopy");
@@ -1715,6 +1801,83 @@ const Program& HwGs::ProgramFor(u32 bits)
     p.frameMask = gl.GetUniformLocation(p.id, "frameMask");
     p.clut = gl.GetUniformLocation(p.id, "clut");
     p.clutOffset = gl.GetUniformLocation(p.id, "clutOffset");
+    p.pending = false;
+    return true;
+}
+
+u32 HwGs::WarmPrograms(const std::vector<u32>& list)
+{
+    // As many of the driver's threads as it likes (0xFFFFFFFF), where it has them
+    if (GetGl().MaxShaderCompilerThreads != nullptr)
+    {
+        GetGl().MaxShaderCompilerThreads(0xFFFFFFFFu);
+    }
+
+    std::vector<u32> started;
+    for (u32 bits : list)
+    {
+        if (programs_.find(bits) == programs_.end())
+        {
+            programs_[bits] = StartProgram(bits);
+            started.push_back(bits);
+        }
+    }
+
+    // All asked for first, then each waited for here (a driver with threads has compiled them side by side meanwhile; measured,
+    // one left to its first draw made that frame wait for the driver's last of the work): play finds them ready. One that
+    // doesn't compile (a list's stale entry) is dropped
+    u32 made = 0;
+    for (u32 bits : started)
+    {
+        auto found = programs_.find(bits);
+        if (FinishProgram(found->second))
+        {
+            made++;
+        }
+        else
+        {
+            programs_.erase(found);
+        }
+    }
+
+    return made;
+}
+
+const Program& HwGs::ProgramFor(u32 bits)
+{
+    auto found = programs_.find(bits);
+    if (found != programs_.end() && !found->second.pending)
+    {
+        return found->second;
+    }
+
+    // One made at the start, drawn with for the first time: done by now (or waited for); one that failed is made again below
+    if (found != programs_.end())
+    {
+        if (FinishProgram(found->second))
+        {
+            return found->second;
+        }
+
+        programs_.erase(found);
+    }
+
+    // A program not made before: made now, the frame waiting for it (its time counted for the log's slow frames, renderwork.h),
+    // and said to the hook to be made at the next start
+    const auto madeFrom = std::chrono::steady_clock::now();
+    Program p = StartProgram(bits);
+    if (!FinishProgram(p))
+    {
+        std::abort();
+    }
+
+    NativeGraphics::CountProgramMade(
+        static_cast<u64>(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - madeFrom).count()));
+    if (g_ProgramMade != nullptr)
+    {
+        g_ProgramMade(ProgramSourceHash(), bits);
+    }
+
     return programs_[bits] = p;
 }
 
@@ -5980,6 +6143,27 @@ void StopHardwareRenderer()
 bool HardwareRendererActive()
 {
     return g_HwActive.load(std::memory_order_relaxed);
+}
+
+void HardwareSetProgramHook(void (*made)(u32 sourceHash, u32 bits))
+{
+    g_ProgramMade = made;
+}
+
+u32 HardwareProgramSourceHash()
+{
+    return ProgramSourceHash();
+}
+
+u32 HardwareWarmPrograms(const std::vector<u32>& bits)
+{
+    if (g_Hw == nullptr)
+    {
+        return 0;
+    }
+
+    g_Hw->MakeCurrent();
+    return g_Hw->WarmPrograms(bits);
 }
 
 void HardwareSetScale(u32 scale)

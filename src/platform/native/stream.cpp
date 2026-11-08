@@ -112,6 +112,8 @@ void Platform::Stream::CloseFile(s32 file)
 
 void Platform::Stream::Read(s32, s32 file, u32 offset, u32 size, void* destination)
 {
+    // (Its time for the log's slow frames: a disc image on a slow drive)
+    Native::GameWorkSpan span(Native::GameWork::Reading);
     std::lock_guard lock(g_Lock);
     auto found = g_Files.find(file);
     if (found == g_Files.end())

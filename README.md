@@ -167,6 +167,8 @@ off until you turn them on.
 - [ ] The characters' shadows drawn at the chosen resolution: they stay at the PS2's, softer than the rest of the picture at
   high resolutions.
 - [x] A drop shadow under you in the air, and your shadow on crates, as game options ([#11], [#35]).
+- [x] Fewer pauses when you reach a new area ([#23]): the graphics' shaders are made when the game starts instead of the
+  first time something needs them, and the log says where a slow frame's time went.
 - [ ] Better speed on older PCs ([#23], [#12]): since 1.1.0 the render thread, measured as the limit there, is about a
   quarter lighter and VU1's thread about a tenth; more needs deeper changes to the renderer.
 - [ ] Achievements in the game, kept on your PC (RetroAchievements doesn't award them for ports).

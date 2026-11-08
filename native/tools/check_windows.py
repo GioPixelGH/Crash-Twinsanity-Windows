@@ -179,6 +179,9 @@ LOG_START = [
     r"\] languages: the texts' banks as their names say; the voices as the texts",
     r"\] display: none",
     r"\] audio: none",
+    # (THE LIST 19: the shader programs made at the start, this version's own list for these shaders: a change to hwgs.cpp's
+    # shaders or their bits needs display.cpp's KnownPrograms made again from check_windows' runs' shaders.txt)
+    r"\] graphics: \d+ shader programs made at the start in \d+ ms \(\d+ listed in shaders\.txt, \d+ this version's own\)",
     # (each thread's first timer query never begun, $TWIN_GPU_TIME_TEST=stuck: left out, the card's time still known)
     r"\] graphics: a timer query's result not there \d+ frames after it was begun, the next one's there: left out",
     r"\] game: Levels\\Earth\\Hub\\beach loaded in [\d.]+ s",

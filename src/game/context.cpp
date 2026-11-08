@@ -21,6 +21,7 @@
 #include "retail/libc.h"
 
 #ifdef TWIN_NATIVE
+#include "native.h"
 #include "ui/nativeui.h"
 #endif
 
@@ -274,6 +275,10 @@ extern "C"
         bool worked;
         if (budgeted)
         {
+#ifdef TWIN_NATIVE
+            // Its time for the log's slow frames (native.h)
+            Native::GameWorkSpan span(Native::GameWork::Background);
+#endif
             u32 round = 0;
             do
             {
