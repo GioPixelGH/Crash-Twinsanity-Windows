@@ -227,6 +227,21 @@ PORTABLE_LAUNCHER = ("import subprocess, sys\n"
                      "    sys.exit(99)\n")
 
 
+# The PC's mouse kept out of the runs that open a window: the window takes the focus, and a hand on the mouse would turn the
+# camera (mouse look) or click the menus, so the result would depend on who's at the PC (1.2.0's first release check: the
+# SMAA run's view turned). Headless runs don't get the mouse, and the look and hints tests script it there.
+NO_MOUSE = ("mouse", "mouse_look")
+
+
+def without_mouse(text, arguments):
+    """options.txt's TEXT for a run with ARGUMENTS: mouse=0 and mouse_look=0 first when it opens a window (no --headless, not
+    a self-test) and TEXT doesn't set them itself"""
+    if "--headless" in arguments or any(str(a).startswith("--selftest") for a in arguments):
+        return text
+    keys = {line.split("=", 1)[0].strip() for line in (text or "").splitlines()}
+    return "".join(f"{key}=0\n" for key in NO_MOUSE if key not in keys) + (text or "")
+
+
 def run_for(exe, folder, options, env, args, until, seconds=120, resolution=None, files=None):
     """The program run in a settings folder of its own (FOLDER/settings, with FILES: {path in it: bytes}) until the file UNTIL is
     there (or it ends, or SECONDS): its log's text"""
@@ -238,7 +253,7 @@ def run_for(exe, folder, options, env, args, until, seconds=120, resolution=None
         (settings / name).parent.mkdir(parents=True, exist_ok=True)
         (settings / name).write_bytes(data)
     (settings / "disc_image.txt").write_text(disc_image() + "\n")
-    (settings / "options.txt").write_text("pause_on_focus_loss=0\n" + "".join(f"{o}\n" for o in options))
+    (settings / "options.txt").write_text(without_mouse("pause_on_focus_loss=0\n" + "".join(f"{o}\n" for o in options), args))
     if resolution:
         (settings / "resolution.txt").write_text(resolution)
     full = dict(os.environ, HOME=str(folder / "settings"), APPDATA=str(folder / "settings"), **env)
@@ -586,6 +601,7 @@ def run_game(exe, folder, arguments, environment=None, timeout=900, options=None
     settings = folder / "settings" / "Crash Twinsanity"
     settings.mkdir(parents=True)
     (settings / "disc_image.txt").write_text(disc_image() + "\n")
+    options = without_mouse(options, arguments)
     if options:
         (settings / "options.txt").write_text(options)
     env = dict(os.environ, HOME=str(folder / "settings"), APPDATA=str(folder / "settings"), TWINSANITY_AUDIO="off")
@@ -1163,7 +1179,7 @@ def window_downsample(exe, work, frame=600):
     settings.mkdir(parents=True)
     (settings / "disc_image.txt").write_text(disc_image() + "\n")
     # (not paused when the window isn't in front: a check run while the PC is in use)
-    (settings / "options.txt").write_text("anti_aliasing=0\nwidescreen=1\npause_on_focus_loss=0\n")
+    (settings / "options.txt").write_text(without_mouse("anti_aliasing=0\nwidescreen=1\npause_on_focus_loss=0\n", ["--quick"]))
     (settings / "resolution.txt").write_text("scale=8\nwindow=1280x720\nfullscreen=0\n")
     env = dict(os.environ, HOME=str(folder / "settings"), APPDATA=str(folder / "settings"), TWIN_FIXED_TIME="1",
                TWINSANITY_AUDIO="frames", TWIN_DUMP_FRAMES=f"{folder}:{frame}", TWIN_WINDOW_SHOTS=f"{folder}:{frame}")
