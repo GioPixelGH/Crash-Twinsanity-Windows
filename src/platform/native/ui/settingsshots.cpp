@@ -7,6 +7,7 @@
 #include "ui/overlay.h"
 
 #include "graphics/display.h"
+#include "mods.h"
 #include "native.h"
 
 #include "game/gamecontroller.h"
@@ -113,7 +114,19 @@ constexpr Step Script[] = {
     {400, Key, Back, 0, 0, nullptr},
     {405, Key, Back, 0, 0, nullptr},
     {440, Shot, 0, 0, 0, "settings_closed_main_menu"},
-    {445, Quit, 0, 0, 0, nullptr},
+    // The Mods page (from the display tab, back round to the last): its import confirmed (only with a zip or disc image in the
+    // mods folder to import: the import row first; else the step's skipped), the dialog left, a step down
+    {450, Open, 0, 0, 0, nullptr},
+    {455, Key, TabPrevious, 0, 0, nullptr},
+    {457, Key, TabPrevious, 0, 0, nullptr},
+    {470, Shot, 0, 0, 0, "settings_mods"},
+    {472, Key, Confirm, 0, 0, "import"},
+    {560, Shot, 0, 0, 0, "settings_mods_imported"},
+    {562, Key, Back, 0, 0, nullptr},
+    {580, Shot, 0, 0, 0, "settings_mods_after_import"},
+    {582, Key, Down, 0, 0, nullptr},
+    {600, Shot, 0, 0, 0, "settings_mods_down"},
+    {605, Quit, 0, 0, 0, nullptr},
 };
 
 // $TWIN_SETTINGS_LOG_TEST's (options.txt's refresh_60hz=3 given by the check)
@@ -219,6 +232,12 @@ void SettingsShotsFrame()
             OpenSettings();
             break;
         case Key:
+            // (A Key step named "import" only when there's something to import: never the mods folder opened instead)
+            if (step.name != nullptr && Native::Mods::Importables().empty())
+            {
+                break;
+            }
+
             // Escape while waiting for a key cancels it, as the keyboard's does
             SettingsActForTest(step.action);
             break;

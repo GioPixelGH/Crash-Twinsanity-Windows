@@ -174,7 +174,10 @@ import stops it. An xdelta, PPF or BPS patch isn't applied here (a patcher makes
 settings' sixth tab, settings.cpp's BuildMods): Import mods while there's something to; each mod a choice, off or on in its
 place ("on · 1", the first; moving one shifts the others; its row's label and description its own, in the overlay's
 Windows-1252 with the prompts' glyphs made plain characters, cut to one line); Open the mods folder. Changes are saved to
-mods.txt and used from the next start (the mods are looked at once). check_windows' "mods import" line: a Mod Crate's zip
+mods.txt and used from the next start (the mods are looked at once: the session keeps the list it started with, the
+page's own list is apart). An import's end looks at the mods folder again (Mods::Refresh: the new mods first and on, as the
+next start would put them, mods.txt written) and makes the page's rows again, the selection on the first mod; a hidden
+row's selection steps to the line next to it (MoveRow). check_windows' "mods import" line: a Mod Crate's zip
 and a small changed image (one archive file changed, one the disc's own, a disc file the disc hasn't) imported, then played
 with both on (the first by name wins, the card of both) and with mods.txt turning one off.
 

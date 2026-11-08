@@ -26,7 +26,13 @@ constexpr const char* Executable = "SLES_525.68";
 
 std::mutex g_Lock;
 bool g_Scanned = false;
+// The Options page's list (changed by the player and by an import: from the next start), and the mods this session uses, in the
+// order it started with (never changed until the next start: the game reads their files)
 std::vector<Native::Mods::Mod> g_Mods;
+std::vector<Native::Mods::Mod> g_Used;
+// The disc's own archive names (a mod's files not among them are new ones), read once
+std::set<std::string> g_ArchiveNames;
+bool g_ArchiveRead = false;
 std::string g_Card = "memorycard";
 
 std::string Utf8(const fs::path& path)
@@ -569,16 +575,13 @@ void SaveOrder()
 }
 }
 
-void Native::Mods::Scan()
+namespace
 {
-    std::lock_guard lock(g_Lock);
-    if (g_Scanned)
-    {
-        return;
-    }
-
-    std::vector<Mod> found;
-    const fs::path folder = Folder();
+// The mods folder's mods, described (their files not counted yet), by name (the loose files last)
+std::vector<Native::Mods::Mod> FolderMods()
+{
+    std::vector<Native::Mods::Mod> found;
+    const fs::path folder = Native::Mods::Folder();
     std::error_code error;
     if (fs::is_directory(folder, error))
     {
@@ -604,17 +607,53 @@ void Native::Mods::Scan()
 
         if (loose)
         {
-            Mod mod = Describe(folder, "");
-            mod.kind = mod.kind == Kind::Crate ? Kind::Crate : Kind::Loose;
-            mod.name = mod.kind == Kind::Crate && !mod.name.empty() ? mod.name : "";
+            Native::Mods::Mod mod = Describe(folder, "");
+            mod.kind = mod.kind == Native::Mods::Kind::Crate ? Native::Mods::Kind::Crate : Native::Mods::Kind::Loose;
+            mod.name = mod.kind == Native::Mods::Kind::Crate && !mod.name.empty() ? mod.name : "";
             found.push_back(mod);
         }
     }
 
-    // mods.txt's order and switches; the mods not in it first and on, by name (the loose files last)
-    std::sort(found.begin(), found.end(), [](const Mod& a, const Mod& b) {
+    std::sort(found.begin(), found.end(), [](const Native::Mods::Mod& a, const Native::Mods::Mod& b) {
         return a.id.empty() != b.id.empty() ? !a.id.empty() : a.id < b.id;
     });
+    return found;
+}
+
+const std::set<std::string>& ArchiveNames()
+{
+    if (!g_ArchiveRead)
+    {
+        g_ArchiveNames = DiscArchiveNames();
+        g_ArchiveRead = true;
+    }
+
+    return g_ArchiveNames;
+}
+
+void LogMod(const Native::Mods::Mod& mod, const char* state)
+{
+    const std::string name = mod.id.empty() ? "the mods folder's own files" : mod.id;
+    Native::Log("mods: %s (%s): %s, %u disc file%s, %u archive file%s (%u new)%s%s", name.c_str(), state, KindText(mod).c_str(), mod.discCount,
+        mod.discCount == 1 ? "" : "s", mod.archiveCount, mod.archiveCount == 1 ? "" : "s", mod.addedCount, mod.refusal.empty() ? "" : ": ",
+        mod.refusal.c_str());
+    for (const std::string& warning : mod.warnings)
+    {
+        Native::Log("mods: %s: %s", name.c_str(), warning.c_str());
+    }
+}
+}
+
+void Native::Mods::Scan()
+{
+    std::lock_guard lock(g_Lock);
+    if (g_Scanned)
+    {
+        return;
+    }
+
+    // mods.txt's order and switches; the mods not in it first and on, by name (the loose files last)
+    std::vector<Mod> found = FolderMods();
     std::vector<std::pair<std::string, bool>> saved;
     std::ifstream in(fs::path(SettingsFolder()) / OrderFile, std::ios::binary);
     std::string line;
@@ -661,25 +700,18 @@ void Native::Mods::Scan()
     // (mods.txt is written when the player changes something: Options > Mods)
     g_Mods = std::move(ordered);
 
-    const std::set<std::string> archive = g_Mods.empty() ? std::set<std::string>() : DiscArchiveNames();
     std::vector<std::string> used;
     for (Mod& mod : g_Mods)
     {
-        Count(&mod, archive);
+        Count(&mod, ArchiveNames());
         mod.usedNow = mod.on && mod.refusal.empty() && mod.discCount + mod.archiveCount > 0;
         if (mod.usedNow)
         {
             used.push_back(mod.id);
+            g_Used.push_back(mod);
         }
 
-        const char* state = !mod.refusal.empty() ? "refused" : !mod.on ? "off" : mod.usedNow ? "on" : "on, empty";
-        Log("mods: %s (%s): %s, %u disc file%s, %u archive file%s (%u new)%s%s", mod.id.empty() ? "the mods folder's own files" : mod.id.c_str(),
-            state, KindText(mod).c_str(), mod.discCount, mod.discCount == 1 ? "" : "s", mod.archiveCount, mod.archiveCount == 1 ? "" : "s",
-            mod.addedCount, mod.refusal.empty() ? "" : ": ", mod.refusal.c_str());
-        for (const std::string& warning : mod.warnings)
-        {
-            Log("mods: %s: %s", mod.id.empty() ? "the mods folder's own files" : mod.id.c_str(), warning.c_str());
-        }
+        LogMod(mod, !mod.refusal.empty() ? "refused" : !mod.on ? "off" : mod.usedNow ? "on" : "on, empty");
     }
 
     // A card of these mods' own while any is on (the player's saves never meet a mod's levels)
@@ -700,6 +732,57 @@ void Native::Mods::Scan()
 const std::vector<Native::Mods::Mod>& Native::Mods::List()
 {
     return g_Mods;
+}
+
+void Native::Mods::Refresh()
+{
+    std::lock_guard lock(g_Lock);
+    if (!g_Scanned)
+    {
+        return;
+    }
+
+    // Those still there described anew (an import may have replaced one), keeping their switch, place and use; those gone dropped;
+    // the new ones first, on and by name, as the next start would have them
+    std::vector<Mod> found = FolderMods();
+    std::vector<Mod> added;
+    std::vector<Mod> kept;
+    for (Mod& mod : found)
+    {
+        Count(&mod, ArchiveNames());
+        auto known = std::find_if(g_Mods.begin(), g_Mods.end(), [&](const Mod& each) { return each.id == mod.id; });
+        if (known == g_Mods.end())
+        {
+            mod.on = true;
+            mod.usedNow = false;
+            LogMod(mod, "new, on from the next start");
+            added.push_back(mod);
+        }
+    }
+
+    for (const Mod& mod : g_Mods)
+    {
+        auto now = std::find_if(found.begin(), found.end(), [&](const Mod& each) { return each.id == mod.id; });
+        if (now != found.end())
+        {
+            Mod updated = *now;
+            updated.on = mod.on;
+            updated.usedNow = mod.usedNow;
+            kept.push_back(updated);
+        }
+        else
+        {
+            Log("mods: %s gone from the mods folder", mod.id.empty() ? "the mods folder's own files" : mod.id.c_str());
+        }
+    }
+
+    const bool changed = !added.empty() || kept.size() != g_Mods.size();
+    added.insert(added.end(), kept.begin(), kept.end());
+    g_Mods = std::move(added);
+    if (changed)
+    {
+        SaveOrder();
+    }
 }
 
 void Native::Mods::SetOn(size_t index, bool on)
@@ -736,7 +819,7 @@ bool Native::Mods::AnyUsed()
         return false;
     }
 
-    return std::any_of(g_Mods.begin(), g_Mods.end(), [](const Mod& mod) { return mod.usedNow; });
+    return !g_Used.empty();
 }
 
 std::string Native::Mods::CardName()
@@ -753,9 +836,9 @@ bool Native::Mods::FindDiscFile(const std::vector<std::string>& parts, fs::path*
         return false;
     }
 
-    for (const Mod& each : g_Mods)
+    for (const Mod& each : g_Used)
     {
-        if (each.usedNow && (each.kind == Kind::Crate || IsTop(parts[0], true, false)) && FindIn(each.discFiles, parts, file))
+        if ((each.kind == Kind::Crate || IsTop(parts[0], true, false)) && FindIn(each.discFiles, parts, file))
         {
             *mod = each.id;
             return true;
@@ -774,13 +857,8 @@ std::vector<Native::Mods::ArchiveFile> Native::Mods::ArchiveFiles()
     }
 
     std::set<std::string> taken;
-    for (const Mod& mod : g_Mods)
+    for (const Mod& mod : g_Used)
     {
-        if (!mod.usedNow)
-        {
-            continue;
-        }
-
         std::vector<Found> disc;
         std::vector<Found> entries;
         ModFiles(mod, &disc, &entries);

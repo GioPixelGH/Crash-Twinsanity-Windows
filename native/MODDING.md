@@ -70,7 +70,8 @@ A mod's `.zip`, or a whole changed disc image (`.iso`), can go straight in the m
 
 The zip or image can be deleted once imported. A mod shipped as a patch (`.xdelta`, `.ppf`, `.bps`) isn't applied by the
 port: apply it to a copy of your disc image with a patcher for that format, then import the resulting image. An import
-takes a minute or two for a disc image; mods are used from the next start of the game.
+takes a minute or two for a disc image; the imported mods are listed in **Options > Mods** at once and used from the next
+start of the game.
 
 ### Order and switches
 

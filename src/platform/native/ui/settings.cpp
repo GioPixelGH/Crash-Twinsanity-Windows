@@ -322,8 +322,9 @@ void BuildMods(std::vector<Row>& rows)
         StartImport();
         OpenDialog(DialogImporting);
     });
+    // (Built again when an import ends: hidden then unless something's left to import, a failed one say)
     const bool importable = !Native::Mods::Importables().empty();
-    import.shown = [importable] { return importable && !g_Import.finished; };
+    import.shown = [importable] { return importable; };
     rows.push_back(import);
     for (const Native::Mods::Mod& mod : Native::Mods::List())
     {
@@ -1147,13 +1148,25 @@ void MoveRow(s32 by)
         return;
     }
 
-    s32 at = 0;
+    // From the selected row's line; a hidden one's (the Mods page's import, once done) is between the lines round it, so the next
+    // step lands on the line after it (or before), not one further
+    s32 before = 0;
+    s32 at = -1;
     for (s32 i = 0; i < static_cast<s32>(visible.size()); i++)
     {
         if (visible[static_cast<size_t>(i)] == g_Row)
         {
             at = i;
         }
+        else if (visible[static_cast<size_t>(i)] < g_Row)
+        {
+            before++;
+        }
+    }
+
+    if (at < 0)
+    {
+        at = by > 0 ? before - 1 : before;
     }
 
     // Wrapping round at the ends
@@ -1164,6 +1177,22 @@ void MoveRow(s32 by)
         {
             g_Row = visible[static_cast<size_t>(at)];
             return;
+        }
+    }
+}
+
+// The Mods page's rows made again from the list (an import ended); the selection on the page's first mod if it was on the import
+void RebuildMods()
+{
+    std::vector<Row>& rows = g_Rows[TabMods];
+    rows.clear();
+    BuildMods(rows);
+    if (g_Tab == TabMods)
+    {
+        g_Row = std::min(g_Row, static_cast<s32>(rows.size()) - 1);
+        if (!Selectable(rows[static_cast<size_t>(g_Row)]))
+        {
+            MoveRow(1);
         }
     }
 }
@@ -1319,6 +1348,12 @@ Hit HitTest()
         hit.region = &region;
     }
 
+    // (The regions are last frame's: the Mods page's rows may have been made again since, fewer)
+    if (hit.row >= static_cast<s32>(g_Rows[g_Tab].size()))
+    {
+        hit.row = -1;
+    }
+
     return hit;
 }
 
@@ -1440,8 +1475,14 @@ void TakeDialogInput()
     case DialogImporting:
         if (g_Import.finished)
         {
-            std::lock_guard lock(g_Import.lock);
-            g_Dialog = g_Import.ok ? DialogImported : DialogImportFailed;
+            {
+                std::lock_guard lock(g_Import.lock);
+                g_Dialog = g_Import.ok ? DialogImported : DialogImportFailed;
+            }
+
+            // The imported mods on the page at once (used from the next start)
+            Native::Mods::Refresh();
+            RebuildMods();
         }
 
         break;

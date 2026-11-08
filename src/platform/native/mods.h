@@ -60,8 +60,11 @@ struct Mod
 // The mods folder's mods, looked at once the disc is open (disc.cpp asks first): mods.txt's order and switches, a mod not in it
 // yet first and on; the log says each
 void Scan();
-// In their order (the first wins where two have the same file)
+// In their order (the first wins where two have the same file), as the Options page shows them: from the next start
 const std::vector<Mod>& List();
+// The mods folder looked at again (an import done): the new mods added first and on, as the next start would put them (mods.txt
+// written), those imported again described anew. The game goes on using the mods it started with, in their order
+void Refresh();
 // Saved to mods.txt for the next start
 void SetOn(size_t index, bool on);
 void MoveTo(size_t index, size_t place);

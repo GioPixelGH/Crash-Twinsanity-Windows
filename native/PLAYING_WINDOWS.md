@@ -144,7 +144,8 @@ hundred megabytes the mod changes), and the zip or image can be deleted after. F
 Files put straight in the mods folder at their path (`mods\Levels\Earth\Hub\beach.rm2`) work too, as before 1.2.0.
 **Options > Mods** lists the mods: each off, or on in its place (on · 1 is the first). Where two mods change the same file,
 the first wins. A new mod comes first and on. The choices are kept in **mods.txt** in the settings folder (a line a mod, `on`
-or `off`, a tab, the mod's folder; `*` the files put straight in the mods folder) and used from the next start.
+or `off`, a tab, the mod's folder; `*` the files put straight in the mods folder) and used from the next start. Mods just
+imported are listed at once, first and on.
 While any mod is on, your saves go on a memory card of their own (`memorycard-mods-...` in the settings folder): your own
 saves are never touched, and they're back when the mods are off. A mod's changed game program (SLES_525.68) can't work
 here: this port has its own, and the log says what the mod changed in it.
