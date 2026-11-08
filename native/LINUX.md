@@ -158,7 +158,8 @@ FFmpeg's libraries are LGPL 2.1 and can be replaced (the licence's relinking cla
 
 makes the AppImage on any computer with Docker running, Windows included (where the releases are made). It builds the image
 native/tools/linux.Dockerfile describes (Ubuntu 24.04, clang 21 from apt.llvm.org, SDL's backends' packages, ps2dev's Linux
-toolchain in `/usr/local/ps2dev`), copies the source tree into a Docker volume of its own (the build's folders, the virtual
+toolchain in `/usr/local/ps2dev`), copies the source tree into a Docker volume of its own (the build's folders and the PS2
+build's ninja files, FFmpeg's sources as the Windows build unpacked them (the Linux build downloads its own), the virtual
 environment, git's folder, texture packs and local.json left out; a file gone from the tree goes from the copy too), and runs
 the steps above in it: the virtual environment, `build_linux.py`, `package_linux.py`. The AppImage comes out in
 `build/native/linux/`, the container's output in `build/native/linux/build.txt`. The volume keeps the build between runs, so a

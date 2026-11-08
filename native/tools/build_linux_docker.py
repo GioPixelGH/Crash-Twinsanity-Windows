@@ -32,17 +32,22 @@ HERE = Path(__file__).resolve().parents[2]
 IMAGE = "crash-twinsanity-linux-build"
 DOCKERFILE = HERE / "native" / "tools" / "linux.Dockerfile"
 APPIMAGE = "Crash-Twinsanity-Linux-x86_64.AppImage"
-# Not copied: what each system makes for itself, git's own folder, what's this computer's (local.json's paths, texture packs);
-# at the tree's top, and anywhere
-EXCLUDED_TOP = {"build", ".venv", ".git", "textures", "ghidra", "local.json"}
-EXCLUDED_ANYWHERE = {"__pycache__"}
+# Not copied: what each system makes for itself (the builds, the PS2 build's ninja files, FFmpeg's sources as the Windows
+# build unpacked them: their scripts lose their x bit in the tar, and configure was refused in 1.2.0's first release check;
+# the Linux build downloads and checks its own), git's own folder, what's this computer's (local.json's paths, texture packs,
+# editors' folders); at the tree's top, at these paths, and anywhere. The split (SLES_525.68, asm/) is copied: the build needs it
+EXCLUDED_TOP = {"build", ".venv", ".git", "textures", "ghidra", "local.json", "build.ninja", ".ninja_log", ".ninja_deps",
+                ".vscode", ".idea"}
+EXCLUDED_PATHS = {Path("native/third_party/ffmpeg-src")}
+EXCLUDED_ANYWHERE = {"__pycache__", ".cache"}
 # rw-r--r--, and rwxr-xr-x for the scripts (Windows has no such bits to give)
 FILE_MODE = 0o644
 SCRIPT_MODE = 0o755
 # In the container: the tar unpacked beside the copy, then synced into it (what's the same keeps its time, so ninja rebuilds only
-# what changed; what's gone goes; the copy's own build and virtual environment stay)
+# what changed; what's gone goes; the copy's own build, virtual environment and FFmpeg download stay)
 RECEIVE = ("set -e; rm -rf /work/incoming; mkdir -p /work/incoming /work/tree; tar -xf - -C /work/incoming; "
-           "rsync -a --delete --exclude=/build/ --exclude=/.venv/ /work/incoming/ /work/tree/; rm -rf /work/incoming")
+           "rsync -a --delete --exclude=/build/ --exclude=/.venv/ --exclude=/native/third_party/ffmpeg-src/ "
+           "/work/incoming/ /work/tree/; rm -rf /work/incoming")
 
 
 def run(command, log, step):
@@ -60,7 +65,7 @@ def tree_files():
     for folder, folders, files in os.walk(HERE):
         relative = Path(folder).relative_to(HERE)
         folders[:] = sorted(name for name in folders if name not in EXCLUDED_ANYWHERE
-                            and not (relative == Path(".") and name in EXCLUDED_TOP))
+                            and not (relative == Path(".") and name in EXCLUDED_TOP) and relative / name not in EXCLUDED_PATHS)
         for name in sorted(files):
             if (relative == Path(".") and name in EXCLUDED_TOP) or name.endswith(".pyc"):
                 continue
