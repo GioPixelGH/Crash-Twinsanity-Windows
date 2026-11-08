@@ -67,7 +67,10 @@ if command -v gpg > /dev/null; then
 else
     echo "build_ffmpeg.sh: no gpg, the SHA-256 checked only"
 fi
-[ -d "$SOURCES/ffmpeg-$VERSION" ] || tar -xf "$TARBALL" -C "$SOURCES"
+# Unpacked afresh from the tarball just checked, each build: a folder left there may be another system's (unpacked on Windows
+# and copied into Linux's Docker volume without the scripts' x bit: configure refused, 1.2.0's release check), or cut short
+rm -rf "$SOURCES/ffmpeg-$VERSION"
+tar -xf "$TARBALL" -C "$SOURCES"
 
 # The configuration (README.md quotes it): everything off, then the MPEG-2 decoder and its parser
 set -- \
