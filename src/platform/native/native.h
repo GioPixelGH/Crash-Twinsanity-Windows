@@ -25,6 +25,9 @@ void ParseArguments(int& argc, char** argv);
 // Where the app keeps its settings and saves, and the disc image asked for with the system's file dialog (remembered there)
 std::string SettingsFolder();
 std::string PickDiscImage();
+// A Steam Deck's model ("Galileo, the OLED model"), nullptr on any other computer (steamdeck.cpp: Linux's firmware names, or
+// $TWIN_STEAM_DECK). Its first start is fullscreen, on its own 1280 x 800 screen (ui/resolution.cpp)
+const char* SteamDeckModel();
 
 // The portable install (portable.cpp; Windows only): portable.txt beside the program keeps the settings folder's data in the User
 // folder beside it rather than in %APPDATA%\Crash Twinsanity. Decided at start-up before anything reads the settings (headless: no

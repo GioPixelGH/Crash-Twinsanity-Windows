@@ -38,6 +38,7 @@
 #define NOMINMAX
 #include <windows.h>
 #else
+#include <sys/utsname.h>
 #include <unistd.h>
 extern char** environ;
 #endif
@@ -443,6 +444,31 @@ void LogSystem()
 
     Native::Log("system: %s (%lu.%lu.%lu)%s%s", name, major, minor, static_cast<unsigned long>(version.dwBuildNumber),
                 arm ? ", the program emulated on Arm64" : "", under.c_str());
+#elif defined(__linux__)
+    // The distribution (os-release's name), the kernel, whether it runs from the AppImage (its runtime sets $APPIMAGE) and in
+    // Gamescope (the Steam Deck's game mode), and a Steam Deck's model
+    std::string distribution;
+    std::ifstream release("/etc/os-release");
+    std::string line;
+    while (std::getline(release, line))
+    {
+        if (line.rfind("PRETTY_NAME=", 0) == 0)
+        {
+            distribution = line.substr(std::strlen("PRETTY_NAME="));
+            if (distribution.size() >= 2 && distribution.front() == '"' && distribution.back() == '"')
+            {
+                distribution = distribution.substr(1, distribution.size() - 2);
+            }
+        }
+    }
+
+    utsname names = {};
+    const bool kernel = uname(&names) == 0;
+    const char* deck = Native::SteamDeckModel();
+    Native::Log("system: %s%s%s%s%s%s%s%s%s", SDL_GetPlatform(), distribution.empty() ? "" : ", ", distribution.c_str(),
+                kernel ? ", kernel " : "", kernel ? names.release : "", std::getenv("APPIMAGE") != nullptr ? ", from the AppImage" : "",
+                std::getenv("GAMESCOPE_WAYLAND_DISPLAY") != nullptr ? ", in Gamescope" : "", deck != nullptr ? "; a Steam Deck: " : "",
+                deck != nullptr ? deck : "");
 #else
     Native::Log("system: %s", SDL_GetPlatform());
 #endif

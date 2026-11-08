@@ -613,10 +613,16 @@ void TestResolution()
     Check(DisplayChoice({1, 1280, 960, false}) == TextWindow1280 - TextWindow960, "1280x960's choice");
     Check(DisplayChoice({1, 1000, 740, false}) == 0, "a window resized by hand: the nearest");
     Check(DisplayChoice({1, 1280, 960, true}) == DisplayChoices - 1, "fullscreen's choice");
-    // The defaults: 2x in a 1280 x 720 window, one of the menu's choices
-    Check(DefaultResolution().scale == 2 && !DefaultResolution().fullscreen &&
-              DisplayChoice(DefaultResolution()) == TextWindow1280Wide - TextWindow960,
+    // The defaults: 2x in a 1280 x 720 window, one of the menu's choices; a Steam Deck's fullscreen (its 1280 x 800 screen), 2x,
+    // the same window when it's made windowed
+    Check(DefaultResolutionFor(false).scale == 2 && !DefaultResolutionFor(false).fullscreen &&
+              DisplayChoice(DefaultResolutionFor(false)) == TextWindow1280Wide - TextWindow960,
           "the defaults: 2x, a 1280x720 window");
+    Check(DefaultResolutionFor(true).scale == 2 && DefaultResolutionFor(true).fullscreen &&
+              DisplayChoice(DefaultResolutionFor(true)) == DisplayChoices - 1 &&
+              DefaultResolutionFor(true).windowWidth == 1280 && DefaultResolutionFor(true).windowHeight == 720,
+          "a Steam Deck's defaults: 2x, fullscreen");
+    Check(DefaultResolution().fullscreen == (Native::SteamDeckModel() != nullptr), "this computer's defaults");
 
     // The page's choices applied only when the player changes them
     NoteChoices(1, 2);

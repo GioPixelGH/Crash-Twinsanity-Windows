@@ -43,15 +43,25 @@ PNG_SIGNATURE = b"\x89PNG"
 BYTES_PER_MB = 1024 * 1024
 # rwxr-xr-x: the downloaded tools run
 EXECUTABLE_MODE = 0o755
-DESKTOP_ENTRY = f"""[Desktop Entry]
+# X-AppImage-Version: the port's version (native/CMakeLists.txt's), which release_windows.py checks
+DESKTOP_ENTRY = """[Desktop Entry]
 Type=Application
 Name=Crash Twinsanity
 Comment=Crash Twinsanity (PS2, PAL) running natively, from your own disc image
-Exec={NAME}
-Icon={NAME}
+Exec={name}
+Icon={name}
 Categories=Game;ActionGame;
 Terminal=false
+X-AppImage-Version={version}
 """
+
+
+def version():
+    """native/CMakeLists.txt's project version"""
+    found = re.search(r"project\(\S+ VERSION (\S+)", (HERE / "native" / "CMakeLists.txt").read_text())
+    if found is None:
+        sys.exit("native/CMakeLists.txt has no project version")
+    return found.group(1)
 
 
 def download(url, target, sha256):
@@ -187,7 +197,7 @@ def main():
     for name in ("LuckiestGuy-Regular.ttf", "Fredoka-SemiBold.ttf", "Fredoka-Bold.ttf"):
         shutil.copy2(HERE / "native" / "third_party" / "fonts" / name, fonts / name)
 
-    (appdir / f"{NAME}.desktop").write_text(DESKTOP_ENTRY)
+    (appdir / f"{NAME}.desktop").write_text(DESKTOP_ENTRY.format(name=NAME, version=version()))
     (appdir / f"{NAME}.png").write_bytes(largest_png(HERE / "native" / "icon" / "AppIcon.ico"))
 
     licenses = appdir / "usr" / "share" / "licenses" / NAME

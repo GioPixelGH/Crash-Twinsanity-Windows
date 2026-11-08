@@ -33,13 +33,19 @@ constexpr WindowSize Windows[DisplayChoices - 1] = {
 };
 static_assert(DisplayChoices - 1 == sizeof(Windows) / sizeof(Windows[0]));
 constexpr s32 FullscreenChoice = DisplayChoices - 1;
-// The defaults (nativeui.h's DefaultResolution): the platform's window is made at their size (system.cpp)
-constexpr Resolution Defaults = {2, 1280, 720, false};
+// The defaults (nativeui.h's DefaultResolution): the platform's window is made at their size (system.cpp). A Steam Deck's
+// (DefaultResolutionFor) start fullscreen instead, its own 1280 x 800 screen, at the same 2x (the PS2's 448 lines drawn at 896)
+constexpr Resolution PcDefaults = {2, 1280, 720, false};
+
+Resolution Defaults()
+{
+    return DefaultResolutionFor(Native::SteamDeckModel() != nullptr);
+}
 
 bool g_Known = false;
-Resolution g_Current = Defaults;
+Resolution g_Current = PcDefaults;
 // The log's changes (LogResolutionChanges): the resolution it last gave (the start's, then each change's), and whether it changed
-Resolution g_Logged = Defaults;
+Resolution g_Logged = PcDefaults;
 bool g_LoggedKnown = false;
 bool g_ChangeDue = false;
 
@@ -70,7 +76,7 @@ bool ReadSaved(Resolution* resolution)
         return false;
     }
 
-    Resolution read = Defaults;
+    Resolution read = Defaults();
     bool any = false;
     std::string line;
     while (std::getline(file, line))
@@ -121,9 +127,16 @@ void Save(const Resolution& resolution)
 }
 }
 
+Resolution DefaultResolutionFor(bool steamDeck)
+{
+    Resolution defaults = PcDefaults;
+    defaults.fullscreen = steamDeck;
+    return defaults;
+}
+
 Resolution DefaultResolution()
 {
-    return Defaults;
+    return Defaults();
 }
 
 Resolution CurrentResolution()
@@ -147,8 +160,8 @@ Resolution CurrentResolution()
                 NativeGraphicsGetResolution(&scale, &width, &height, &fullscreen);
             }
 
-            g_Current = {ChoiceScale(scale), width > 0 ? width : Defaults.windowWidth,
-                         height > 0 ? height : Defaults.windowHeight, fullscreen};
+            g_Current = {ChoiceScale(scale), width > 0 ? width : PcDefaults.windowWidth,
+                         height > 0 ? height : PcDefaults.windowHeight, fullscreen};
         }
 
         g_Known = true;
@@ -298,7 +311,7 @@ void ApplySavedResolution()
     Resolution saved;
     if (!ReadSaved(&saved))
     {
-        saved = Defaults;
+        saved = Defaults();
     }
 
     g_Current = saved;
@@ -328,7 +341,7 @@ void LogResolution()
     bool there = ReadSaved(&saved);
     if (!there)
     {
-        saved = Defaults;
+        saved = Defaults();
     }
 
     char window[48];

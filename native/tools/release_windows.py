@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
-"""A release of the Windows build (native/WINDOWS.md, "Releasing") in two steps, each summed up in a few lines. Run it in a
-clone of the public repository with no changes of its own, so nothing local gets into the build.
+"""A release of the Windows build and the Linux AppImage (native/WINDOWS.md, "Releasing") in two steps, each summed up in a few
+lines. Run it in a clone of the public repository with no changes of its own, so nothing local gets into the build.
 
-    .venv\\Scripts\\python.exe native\\tools\\release_windows.py check [--sweep]
+    .venv\\Scripts\\python.exe native\\tools\\release_windows.py check [--sweep] [--no-linux]
     .venv\\Scripts\\python.exe native\\tools\\release_windows.py publish NOTES.md [--preview]
 
 check: pulls (fast-forward only), configures and builds afresh (build_windows.py --configure), packages (package_windows.py),
 then checks the zip, unpacked: the program's version against native/CMakeLists.txt's, its company and copyright against
 native/windows.rc.in's, that it has nothing of a player's (portable mode's portable.txt or User folder, a disc image), the DLLs
 it imports, its files against the last release's, that the program has no 32-byte block of the game executable's data or VU microcode the last release's didn't,
-and check_windows.py's checks with the pictures compared with the last release's program. It prints the commit, the version and
-the zip's SHA-256, and keeps them for publish (build/native/release/release.json).
+and check_windows.py's checks with the pictures compared with the last release's program. Then the AppImage, made in Docker
+(build_linux_docker.py --configure --check: Docker has to be running) and checked there by check_linux.py (its libraries, the
+glibc it needs, its version, the beach played from it headless), and its program searched for the game's bytes as the zip's
+is (none the Windows program of the same commit or the last release's hasn't). --no-linux leaves the AppImage out of the
+release (said so in the result). It prints the commit, the version and the files' SHA-256, and keeps them for publish
+(build/native/release/release.json).
 
 publish: the release vVERSION on GitHub (a preview with --preview, as every release before 1.0.8 was), its text NOTES.md with
-{commit} and {sha256} filled in; the zip uploaded, then downloaded back and its SHA-256 compared. Only after check, at the same
-commit, with the same zip. GitHub's token is git's (git credential fill): never printed or kept.
+{commit}, {sha256} (the zip's) and {sha256_linux} (the AppImage's) filled in; the zip and the AppImage uploaded, then
+downloaded back and their SHA-256 compared. Only after check, at the same commit, with the same files. GitHub's token is git's
+(git credential fill): never printed or kept.
 """
 import argparse
 import hashlib
@@ -41,6 +46,11 @@ WORK = HERE / "build" / "native" / "release"
 ZIP_NAME = "Crash-Twinsanity-Windows.zip"
 ZIP = HERE / "build" / "native" / "dist" / ZIP_NAME
 PROGRAM = "Crash Twinsanity/CrashTwinsanity.exe"
+# The AppImage (build_linux_docker.py's) and its program as the checks copy it out
+LINUX = HERE / "build" / "native" / "linux"
+APPIMAGE_NAME = "Crash-Twinsanity-Linux-x86_64.AppImage"
+APPIMAGE = LINUX / APPIMAGE_NAME
+LINUX_PROGRAM = LINUX / "crash-twinsanity"
 # The DLLs the program may import: Windows' own (the UCRT's API sets among them), SDL and FFmpeg's, which the zip has
 ALLOWED_IMPORTS = re.compile(r"^(KERNEL32|WINMM|SDL3|avcodec-\d+|avutil-\d+|api-ms-win-crt-[a-z]+-l1-1-0)\.dll$", re.I)
 # The retail executable's sections whose bytes the program mustn't carry (native/WINDOWS.md, "The game's data from the disc")
@@ -233,12 +243,46 @@ def check(arguments):
           f"{len(new)} not in the last release's{': FAILED' if new else ''}")
     failed |= bool(new)
 
+    linux = None
+    if arguments.no_linux:
+        print("linux           left out (--no-linux): the release has no AppImage")
+    else:
+        failed |= not linux_check(wanted, retail, found | (theirs.result()[1] if theirs else set()))
+        linux = sha256(APPIMAGE) if APPIMAGE.exists() else None
+
     digest = sha256(ZIP)
-    (WORK / "release.json").write_text(json.dumps({"version": wanted, "commit": commit, "sha256": digest}, indent=1))
+    (WORK / "release.json").write_text(json.dumps({"version": wanted, "commit": commit, "sha256": digest,
+                                                   "sha256_linux": linux}, indent=1))
     print(f"zip             {ZIP} ({ZIP.stat().st_size / 1e6:.1f} MB)")
     print(f"sha-256         {digest}")
+    if linux:
+        print(f"appimage        {APPIMAGE} ({APPIMAGE.stat().st_size / 1e6:.1f} MB)")
+        print(f"sha-256         {linux}")
     print("result          " + ("FAILED: don't publish" if failed else f"ready: release_windows.py publish NOTES.md"))
     sys.exit(1 if failed else 0)
+
+
+def linux_check(wanted, retail, windows_blocks):
+    """The AppImage made and checked in Docker (build_linux_docker.py), its lines printed as "linux ..."; its program's blocks
+    of the game's against the Windows program's (this commit's and the last release's). True when all passed"""
+    for stale in (APPIMAGE, LINUX_PROGRAM):
+        if stale.exists():
+            stale.unlink()
+    command = [sys.executable, str(TOOLS / "build_linux_docker.py"), "--configure", "--check", "--iso", check_windows.disc_image(),
+               "--version", wanted, "--out", str(LINUX)]
+    result = subprocess.run(command, cwd=HERE, capture_output=True, text=True)
+    (WORK / "linux.txt").write_text(result.stdout + result.stderr)
+    for line in result.stdout.splitlines():
+        print(f"linux {line}")
+    if result.returncode != 0 or not APPIMAGE.exists() or not LINUX_PROGRAM.exists():
+        last = (result.stderr.strip().splitlines() or ["no AppImage"])[-1]
+        print(f"linux           FAILED: {last} (build_linux_docker.py; --no-linux releases without it)")
+        return False
+    checked, found = game_blocks_in(LINUX_PROGRAM, retail)
+    new = found - windows_blocks
+    print(f"linux game's    {len(found)} of the executable's {checked} blocks in the Linux program, {len(new)} not in the "
+          f"Windows program's{': FAILED' if new else ''}")
+    return not new
 
 
 def token():
@@ -254,6 +298,9 @@ def publish(arguments):
     checked = json.loads((WORK / "release.json").read_text()) if (WORK / "release.json").exists() else None
     if not checked or checked["commit"] != git("rev-parse", "HEAD") or checked["sha256"] != sha256(ZIP):
         sys.exit("Run check first: the commit or the zip isn't the one it checked")
+    linux = checked.get("sha256_linux")
+    if linux and (not APPIMAGE.exists() or sha256(APPIMAGE) != linux):
+        sys.exit("Run check first: the AppImage isn't the one it checked")
     tag, slug, secret = f"v{checked['version']}", repository(), token()
     try:
         api(f"https://api.github.com/repos/{slug}/commits/{checked['commit']}", secret)
@@ -262,25 +309,35 @@ def publish(arguments):
     if any(release["tag_name"] == tag for release in api(f"https://api.github.com/repos/{slug}/releases", secret)):
         sys.exit(f"{tag} is released already")
     notes = Path(arguments.notes).read_text(encoding="utf-8")
+    if "{sha256_linux}" in notes and not linux:
+        sys.exit("The notes name the AppImage's SHA-256, and check left the AppImage out (--no-linux)")
     notes = notes.replace("{commit}", checked["commit"][:7]).replace("{sha256}", checked["sha256"])
+    notes = notes.replace("{sha256_linux}", linux or "")
     name = f"Crash Twinsanity for Windows {checked['version']}" + (" (preview)" if arguments.preview else "")
     # The release opens its own discussion (Discussions > Announcements), where players can talk about it
     body = {"tag_name": tag, "target_commitish": checked["commit"], "name": name, "body": notes,
             "prerelease": arguments.preview, "draft": False, "discussion_category_name": "Announcements"}
     release = api(f"https://api.github.com/repos/{slug}/releases", secret, json.dumps(body).encode(), method="POST")
-    upload = release["upload_url"].split("{")[0] + f"?name={ZIP_NAME}"
-    asset = api(upload, secret, ZIP.read_bytes(), "application/zip", method="POST")
-    download(asset["browser_download_url"], WORK / "downloaded.zip")
-    same = sha256(WORK / "downloaded.zip") == checked["sha256"]
     print(f"release         {release['html_url']}")
-    print(f"download        {'the same SHA-256 as the zip checked' if same else 'FAILED: its SHA-256 differs'}")
-    sys.exit(0 if same else 1)
+    files = [(ZIP_NAME, ZIP, "application/zip", checked["sha256"])]
+    files += [(APPIMAGE_NAME, APPIMAGE, "application/octet-stream", linux)] if linux else []
+    all_same = True
+    for name, path, kind, digest in files:
+        upload = release["upload_url"].split("{")[0] + f"?name={name}"
+        asset = api(upload, secret, path.read_bytes(), kind, method="POST")
+        download(asset["browser_download_url"], WORK / f"downloaded-{name}")
+        same = sha256(WORK / f"downloaded-{name}") == digest
+        all_same &= same
+        print(f"download        {name}: {'the same SHA-256 as the file checked' if same else 'FAILED: its SHA-256 differs'}")
+    sys.exit(0 if all_same else 1)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     steps = parser.add_subparsers(dest="step", required=True)
-    steps.add_parser("check").add_argument("--sweep", action="store_true", help="every level chunk too (some 20 minutes)")
+    checking = steps.add_parser("check")
+    checking.add_argument("--sweep", action="store_true", help="every level chunk too (some 20 minutes)")
+    checking.add_argument("--no-linux", action="store_true", help="no AppImage (when Docker isn't there): the zip alone")
     publishing = steps.add_parser("publish")
     publishing.add_argument("notes", help="the release's text: {commit} and {sha256} are filled in")
     publishing.add_argument("--preview", action="store_true", help="a preview (GitHub's pre-release), not the latest release")

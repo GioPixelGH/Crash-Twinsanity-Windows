@@ -861,7 +861,7 @@ commands' pair never does).
 
 In a clone of the public repository with no changes of its own (a new script in native/tools aside):
 
-    .venv\Scripts\python.exe native\tools\release_windows.py check [--sweep]
+    .venv\Scripts\python.exe native\tools\release_windows.py check [--sweep] [--no-linux]
     .venv\Scripts\python.exe native\tools\release_windows.py publish NOTES.md [--preview]
 
 `check` pulls (and runs again when that brought a commit, so its checks are the pulled commit's), builds afresh
@@ -872,11 +872,17 @@ them: the DLLs keep their authors'); nothing of a player's (portable.txt, a User
 check_windows.py's checks, with the pictures compared with the last release's program; and that the program has no 32-byte block
 of the game executable's data or VU microcode the last release's didn't (version 1.0.5 has 23 of the 3,832 that aren't
 repetitive, none of the microcode: runs of small integers, the standard library's tables, powers of ten and digits, and file
-names the decompilation's C++ spells out). It prints the commit and the zip's SHA-256. `publish` makes the release (`vVERSION`;
-with `--preview` a preview, GitHub's pre-release, as every release before 1.0.8 was) from NOTES.md with `{commit}` and
-`{sha256}` filled in, opens its discussion (Discussions > Announcements, where players can talk about it), uploads the zip,
-downloads it back and compares its SHA-256: only with the commit and the zip `check` checked, once that commit is on GitHub.
-GitHub's token is git's (`git credential fill`), never printed or kept.
+names the decompilation's C++ spells out). Then, since 1.2.0, the Linux AppImage (native/LINUX.md, "In Docker"; Docker
+Desktop has to be running): built afresh in Docker (`build_linux_docker.py --configure`) and checked there
+(`check_linux.py`: it holds SDL3 and FFmpeg's two libraries and loads nothing else but what every Linux has, the glibc it needs,
+its version, and the beach played from it for 20 seconds, headless on Xvfb with Mesa, the disc image mounted read-only), its
+program searched for the game's blocks as the zip's is (none the Windows program of the same commit or the last release's
+hasn't). Its lines start with `linux`; `--no-linux` releases the zip alone, when Docker isn't there. It prints the commit and
+both files' SHA-256. `publish` makes the release (`vVERSION`; with `--preview` a preview, GitHub's pre-release, as every
+release before 1.0.8 was) from NOTES.md with `{commit}`, `{sha256}` (the zip's) and `{sha256_linux}` (the AppImage's) filled
+in, opens its discussion (Discussions > Announcements, where players can talk about it), uploads the zip and the AppImage,
+downloads them back and compares their SHA-256: only with the commit and the files `check` checked, once that commit is on
+GitHub. GitHub's token is git's (`git credential fill`), never printed or kept.
 
 No commit has the game's files: `native/tools/check_game_data.py` refuses the executable, the disc's and the archive's files,
 disc images, splat's output, texture packs and PCSX2's states, cards and BIOS, by name, folder, first bytes or size. The

@@ -382,8 +382,10 @@ bool ChoicesChanged(s32 scaleChoice, s32 displayChoice);
 // by the player's own choice)
 void ApplySavedResolution();
 // The defaults, the first start's and the display settings' reset alike: 2x the PS2's picture (1280 x 1024: sharp on a modern
-// screen, light on a laptop's graphics) in a 1280 x 720 window (16:9 like the widescreen default, and it fits a 1366 x 768 laptop)
+// screen, light on a laptop's graphics) in a 1280 x 720 window (16:9 like the widescreen default, and it fits a 1366 x 768 laptop);
+// on a Steam Deck (Native::SteamDeckModel) fullscreen, its 1280 x 800 screen, at 2x too
 Resolution DefaultResolution();
+Resolution DefaultResolutionFor(bool steamDeck);
 
 
 // ---------------------------------------------------------------------------------------------------------- the native options

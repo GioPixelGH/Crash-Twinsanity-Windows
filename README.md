@@ -29,12 +29,16 @@ Windows needs, makes it run at a steady 60 fps, and fixes the crashes found by p
 The [latest release](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases/latest) has
 `Crash-Twinsanity-Windows.zip` for 64-bit Windows 10 and 11: unzip it anywhere, run `CrashTwinsanity.exe` in the
 `Crash Twinsanity` folder and pick your disc image. Version 1.0.8 is the first full release, now that the game has been
-played from the start to the credits; the ones before were previews. Linux has no download yet: build it yourself
-([native/LINUX.md](native/LINUX.md)).
+played from the start to the credits; the ones before were previews.
+
+For Linux and the Steam Deck, since 1.2.0 the release also has `Crash-Twinsanity-Linux-x86_64.AppImage`: mark it executable
+and run it (64-bit Linux with glibc 2.38 or later: Ubuntu 24.04, Linux Mint 22, Debian 13, Fedora 39, Arch and later ones).
+How to add it to a Steam Deck as a non-Steam game is in [native/LINUX.md](native/LINUX.md); it hasn't been tried on a Deck
+yet, so **testers are wanted**.
 
 ### Requirements
 
-- 64-bit Windows 10 or 11.
+- 64-bit Windows 10 or 11 (or 64-bit Linux, for the AppImage).
 - A graphics card with OpenGL 3.3 (any from the last ten years).
 - A disc image of **your own** PAL copy of the game (Europe/Australia, SLES-52568), as an `.iso` (or `.bin`/`.img`).
 - A keyboard and mouse, or a controller: Xbox, PlayStation, Switch and most others work out of the box.
@@ -43,15 +47,15 @@ played from the start to the credits; the ones before were previews. Linux has n
 
 ## Is it safe?
 
-- The zip holds only the program built from this repository's code, the SDL 3 and FFmpeg libraries, two fonts and the
-  licences. There's no installer.
+- The zip (and the Linux AppImage) holds only the program built from this repository's code, the SDL 3 and FFmpeg
+  libraries, the fonts and the licences. There's no installer.
 - The program connects to the internet for one thing only, and only if you turn it on: **Check for updates** (Options >
   Gameplay, off by default). Then, at each start, it asks GitHub once which version of this port is the latest (one request
   to `api.github.com` for this repository's latest release: no personal data, no account), and the menu tells you when
   there's a newer one. It never downloads, installs or runs anything: you update by downloading the zip yourself. With the
-  option off, the program makes no network connection at all.
-- The release page shows the zip's SHA-256, so you can check your download with `Get-FileHash`. Here is
-  [VirusTotal's report on 1.0.12's download](https://www.virustotal.com/gui/url/6ed9050e25993157d30ef77a69c4b7e7aba61368c9669caca1caf95553cd1e90/detection).
+  option off, the program makes no network connection at all. The Linux AppImage has no update check: it never connects.
+- The release page shows the files' SHA-256, so you can check your download with `Get-FileHash` (or `sha256sum` on Linux).
+  Here is [VirusTotal's report on 1.0.12's download](https://www.virustotal.com/gui/url/6ed9050e25993157d30ef77a69c4b7e7aba61368c9669caca1caf95553cd1e90/detection).
 - The program isn't code-signed, so Windows may say "Windows protected your PC" the first time: choose **More info**, then
   **Run anyway**.
 - You can also build it yourself (below).
@@ -71,8 +75,9 @@ More in [SECURITY.md](.github/SECURITY.md), including how to report a security p
   23 can't be started on their own, because they are parts of hubs or tunnels only entered from a neighbouring area.
 - **Known issue:** a cutscene in the level after the caverns (Cortex running with the bees) froze once when it was played
   again after dying, in an early version. It hasn't happened since 1.0.3, and it was never reproduced.
-- **Linux:** builds and plays on x86-64 (tried on Debian 13), and packs into an AppImage: see
-  [native/LINUX.md](native/LINUX.md).
+- **Linux:** an AppImage in each release since 1.2.0, built in Docker on Ubuntu 24.04 and started by the release's checks
+  (the beach played from it); it builds and plays on x86-64 (tried on Debian 13). The Steam Deck starts it fullscreen on its
+  1280 x 800 screen, but it hasn't been tried on a Deck yet: testers wanted. See [native/LINUX.md](native/LINUX.md).
 - **macOS:** the platform code is HAB3X's and the Windows changes are kept apart (`_WIN32`), but this fork isn't built or
   tested on macOS.
 
@@ -173,6 +178,8 @@ off until you turn them on.
 - [x] A drop shadow under you in the air, and your shadow on crates, as game options ([#11], [#35]).
 - [x] Fewer pauses when you reach a new area ([#23]): the graphics' shaders are made when the game starts instead of the
   first time something needs them, and the log says where a slow frame's time went.
+- [x] A Linux download ([#34]): an AppImage beside the Windows zip, and the Steam Deck's defaults (fullscreen on its screen,
+  the Xbox's button prompts) with the steps to add it as a non-Steam game. Steam Deck testers wanted.
 - [ ] Better speed on older PCs ([#23], [#12]): since 1.1.0 the render thread, measured as the limit there, is about a
   quarter lighter and VU1's thread about a tenth; more needs deeper changes to the renderer.
 - [ ] Achievements in the game, kept on your PC (RetroAchievements doesn't award them for ports).
@@ -199,6 +206,7 @@ differences as options on the PAL game ([#14]), the port's own texts in Brazilia
 [#30]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/30
 [#32]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/32
 [#33]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/33
+[#34]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/34
 [#35]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/35
 [#36]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/36
 
