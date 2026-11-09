@@ -388,6 +388,8 @@ and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). HAB3X's native layer: [native/NA
 
 ![dungeon](docs/screenshots/dungeon.jpg)
 
+*On 1.2.0. Screenshot by [NormanTheFox](https://github.com/NormanTheFox), thank you!*
+
 ## Credits
 
 **Upstream projects (most of the work):**
