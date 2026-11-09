@@ -1,0 +1,59 @@
+name: Graphics
+description: Something is drawn wrong (textures, characters, lines, colours, missing objects)
+labels: ["graphics"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! A screenshot of the problem is the most useful part of this report, and one of the same place
+        from the PS2 or PCSX2 even more. Please never attach your disc image or the game's files.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The release you're playing. The first line of log.txt names it.
+      placeholder: "1.2.0"
+    validations:
+      required: true
+  - type: input
+    id: pc
+    attributes:
+      label: PC
+      description: Windows or Linux version, graphics card and its driver's version.
+      placeholder: "Windows 11, NVIDIA GeForce GTX 1650, driver 581.57"
+  - type: textarea
+    id: what
+    attributes:
+      label: What is drawn wrong
+      description: Attach a screenshot or a video, and say what it should look like.
+    validations:
+      required: true
+  - type: textarea
+    id: where
+    attributes:
+      label: Where and when
+      description: >-
+        The level or area, and whether it's wrong from the start or after something (another level played before, a
+        cutscene, a resolution change).
+      placeholder: "Ant Agony, the metal doors: right at first, streaked after walking on"
+  - type: textarea
+    id: options
+    attributes:
+      label: Your settings
+      description: >-
+        Resolution, anti-aliasing, filtering, dithering, draw distance, texture pack and mods. Whether it also happens at 1x,
+        or with the texture pack and the mods off, helps a lot.
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: >-
+        Drag log.txt here from %APPDATA%\Crash Twinsanity\ (paste that path in the Explorer's address bar; on Linux
+        ~/.config/crash-twinsanity). It names your graphics card and driver.
+  - type: checkboxes
+    id: copy
+    attributes:
+      label: Your copy of the game
+      options:
+        - label: I'm playing with a disc image of my own PAL copy of Crash Twinsanity (SLES-52568).
+          required: true

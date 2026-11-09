@@ -1,0 +1,62 @@
+name: Performance
+description: The game runs below 60 fps, stutters or pauses
+labels: ["performance"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! The log says where each frame's time goes, so it's the most useful part of this report.
+        Please never attach your disc image or the game's files.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The release you're playing. The first line of log.txt names it.
+      placeholder: "1.2.0"
+    validations:
+      required: true
+  - type: input
+    id: pc
+    attributes:
+      label: PC
+      description: Windows or Linux version, processor, memory and graphics card.
+      placeholder: "Windows 10, Intel Core i5-2520M, 8 GB, NVIDIA NVS 4200M"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What you see
+      description: >-
+        The frame rate you get (Options > Display > Show FPS), and whether it's slow all the time or pauses now and then.
+    validations:
+      required: true
+  - type: textarea
+    id: where
+    attributes:
+      label: Where
+      description: The level or area, and what happens on screen when it gets slow.
+  - type: textarea
+    id: options
+    attributes:
+      label: Your settings
+      description: >-
+        Resolution, anti-aliasing, draw distance, refresh rate and v-sync, texture pack and mods. Whether it gets better at
+        1x with anti-aliasing off helps too.
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: >-
+        Drag log.txt here from %APPDATA%\Crash Twinsanity\ (paste that path in the Explorer's address bar; on Linux
+        ~/.config/crash-twinsanity), after playing a few minutes where it's slow. Its "performance" lines say how long the
+        game, the graphics and the graphics card take for a frame, and its "slow frame" lines what a pause waited for.
+    validations:
+      required: true
+  - type: checkboxes
+    id: copy
+    attributes:
+      label: Your copy of the game
+      options:
+        - label: I'm playing with a disc image of my own PAL copy of Crash Twinsanity (SLES-52568).
+          required: true
