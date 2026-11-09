@@ -5,6 +5,8 @@
 Crash Twinsanity (PlayStation 2, PAL) running natively on 64-bit Windows and Linux, without an emulator.
 
 [![Latest release](https://img.shields.io/github/v/release/GioPixelGH/Crash-Twinsanity-Windows?style=flat-square)](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/GioPixelGH/Crash-Twinsanity-Windows/total?style=flat-square)](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases)
+[![Discussions](https://img.shields.io/github/discussions/GioPixelGH/Crash-Twinsanity-Windows?style=flat-square)](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/discussions)
 [![Licence: MIT for the port's changes](https://img.shields.io/badge/licence-MIT%20%28the%20port%27s%20changes%29-blue?style=flat-square)](#licence)
 ![Platform](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20Linux%20x64-blue?style=flat-square)
 
@@ -13,6 +15,10 @@ This is a Windows port of [HAB3X's Crash Twinsanity for Mac](https://github.com/
 [Smartkin's complete C++ decompilation of the game](https://github.com/Smartkin/twinsanity-reversed) on a native platform layer
 (SDL3, an OpenGL renderer for the PS2's graphics, sound, movies, saves and a new options screen). This repository adds what
 Windows needs, makes it run at a steady 60 fps, and fixes the crashes found by playing it.
+
+[Download](#download) · [Is it safe?](#is-it-safe) · [Status](#status) · [Known issues](#known-issues) ·
+[If something goes wrong](#if-something-goes-wrong) · [What this port adds](#what-this-port-adds) · [Roadmap](#roadmap) ·
+[Building](#building-on-windows) · [Credits](#credits)
 
 </div>
 
@@ -29,10 +35,11 @@ Windows needs, makes it run at a steady 60 fps, and fixes the crashes found by p
 
 The [latest release](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases/latest) has
 `Crash-Twinsanity-Windows.zip` for 64-bit Windows 10 and 11: unzip it anywhere, run `CrashTwinsanity.exe` in the
-`Crash Twinsanity` folder and pick your disc image. Version 1.0.8 is the first full release, now that the game has been
-played from the start to the credits; the ones before were previews.
+`Crash Twinsanity` folder and pick your disc image.
 
-For Linux and the Steam Deck, since 1.2.0 the release also has `Crash-Twinsanity-Linux-x86_64.AppImage`: mark it executable
+### Linux and the Steam Deck
+
+Since 1.2.0 the release also has `Crash-Twinsanity-Linux-x86_64.AppImage`: mark it executable
 and run it (64-bit Linux with glibc 2.38 or later: Ubuntu 24.04, Linux Mint 22, Debian 13, Fedora 39, Arch and later ones;
 on older ones, such as Ubuntu 22.04, Debian 12 and Linux Mint 21, LINUX.md explains how to build it yourself). How to add it
 to a Steam Deck as a non-Steam game is in [native/LINUX.md](native/LINUX.md); it hasn't been tried on a Deck yet, so
@@ -77,8 +84,6 @@ More in [SECURITY.md](.github/SECURITY.md), including how to report a security p
 - **All 131 of the game's areas were tried** with scripted input for 30 seconds each, with no unexpected crash
   ([native/sweep/results_windows.md](native/sweep/results_windows.md)). 108 played (7 of them until a game over); the other
   23 can't be started on their own, because they are parts of hubs or tunnels only entered from a neighbouring area.
-- **Known issue:** a cutscene in the level after the caverns (Cortex running with the bees) froze once when it was played
-  again after dying, in an early version. It hasn't happened since 1.0.3, and it was never reproduced.
 - **Linux:** an AppImage in each release since 1.2.0, built in Docker on Ubuntu 24.04 and started by the release's checks
   (the beach played from it); it builds and plays on x86-64 (tried on Debian 13). The Steam Deck starts it fullscreen on its
   1280 x 800 screen, but it hasn't been tried on a Deck yet: testers wanted. See [native/LINUX.md](native/LINUX.md).
@@ -86,6 +91,42 @@ More in [SECURITY.md](.github/SECURITY.md), including how to report a security p
   tested on macOS.
 
 ![beach](docs/screenshots/beach_play.jpg)
+
+## Known issues
+
+- **The North American disc isn't accepted yet** ([#14]): the game says the disc image isn't the PAL release and asks for
+  another. It's on the [roadmap](#roadmap).
+- **Older PCs can run well below 60 fps** ([#23], [#39]): the PS2's graphics are emulated on the processor, which costs a lot
+  on older ones (a two-core laptop processor from 2011 ran it at 18 fps). A faster renderer, as an option, is on the roadmap.
+- **A black screen at start on a few AMD PCs** ([#16]). It doesn't happen on the PC the port is tested on: a log from an
+  affected PC helps.
+- **Aku Aku disappearing in two cutscenes** ([#18]), by Cavern Catastrophe's excavator and at Dingodile's house: not solved
+  yet.
+- **The Steam Deck hasn't been tried** ([#34]): testers wanted.
+
+## If something goes wrong
+
+| Problem | What to do |
+| --- | --- |
+| Windows says "Windows protected your PC" | The program isn't code-signed: choose **More info**, then **Run anyway**. |
+| The game asks for the disc image again | It was moved or renamed: pick it again. To use another one, delete `disc_image.txt` from the settings folder (below). |
+| The game refuses the disc image | It takes only the PAL disc (SLES-52568), or a translated or modded copy of it. The North American disc isn't accepted yet ([#14]). |
+| A black screen at start | Update the graphics card's driver. If it stays black, attach `log.txt` on [#16]. |
+| Below 60 fps | In Options > Display set Resolution to 1x, Draw distance to short and Anti-aliasing off. Then attach `log.txt` on [#23]: its performance lines say where each frame's time goes. |
+| A pause when a new area appears | The first start after a graphics driver update takes a little longer, while the game prepares its shaders. If the game still pauses while playing, the log's `slow frame` lines say what it waited for: attach `log.txt`. |
+| Sounds or a level wrong with mods on | Turn the mods off in Options > Mods: it applies from the next start. Saves made with mods are on a memory card of their own, so yours come back as soon as all mods are off. |
+
+**Before you report a bug:** use the [latest release](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases/latest),
+search the [issues](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues?q=is%3Aissue) first, and attach `log.txt`.
+After a crash or a freeze, start the game again and attach `log.previous.txt` too: that's the run that went wrong. For a bug
+you can repeat, turn on **Options > Gameplay > Detailed log** first. Say where in the game it happened, and add a screenshot or
+a video if you can. Never attach your disc image or the game's files. Questions and help are welcome in the
+[Discussions](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/discussions).
+
+**Where your saves and settings are:** saves, options, controls, mods, texture packs and `log.txt` are all in
+`%APPDATA%\Crash Twinsanity\` (paste that in the Explorer's address bar), `~/.config/crash-twinsanity` on Linux, or, with
+**Options > Gameplay > Portable mode** on, in the `User` folder beside the program. To uninstall, delete the game's folder and
+that one. The [players' guide](native/PLAYING_WINDOWS.md#where-things-are) lists every file.
 
 ## What this port adds
 
@@ -371,6 +412,8 @@ Bug reports, suggestions and pull requests are welcome: see [CONTRIBUTING.md](.g
 | [stb_truetype](https://github.com/nothings/stb) (one fix of ours, marked in the file) | public domain or MIT |
 | [Luckiest Guy](https://fonts.google.com/specimen/Luckiest+Guy) | Apache 2.0 |
 | [Fredoka](https://fonts.google.com/specimen/Fredoka) | SIL Open Font Licence 1.1 |
+
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) says where each licence's text is, SMAA's and TwinsanityEvolved's too.
 
 **The icon** is our own drawing (`native/tools/draw_icon.py` draws it), under this repository's licence.
 
