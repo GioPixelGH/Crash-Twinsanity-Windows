@@ -9,6 +9,12 @@ bool NativeGame::InfiniteLives()
     return NativeUi::IsOn(NativeUi::OptionInfiniteLives);
 }
 
+// The automatic camera
+bool NativeGame::AutoCamera()
+{
+    return NativeUi::IsOn(NativeUi::OptionAutoCamera);
+}
+
 // The stronger Aku Aku mask
 bool NativeGame::StrongMask()
 {
