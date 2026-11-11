@@ -112,6 +112,7 @@ non-Steam game. Nobody has tried it on a Deck yet, so **testers are wanted** ([#
 - Skip cutscenes, now including many that had no skip ([#28]).
 - Infinite lives.
 - A stronger Aku Aku: one or two masks protect you from TNT and Nitro ([#30]).
+- An automatic camera: the camera swings behind you by itself and the camera controls turn nothing.
 - The slide's long jump at any moment, or an easier one ([#11], [#35]).
 - Level select. Its saves are kept apart from yours.
 - A speedrun timer.

@@ -143,6 +143,8 @@ The volumes are in **Audio**.
 
 - **Infinite lives**: dying costs no life.
 - **Stronger Aku Aku**: with one or two masks, TNT and Nitro take a mask instead of a life, as in the earlier Crash games.
+- **Automatic camera**: the camera swings behind you by itself while you move, and the camera stick, the mouse and the camera
+  keys turn nothing. Off is the original's free camera. A level's own fixed cameras still work as they did.
 - **Slide jump**: the long jump from a slide at any moment of it. Or easier: also just after the slide, and steered in the
   air.
 - **Drop shadow**: a round shadow under you while you're in the air, so you see where you'll land.

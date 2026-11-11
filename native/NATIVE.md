@@ -254,6 +254,12 @@ leaving a save the game couldn't have made itself (`src/platform/native/gameopti
   takes the played character's mask as any hit does (one hit point: hit points are 1 + the masks) instead of dealing 100, and
   the invincibility of three masks or the blink after a hit keeps explosions out (`CharacterAgent::Contact`; the bug fixes'
   community change does that last part for everyone). Not under the bug fixes: the original game means explosions to kill.
+- The automatic camera (`auto_camera`): in `FollowCameraRig::Frame` (`followrig.cpp`) the look axes' yaw and pitch input are
+  zero whatever the stick, the mouse or the camera keys give (the zoom stays), they count as let go for the "camera still"
+  test, and while the character moves the yaw's swing behind it runs as the shoulders' press has it (`yaw.rateScale` 1: the
+  game's own turn to the character's back, at twice the speed). Nothing else of the camera changes, so a level's own camera
+  (cutscenes, fixed ones) is as before. Off, the code does what it did. Checked: the settings' descriptions still fit a line
+  (the `ui` self-test) and played by hand: the look controls turn nothing and the camera comes behind the character.
 - The slide jump (`slide_jump`, #11, #35): original (0: the long jump only once the slide's steering is over,
   `CrouchController::Slide`'s `mayJump`), any moment (1: from its first moment too) or easier (2: any moment, the jump pressed
   within a quarter second of getting up from the slide still the slide's (`JumpController::Grounded`), steered in the air at a

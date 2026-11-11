@@ -449,6 +449,8 @@ void Build()
     gameplay.push_back(Toggle(TextInfiniteLives, TextDescInfiniteLives, OptionInfiniteLives));
     // The stronger Aku Aku mask (THE LIST 10, #30)
     gameplay.push_back(Toggle(TextStrongMask, TextDescStrongMask, OptionStrongMask));
+    // The automatic camera: free (0) or behind the character by itself (1)
+    gameplay.push_back(Toggle(TextAutoCamera, TextDescAutoCamera, OptionAutoCamera));
     // The slide jump (THE LIST 11, #11, #35): original, any moment, easier
     gameplay.push_back(OptionChoice(TextSlideJump, TextDescSlideJump, OptionSlideJump,
                                     {TextDistanceOriginal, TextSlideJumpAnyMoment, TextSlideJumpEasier}));
@@ -1047,6 +1049,7 @@ void ResetTab(u32 tab)
         ResetOptions({OptionUpdateCheck});
         ResetOptions({OptionInfiniteLives});
         ResetOptions({OptionStrongMask});
+        ResetOptions({OptionAutoCamera});
         ResetOptions({OptionSlideJump});
         ResetOptions({OptionDropShadow});
         ResetOptions({OptionShadowsOnCrates});

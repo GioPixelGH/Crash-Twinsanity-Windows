@@ -14,6 +14,7 @@
 
 #ifdef TWIN_NATIVE
 #include "fixes.h"
+#include "gameoptions.h"
 #include "ui/nativeui.h"
 #endif
 
@@ -274,6 +275,12 @@ void FollowCameraRig::Frame(TimeClock* clock, CharacterAgent* character)
 #ifdef TWIN_NATIVE
         // The camera speed setting, and the mouse turning it faster than the stick's full deflection (ui/bindings.cpp)
         NativeUi::ScaleCameraTurn(&positioner.yaw.input, &positioner.pitch.input, positioner.yaw.current, clock->time);
+        // The automatic camera: the look stick and the mouse turn nothing (the zoom stays)
+        if (NativeGame::AutoCamera())
+        {
+            positioner.yaw.input = 0.0f;
+            positioner.pitch.input = 0.0f;
+        }
 #endif
     }
     else
@@ -285,6 +292,15 @@ void FollowCameraRig::Frame(TimeClock* clock, CharacterAgent* character)
 
     bool still = __builtin_fabsf(axes[AxisLookY]) <= Epsilon && __builtin_fabsf(axes[AxisLookX]) <= Epsilon &&
                  __builtin_fabsf(axes[AxisZoom]) <= Epsilon;
+#ifdef TWIN_NATIVE
+    // The automatic camera: the look axes count as let go (the game's own swing behind the character and its triggers' values
+    // work as they do with the stick untouched)
+    const bool autoCamera = NativeGame::AutoCamera();
+    if (autoCamera)
+    {
+        still = __builtin_fabsf(axes[AxisZoom]) <= Epsilon;
+    }
+#endif
     if (still)
     {
         positioner.bits.stickTurning = 0;
@@ -304,6 +320,13 @@ void FollowCameraRig::Frame(TimeClock* clock, CharacterAgent* character)
     {
         positioner.yaw.rateScale = pressures[PressureShoulders];
     }
+#ifdef TWIN_NATIVE
+    else if (autoCamera)
+    {
+        // The automatic camera: while the character moves the shoulders' swing behind it, as if they were held
+        positioner.yaw.rateScale = 1.0f;
+    }
+#endif
 
     positioner.distance.rateScale = pressures[PressureDistance];
     FollowRide(character);
