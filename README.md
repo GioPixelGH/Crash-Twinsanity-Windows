@@ -10,9 +10,9 @@
 [![Licence: MIT for the port's changes](https://img.shields.io/badge/licence-MIT%20%28the%20port%27s%20changes%29-blue?style=flat-square)](#licence)
 ![Platform](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20Linux%20x64-blue?style=flat-square)
 
-[Play it](#play-it) · [Is it safe?](#is-it-safe) · [Features](#features) · [Status](#status) · [Known issues](#known-issues) ·
-[If something goes wrong](#if-something-goes-wrong) · [Roadmap](#roadmap) · [Building](#building-on-windows) ·
-[Credits](#credits)
+[Play it](#play-it) · [Is it safe?](#is-it-safe) · [Questions](#questions-people-ask-first) · [Features](#features) ·
+[Status](#status) · [Known issues](#known-issues) · [If something goes wrong](#if-something-goes-wrong) ·
+[Roadmap](#roadmap) · [Building](#building-on-windows) · [Credits](#credits)
 
 </div>
 
@@ -79,6 +79,48 @@ non-Steam game. Nobody has tried it on a Deck yet, so **testers are wanted** ([#
 - You can also build it yourself from this code ([below](#building-on-windows)).
 
 [SECURITY.md](.github/SECURITY.md) has the details, and how to report a security problem privately.
+
+## Questions people ask first
+
+**Do I need an emulator or a PS2 BIOS?**
+No. It's a Windows or Linux program of its own. It only reads the game's data from your disc image.
+
+**Where do I get the game?**
+From your own PAL disc. Copy it into an `.iso` with a PC's DVD drive and a disc-copying program, such as ImgBurn on
+Windows. Nobody here can share the game's files.
+
+**Does the North American disc work?**
+Not yet ([#14]). It's on the [roadmap](#roadmap). Translated or modded copies of the PAL disc work.
+
+**Is the game changed?**
+No. By default it plays as the PS2 original, bugs included. Everything that changes the game, such as the bug fixes, the
+cutscene skip or infinite lives, is an option. It stays off until you turn it on.
+
+**Why is it slow on my older PC?**
+The port draws the PS2's graphics the way the PS2's graphics chip does, on your processor. That's hard work for older
+processors. Try the settings in [If something goes wrong](#if-something-goes-wrong). A faster renderer is on the
+[roadmap](#roadmap).
+
+**Does it play at more than 60 fps?**
+Yes: 120, 144 or unlimited, in Options > Display. The game keeps the same speed. A few places still go wrong above 60,
+such as the seal chase ([#17]) and Evil Crash in Bandicoot Pursuit ([#44]). 60 is the safe choice.
+
+**Do texture packs and mods work?**
+Yes. PCSX2's texture packs for this game work as they are ([how](#texture-packs)). Mods that change the game's files work
+too: levels, texts, pictures, sounds and movies. Changes to the game's program don't apply
+([why](native/MODDING.md#limits)). The [modding guide](native/MODDING.md) shows how to add mods.
+
+**Is there a version for Mac, Android or 32-bit Windows?**
+Not from here. It needs 64-bit Windows 10 or 11, or 64-bit Linux. For a Mac, look at
+[HAB3X's port for Mac](https://github.com/HAB3X/Crash-Twinsanity-Mac), which this one is built on.
+
+**Where are my saves?**
+On Windows in `%APPDATA%\Crash Twinsanity\`, on Linux in `~/.config/crash-twinsanity`. Your settings are there too
+([more](#if-something-goes-wrong)).
+
+**Where can I ask for help?**
+In the [Discussions](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/discussions). Bugs go in the
+[issues](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues): [what to include](#if-something-goes-wrong).
 
 ![autosave](docs/screenshots/autosave.jpg)
 
@@ -247,7 +289,7 @@ the original.
 - [ ] HD texture packs in BC7, and texture upscaling.
 - [ ] The characters' shadows at the chosen resolution. They stay at the PS2's, softer than the rest of the picture at
   high resolutions.
-- [ ] The North American disc, NTSC-U v2.00 ([#14]): aimed at the next major version.
+- [ ] The North American disc, NTSC-U v2.00 ([#14]).
 - [ ] A faster renderer as an option for weaker PCs ([#23], [#37], [#39]): the game's models and scenes drawn straight on
   the graphics card, instead of emulating the PS2's graphics chip a shape at a time. Aimed at the next major version.
 - [ ] Achievements, kept on your PC (RetroAchievements doesn't award them for ports).
@@ -320,6 +362,7 @@ cutscenes seen and challenges done ([#38]); the port's own texts in Brazilian Po
 [#37]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/37
 [#38]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/38
 [#39]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/39
+[#44]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/44
 
 ## Texture packs
 
