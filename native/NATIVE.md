@@ -60,7 +60,13 @@ The defaults (`src/platform/native/ui/bindings.cpp`, `Infos`; rebound on the opt
 | Status (HUD) | Triangle | Tab | I | North (Y / triangle) |
 | Shoulder left / right | L1 and L2 / R1 and R2 | Q / E | - | LB and LT / RB and RT |
 | Pause | Start | Esc | Enter | Start |
+| The settings from play (1.3.0) | - | F1 | - | Select and Start together |
 
+- F1, or a pad's Select and Start together, opens the settings in play or in a cutscene (1.3.0, THE LIST 65): the ask is taken
+  by the game's own pause (`GameController::PauseReason`, as its start button, like the pause when the window loses the focus),
+  the settings open over it, and closing them resumes as the pause menu's resume does (`Paused`, `TakeSettingsResume`) instead
+  of showing the pause menu. While Select is held, Start isn't passed to the game, so the pair never pauses or resumes by
+  itself. Neither was in use: the game reads no Select, and F1 had no binding. `$TWIN_SETTINGS_PLAY_TEST` checks it.
 - Any of the mouse's buttons (left, right, middle, 4, 5) and the wheel's turns up and down can be bound to a key cell (a turn holds
   its key for one of the pad's reads). The mouse's buttons are keys only in play: in the menus the left button picks and the
   right goes back. A binding taken by another action swaps with it. A `bindings.txt` from before this scheme (no `version=2`)

@@ -737,6 +737,21 @@ void ReadBindings(const bool* keys, SDL_Gamepad* gamepad, BoundPad* pad)
     FpsTestInput(pad);
     PhysicsTestInput(pad);
     PadScriptInput(pad);
+
+    // Select+Start opens the settings from play (THE LIST 65: the game's pause takes the ask); while Select is held the start
+    // button isn't the game's, so the pair never pauses or resumes by itself
+    static bool pairWas = false;
+    const bool pair = (pad->buttons & PadBitSelect) != 0 && (pad->buttons & PadBitStart) != 0;
+    if (pair && !pairWas)
+    {
+        AskSettingsFromPlay();
+    }
+
+    pairWas = pair;
+    if ((pad->buttons & PadBitSelect) != 0)
+    {
+        pad->buttons &= ~static_cast<u32>(PadBitStart);
+    }
 }
 
 void ScaleCameraTurn(f32* yaw, f32* pitch, s32 currentYaw, u32 time)

@@ -75,7 +75,8 @@ Nothing is moved or deleted. The copy in `%APPDATA%` stays as it was. A `User` f
 ## Controls
 
 A controller works out of the box: Xbox, PlayStation, Switch and most others. It plays as on the PS2. Its round stick
-reaches as far as the PS2 stick's square corners, so Crash runs on diagonals too.
+reaches as far as the PS2 stick's square corners, so Crash runs on diagonals too. **Select+Start** (Back+Start on an Xbox
+controller) opens the options while you play. The game pauses, and goes on when you close them.
 
 On keyboard and mouse:
 
@@ -89,6 +90,7 @@ On keyboard and mouse:
 | Status | Tab (or I) |
 | Shoulders | Z / C |
 | Pause | Esc (or Enter) |
+| Options while playing | F1. The game pauses, and goes on when you close them. |
 | Skip a cutscene | Hold any button for a second (with Options > Game > Skip cutscenes on) |
 | Menus | Arrow keys (or the mouse), Enter to select, Esc to go back |
 | Fullscreen | Alt+Enter |

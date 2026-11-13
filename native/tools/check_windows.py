@@ -124,6 +124,10 @@ SCENARIOS = [
           expect=[r"a 1024x1024 texture at 2800/4 \(psm 0\) read from the target 2800/4 \(psm 0",
                   r"game: the player in levels\\altearth\\core\\corea"],
           forbid=[r"a 256x\d+ texture at 2800/4 \(psm 0\) read from the target"])),
+    # THE LIST 65: F1 in play opens the settings over the game's own pause, and their back resumes play (settingsshots.cpp's
+    # SettingsPlayTestFrame)
+    ("The settings opened from play by F1 and closed back to play (1.3.0)", "Levels\\Earth\\Hub\\beach", 25, "idle",
+     dict(env={"TWIN_SETTINGS_PLAY_TEST": "1"}, expect=[r"settings play test: pass"])),
 ]
 # The pause menu's hints checked for each controller's prompts and the menu hints option (hintstest.cpp): the prompts' style
 # ($TWIN_UI_PROMPTS) and the option (options.txt's menu_hints: 0 the game's own hints, 1 the bar). The pause on the window's focus

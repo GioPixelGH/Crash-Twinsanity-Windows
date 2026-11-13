@@ -2,7 +2,8 @@
 // the logos, as $TWIN_UI_SHOTS goes) and driven through its tabs by its own input (keyboard actions and the mouse), a PNG saved of
 // each step, then the program ends. $TWIN_SETTINGS_LOG_TEST=1 drives it the same way through changes the log must give once each,
 // as they're left when the screen is closed (check_windows.py's log check): the refresh rate stepped from 144 Hz down to 50 and up
-// to 60, the resolution from 2x to 3x, back and to 3x again, a key bound (F8); then the program ends
+// to 60, the resolution from 2x to 3x, back and to 3x again, a key bound (F8); then the program ends. $TWIN_SETTINGS_PLAY_TEST=1:
+// the settings opened from play by F1 and closed back to it (SettingsPlayTestFrame)
 #include "ui/bindings.h"
 #include "ui/overlay.h"
 
@@ -12,6 +13,7 @@
 
 #include "game/gamecontroller.h"
 
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <iterator>
@@ -183,6 +185,93 @@ constexpr Step LogScript[] = {
     {180, Quit, 0, 0, 0, nullptr},
 };
 
+// $TWIN_SETTINGS_PLAY_TEST=1 (with a level, $TWIN_SWEEP_LEVEL; check_windows.py's scenarios): THE LIST 65's settings from play.
+// After 3 s of play F1 pressed (SimulateKey, as the keyboard's): the settings must open over the game's pause, then their back
+// must resume play. "settings play test: pass" once play resumed, or what failed; the level's run goes on either way
+void SettingsPlayTestFrame(GameController* controller)
+{
+    static const bool on = [] {
+        const char* test = std::getenv("TWIN_SETTINGS_PLAY_TEST");
+        return test != nullptr && test[0] == '1';
+    }();
+    static u32 step = 0;
+    static u32 frames = 0;
+    if (!on || controller == nullptr || step >= 4)
+    {
+        return;
+    }
+
+    frames++;
+    const bool playing = controller->State() == GameController::StatePlaying;
+    auto fail = [](const char* what) {
+        Native::Log("settings play test: FAILED: %s", what);
+        step = 4;
+    };
+    switch (step)
+    {
+    case 0:
+        // Play for 3 s, then F1
+        if (!playing || SettingsOpen())
+        {
+            frames = 0;
+        }
+        else if (frames >= 180)
+        {
+            SimulateKey(SDL_SCANCODE_F1, 0);
+            step = 1;
+            frames = 0;
+        }
+
+        break;
+    case 1:
+        if (SettingsOpen())
+        {
+            step = 2;
+            frames = 0;
+        }
+        else if (frames > 60)
+        {
+            fail("F1 in play didn't open the settings in a second");
+        }
+
+        break;
+    case 2:
+        // A second open, the game paused under them, then back
+        if (frames < 60)
+        {
+            break;
+        }
+
+        if (controller->State() != GameController::StatePaused)
+        {
+            char what[80];
+            std::snprintf(what, sizeof(what), "the game isn't paused under the settings (state %u)",
+                          static_cast<unsigned>(controller->State()));
+            fail(what);
+            break;
+        }
+
+        SettingsActForTest(Back);
+        step = 3;
+        frames = 0;
+        break;
+    case 3:
+        if (!SettingsOpen() && playing)
+        {
+            Native::Log("settings play test: pass (opened from play over the pause, closed back to play in %u frames)", frames);
+            step = 4;
+        }
+        else if (frames > 300)
+        {
+            fail(SettingsOpen() ? "back didn't close the settings" : "play didn't resume in 5 s after the settings closed");
+        }
+
+        break;
+    default:
+        break;
+    }
+}
+
 std::string g_Folder;
 bool g_LogTest = false;
 bool g_Checked = false;
@@ -208,6 +297,7 @@ void SettingsShotsFrame()
     }
 
     GameController* controller = G_GameController;
+    SettingsPlayTestFrame(controller);
     if ((g_Folder.empty() && !g_LogTest) || controller == nullptr)
     {
         return;

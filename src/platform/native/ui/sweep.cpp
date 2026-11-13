@@ -1287,6 +1287,8 @@ void SweepFrame(bool fromPads)
     f32 delta = std::chrono::duration<f32>(now - g_LastFrame).count();
     g_LastFrame = now;
     u32 state = controller->State();
+    // ($TWIN_SETTINGS_PLAY_TEST pauses and resumes the game itself: settingsshots.cpp)
+    static const bool settingsPlayTest = std::getenv("TWIN_SETTINGS_PLAY_TEST") != nullptr;
     static f32 lastTick = 0.0f;
     f32 sinceStart = std::chrono::duration<f32>(now - g_Start).count();
     if (std::getenv("TWIN_SWEEP_TRACE") != nullptr && sinceStart - lastTick > 5.0f)
@@ -1398,9 +1400,9 @@ void SweepFrame(bool fromPads)
         // The scripted input lost every life (the game's own game over screen, waiting for a choice): played as far as it goes
         Finish(0, "game over");
     }
-    else if (state == GameController::StatePaused)
+    else if (state == GameController::StatePaused && !settingsPlayTest)
     {
-        // Out of a pause the scripted start may have made
+        // Out of a pause the scripted start may have made (not the settings from play's test's: its own pause and resume)
         controller->SetNextState(GameController::StatePlaying);
     }
 

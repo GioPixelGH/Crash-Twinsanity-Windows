@@ -701,6 +701,11 @@ bool Selectable(const Row& row)
 
 // ------------------------------------------------------------------------------------------------------------------ the state
 bool g_Open = false;
+// The settings opened from play (THE LIST 65): the ask's time (steady clock ticks, 0 none), to resume when they close, and the
+// resume due for the game's pause
+std::atomic<s64> g_SettingsAskedAt{0};
+bool g_ResumeOnClose = false;
+std::atomic<bool> g_ResumeDue{false};
 u32 g_Tab = TabGame;
 s32 g_Row = 0;
 u32 g_Column = 0;
@@ -1271,6 +1276,15 @@ void Close()
     OLEG& oleg = controller->oleg;
     s32 fade = static_cast<s32>(g_ClockUnitsPerSecond * 0.5f);
     oleg.Hide(oleg.screens[OLEG::ScreenAllButOverlays], fade, 0);
+    // Opened from play (F1, Select+Start: THE LIST 65): back to play, as the pause menu's resume (the game's Paused takes it)
+    if (g_ResumeOnClose && controller->State() == GameController::StatePaused)
+    {
+        g_ResumeOnClose = false;
+        g_ResumeDue = true;
+        return;
+    }
+
+    g_ResumeOnClose = false;
     oleg.Show(oleg.screens[g_ReturnScreen], fade, 0);
 }
 
@@ -1903,6 +1917,36 @@ void OpenSettings()
 bool SettingsOpen()
 {
     return g_Open;
+}
+
+void AskSettingsFromPlay()
+{
+    g_SettingsAskedAt = std::chrono::steady_clock::now().time_since_epoch().count();
+}
+
+bool TakeSettingsPause()
+{
+    const s64 asked = g_SettingsAskedAt.exchange(0);
+    if (asked == 0 || g_Open)
+    {
+        return false;
+    }
+
+    // An ask left from a menu or a load (no pause took it then) is forgotten
+    const auto since = std::chrono::steady_clock::now().time_since_epoch() - std::chrono::steady_clock::duration(asked);
+    return since < std::chrono::milliseconds(500);
+}
+
+void OpenSettingsFromPlay()
+{
+    OpenSettings();
+    g_ResumeOnClose = g_Open;
+    Native::Log("settings: opened from play (F1 or Select+Start), the game paused");
+}
+
+bool TakeSettingsResume()
+{
+    return g_ResumeDue.exchange(false);
 }
 
 bool ScreenPositionClosed()

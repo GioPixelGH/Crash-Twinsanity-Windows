@@ -238,6 +238,12 @@ bool WatchEvent(void*, SDL_Event* event)
             break;
         }
 
+        // F1 opens the settings from play (THE LIST 65: the game's pause takes the ask)
+        if (event->key.scancode == SDL_SCANCODE_F1 && !SettingsOpen())
+        {
+            AskSettingsFromPlay();
+        }
+
         // Alt+Enter, and Cmd+F on macOS: fullscreen or the window
         if ((event->key.scancode == SDL_SCANCODE_RETURN && (event->key.mod & SDL_KMOD_ALT) != 0) ||
             (event->key.scancode == SDL_SCANCODE_F && (event->key.mod & SDL_KMOD_GUI) != 0))

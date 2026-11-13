@@ -572,6 +572,14 @@ void SpeedrunFrame();
 void SpeedrunDraw(Renderer* renderer);
 // Once after the window lost the focus (the option on): the game pauses as for its start button
 bool TakeFocusPause();
+// The settings opened from play (THE LIST 65): F1, or Select+Start on a pad, asks for them (AskSettingsFromPlay, the ask kept half
+// a second); the game's pause takes the ask once in play or a cutscene (TakeSettingsPause: it pauses as for its start button) and
+// opens the settings over the pause (OpenSettingsFromPlay); closed, the pause resumes (TakeSettingsResume, once: the pause menu's
+// resume) instead of showing the pause menu
+void AskSettingsFromPlay();
+bool TakeSettingsPause();
+void OpenSettingsFromPlay();
+bool TakeSettingsResume();
 // With the cutscene skip option, "hold any button to skip" (features.cpp): any key, mouse button or pad button pressed after the
 // scene began and held 1 s. A poll from a scene that can be skipped (the skip condition's, a movie's frame's): whether it's
 // skipped; the hold's progress (0-1) while a counted button is held in a scene being polled (-1: none, no bar); the tests' inputs

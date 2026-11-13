@@ -1387,13 +1387,19 @@ u32 GameController::FadingOut(TimeClock*)
 
 u32 GameController::Paused(TimeClock* clock)
 {
-    if (PauseReason(clock, 1) == 0)
+#ifdef TWIN_NATIVE
+    // The settings opened from play closed (F1, Select+Start: THE LIST 65): back to play as the pause menu's resume
+    const bool resume = NativeUi::TakeSettingsResume();
+#else
+    constexpr bool resume = false;
+#endif
+    if (!resume && PauseReason(clock, 1) == 0)
     {
         return NoState;
     }
 
     MenuWidget* menu = oleg.ShownMenu();
-    if (menu == nullptr || menu->menuFlags.leaves == 0 || menu->current != &g_ResumePage)
+    if (!resume && (menu == nullptr || menu->menuFlags.leaves == 0 || menu->current != &g_ResumePage))
     {
         return NoState;
     }
@@ -2077,6 +2083,9 @@ u32 GameController::PauseReason(TimeClock*, u32 paused)
 
     u32 next = ReasonNone;
     u32 saving = static_cast<u32>(states.savingStep);
+#ifdef TWIN_NATIVE
+    bool settingsAsked = false;
+#endif
     if ((states.notices & NoticeAutosaveFailed) != 0)
     {
         states.notices = 0;
@@ -2136,6 +2145,13 @@ u32 GameController::PauseReason(TimeClock*, u32 paused)
             {
                 next = ReasonStart;
             }
+
+            // F1 or Select+Start (THE LIST 65): the same pause, the settings opened over it below
+            if (NativeUi::TakeSettingsPause())
+            {
+                next = ReasonStart;
+                settingsAsked = true;
+            }
 #endif
         }
     }
@@ -2159,6 +2175,12 @@ u32 GameController::PauseReason(TimeClock*, u32 paused)
 
     states.returnState = State();
     StopChunks();
+#ifdef TWIN_NATIVE
+    if (settingsAsked)
+    {
+        NativeUi::OpenSettingsFromPlay();
+    }
+#endif
     return next;
 }
 

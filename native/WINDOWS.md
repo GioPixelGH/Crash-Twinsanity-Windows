@@ -625,6 +625,8 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
 - `$TWIN_GPU_TIME=0`: the graphics card's time not measured (the log's `the graphics card unknown`, the entry points
   OpenGL's own): to measure what the timing costs. `$TWIN_SETTINGS_LOG_TEST=1` (headless): the settings screen driven from the
   main menu through the log check's changes, then the program ends (settingsshots.cpp, beside `$TWIN_UI_SETTINGS_SHOTS`).
+  `$TWIN_SETTINGS_PLAY_TEST=1` (with a level, a check_windows scenario): after 3 s of play F1 opens the settings over the game's
+  pause and their back resumes play ("settings play test: pass").
 - The log (what a report needs is under "The log", above): each line `[native] [SECONDS]` from the start, the first the
   version's. Once the window is there it names the graphics card and its driver:
   OpenGL's renderer, vendor and version (the driver's own number in it: NVIDIA's "3.3.0 NVIDIA 617.14", AMD's "... Core Profile
