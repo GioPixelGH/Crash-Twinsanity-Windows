@@ -1,8 +1,8 @@
 # Modding Crash Twinsanity for Windows
 
 This guide is for people who make mods for Crash Twinsanity and for players who install them in this port. It covers what
-the port reads, the game's files, the community's tools for them, the limits, and how to share a mod. Playing with mods is
-also described, more briefly, in the players' guide ([PLAYING_WINDOWS.md](PLAYING_WINDOWS.md#mods)).
+the port reads, the game's files, the community's tools for them, the limits, ReShade, and how to share a mod. Playing with
+mods is also described, more briefly, in the players' guide ([PLAYING_WINDOWS.md](PLAYING_WINDOWS.md#mods)).
 
 The port runs the PAL disc's game (SLES-52568) from your own disc image. A mod changes the game's data files: levels,
 texts, pictures, sounds, music, movies. It can't change the game's program (see [Limits](#limits)).
@@ -140,11 +140,33 @@ These are other people's projects, each under its own licence; the port uses non
   program gives the script command 137 a new meaning (it sets the game's speed scales), so its scripts that use it don't do
   the same here.
 - **The disc's own I/O processor modules and boot file** (`CRASH6\SYS\`, `SYSTEM.CNF`) are always the disc's.
+- **A movie keeps the size of the one it replaces.** The game shows each movie at the size its program lists for it, through
+  the PS2's graphics memory, and the port does the same. A mod's `FMV\*.PSS` made at the original's size plays as the
+  original. One made larger, such as an upscaled movie, shows a garbled picture (the game goes on). Tried with
+  `FMV\VIVENDI.PSS` re-encoded at its own 640x480 (the same pictures as the original) and at 1280x960 (garbled).
 - **Sizes**: a disc file of a mod must be under 1 GB, and the archive with every mod's archive files should stay under
   2 GB (the PS2's sound streaming counts in signed 32 bits; the log warns when it's passed).
 - **Changes take effect at the next start.** The mods are looked at once, when the game starts.
 - Crash Twinsanity Improved's fixes are options of the port already (**Options > Gameplay > Bug fixes**), and the cutscene
   skip is one too: their mod isn't needed.
+
+## ReShade
+
+[ReShade](https://reshade.me/) adds effects over the picture, such as sharpening or colour changes. It works with the port
+on Windows: tried with ReShade 6.8.0, it loads, and its effects are drawn over the game.
+
+1. Download ReShade from [reshade.me](https://reshade.me/) and start its setup.
+2. Pick `CrashTwinsanity.exe` in the port's folder.
+3. Choose **OpenGL** as the rendering API.
+4. Pick the effects you want, and finish.
+5. Start the game. Press **Home** to open ReShade's menu.
+
+To remove it, delete what it added beside the program: `opengl32.dll`, `ReShade.ini`, `ReShadePreset.ini`, `ReShade.log`
+and the `reshade-shaders` folder.
+
+Effects that need the scene's depth, such as ambient occlusion or depth of field, weren't tried. They may not find it: the
+port draws the game as the PS2 does, in buffers of its own. ReShade isn't part of the port, so for help with ReShade itself
+ask on its own forum.
 
 ## Sharing a mod
 
