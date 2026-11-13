@@ -288,6 +288,9 @@ enum NativeText : u32
     // The stronger Aku Aku mask
     TextStrongMask,
     TextDescStrongMask,
+    // The automatic camera
+    TextAutoCamera,
+    TextDescAutoCamera,
     // The slide jump and its choices
     TextSlideJump,
     TextDescSlideJump,
@@ -323,6 +326,8 @@ enum NativeText : u32
     TextModsImportFailed,
     TextModRefused,
     TextModProgram,
+    // The credits: the automatic camera's (THE LIST 55, PR #45)
+    TextCreditsCamera,
     NativeTextEnd,
 };
 
@@ -479,6 +484,8 @@ enum Option : u32
     OptionInfiniteLives,
     // The stronger Aku Aku mask (#30)
     OptionStrongMask,
+    // The automatic camera: the look stick and the mouse no longer turn the follow camera, which swings behind the character itself
+    OptionAutoCamera,
     // The slide jump (#11, #35): 0 the original, 1 any moment, 2 easier
     OptionSlideJump,
     // The level select (levelselect.cpp: from the main menu, a memory card of its own)

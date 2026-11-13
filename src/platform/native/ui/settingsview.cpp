@@ -446,6 +446,7 @@ constexpr Credit Credits[] = {
     {TextCreditsMac, "HAB3X"},
     {TextCreditsImproved, "AlexMollard, TechieSaru"},
     {TextCreditsLinux, "Gabriel-TwoBits"},
+    {TextCreditsCamera, "jeff1-cpu"},
     {TextCreditsTesters, "NitorikoSkye, SSStylishh, APerson7778, VenezuelanHell"},
     {TextCreditsTextures, "CRASHARKI"},
     {TextCreditsEvolved, "menaman123"},

@@ -78,6 +78,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionUpdateCheck, "update_check", 0, 1},
     {OptionInfiniteLives, "infinite_lives", 0, 1},
     {OptionStrongMask, "strong_mask", 0, 1},
+    {OptionAutoCamera, "auto_camera", 0, 1},
     {OptionSlideJump, "slide_jump", 0, 2},
     {OptionLevelSelect, "level_select", 0, 1},
     {OptionSpeedrunTimer, "speedrun_timer", 0, 1},

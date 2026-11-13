@@ -21,6 +21,13 @@ namespace NativeGame
 bool StrongMask();
 }
 
+// The automatic camera (auto_camera): the look stick and the mouse don't turn the follow camera, which swings behind the character
+// by itself while it moves (followrig.cpp's FollowCameraRig::Frame)
+namespace NativeGame
+{
+bool AutoCamera();
+}
+
 // The slide jump (slide_jump, #11, #35): 0 the original (the long jump only after the slide's first steering moment), 1 from any
 // moment of the slide, 2 easier (any moment, the jump pressed a quarter second after the slide, getting up, still counted, steered
 // in the air as a jump is); its height and distance stay the original's (charactermoves.cpp). The easier slide jump's late

@@ -154,6 +154,7 @@ In the [Discussions](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/disc
 - Skip cutscenes, now including many that had no skip ([#28]).
 - Infinite lives.
 - A stronger Aku Aku: one or two masks protect you from TNT and Nitro ([#30]).
+- An automatic camera: the camera swings behind you by itself and the camera controls turn nothing.
 - The slide's long jump at any moment, or an easier one ([#11], [#35]).
 - Level select. Its saves are kept apart from yours.
 - A speedrun timer.
@@ -460,6 +461,7 @@ and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). HAB3X's native layer: [native/NA
 
 - [Gabriel-TwoBits](https://github.com/Gabriel-TwoBits): the Linux build, with its fixes and low memory emulation, named
   backtraces, and the build script with its AppImage (#1, #2, #3).
+- [jeff1-cpu](https://github.com/jeff1-cpu): the automatic camera (#45).
 - The players whose reports and tests made it better: [NitorikoSkye](https://github.com/NitorikoSkye) (the ROG Ally and AMD
   graphics, the physics past 60 Hz, many suggestions), [SSStylishh](https://github.com/SSStylishh) (played it to the end),
   [APerson7778](https://github.com/APerson7778) (mouse look) and [VenezuelanHell](https://github.com/VenezuelanHell) (older
