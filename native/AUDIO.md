@@ -58,6 +58,12 @@ table (the game's resource table of voices, which SoundById looks in after the s
 banks too), else an effect. The game's own volume groups don't separate these (group 3 holds movies, cutscenes' sound, voices
 and menu sounds), so the groups aren't used for it.
 
+The master volume (since 1.3.0, THE LIST 81; Options > Audio's first row, `master_volume` 0-100 in options.txt, 100 by default,
+stepped by 5) is `NativeAudioSetMasterVolume(gain)`: SDL's gain on the output stream (`SDL_SetAudioStreamGain`, audio.cpp), so it
+scales everything together as it goes to the device, the movies' sound included (it reaches the output through the SPU2's
+input, as above), after the volumes above, which keep their own values. Kept for a stream opened later; a run without sound
+(headless, `$TWINSANITY_AUDIO_WAV`'s file) isn't scaled.
+
 ## The movies
 
 `src/platform/native/movie/`: Platform::Movie as the PS2's player (`src/platform/ps2/movie/player.cpp`) with FFmpeg's libavcodec

@@ -340,6 +340,9 @@ enum NativeText : u32
     TextSectionPicture,
     TextSectionDevice,
     TextSectionMouse,
+    // The master volume (THE LIST 81)
+    TextMasterVolume,
+    TextDescMasterVolume,
     NativeTextEnd,
 };
 
@@ -508,6 +511,8 @@ enum Option : u32
     OptionDropShadow,
     // The player's shadow on crates' tops too
     OptionShadowsOnCrates,
+    // The master volume (THE LIST 81): the whole output's gain, 0 to 100 (audio.cpp's stream)
+    OptionMasterVolume,
     OptionCount,
 };
 

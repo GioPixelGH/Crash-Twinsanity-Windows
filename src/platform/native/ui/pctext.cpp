@@ -724,6 +724,8 @@ const NativeTextLine g_NativeTexts[] = {
     {TextSectionPicture, {"picture", "image", "bild", "imagen", "immagine"}},
     {TextSectionDevice, {"device", "appareil", "gerät", "dispositivo", "dispositivo"}},
     {TextSectionMouse, {"mouse", "souris", "maus", "ratón", "mouse"}},
+    {TextMasterVolume, {"master volume", "volume général", "gesamtlautstärke", "volumen general", "volume generale"}},
+    {TextDescMasterVolume, {"all the sound at once: music, effects, voices and movies.", "tout le son à la fois : musique, effets, voix et vidéos.", "der ganze ton auf einmal: musik, effekte, stimmen und filme.", "todo el sonido a la vez: música, efectos, voces y vídeos.", "tutto l'audio insieme: musica, effetti, voci e filmati."}},
 };
 const u32 g_NativeTextCount = sizeof(g_NativeTexts) / sizeof(g_NativeTexts[0]);
 const char* const g_TextLanguages[TextLanguages] = {"English", "French", "German", "Spanish", "Italian"};

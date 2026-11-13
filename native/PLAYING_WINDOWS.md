@@ -159,7 +159,8 @@ game could make.
 | Draw distance | Short, original (the default, the PS2's), medium, long or unlimited. Farther settings draw the grass and small things before you get close, and the detailed models of trees and statues from farther away. They also draw more: unlimited draws about twice as much on the beach, which is slower on an older PC. Short draws less. |
 | Texture packs, scanlines | As their names say. |
 
-The volumes are in **Audio**.
+The volumes are in **Audio**. **Master volume**, its first row, turns all the sound up or down together. Music, effects and
+voices keep their own volumes under it.
 
 **Accessibility**
 

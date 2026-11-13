@@ -311,6 +311,8 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x20A | picture | image | bild | imagen | immagine |
 | 0x20B | device | appareil | gerät | dispositivo | dispositivo |
 | 0x20C | mouse | souris | maus | ratón | mouse |
+| 0x20D | master volume | volume général | gesamtlautstärke | volumen general | volume generale |
+| 0x20E | all the sound at once: music, effects, voices and movies. | tout le son à la fois : musique, effets, voix et vidéos. | der ganze ton auf einmal: musik, effekte, stimmen und filme. | todo el sonido a la vez: música, efectos, voces y vídeos. | tutto l'audio insieme: musica, effetti, voci e filmati. |
 
 ## English (29 lines)
 

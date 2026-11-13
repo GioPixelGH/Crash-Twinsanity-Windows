@@ -62,6 +62,8 @@ std::condition_variable g_Wake;
 std::condition_variable g_Progress;
 bool g_FrameLocked = false;
 SDL_AudioStream* g_Stream = nullptr;
+// The master volume (THE LIST 81): the stream's gain
+std::atomic<float> g_MasterGain = 1.0f;
 std::unique_ptr<Native::WavWriter> g_Wav;
 
 // The call the game's thread made that hasn't ended yet (MultiStream sends one at a time)
@@ -161,6 +163,7 @@ void StartOutput()
             }
             else
             {
+                SDL_SetAudioStreamGain(g_Stream, g_MasterGain.load());
                 SDL_ResumeAudioStreamDevice(g_Stream);
                 // The device the sound goes to, for the log: its name, its rate, channels and buffer (SDL converts the game's)
                 SDL_AudioDeviceID device = SDL_GetAudioStreamDevice(g_Stream);
@@ -553,6 +556,16 @@ void NativeAudioSetVolumes(float music, float effects, float voice)
 void NativeAudioSetMuted(bool muted)
 {
     Spu2::SetMuted(muted);
+}
+
+void NativeAudioSetMasterVolume(float gain)
+{
+    gain = std::clamp(gain, 0.0f, 1.0f);
+    g_MasterGain = gain;
+    if (g_Stream != nullptr)
+    {
+        SDL_SetAudioStreamGain(g_Stream, gain);
+    }
 }
 
 void Native::AudioTraceBatch(const u16* batch)

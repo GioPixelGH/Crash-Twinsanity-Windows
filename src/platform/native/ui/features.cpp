@@ -93,6 +93,7 @@ void ApplyOption(Option option)
         NativeGraphicsSetAnisotropy(1 << GetOption(OptionAnisotropy));
         break;
     case OptionVoiceVolume:
+    case OptionMasterVolume:
         ApplyVolumes();
         break;
     case OptionNintendoLayout:
@@ -460,6 +461,8 @@ void ApplyVolumes()
     // The player's volumes go on top of the game's own (the music and effects volumes are the game's groups, which its options
     // set): the voices' alone is the native option's
     NativeAudioSetVolumes(1.0f, 1.0f, static_cast<f32>(GetOption(OptionVoiceVolume)) / 10.0f);
+    // The master volume (THE LIST 81): the whole output's gain, the movies' sound with the rest
+    NativeAudioSetMasterVolume(static_cast<f32>(GetOption(OptionMasterVolume)) / 100.0f);
 }
 
 f32 CameraShakeScale()

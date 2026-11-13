@@ -597,6 +597,12 @@ void Build()
     display.push_back(Toggle(TextCrt, TextDescCrt, OptionCrtFilter));
 
     std::vector<Row>& audio = g_Rows[TabAudio];
+    // The master volume first (THE LIST 81): options.txt's 0 to 100 in steps of 5, the slider's 0 to 20 shown as the percent
+    Row master = Slider(
+        TextMasterVolume, TextDescMasterVolume, [] { return (GetOption(OptionMasterVolume) + 2) / 5; },
+        [](s32 value) { SetOption(OptionMasterVolume, value * 5); }, 0, 20);
+    master.valueText = [](s32 value) { return std::to_string(value * 5); };
+    audio.push_back(master);
     audio.push_back(Slider(GameTextMusicVolume, TextDescMusic, [] { return GroupLevel(MusicGroup); }, SetMusic));
     audio.push_back(Slider(GameTextEffectsVolume, TextDescEffects, [] { return GroupLevel(EffectsGroup); }, SetEffects));
     audio.push_back(OptionSlider(TextVoiceVolume, TextDescVoices, OptionVoiceVolume, 0, 10));
@@ -1071,7 +1077,7 @@ void ResetTab(u32 tab)
         SetMusic(DefaultOption(OptionMusicVolume));
         SetEffects(DefaultOption(OptionEffectsVolume));
         SetMusicStereo(static_cast<u32>(DefaultOption(OptionOutputType)));
-        ResetOptions({OptionVoiceVolume, OptionOutputType, OptionMuteInactive});
+        ResetOptions({OptionVoiceVolume, OptionOutputType, OptionMuteInactive, OptionMasterVolume});
         break;
     case TabGame:
         ResetOptions({OptionLanguage, OptionSpeechLanguage, OptionSkipCutscenes, OptionFastLoading, OptionPauseOnFocusLoss,

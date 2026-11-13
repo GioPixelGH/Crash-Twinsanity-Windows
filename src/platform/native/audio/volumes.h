@@ -10,3 +10,6 @@
 // Safe to call from any thread
 void NativeAudioSetVolumes(float music, float effects, float voice);
 void NativeAudioSetMuted(bool muted);
+// The master volume (THE LIST 81): the gain of the whole output, 0 to 1, as it goes to the device (SDL's stream: every sound and
+// the movies' together, after the volumes above); kept for a stream opened later
+void NativeAudioSetMasterVolume(float gain);
