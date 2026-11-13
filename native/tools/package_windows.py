@@ -63,8 +63,10 @@ def main():
     # TwinsanityEvolved's MIT code (its README says which files)
     for name in ("LICENSE-TwinsanityEvolved.txt", "LICENSE-NativeEE.txt", "README.md"):
         shutil.copy2(HERE / "native" / "third_party" / "twinsanityevolved" / name, licenses / f"twinsanityevolved-{name}")
-    # The port's own licence (what it covers is in it)
+    # The port's own licence (what it covers is in it), and the list of what isn't the port's own (what's used with its
+    # authors' permission, Crash Twinsanity Improved's, has no licence text of its own: the list says so)
     shutil.copy2(HERE / "LICENSE", licenses / "Crash-Twinsanity-Windows-LICENSE.txt")
+    shutil.copy2(HERE / "THIRD_PARTY_NOTICES.md", licenses / "THIRD_PARTY_NOTICES.md")
     deps = Path(arguments.deps)
     found = sorted(deps.glob("SDL3-*/LICENSE.txt"))
     if found:

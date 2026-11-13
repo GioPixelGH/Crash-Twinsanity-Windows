@@ -31,7 +31,8 @@ BUNDLED = re.compile(r"^(libSDL3\.so\.0|libavcodec\.so\.\d+|libavutil\.so\.\d+)$
 # (SMAA's, TwinsanityEvolved's: menaman123's permission asks for his licence beside the program), as the zip's licenses folder
 LICENCES = ("Crash-Twinsanity-Windows-LICENSE.txt", "SDL3-LICENSE.txt", "ffmpeg", "stb-LICENSE.txt",
             "fonts-LICENSE-LuckiestGuy.txt", "fonts-OFL-Fredoka.txt", "SMAA-LICENSE.txt",
-            "twinsanityevolved-LICENSE-TwinsanityEvolved.txt", "twinsanityevolved-LICENSE-NativeEE.txt")
+            "twinsanityevolved-LICENSE-TwinsanityEvolved.txt", "twinsanityevolved-LICENSE-NativeEE.txt",
+            "THIRD_PARTY_NOTICES.md")
 # The beach (its chunk as the sweep names it) played for this long, drawn at 1x (Mesa on the processor); the run's own limit
 # (the sweep's) and the process's
 LEVEL = "Levels\\Earth\\Hub\\Beach"

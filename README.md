@@ -399,8 +399,10 @@ and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). HAB3X's native layer: [native/NA
 - [HAB3X](https://github.com/HAB3X/Crash-Twinsanity-Mac): the native port for Mac. This includes the platform layer, the
   emulation of the PS2's graphics (GS, VIF, VU) and its OpenGL renderer, audio and movies, saves, the options screen and the
   community fixes.
-- [Crash Twinsanity Improved](https://github.com/AlexMollard/Crash-Twinsanity-Improved) by AlexMollard: the Mac port's
-  optional fixes come from this mod. Its 21:9 mode is TechieSaru's fix, from the mod's PCSX2 patches.
+- [Crash Twinsanity Improved](https://github.com/AlexMollard/Crash-Twinsanity-Improved) by AlexMollard: the optional bug
+  fixes come from this mod, used with AlexMollard's permission
+  ([Crash-Twinsanity-Improved#5](https://github.com/AlexMollard/Crash-Twinsanity-Improved/issues/5)). Its 21:9 mode is
+  TechieSaru's fix, from the mod's PCSX2 patches.
 - CRASHARKI, for the HD texture pack the Mac port was tested with.
 - [SMAA](https://github.com/iryoku/smaa) by Jorge Jimenez, Jose I. Echevarria, Belen Masia, Fernando Navarro and Diego
   Gutierrez (MIT): the SMAA anti-aliasing.
@@ -451,7 +453,8 @@ Bug reports, suggestions and pull requests are welcome: see [CONTRIBUTING.md](.g
 | [Luckiest Guy](https://fonts.google.com/specimen/Luckiest+Guy) | Apache 2.0 |
 | [Fredoka](https://fonts.google.com/specimen/Fredoka) | SIL Open Font Licence 1.1 |
 
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) says where each licence's text is, SMAA's and TwinsanityEvolved's too.
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) says where each licence's text is, SMAA's and TwinsanityEvolved's too, and
+what is used with its authors' permission.
 
 **The icon** is our own drawing (`native/tools/draw_icon.py` draws it), under this repository's licence.
 
@@ -462,6 +465,8 @@ developer, I reviewed and supervised the work. Each commit made with it says so.
 
 - **Upstream code:** Smartkin's decompilation and HAB3X's Mac port are published without a licence, so all their rights
   stay with their authors. They are included here, unchanged in the first commit, with the credit above.
+- **Crash Twinsanity Improved** (AlexMollard's mod) has no licence either: the parts the port uses are used with
+  AlexMollard's permission ([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) says which).
 - **This repository's own changes** (the commits after the first) are under the MIT licence: see [LICENSE](LICENSE).
 - **Third-party libraries and fonts** keep their own licences (table above).
 - **The game** (its code, data, art and sound) belongs to Activision. None of the game's files are in this repository:

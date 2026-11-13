@@ -209,8 +209,9 @@ def main():
     shutil.copy2(HERE / "native" / "third_party" / "smaa" / "LICENSE.txt", licenses / "SMAA-LICENSE.txt")
     for name in ("LICENSE-TwinsanityEvolved.txt", "LICENSE-NativeEE.txt", "README.md"):
         shutil.copy2(HERE / "native" / "third_party" / "twinsanityevolved" / name, licenses / f"twinsanityevolved-{name}")
-    # The port's own licence (what it covers is in it)
+    # The port's own licence (what it covers is in it), and the list of what isn't the port's own, as package_windows.py
     shutil.copy2(HERE / "LICENSE", licenses / "Crash-Twinsanity-Windows-LICENSE.txt")
+    shutil.copy2(HERE / "THIRD_PARTY_NOTICES.md", licenses / "THIRD_PARTY_NOTICES.md")
     found = sorted(deps.glob("SDL3-*/LICENSE.txt"))
     if found:
         shutil.copy2(found[-1], licenses / "SDL3-LICENSE.txt")

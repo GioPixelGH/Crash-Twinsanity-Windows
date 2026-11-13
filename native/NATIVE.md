@@ -285,7 +285,8 @@ The "bug fixes" toggle on the settings' Gameplay tab (`OptionRetailFixes`, off b
 game's code under `TWIN_NATIVE` and asked for through `NativeFixes::RetailFixes()` (`src/platform/native/fixes.h`). With it off
 the game is retail's. Each fix comes from the community mod
 [Crash-Twinsanity-Improved](https://github.com/AlexMollard/Crash-Twinsanity-Improved) (its wiki's "What the mod changes", its
-`mod/elf_patches.txt`, `mod/levels/*.ops` and PCSX2 patches) or from docs/RETAIL_BUGS.md where the intended behaviour is evident.
+`mod/elf_patches.txt`, `mod/levels/*.ops` and PCSX2 patches; used with AlexMollard's permission,
+[Crash-Twinsanity-Improved#5](https://github.com/AlexMollard/Crash-Twinsanity-Improved/issues/5)) or from docs/RETAIL_BUGS.md where the intended behaviour is evident.
 Level data is changed only in memory, on what's read from the player's disc. `$TWIN_RETAIL_FIXES=0|1` overrides the option and
 `$TWIN_FIXES_TEST=NAME` runs a check in the game (with `--headless --quick`, `src/platform/native/fixestest.cpp`); the checks
 pass for either setting of the option (fixed with it on, retail's result with it off). `$TWIN_FIXES_TRACE` logs the scripts the

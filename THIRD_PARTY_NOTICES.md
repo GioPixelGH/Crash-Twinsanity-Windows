@@ -1,8 +1,8 @@
 # Third-party notices
 
 What this repository and its releases contain that isn't this port's own work, under which licence, and where the licence's
-text is. Each release carries the same texts in its `licenses` folder, beside the program. The people behind them are thanked
-in the README's [Credits](README.md#credits).
+text is. Each release carries the same texts in its `licenses` folder, beside the program, with this list. The people behind
+them are thanked in the README's [Credits](README.md#credits).
 
 ## In the program
 
@@ -17,6 +17,15 @@ in the README's [Credits](README.md#credits).
 
 [native/third_party/twinsanityevolved/README.md](native/third_party/twinsanityevolved/README.md) lists each file taken from
 TwinsanityEvolved and the file of ours it became; every one keeps its copyright notice.
+
+## Used with their authors' permission
+
+| What | Licence | The permission |
+| --- | --- | --- |
+| [Crash Twinsanity Improved](https://github.com/AlexMollard/Crash-Twinsanity-Improved) by AlexMollard, a mod of the PS2 game: the optional bug fixes (its `mod/elf_patches.txt` and `mod/levels/*.ops`, remade in C++ in `src/platform/native/fixes.cpp` and `src/platform/native/levelrecipes.cpp`) and the cutscene skip's prompt (its `mod/text.txt`) | none: all rights stay with its authors | AlexMollard's, on [Crash-Twinsanity-Improved#5](https://github.com/AlexMollard/Crash-Twinsanity-Improved/issues/5) (2026-11-10): "feel free to use anything you find in this repo" |
+
+The 21:9 shape is TechieSaru's fix, found in the mod's PCSX2 patches: the 21:9 width (2.333) written where the game keeps
+16:9's. TechieSaru is credited in the README and in the program's Credits page, and wasn't asked separately.
 
 ## Fonts
 

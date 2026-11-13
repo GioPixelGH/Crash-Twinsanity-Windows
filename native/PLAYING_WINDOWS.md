@@ -241,5 +241,6 @@ The folder carries:
 - code from TwinsanityEvolved by menaman123 (MIT: `twinsanityevolved-README.md` says which).
 
 Their licences are in the `licenses` folder, with the port's own: `Crash-Twinsanity-Windows-LICENSE.txt`, MIT for the
-Windows port's changes. The decompilation and the Mac port it's built on keep their authors' rights. The icon is the port's
+Windows port's changes. `THIRD_PARTY_NOTICES.md` there lists them all. The decompilation and the Mac port it's built on keep
+their authors' rights. The optional bug fixes come from AlexMollard's mod Crash Twinsanity Improved, used with permission. The icon is the port's
 own drawing.
