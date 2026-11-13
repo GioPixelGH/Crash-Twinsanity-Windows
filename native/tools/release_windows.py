@@ -18,8 +18,9 @@ release (said so in the result). It prints the commit, the version and the files
 
 publish: the release vVERSION on GitHub (a preview with --preview, as every release before 1.0.8 was), its text NOTES.md with
 {commit}, {sha256} (the zip's) and {sha256_linux} (the AppImage's) filled in; the zip and the AppImage uploaded, then
-downloaded back and their SHA-256 compared. Only after check, at the same commit, with the same files. GitHub's token is git's
-(git credential fill): never printed or kept.
+downloaded back and their SHA-256 compared; beside each, NAME.sha256 (sha256sum's format: `sha256sum -c` checks a download in
+the same folder), downloaded back and compared too. Only after check, at the same commit, with the same files. GitHub's token
+is git's (git credential fill): never printed or kept.
 """
 import argparse
 import hashlib
@@ -82,6 +83,14 @@ def repository():
 
 def sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def checksum_file(name, digest, folder):
+    """NAME.sha256 in folder, the file a release has beside NAME: sha256sum's line (the hash, two spaces, the name), so
+    `sha256sum -c NAME.sha256` checks the download in the same folder, and its first word is what Get-FileHash prints"""
+    path = Path(folder) / f"{name}.sha256"
+    path.write_bytes(f"{digest}  {name}\n".encode("ascii"))
+    return path
 
 
 def api(url, token=None, data=None, content_type="application/json", method=None):
@@ -330,6 +339,14 @@ def publish(arguments):
         same = sha256(WORK / f"downloaded-{name}") == digest
         all_same &= same
         print(f"download        {name}: {'the same SHA-256 as the file checked' if same else 'FAILED: its SHA-256 differs'}")
+        # Its SHA-256 beside it as a file, for players who check downloads with sha256sum -c
+        sums = checksum_file(name, digest, WORK)
+        upload = release["upload_url"].split("{")[0] + f"?name={sums.name}"
+        asset = api(upload, secret, sums.read_bytes(), "text/plain", method="POST")
+        download(asset["browser_download_url"], WORK / f"downloaded-{sums.name}")
+        same = (WORK / f"downloaded-{sums.name}").read_bytes() == sums.read_bytes()
+        all_same &= same
+        print(f"download        {sums.name}: {'the same as made' if same else 'FAILED: it differs'}")
     sys.exit(0 if all_same else 1)
 
 

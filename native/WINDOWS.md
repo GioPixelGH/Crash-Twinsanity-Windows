@@ -884,8 +884,9 @@ hasn't). Its lines start with `linux`; `--no-linux` releases the zip alone, when
 both files' SHA-256. `publish` makes the release (`vVERSION`; with `--preview` a preview, GitHub's pre-release, as every
 release before 1.0.8 was) from NOTES.md with `{commit}`, `{sha256}` (the zip's) and `{sha256_linux}` (the AppImage's) filled
 in, opens its discussion (Discussions > Announcements, where players can talk about it), uploads the zip and the AppImage,
-downloads them back and compares their SHA-256: only with the commit and the files `check` checked, once that commit is on
-GitHub. GitHub's token is git's (`git credential fill`), never printed or kept.
+downloads them back and compares their SHA-256, and beside each uploads `NAME.sha256` (sha256sum's line: the hash, two
+spaces, the name; `sha256sum -c` checks a download in the same folder), downloaded back and compared too: only with the
+commit and the files `check` checked, once that commit is on GitHub. GitHub's token is git's (`git credential fill`), never printed or kept.
 
 No commit has the game's files: `native/tools/check_game_data.py` refuses the executable, the disc's and the archive's files,
 disc images, splat's output, texture packs and PCSX2's states, cards and BIOS, by name, folder, first bytes or size. The
