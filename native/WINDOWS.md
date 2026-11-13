@@ -170,7 +170,7 @@ cache emptied (`__GL_SHADER_DISK_CACHE_PATH` an empty folder: as a first start a
 The PAL game has five: English, French, German, Italian and Spanish, each with its texts (the archive's Language folders), its
 voices (CRASH6\<LANGUAGE>.MB and .MH, loaded once at start-up) and its sound in the story's movies (a channel each). The PS2
 took the language from its own settings once, at start-up; the native build takes Windows' (system.cpp's
-`Platform::System::Language`), or the one Options > Gameplay > language names (options.txt's `language`, 1-5), from the game's
+`Platform::System::Language`), or the one Options > Game > Text language names (options.txt's `language`, 1-5), from the game's
 next start.
 
 ## Mods
@@ -201,7 +201,7 @@ file kept whole in `layer0\` when it differs or the disc hasn't it, CRASH6\CRASH
 is a Mod Crate. Each import is written in `.importing-NAME` and takes the mod's place only once whole; `imported.txt` (the
 source's name, size and date) marks it, so an unchanged source isn't offered again; a folder of that name not made by an
 import stops it. An xdelta, PPF or BPS patch isn't applied here (a patcher makes the image first). Options > Mods (the
-settings' sixth tab, settings.cpp's BuildMods): Import mods while there's something to; each mod a choice, off or on in its
+settings' seventh tab, settings.cpp's BuildMods): Import mods while there's something to; each mod a choice, off or on in its
 place ("on · 1", the first; moving one shifts the others; its row's label and description its own, in the overlay's
 Windows-1252 with the prompts' glyphs made plain characters, cut to one line); Open the mods folder. Changes are saved to
 mods.txt and used from the next start (the mods are looked at once: the session keeps the list it started with, the
@@ -246,7 +246,7 @@ disc_image.txt, xbox_disc.txt, `memorycard/`, `mods/`, `textures/`, the log), is
   a message box or the disc image's file dialog closes it first. The log's lines after the version: what the start found, then
   "settings and saves in %APPDATA%\Crash Twinsanity" or "in the User folder beside the program" (named, not spelt out: the
   logs go to bug reports, and `%APPDATA%`'s path has the user's name).
-- **Options > Gameplay > Portable mode** (yes/no, ui/settings.cpp; shown only on Windows) is the mode in use. Stepping it asks
+- **Options > Game > Portable mode** (yes/no, ui/settings.cpp; shown only on Windows) is the mode in use. Stepping it asks
   (a dialog over the settings, the controller's or the mouse's: left and right or the mouse over a button choose yes or no,
   no at first so a press by chance doesn't switch, select takes the chosen one, back is no), refused at once when the folder
   can't be written to, then
@@ -631,7 +631,7 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   Context 24.10.1...", Intel's "... Build 31.0.101..."), then each adapter Windows has (graphics/adapters_win32.cpp, DXGI's: its
   name, PCI vendor and device, its driver's version as Device Manager shows it and its video memory). The game's trail (ui/trail.cpp) is always in it: the game controller's
   states by name with the player's place (read without changing the game's), the player's chunk as it changes, the chunk a level
-  loads at, the memory card's writes and the movies opened. The detailed log (Options > Gameplay, `detailed_log` in
+  loads at, the memory card's writes and the movies opened. The detailed log (Options > Game, `detailed_log` in
   options.txt, or `$TWIN_DETAILED_LOG`) adds the player's place every 5 s of play, every sound played (game/sound.cpp, as
   `$TWIN_SOUND_CHECK` logs them) and every file looked up on the disc. A crash's or a hang's stack names each function of the
   executable (its COFF symbol table, read from its file when the report needs it; C++'s names mangled, `llvm-cxxfilt` reads
@@ -744,7 +744,7 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   `$TWIN_PHYSICS_TIED` (Cortex tied to it) and `$TWIN_PHYSICS_SECONDS` (the watch's end). `$TWIN_PHYSICS_TRACE=FILE`: every
   frame's place, velocity, ground and movement node's velocity as CSV.
 - `$TWIN_PORTABLE_TEST=1` or `=FOLDER` (with `--headless`, ui/portabletest.cpp): from the main menu the settings opened,
-  Gameplay's portable mode row stepped and its dialog followed with its own input: asked, left to yes and select copies,
+  the Game tab's portable mode row stepped and its dialog followed with its own input: asked, left to yes and select copies,
   done, select closes the game as a player's would (exit 0; the folders are check_windows.py's to look at); refused (the folder can't be written to),
   select, "portable test: pass (refused ...)" and exit 0. With a folder the screen is saved there at each step
   (portable_ask.png, portable_copying.png, portable_done.png, portable_refused.png).

@@ -39,6 +39,8 @@ constexpr Rgba32 PillFill = Hex(0xeaf2ff);
 constexpr Rgba32 Separator = Hex(0xeef3fa);
 constexpr Rgba32 White = Hex(0xffffff);
 constexpr Rgba32 KeyInk = Hex(0x1b2340);
+// A note line's (the Enhancements tab's warning): the label's ink, lighter
+constexpr Rgba32 NoteInk = Hex(0x5b7194);
 
 constexpr f32 PanelX = 360.0f;
 constexpr f32 PanelY = 170.0f;
@@ -853,8 +855,18 @@ void DrawSettingsView(OverlayFrame& frame, std::vector<HitRegion>& regions)
     f32 maxScroll = std::max(0.0f, contentHeight - rowsHeight);
     f32 selectedTop = static_cast<f32>(selectedLine) * RowPitch;
     f32 wantScroll = a.scroll;
-    // A row under the stuck header scrolls into view below it
+    // A row under the stuck header scrolls into view below it, and a section's first row with its title (or the line above it)
     f32 headerAllowance = headerLine >= 0 && selectedLine > headerLine ? RowPitch : 0.0f;
+    for (s32 line = selectedLine - 1; line >= 0; line--)
+    {
+        RowKind above = rows[static_cast<size_t>(visible[static_cast<size_t>(line)])].kind;
+        if (above != RowSection && above != RowNote)
+        {
+            break;
+        }
+
+        headerAllowance = std::max(headerAllowance, static_cast<f32>(selectedLine - line) * RowPitch);
+    }
     if (selectedTop - headerAllowance < a.scroll)
     {
         wantScroll = selectedTop - headerAllowance;
@@ -910,7 +922,9 @@ void DrawSettingsView(OverlayFrame& frame, std::vector<HitRegion>& regions)
         // The text in the middle of the row below its divider (the selected row's divider is clear)
         f32 middle = top + (line > 0 ? 1.0f : 0.0f) + RowHeight * 0.5f;
         bool selected = index == view.row && row.kind != RowBinding;
-        if (line > 0 && index != view.row)
+        // (No divider under a section's title or a note: they head the rows after them)
+        const RowKind above = line > 0 ? rows[static_cast<size_t>(visible[static_cast<size_t>(line - 1)])].kind : RowHeader;
+        if (line > 0 && index != view.row && above != RowSection && above != RowNote)
         {
             BoxStyle separator;
             separator.fill = Faded(Separator, fade);
@@ -933,6 +947,22 @@ void DrawSettingsView(OverlayFrame& frame, std::vector<HitRegion>& regions)
         if (row.kind == RowHeader)
         {
             // Drawn after the rows (it sticks)
+            continue;
+        }
+
+        if (row.kind == RowSection)
+        {
+            // A section's title (THE LIST 64): the tabs' letters, small, in the pills' blue, low in its line, near the rows it names
+            TextStyle style = Display(20.0f, Faded(PillBlue, fade));
+            style.letterSpacing = 1.0f;
+            frame.Text(Capitals(Text(row.label)), rowLeft + RowPad, middle + 6.0f, style);
+            continue;
+        }
+
+        if (row.kind == RowNote)
+        {
+            // A line of text (the Enhancements tab's warning), quieter than a row's label
+            frame.Text(Sentence(Text(row.label)), rowLeft + RowPad, middle, Body(19.0f, Faded(NoteInk, fade)));
             continue;
         }
 

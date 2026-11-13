@@ -67,7 +67,7 @@ Library). The game's own buttons, as on the PS2 (all can be changed in Options >
 | D-pad | D-pad (menus) | D-pad |
 
 The back buttons (L4, L5, R4, R5) and the trackpads do nothing unless Steam's layout gives them a button. Holding any
-button for a second skips a cutscene when Options > Gameplay > Skip cutscenes is on. Speed on the Deck isn't measured yet:
+button for a second skips a cutscene when Options > Game > Skip cutscenes is on. Speed on the Deck isn't measured yet:
 if it's slow, Options > Display's resolution at 1x is the lightest.
 
 ## Building and running

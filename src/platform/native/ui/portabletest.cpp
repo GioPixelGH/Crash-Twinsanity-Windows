@@ -1,6 +1,6 @@
 // Portable mode's test ($TWIN_PORTABLE_TEST=1, or a folder for the dialog's pictures; with --headless): from the main menu (past the
-// logos, as the settings shots go) the settings opened, Gameplay's portable mode row found and stepped, and its dialog followed by its
-// own input, as a player's select. Asked: select copies (portable.cpp), then done, and select closes the game as it would
+// logos, as the settings shots go) the settings opened, the Game tab's portable mode row found and stepped, and its dialog followed
+// by its own input, as a player's select. Asked: select copies (portable.cpp), then done, and select closes the game as it would
 // (QuitAfterPortableSwitch: exit 0). Refused (the program's folder can't be written to): select closes the dialog and the test ends
 // (exit 0). Each step is logged ("portable test: ..."); check_windows.py's portable check looks at the folders after. A step over 60 s,
 // or a copy that fails, fails it (exit 1). With a folder the screen is saved there at each step (portable_ask.png ...)
@@ -95,10 +95,10 @@ void Shot(const char* name)
     }
 }
 
-// Gameplay's portable mode row (-1: none)
+// The Game tab's portable mode row (-1: none)
 s32 PortableRow()
 {
-    const std::vector<Row>& rows = SettingsRows(TabGameplay);
+    const std::vector<Row>& rows = SettingsRows(TabGame);
     for (s32 i = 0; i < static_cast<s32>(rows.size()); i++)
     {
         if (rows[static_cast<size_t>(i)].label == TextPortable)
@@ -161,10 +161,10 @@ void PortableTestFrame()
         s32 row = PortableRow();
         if (row < 0)
         {
-            End(1, "FAILED: Gameplay has no portable mode row");
+            End(1, "FAILED: the Game tab has no portable mode row");
         }
 
-        if (SettingsTabForTest() != TabGameplay)
+        if (SettingsTabForTest() != TabGame)
         {
             SettingsActForTest(TabNext);
         }

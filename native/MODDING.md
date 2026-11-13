@@ -147,7 +147,7 @@ These are other people's projects, each under its own licence; the port uses non
 - **Sizes**: a disc file of a mod must be under 1 GB, and the archive with every mod's archive files should stay under
   2 GB (the PS2's sound streaming counts in signed 32 bits; the log warns when it's passed).
 - **Changes take effect at the next start.** The mods are looked at once, when the game starts.
-- Crash Twinsanity Improved's fixes are options of the port already (**Options > Gameplay > Bug fixes**), and the cutscene
+- Crash Twinsanity Improved's fixes are options of the port already (**Options > Enhancements > Bug fixes**), and the cutscene
   skip is one too: their mod isn't needed.
 
 ## ReShade

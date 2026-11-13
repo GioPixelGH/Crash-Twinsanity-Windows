@@ -1,5 +1,5 @@
-// The settings screen's logic: the options in tabs (gameplay, display, audio, controls, accessibility) as the newer Crash games on a
-// computer have them (native/research/MODERN_CRASH_UI.md), its view apart (settingsview.cpp, on a canvas), opened in place of
+// The settings screen's logic: the options in tabs (game, enhancements, display, audio, controls, accessibility, mods) as the newer
+// Crash games on a computer have them (native/research/MODERN_CRASH_UI.md), its view apart (settingsview.cpp, on a canvas), opened in place of
 // the old options pages (olegpages.cpp's options item, under TWIN_NATIVE). Each row is a label and its value (a choice stepped left
 // and right, a slider, a toggle), the highlighted row's description under the list, every change applied at once and kept. The
 // controls tab is a table of the game's actions by the keyboard's two keys and the controller's button. It takes the keyboard
@@ -61,7 +61,8 @@ namespace NativeUi
 namespace
 {
 // ------------------------------------------------------------------------------------------------------------------- the rows
-constexpr u32 TabTexts[Pages] = {TextTabGameplay, TextTabDisplay, TextTabAudio, TextControls, TextTabAccessibility, TextTabMods};
+constexpr u32 TabTexts[Pages] = {TextTabGame,   TextTabEnhancements,  TextTabDisplay, TextTabAudio,
+                                 TextControls,  TextTabAccessibility, TextTabMods};
 constexpr u32 Columns = BindingColumns;
 // The draw distance's choices from the shortest to the farthest, so left is less and right more (options.txt keeps
 // renderdistance.h's codes, whatever this order)
@@ -150,6 +151,19 @@ Row Binding(u32 label, u32 function)
 Row Header()
 {
     Row row{RowHeader, 0, TextDescBinding, {}, {}, 0, 0, {}, {}, 0, {}, false};
+    return row;
+}
+
+// A section's title (THE LIST 64), and a line of text
+Row Section(u32 label)
+{
+    Row row{RowSection, label, 0, {}, {}, 0, 0, {}, {}, 0, {}, false};
+    return row;
+}
+
+Row Note(u32 label)
+{
+    Row row{RowNote, label, 0, {}, {}, 0, 0, {}, {}, 0, {}, false};
     return row;
 }
 
@@ -411,17 +425,11 @@ void Build()
     }
 
     g_Built = true;
-    std::vector<Row>& gameplay = g_Rows[TabGameplay];
-    gameplay.push_back(Choice(
-        GameTextVibration, TextDescVibration,
-        [] {
-            auto* pads = static_cast<GamePadController*>(G_GamePadController);
-            return pads != nullptr && pads->flags.vibration != 0 ? 1 : 0;
-        },
-        SetVibration, 1, [](s32 value) { return Text(value != 0 ? 1 : 0); }));
+    // The game (THE LIST 64): the languages, the skip, the loading, the pause, the timer; then the program's own rows
+    std::vector<Row>& game = g_Rows[TabGame];
     // The texts' language (and the voices', unless the next row chooses theirs: THE LIST 7). A slot whose texts are another
     // language by their content (#25's Portuguese in the English slot: languages.cpp) is named by that language
-    gameplay.push_back(Choice(
+    game.push_back(Choice(
         TextGameLanguage, TextDescGameLanguage, [] { return GetOption(OptionLanguage); },
         [](s32 value) { SetOption(OptionLanguage, value); }, 5, [](s32 value) {
             constexpr u32 Names[] = {TextLanguageWindows, TextLanguageEnglish, TextLanguageFrench, TextLanguageGerman,
@@ -439,36 +447,59 @@ void Build()
 
             return Text(Names[std::clamp(value, 0, 5)]);
         }));
-    gameplay.push_back(OptionChoice(TextSpeechLanguage, TextDescSpeechLanguage, OptionSpeechLanguage,
-                                    {TextLanguageAsTexts, TextLanguageEnglish, TextLanguageFrench, TextLanguageGerman,
-                                     TextLanguageItalian, TextLanguageSpanish}));
-    gameplay.push_back(Toggle(TextSkipCutscenes, TextDescSkip, OptionSkipCutscenes));
-    gameplay.push_back(Toggle(TextFastLoading, TextDescFastLoading, OptionFastLoading));
-    gameplay.push_back(Toggle(TextBugFixes, TextDescBugFixes, OptionRetailFixes));
-    // The game options (gameoptions.h), each off by default: infinite lives (THE LIST 6)
-    gameplay.push_back(Toggle(TextInfiniteLives, TextDescInfiniteLives, OptionInfiniteLives));
-    // The stronger Aku Aku mask (THE LIST 10, #30)
-    gameplay.push_back(Toggle(TextStrongMask, TextDescStrongMask, OptionStrongMask));
-    // The automatic camera: free (0) or behind the character by itself (1)
-    gameplay.push_back(Toggle(TextAutoCamera, TextDescAutoCamera, OptionAutoCamera));
-    // The slide jump (THE LIST 11, #11, #35): original, any moment, easier
-    gameplay.push_back(OptionChoice(TextSlideJump, TextDescSlideJump, OptionSlideJump,
-                                    {TextDistanceOriginal, TextSlideJumpAnyMoment, TextSlideJumpEasier}));
-    // The drop shadow (THE LIST 14, #11, #35)
-    gameplay.push_back(Toggle(TextDropShadow, TextDescDropShadow, OptionDropShadow));
-    // The shadows on crates (THE LIST 38)
-    gameplay.push_back(Toggle(TextShadowsOnCrates, TextDescShadowsOnCrates, OptionShadowsOnCrates));
+    game.push_back(OptionChoice(TextSpeechLanguage, TextDescSpeechLanguage, OptionSpeechLanguage,
+                                {TextLanguageAsTexts, TextLanguageEnglish, TextLanguageFrench, TextLanguageGerman,
+                                 TextLanguageItalian, TextLanguageSpanish}));
+    game.push_back(Toggle(TextSkipCutscenes, TextDescSkip, OptionSkipCutscenes));
+    game.push_back(Toggle(TextFastLoading, TextDescFastLoading, OptionFastLoading));
+    game.push_back(Toggle(TextPauseInactive, TextDescPauseInactive, OptionPauseOnFocusLoss));
     // The speedrun timer (THE LIST 13)
-    gameplay.push_back(Toggle(TextSpeedrunTimer, TextDescSpeedrunTimer, OptionSpeedrunTimer));
+    game.push_back(Toggle(TextSpeedrunTimer, TextDescSpeedrunTimer, OptionSpeedrunTimer));
+    game.push_back(Section(TextSectionProgram));
+    // The update check (off by default; Windows' only: updatecheck.h), and the newer release's page once one's found
+    Row updates = Toggle(TextUpdateCheck, TextDescUpdateCheck, OptionUpdateCheck);
+    updates.shown = [] { return Native::UpdateCheckSupported(); };
+    game.push_back(updates);
+    Row page = Action(TextUpdatePage, TextDescUpdatePage, [] { Native::OpenNewerReleasePage(); });
+    page.shown = [] { return Native::NewerRelease(nullptr, nullptr); };
+    game.push_back(page);
+    game.push_back(Toggle(TextDetailedLog, TextDescDetailedLog, OptionDetailedLog));
+    // Portable mode (portable.cpp; not an option of options.txt, which is in the folder it chooses): the mode in use, and stepping
+    // it asks to switch (the dialog), the switch taking effect from the next start
+    Row portable = Choice(
+        TextPortable, TextDescPortable, [] { return Native::PortableMode() ? 1 : 0; }, [](s32 value) { AskPortable(value != 0); }, 1,
+        [](s32 value) { return Text(value != 0 ? GameTextYes : GameTextNo); });
+    portable.shown = [] { return Native::PortableSupported(); };
+    game.push_back(portable);
+    // The credits, and quitting to the desktop (#33: asked first, then as the window's close button)
+    game.push_back(Action(TextCredits, TextDescCredits, [] { OpenDialog(DialogCredits); }));
+    game.push_back(Action(TextQuitDesktop, TextDescQuitDesktop, [] { OpenDialog(DialogQuit); }));
+
+    // The enhancements (THE LIST 64): the game options (gameoptions.h), each off by default, under a line saying they change the
+    // original; the bug fixes, infinite lives (THE LIST 6) and the stronger Aku Aku mask (THE LIST 10, #30) as assists
+    std::vector<Row>& enhancements = g_Rows[TabEnhancements];
+    enhancements.push_back(Note(TextNoteEnhancements));
+    enhancements.push_back(Section(TextSectionAssists));
+    enhancements.push_back(Toggle(TextBugFixes, TextDescBugFixes, OptionRetailFixes));
+    enhancements.push_back(Toggle(TextInfiniteLives, TextDescInfiniteLives, OptionInfiniteLives));
+    enhancements.push_back(Toggle(TextStrongMask, TextDescStrongMask, OptionStrongMask));
+    // The slide jump (THE LIST 11, #11, #35): original, any moment, easier
+    enhancements.push_back(Section(TextSectionMovement));
+    enhancements.push_back(OptionChoice(TextSlideJump, TextDescSlideJump, OptionSlideJump,
+                                        {TextDistanceOriginal, TextSlideJumpAnyMoment, TextSlideJumpEasier}));
+    // The automatic camera (THE LIST 55, #42, PR #45): free (0) or behind the character by itself (1)
+    enhancements.push_back(Section(TextSectionCamera));
+    enhancements.push_back(Toggle(TextAutoCamera, TextDescAutoCamera, OptionAutoCamera));
     // The level select (THE LIST 12, levelselect.cpp): the option, then (on) the level chosen and its start from the main menu, or
     // a line saying the main menu is where it starts from
-    gameplay.push_back(Toggle(TextLevelSelect, TextDescLevelSelect, OptionLevelSelect));
+    enhancements.push_back(Section(TextSectionLevels));
+    enhancements.push_back(Toggle(TextLevelSelect, TextDescLevelSelect, OptionLevelSelect));
     Row levelSelectLevel = Choice(
         TextLevelSelectLevel, TextDescLevelSelectLevel, [] { return g_LevelSelectChoice; },
         [](s32 value) { g_LevelSelectChoice = value; }, static_cast<s32>(LevelCount) - 1,
         [](s32 value) { return Text(LevelNameTexts + static_cast<u32>(value)); });
     levelSelectLevel.shown = [] { return IsOn(OptionLevelSelect); };
-    gameplay.push_back(levelSelectLevel);
+    enhancements.push_back(levelSelectLevel);
     Row levelSelectStart = Action(TextLevelSelectStart, TextDescLevelSelectLevel, [] {
         if (CanStartLevel())
         {
@@ -477,31 +508,14 @@ void Build()
         }
     });
     levelSelectStart.shown = [] { return CanStartLevel(); };
-    gameplay.push_back(levelSelectStart);
+    enhancements.push_back(levelSelectStart);
     Row levelSelectElsewhere = Action(TextLevelSelectFromMainMenu, TextDescLevelSelectFromMainMenu, [] {});
     levelSelectElsewhere.shown = [] { return IsOn(OptionLevelSelect) && !CanStartLevel(); };
-    gameplay.push_back(levelSelectElsewhere);
-    gameplay.push_back(Toggle(TextPauseInactive, TextDescPauseInactive, OptionPauseOnFocusLoss));
-    gameplay.push_back(Toggle(TextDetailedLog, TextDescDetailedLog, OptionDetailedLog));
-    // Portable mode (portable.cpp; not an option of options.txt, which is in the folder it chooses): the mode in use, and stepping
-    // it asks to switch (the dialog), the switch taking effect from the next start
-    Row portable = Choice(
-        TextPortable, TextDescPortable, [] { return Native::PortableMode() ? 1 : 0; }, [](s32 value) { AskPortable(value != 0); }, 1,
-        [](s32 value) { return Text(value != 0 ? GameTextYes : GameTextNo); });
-    portable.shown = [] { return Native::PortableSupported(); };
-    gameplay.push_back(portable);
-    // The update check (off by default; Windows' only: updatecheck.h), and the newer release's page once one's found
-    Row updates = Toggle(TextUpdateCheck, TextDescUpdateCheck, OptionUpdateCheck);
-    updates.shown = [] { return Native::UpdateCheckSupported(); };
-    gameplay.push_back(updates);
-    Row page = Action(TextUpdatePage, TextDescUpdatePage, [] { Native::OpenNewerReleasePage(); });
-    page.shown = [] { return Native::NewerRelease(nullptr, nullptr); };
-    gameplay.push_back(page);
-    // The credits, and quitting to the desktop (#33: asked first, then as the window's close button)
-    gameplay.push_back(Action(TextCredits, TextDescCredits, [] { OpenDialog(DialogCredits); }));
-    gameplay.push_back(Action(TextQuitDesktop, TextDescQuitDesktop, [] { OpenDialog(DialogQuit); }));
+    enhancements.push_back(levelSelectElsewhere);
 
+    // The display (THE LIST 64): the window, then the picture
     std::vector<Row>& display = g_Rows[TabDisplay];
+    display.push_back(Section(TextSectionWindow));
     Row mode = Choice(
         TextDisplayMode, TextDescDisplayMode, [] { return CurrentResolution().fullscreen ? 1 : 0; },
         [](s32 value) {
@@ -547,9 +561,11 @@ void Build()
         3, [](s32 value) { return std::string(value == 0 ? "4:3" : value == 1 ? "16:9" : value == 2 ? "21:9" : "32:9"); }));
     display.push_back(OptionChoice(TextRefreshRate, TextDescRefreshRate, OptionRefresh60,
                                    {Text50Hz, Text60Hz, Text120Hz, Text144Hz, TextUnlimited}));
+    display.push_back(Toggle(TextVSync, TextDescVSync, OptionVSync));
+    display.push_back(Toggle(TextShowFps, TextDescShowFps, OptionShowFps));
+    display.push_back(Action(GameTextCentreScreen, TextDescScreenPosition, [] { OpenScreenPosition(); }));
+    display.push_back(Section(TextSectionPicture));
     display.push_back(OptionChoice(TextFiltering, TextDescFiltering, OptionTextureFilter, {TextSharp, TextSmooth}));
-    display.push_back(Toggle(TextCrt, TextDescCrt, OptionCrtFilter));
-    display.push_back(Toggle(TextTexturePack, TextDescTexturePack, OptionTexturePack));
     // (The texture upscale isn't shown until the graphics have it: NativeGraphicsSetTextureUpscale takes only off.) The
     // anti-aliasing is FXAA on the shown picture, or supersampling (the render scale 2 or 4 times the resolution's, up to 8x
     // the PS2's, the picture made smaller as it's shown); there's no MSAA: PCSX2 dropped its own
@@ -577,9 +593,8 @@ void Build()
         },
         [](s32 value) { SetOption(OptionRenderDistance, static_cast<s32>(DistanceOrder[value])); }, DistanceChoices - 1,
         [](s32 value) { return Text(DistanceTexts[value]); }));
-    display.push_back(Toggle(TextVSync, TextDescVSync, OptionVSync));
-    display.push_back(Toggle(TextShowFps, TextDescShowFps, OptionShowFps));
-    display.push_back(Action(GameTextCentreScreen, TextDescScreenPosition, [] { OpenScreenPosition(); }));
+    display.push_back(Toggle(TextTexturePack, TextDescTexturePack, OptionTexturePack));
+    display.push_back(Toggle(TextCrt, TextDescCrt, OptionCrtFilter));
 
     std::vector<Row>& audio = g_Rows[TabAudio];
     audio.push_back(Slider(GameTextMusicVolume, TextDescMusic, [] { return GroupLevel(MusicGroup); }, SetMusic));
@@ -594,13 +609,26 @@ void Build()
         2, [](s32 value) { return Text(GameTextMono + static_cast<u32>(value)); }));
     audio.push_back(Toggle(TextMuteInactive, TextDescMuteInactive, OptionMuteInactive));
 
+    // The controls (THE LIST 64): the device (the vibration, the prompts, the hints, the sticks' dead zone), the mouse, the camera
+    // (from Accessibility), then the keys' table
     std::vector<Row>& controls = g_Rows[TabControls];
+    controls.push_back(Section(TextSectionDevice));
+    controls.push_back(Choice(
+        GameTextVibration, TextDescVibration,
+        [] {
+            auto* pads = static_cast<GamePadController*>(G_GamePadController);
+            return pads != nullptr && pads->flags.vibration != 0 ? 1 : 0;
+        },
+        SetVibration, 1, [](s32 value) { return Text(value != 0 ? 1 : 0); }));
     controls.push_back(OptionChoice(TextController, TextDescController, OptionController,
                                     {TextAutomatic, TextKeyboard, TextXbox, TextPlayStation, TextSwitch}));
     Row layout = OptionChoice(TextNintendoLayout, TextDescLayout, OptionNintendoLayout, {TextPositional, TextNintendo});
     layout.shown = [] { return CurrentPromptStyle() == PromptSwitch; };
     controls.push_back(layout);
     controls.push_back(OptionChoice(TextMenuHints, TextDescMenuHints, OptionMenuHints, {TextHintsOriginal, TextHintsBar}));
+    // (Both sticks', so the device's rather than the camera's)
+    controls.push_back(OptionSlider(TextDeadZone, TextDescDeadZone, OptionStickDeadZone, 0, 10));
+    controls.push_back(Section(TextSectionMouse));
     controls.push_back(Toggle(TextMouse, TextDescMouse, OptionMouse));
     controls.push_back(Toggle(TextMouseLook, TextDescMouseLook, OptionMouseLook));
     Row sensitivity = OptionSlider(TextMouseSensitivity, TextDescMouseSensitivity, OptionMouseSensitivity, 1, 10);
@@ -609,13 +637,17 @@ void Build()
     Row invertMouse = Toggle(TextInvertMouseY, TextDescInvertMouseY, OptionInvertMouseY);
     invertMouse.shown = [] { return IsOn(OptionMouseLook); };
     controls.push_back(invertMouse);
+    controls.push_back(Section(TextSectionCamera));
+    controls.push_back(Toggle(TextInvertX, TextDescInvertX, OptionInvertCameraX));
+    controls.push_back(Toggle(TextInvertY, TextDescInvertY, OptionInvertCameraY));
+    controls.push_back(OptionSlider(TextCameraSpeed, TextDescCameraSpeed, OptionCameraSpeed, 1, 10));
 
+    // The accessibility: the camera's shake, and the shadows that show where things are (the drop shadow, THE LIST 14, #11, #35;
+    // the shadows on crates, THE LIST 38)
     std::vector<Row>& access = g_Rows[TabAccessibility];
     access.push_back(Toggle(TextCameraShake, TextDescCameraShake, OptionCameraShake));
-    access.push_back(Toggle(TextInvertX, TextDescInvertX, OptionInvertCameraX));
-    access.push_back(Toggle(TextInvertY, TextDescInvertY, OptionInvertCameraY));
-    access.push_back(OptionSlider(TextCameraSpeed, TextDescCameraSpeed, OptionCameraSpeed, 1, 10));
-    access.push_back(OptionSlider(TextDeadZone, TextDescDeadZone, OptionStickDeadZone, 0, 10));
+    access.push_back(Toggle(TextDropShadow, TextDescDropShadow, OptionDropShadow));
+    access.push_back(Toggle(TextShadowsOnCrates, TextDescShadowsOnCrates, OptionShadowsOnCrates));
 
     // The table: the actions in the research's order by key, alt key and the controller's button
     constexpr struct
@@ -641,7 +673,7 @@ void Build()
 
     for (u32 tab = 0; tab < TabCount; tab++)
     {
-        if (tab != TabControls && tab != TabMods)
+        if (tab != TabMods)
         {
             g_Rows[tab].push_back(Action(TextResetDefaults, TextDescResetDefaults, nullptr));
         }
@@ -657,13 +689,13 @@ bool Shown(const Row& row)
 
 bool Selectable(const Row& row)
 {
-    return row.kind != RowHeader && Shown(row);
+    return row.kind != RowHeader && row.kind != RowSection && row.kind != RowNote && Shown(row);
 }
 
 
 // ------------------------------------------------------------------------------------------------------------------ the state
 bool g_Open = false;
-u32 g_Tab = TabGameplay;
+u32 g_Tab = TabGame;
 s32 g_Row = 0;
 u32 g_Column = 0;
 s32 g_Scroll = 0;
@@ -1041,23 +1073,24 @@ void ResetTab(u32 tab)
         SetMusicStereo(static_cast<u32>(DefaultOption(OptionOutputType)));
         ResetOptions({OptionVoiceVolume, OptionOutputType, OptionMuteInactive});
         break;
-    case TabGameplay:
+    case TabGame:
+        ResetOptions({OptionLanguage, OptionSpeechLanguage, OptionSkipCutscenes, OptionFastLoading, OptionPauseOnFocusLoss,
+                      OptionSpeedrunTimer, OptionUpdateCheck, OptionDetailedLog});
+        break;
+    case TabEnhancements:
+        ResetOptions({OptionRetailFixes, OptionInfiniteLives, OptionStrongMask, OptionSlideJump, OptionAutoCamera,
+                      OptionLevelSelect});
+        break;
+    case TabControls:
+        // The options, and the keys and buttons as the table's own two resets put them back
         SetVibration(DefaultOption(OptionVibration));
-        ResetOptions({OptionLanguage, OptionSkipCutscenes, OptionFastLoading, OptionRetailFixes, OptionPauseOnFocusLoss,
-                      OptionDetailedLog});
-        ResetOptions({OptionSpeechLanguage});
-        ResetOptions({OptionUpdateCheck});
-        ResetOptions({OptionInfiniteLives});
-        ResetOptions({OptionStrongMask});
-        ResetOptions({OptionAutoCamera});
-        ResetOptions({OptionSlideJump});
-        ResetOptions({OptionDropShadow});
-        ResetOptions({OptionShadowsOnCrates});
-        ResetOptions({OptionSpeedrunTimer});
-        ResetOptions({OptionLevelSelect});
+        ResetOptions({OptionController, OptionNintendoLayout, OptionMenuHints, OptionStickDeadZone, OptionMouse, OptionMouseLook,
+                      OptionMouseSensitivity, OptionInvertMouseY, OptionInvertCameraX, OptionInvertCameraY, OptionCameraSpeed});
+        ResetKeyboardBindings();
+        ResetControllerBindings();
         break;
     case TabAccessibility:
-        ResetOptions({OptionCameraShake, OptionInvertCameraX, OptionInvertCameraY, OptionCameraSpeed, OptionStickDeadZone});
+        ResetOptions({OptionCameraShake, OptionDropShadow, OptionShadowsOnCrates});
         break;
     default:
         break;

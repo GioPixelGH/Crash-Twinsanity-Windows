@@ -105,7 +105,7 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x13C | mouse | souris | maus | ratón | mouse |
 | 0x13D | display | affichage | anzeige | pantalla | schermo |
 | 0x13E | audio | audio | audio | audio | audio |
-| 0x13F | gameplay | jeu | spiel | juego | gioco |
+| 0x13F | game | jeu | spiel | juego | gioco |
 | 0x140 | display mode | mode d'affichage | anzeigemodus | modo de pantalla | modalità schermo |
 | 0x141 | texture upscale | textures agrandies | texturen skalieren | escalar texturas | scala texture |
 | 0x142 | texture pack | pack de textures | texturpaket | pack de texturas | pacchetto texture |
@@ -264,7 +264,7 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1DB | at each start, asks github for the latest version. it never downloads anything. | à chaque lancement, demande à github la dernière version. rien n'est téléchargé. | fragt bei jedem start github nach der neuesten version. lädt nie etwas herunter. | en cada inicio, pregunta a github por la última versión. nunca descarga nada. | a ogni avvio chiede a github l'ultima versione. non scarica mai niente. |
 | 0x1DC | new version's page | page de la nouvelle version | seite der neuen version | página de la nueva versión | pagina della nuova versione |
 | 0x1DD | opens the new version's page on github in your browser. | ouvre la page de la nouvelle version sur github dans ton navigateur. | öffnet die seite der neuen version auf github im browser. | abre la página de la nueva versión en github en tu navegador. | apre la pagina della nuova versione su github nel browser. |
-| 0x1DE | version x.y.z is out: options, gameplay. | la version x.y.z est sortie : options, jeu. | version x.y.z ist da: optionen, spiel. | ya está la versión x.y.z: opciones, juego. | è uscita la versione x.y.z: opzioni, gioco. |
+| 0x1DE | version x.y.z is out: options, game. | la version x.y.z est sortie : options, jeu. | version x.y.z ist da: optionen, spiel. | ya está la versión x.y.z: opciones, juego. | è uscita la versione x.y.z: opzioni, gioco. |
 | 0x1DF | infinite lives | vies infinies | unendliche leben | vidas infinitas | vite infinite |
 | 0x1E0 | a death costs no life: the count stays where it is. off plays as the original. | une mort ne fait perdre aucune vie : le compteur ne bouge pas. désactivé : comme l'original. | ein tod kostet kein leben: der zähler bleibt. aus: wie das original. | morir no cuesta vidas: el contador no cambia. desactivado: como el original. | morire non costa vite: il conteggio resta. disattivato: come l'originale. |
 | 0x1E1 | stronger aku aku | aku aku plus fort | stärkerer aku aku | aku aku más fuerte | aku aku più forte |
@@ -300,6 +300,17 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1FF | can't be used: | inutilisable : | nicht nutzbar: | no se puede usar: | non utilizzabile: |
 | 0x200 | its program changes don't apply. | ses changements du programme ne s'appliquent pas. | seine programmänderungen gelten nicht. | sus cambios del programa no se aplican. | le sue modifiche al programma non valgono. |
 | 0x201 | the automatic camera | la caméra automatique | die automatische kamera | la cámara automática | la telecamera automatica |
+| 0x202 | enhancements | améliorations | verbesserungen | mejoras | migliorie |
+| 0x203 | these change the original game. all off, it plays as on the ps2. | elles changent le jeu original. tout désactivé : comme sur ps2. | sie ändern das originalspiel. alles aus: wie auf der ps2. | cambian el juego original. todo desactivado: como en ps2. | cambiano il gioco originale. tutto spento: come su ps2. |
+| 0x204 | program | programme | programm | programa | programma |
+| 0x205 | assists | aides | hilfen | ayudas | aiuti |
+| 0x206 | movement | mouvement | bewegung | movimiento | movimento |
+| 0x207 | camera | caméra | kamera | cámara | telecamera |
+| 0x208 | levels | niveaux | level | niveles | livelli |
+| 0x209 | window | fenêtre | fenster | ventana | finestra |
+| 0x20A | picture | image | bild | imagen | immagine |
+| 0x20B | device | appareil | gerät | dispositivo | dispositivo |
+| 0x20C | mouse | souris | maus | ratón | mouse |
 
 ## English (29 lines)
 

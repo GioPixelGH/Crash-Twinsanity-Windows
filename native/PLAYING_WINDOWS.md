@@ -53,7 +53,7 @@ the main menu.
 
 Portable mode keeps everything in the game's own folder, to carry it on a USB stick or keep it all in one place.
 
-1. Turn on **Options > Gameplay > Portable mode**.
+1. Turn on **Options > Game > Portable mode**.
 2. The game copies your settings, saves, mods and texture packs into a **`User`** folder beside `CrashTwinsanity.exe`, makes
    a `portable.txt` file there, and closes.
 3. Start it again. From then on it uses the `User` folder.
@@ -89,7 +89,7 @@ On keyboard and mouse:
 | Status | Tab (or I) |
 | Shoulders | Z / C |
 | Pause | Esc (or Enter) |
-| Skip a cutscene | Hold any button for a second (with Options > Gameplay > Skip cutscenes on) |
+| Skip a cutscene | Hold any button for a second (with Options > Game > Skip cutscenes on) |
 | Menus | Arrow keys (or the mouse), Enter to select, Esc to go back |
 | Fullscreen | Alt+Enter |
 
@@ -99,15 +99,49 @@ You can rebind everything in **Options > Controls**. The button prompts follow w
   as fast as a stick does, as on the PS2. Above 5, a quick move turns it faster, up to six times at 10.
 - **Menu hints**: the menus' own hints as the game draws them (the default, with your controller's buttons, and clickable),
   or a bar of prompts at the bottom.
-
-**Camera speed** (Options > Accessibility) makes the camera turn faster or slower, for the mouse, a controller and the keys
-alike.
+- **Camera speed**: the camera turns faster or slower, for the mouse, a controller and the keys alike.
 
 ## Options
 
 Open Options from the main menu or the pause menu. The defaults are the game as on the PS2: a 1280×720 window at twice the
 PS2's resolution, 60 Hz, cutscenes that can't be skipped, and the original bugs kept. Faster loading and pausing in the
-background are on. **Reset to defaults**, at the bottom of each tab, puts it all back.
+background are on. **Reset to defaults**, at the bottom of each tab, puts that tab back.
+
+There are seven tabs:
+
+1. **Game**: languages, cutscenes, loading, and the program itself.
+2. **Enhancements**: changes to the original game. All are off at first.
+3. **Display**: the window, then the picture.
+4. **Audio**: the volumes.
+5. **Controls**: your controller, the mouse, the camera, and the keys.
+6. **Accessibility**: camera shake and shadows that help you see.
+7. **Mods**: the mods you have.
+
+**Game**
+
+| Option | What it does |
+| --- | --- |
+| Text language | English, French, German, Italian or Spanish. Windows' language by default. It applies from the next start. |
+| Voice language | The voices and the movies' sound. The same as the texts by default, or another one, from the next start. A translated disc image that keeps its texts in another language's place shows that language's name: Brazilian Portuguese texts in the English slot read "português". |
+| Skip cutscenes | Hold any button for a second to skip a cutscene. Off by default, as the PS2 game couldn't. |
+| Faster loading | On by default. |
+| Speedrun timer | Real time from New Game at the top of the screen, with each level's time as you finish it. |
+| Check for updates | Under **Program**. Off by default. When it's on, each start asks GitHub in the background for the latest version. A newer one is shown in the main menu, and the Game tab gets a row that opens its page in your browser. It never downloads or installs anything: you update by downloading the new zip yourself. |
+| Credits | Who made the port, and what it's built on. |
+| Quit to desktop | Asks first, then closes the game as the window's close button or Alt+F4 does. Progress since your last save is lost. |
+
+**Enhancements** change the original game, so they're all off unless you turn them on. Your saves stay ones the original
+game could make.
+
+- **Bug fixes**: optional fixes of the original game's bugs. Off plays exactly like the PS2.
+- **Infinite lives**: dying costs no life.
+- **Stronger Aku Aku**: with one or two masks, TNT and Nitro take a mask instead of a life, as in the earlier Crash games.
+- **Slide jump**: the long jump from a slide at any moment of it. Or easier: also just after the slide, and steered in the
+  air.
+- **Automatic camera**: the camera swings behind you by itself while you move, and the camera stick, the mouse and the camera
+  keys turn nothing. Off is the original's free camera. A level's own fixed cameras still work as they did.
+- **Level select**: start any level from the main menu (Options > Enhancements > Level). What you save in such a game is
+  kept apart from your own saves, which come back once you're at the title again.
 
 **Display**
 
@@ -117,41 +151,21 @@ background are on. **Reset to defaults**, at the bottom of each tab, puts it all
 | Resolution | 1x to 8x the PS2's. It's applied when you stop on a choice, not at each step. |
 | Widescreen | 4:3, 16:9, 21:9 or 32:9. At 32:9 the menus and the HUD stay in the middle 16:9. |
 | Refresh rate | 50 Hz (the European PS2's), 60 Hz (the default), 120 Hz, 144 Hz, or unlimited (turn v-sync off for it). The game runs at the same speed at any rate, and Crash jumps as far and as high as at 60 Hz. Above 60, it goes only as fast as your computer can draw it. |
-| Texture filtering, Anisotropic filtering | Smooth or sharp textures. Anisotropic filtering is off by default, as on the PS2. Up to 16x, it sharpens textures seen at an angle. |
+| V-sync | As its name says. |
+| Show FPS | A frames per second counter in the top left corner. Off by default. |
+| Texture filtering, Anisotropic filtering | Under **Picture**. Smooth or sharp textures. Anisotropic filtering is off by default, as on the PS2. Up to 16x, it sharpens textures seen at an angle. |
 | Anti-aliasing | FXAA or SMAA smooth the edges on the finished picture (SMAA is the sharper). SSAA 2x and 4x draw the picture 2 or 4 times larger: the smoothest, and the slowest. |
 | Dithering | As on the PS2 (the default): its 16-bit picture with a fine pattern. Or off, for full colour. |
 | Draw distance | Short, original (the default, the PS2's), medium, long or unlimited. Farther settings draw the grass and small things before you get close, and the detailed models of trees and statues from farther away. They also draw more: unlimited draws about twice as much on the beach, which is slower on an older PC. Short draws less. |
-| Texture packs, scanlines, v-sync | As their names say. |
-| Show FPS | A frames per second counter in the top left corner. Off by default. |
-
-**Gameplay**
-
-| Option | What it does |
-| --- | --- |
-| Text language | English, French, German, Italian or Spanish. Windows' language by default. It applies from the next start. |
-| Voice language | The voices and the movies' sound. The same as the texts by default, or another one, from the next start. A translated disc image that keeps its texts in another language's place shows that language's name: Brazilian Portuguese texts in the English slot read "português". |
-| Skip cutscenes | Hold any button for a second to skip a cutscene. Off by default, as the PS2 game couldn't. |
-| Faster loading | On by default. |
-| Bug fixes | Optional fixes of the original game's bugs. Off plays exactly like the PS2. |
-| Check for updates | Off by default. When it's on, each start asks GitHub in the background for the latest version. A newer one is shown in the main menu, and Gameplay gets a row that opens its page in your browser. It never downloads or installs anything: you update by downloading the new zip yourself. |
-| Credits | Who made the port, and what it's built on. |
-| Quit to desktop | Asks first, then closes the game as the window's close button or Alt+F4 does. Progress since your last save is lost. |
+| Texture packs, scanlines | As their names say. |
 
 The volumes are in **Audio**.
 
-**Game options** (in Gameplay, all off unless you turn them on). Your saves stay ones the original game could make.
+**Accessibility**
 
-- **Infinite lives**: dying costs no life.
-- **Stronger Aku Aku**: with one or two masks, TNT and Nitro take a mask instead of a life, as in the earlier Crash games.
-- **Automatic camera**: the camera swings behind you by itself while you move, and the camera stick, the mouse and the camera
-  keys turn nothing. Off is the original's free camera. A level's own fixed cameras still work as they did.
-- **Slide jump**: the long jump from a slide at any moment of it. Or easier: also just after the slide, and steered in the
-  air.
-- **Drop shadow**: a round shadow under you while you're in the air, so you see where you'll land.
-- **Shadows on crates**: your shadow falls on crates too, from the next level loaded.
-- **Speedrun timer**: real time from New Game at the top of the screen, with each level's time as you finish it.
-- **Level select**: start any level from the main menu (Options > Gameplay > Level). What you save in such a game is kept
-  apart from your own saves, which come back once you're at the title again.
+- **Camera shake**: on as in the original. Turn it off if the shaking bothers you.
+- **Drop shadow**: a round shadow under you while you're in the air, so you see where you'll land. Off by default.
+- **Shadows on crates**: your shadow falls on crates too, from the next level loaded. Off by default.
 
 ## Mods
 
@@ -219,7 +233,7 @@ What the log has:
   graphics card took for a frame, and a line for each option you change;
 - when the game closes: a summary of the session's frame rate, and how it closed.
 
-To report a bug you can repeat, turn on **Options > Gameplay > Detailed log** first. It also writes where Crash is every 5
+To report a bug you can repeat, turn on **Options > Game > Detailed log** first. It also writes where Crash is every 5
 seconds, every sound played and every file read from the disc image.
 
 **The log is made to be shared.** It writes your user folder as `%USERPROFILE%`, and the game's settings folder as

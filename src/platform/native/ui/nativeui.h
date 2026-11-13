@@ -113,7 +113,7 @@ enum NativeText : u32
     TextMouse,
     TextTabDisplay,
     TextTabAudio,
-    TextTabGameplay,
+    TextTabGame,
     TextDisplayMode,
     TextUpscale,
     TextTexturePack,
@@ -328,6 +328,18 @@ enum NativeText : u32
     TextModProgram,
     // The credits: the automatic camera's (THE LIST 55, PR #45)
     TextCreditsCamera,
+    // The settings' tabs reordered (THE LIST 64): the Enhancements tab and its warning line, and the tabs' sections' titles
+    TextTabEnhancements,
+    TextNoteEnhancements,
+    TextSectionProgram,
+    TextSectionAssists,
+    TextSectionMovement,
+    TextSectionCamera,
+    TextSectionLevels,
+    TextSectionWindow,
+    TextSectionPicture,
+    TextSectionDevice,
+    TextSectionMouse,
     NativeTextEnd,
 };
 

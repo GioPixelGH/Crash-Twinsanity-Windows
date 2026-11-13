@@ -834,15 +834,34 @@ void TestControls()
 
 // The FPS counter: nothing shown with the option off or before its first half second, the frames a second of pictures shown at
 // 50, 59.94, 144 and 60 a second, and drawn in the window's own top left corner whatever the window's shape
-// Each settings row's description one line on the screen in every language (the view draws it from x 360, no wrapping)
+// Each settings row's description one line on the screen in every language (the view draws it from x 360, no wrapping), and a
+// note's line (the Enhancements tab's warning, THE LIST 64) one line in the panel's row, in the description's letters
 void TestDescriptions()
 {
+    constexpr f32 NoteRoom = 860.0f - 2.0f * 18.0f - 2.0f * 22.0f;
     u32 measured = 0;
     f32 widest = 0.0f;
     for (u32 page = 0; page < TabCount; page++)
     {
         for (const Row& row : SettingsRows(page))
         {
+            for (u32 i = 0; i < g_NativeTextCount && row.kind == RowNote; i++)
+            {
+                if (g_NativeTexts[i].text != row.label)
+                {
+                    continue;
+                }
+
+                for (u32 language = 0; language < TextLanguages; language++)
+                {
+                    std::string text;
+                    ToGameText(g_NativeTexts[i].languages[language], &text);
+                    const f32 width = DescriptionWidth(text);
+                    Check(width > 0.0f && width <= NoteRoom, "note 0x%X in %s: %.0f of %.0f pixels", row.label,
+                          g_TextLanguages[language], width, NoteRoom);
+                }
+            }
+
             for (u32 i = 0; i < g_NativeTextCount; i++)
             {
                 if (row.description == 0 || g_NativeTexts[i].text != row.description)

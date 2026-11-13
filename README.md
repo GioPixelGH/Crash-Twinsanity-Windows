@@ -70,7 +70,7 @@ non-Steam game. Nobody has tried it on a Deck yet, so **testers are wanted** ([#
 
 - The download holds only the program, its two libraries (SDL 3 and FFmpeg), its fonts and the licences. There's no
   installer.
-- The program goes online only if you turn on **Check for updates** (Options > Gameplay, off by default). Then, at each
+- The program goes online only if you turn on **Check for updates** (Options > Game, off by default). Then, at each
   start, it asks GitHub which version is the latest. It sends no personal data, and it never downloads or installs anything.
   The Linux version has no update check at all.
 - The release page lists each file's SHA-256. You can check your download with `Get-FileHash` on Windows or `sha256sum` on
@@ -189,7 +189,7 @@ controller, saves, cutscene skipping and community fixes), this port adds:
 - **Cutscene skip:** besides the developers' own skips, the others end the scene's waits in order (TwinsanityEvolved's
   skip, with its author's permission). Each one was checked to end as when watched.
 - **Level select** comes from HAB3X's Mac port, on a memory card of its own.
-- **Quit to desktop, a Credits page, and the update check** (Windows only) are in Options > Gameplay.
+- **Quit to desktop, a Credits page, and the update check** (Windows only) are in Options > Game.
 - **Mods:** each mod is a folder in `%APPDATA%\Crash Twinsanity\mods`, a Mod Crate as it comes or files laid out as the
   disc's. Files put straight in the mods folder replace the disc's, as before.
 - **Fixes:**
@@ -258,7 +258,7 @@ controller, saves, cutscene skipping and community fixes), this port adds:
    went wrong.
 4. Say where in the game it happened, and add a screenshot or a video if you can.
 
-For a bug you can repeat, turn on **Options > Gameplay > Detailed log** first. Never attach your disc image or the game's
+For a bug you can repeat, turn on **Options > Game > Detailed log** first. Never attach your disc image or the game's
 files. Questions and help are welcome in the
 [Discussions](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/discussions).
 
@@ -268,7 +268,7 @@ Saves, options, controls, mods, texture packs and `log.txt` are all in one folde
 
 - on Windows, `%APPDATA%\Crash Twinsanity\` (paste that in the Explorer's address bar);
 - on Linux, `~/.config/crash-twinsanity`;
-- with **Options > Gameplay > Portable mode** on, the `User` folder beside the program.
+- with **Options > Game > Portable mode** on, the `User` folder beside the program.
 
 To uninstall, delete the game's folder and that one. The [players' guide](native/PLAYING_WINDOWS.md#where-things-are) lists
 every file.

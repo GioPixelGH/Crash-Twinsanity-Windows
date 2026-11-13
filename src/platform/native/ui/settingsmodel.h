@@ -18,6 +18,9 @@ enum RowKind
     RowAction,
     RowBinding,
     RowHeader,
+    // A section's title in a tab (its label), and a line of text (its label: the Enhancements tab's warning); neither selectable
+    RowSection,
+    RowNote,
 };
 
 struct Row
@@ -45,10 +48,13 @@ struct Row
     std::function<std::string()> descriptionText;
 };
 
-// The tabs (the research's categories, native/research/MODERN_CRASH_UI.md 3.2; the design's, native/design/options/SPEC.md)
+// The tabs (the research's categories, native/research/MODERN_CRASH_UI.md 3.2; the design's, native/design/options/SPEC.md),
+// since 1.3.0 seven (THE LIST 64): the game and the program, the enhancements (the game options, which change the original), the
+// display, the audio, the controls (the device, the mouse, the camera, the keys), the accessibility, the mods
 enum Tab : u32
 {
-    TabGameplay,
+    TabGame,
+    TabEnhancements,
     TabDisplay,
     TabAudio,
     TabControls,
