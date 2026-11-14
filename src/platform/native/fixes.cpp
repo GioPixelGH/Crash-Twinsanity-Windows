@@ -7,6 +7,7 @@
 
 #include "game/renderer.h"
 
+#include <cctype>
 #include <cstdlib>
 #include <cstring>
 
@@ -175,6 +176,35 @@ void MaterialRead(u8* data, u32 size)
                             reinterpret_cast<const char*>(data + 16));
             }
         }
+    }
+}
+
+// #41 (THE LIST 45): along Rockslide Rumble's end (l10end), past the TNT before the last checkpoint, five emitters name EXPLODE_1A,
+// the default section's orange explosion (three particles a frame flung up), where the level's other purple pits have l10end's
+// own AIG_FIRE, the purple smoke (with BIG_FIRE's pink sparks beside it): a slip in the level's data, on the PS2 too (NormanTheFox).
+// With the bug fixes on they're AIG_FIRE, from the chunk's next load
+void ParticleEmitterRead(const char* chunk, char* name)
+{
+    constexpr u32 NameBytes = 16;
+    if (chunk == nullptr || !RetailFixes() || std::strncmp(name, "EXPLODE_1A", NameBytes) != 0)
+    {
+        return;
+    }
+
+    const char* wanted = "levels\\altearth\\rockslid\\l10end";
+    size_t at = 0;
+    for (; chunk[at] != '\0' && wanted[at] != '\0'; at++)
+    {
+        if (std::tolower(static_cast<unsigned char>(chunk[at])) != wanted[at])
+        {
+            return;
+        }
+    }
+
+    if (chunk[at] == '\0' && wanted[at] == '\0')
+    {
+        std::memset(name, 0, NameBytes);
+        std::strcpy(name, "AIG_FIRE");
     }
 }
 }

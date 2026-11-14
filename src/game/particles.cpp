@@ -20,7 +20,11 @@
 #include "platform/math.h"
 
 #ifdef TWIN_NATIVE
+#include "fixes.h"
+#include "native.h"
 #include "ui/nativeui.h"
+
+#include <cstdlib>
 #endif
 
 namespace
@@ -1241,6 +1245,20 @@ extern "C"
             g_LoadedParticleSystems[index] = system;
             ComputeParticleMaxCount(system);
             g_LoadedParticleSystemCount++;
+#ifdef TWIN_NATIVE
+            static const bool trace = std::getenv("TWIN_PARTICLE_TRACE") != nullptr;
+            if (trace)
+            {
+                const ParticleColourKey& colour = system->colourKeys[0];
+                const ParticleColourKey& colourEnd = system->colourKeys[ParticleCurveKeys - 1];
+                Native::Log("particle trace: %s's system %d, %.16s, slot %d, blend %d, rate %d, life %.2f s, size %.2f-%.2f, "
+                            "colour (%.0f, %.0f, %.0f) to (%.0f, %.0f, %.0f), velocity %.2f, gravity %.2f, cut off %.0f, page %d",
+                            chunk != nullptr && chunk->name.string != nullptr ? chunk->name.string : "the default section", index,
+                            system->name, slot, static_cast<s32>(system->blendMode), system->genRate, system->lifeTime,
+                            system->minSize, system->maxSize, colour.red, colour.green, colour.blue, colourEnd.red, colourEnd.green, colourEnd.blue,
+                            system->velocity, system->gravity, system->cutOffRadius, system->texturePage);
+            }
+#endif
         }
 
         ParticleSystem droppedSystem;
@@ -1290,6 +1308,9 @@ extern "C"
                     emitter.emitRoll = version < VersionEmitRoll ? 0 : static_cast<s16>(ReadParticleHalf());
                     emitter.timingOffset = version < VersionTimingOffset ? 0 : static_cast<s32>(ReadParticleWord());
                     ReadParticleBytes(emitter.name, sizeof(emitter.name));
+#ifdef TWIN_NATIVE
+                    NativeFixes::ParticleEmitterRead(chunk != nullptr ? chunk->name.string : nullptr, emitter.name);
+#endif
                     emitter.runtime = EmitterNotMade;
                     emitter.system = FindParticleSystem(emitter.name, static_cast<s8>(slot));
                     if (emitter.system == -1)
@@ -1325,6 +1346,17 @@ extern "C"
 
                     emitter.bounceFactor = version < VersionBounceFactor ? DefaultBounceFactor : ReadParticleFloat();
                     emitter.groupId = version < VersionGroup ? 0 : static_cast<s16>(ReadParticleHalf());
+#ifdef TWIN_NATIVE
+                    // $TWIN_PARTICLE_TRACE: each emitter read (THE LIST 45)
+                    static const bool trace = std::getenv("TWIN_PARTICLE_TRACE") != nullptr;
+                    if (trace)
+                    {
+                        Native::Log("particle trace: %s's emitter %d, %.16s (system %d) at (%.1f, %.1f, %.1f), switch %d %d %.2f, group %d",
+                                    chunk != nullptr && chunk->name.string != nullptr ? chunk->name.string : "?", place, emitter.name,
+                                    emitter.system, emitter.position[0], emitter.position[1], emitter.position[2], emitter.switchType,
+                                    emitter.switchId, emitter.switchValue, emitter.groupId);
+                    }
+#endif
                     g_ParticleEmitterCount++;
                 }
             }

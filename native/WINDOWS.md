@@ -723,6 +723,9 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   Its cause stays unknown; the second click and the wait cover both candidates.
   `$TWIN_HINTS_TEST=FOLDER` without `--headless` also saves the window as it's shown (the picture and the overlay:
   `NativeGraphicsShootWindow`) there: hints_pause.png and hints_levels.png.
+- `$TWIN_PARTICLE_TRACE=1`: each particle section's systems as they're read (their chunk, index, name, slot, blend, rate, life,
+  sizes, first and last colours, velocity, gravity, cut-off and page) and its emitters (their chunk, place, system's name and
+  index, position, switch and group): check_windows.py's #41 scenario.
 - `$TWIN_CAMERA_TRACE=1` (the sweep): every second of play or of a scene, the camera shown (the game controller's state word:
   0 the player's follow camera, 3 the game's rig, 4 the cutscenes'), where its instance is, the player and how far apart they
   are (check_windows.py's #23 scenario: the follow camera back after the high path's skunk scene, 7 units from Crash).

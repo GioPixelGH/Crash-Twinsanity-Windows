@@ -53,4 +53,7 @@ f32 WideTvAspect();
 
 // A material item about to be read (its bytes, changed in place): opaque crates' shaders made shadow receivers
 void MaterialRead(u8* data, u32 size);
+// A level's particle emitter read (its chunk's name, its system's name of 16 bytes, changed in place) before its system is looked
+// for: Rockslide Rumble's end's explosions made the purple smoke (#41)
+void ParticleEmitterRead(const char* chunk, char* name);
 }

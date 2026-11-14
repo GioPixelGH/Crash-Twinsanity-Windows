@@ -124,6 +124,13 @@ SCENARIOS = [
           expect=[r"a 1024x1024 texture at 2800/4 \(psm 0\) read from the target 2800/4 \(psm 0",
                   r"game: the player in levels\\altearth\\core\\corea"],
           forbid=[r"a 256x\d+ texture at 2800/4 \(psm 0\) read from the target"])),
+    # Issue #41 (THE LIST 45): past Rockslide Rumble's last TNT five emitters name the default explosion, EXPLODE_1A, where the
+    # level's purple pits have l10end's own purple smoke, AIG_FIRE (on the PS2 too); under Bug fixes they're read as AIG_FIRE
+    ("Rockslide Rumble's purple smoke past its last TNT under Bug fixes (#41)", "Levels\\AltEarth\\RockSlid\\l10end", 4, "idle",
+     dict(options="retail_fixes=1\n", env={"TWIN_PARTICLE_TRACE": "1"},
+          expect=[r"particle trace: levels\\altearth\\rockslid\\l10end's emitter \d+, AIG_FIRE \(system \d+\) at \(12\.9, -103\.2, 52\.3\)",
+                  r"particle trace: levels\\altearth\\rockslid\\l10end's emitter \d+, AIG_FIRE \(system \d+\) at \(2\.0, -100\.9, 47\.8\)"],
+          forbid=[r"particle trace: levels\\altearth\\rockslid\\l10end's emitter \d+, EXPLODE_1A"])),
     # Issue #20 (THE LIST 44): on 1.0.18 the game closed as the end credits ended, instead of going on in the Iceberg Lab (not on
     # 1.1.0, its reporter says). The credits asked for as the game's end does (the hop's credits step), rolled to their end (135 s,
     # not counted as play), then the Iceberg Lab loaded and played
