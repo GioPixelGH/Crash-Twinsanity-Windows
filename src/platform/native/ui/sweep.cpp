@@ -225,7 +225,8 @@ void ListInstance(InstanceContext* instance, void* user)
     auto* list = static_cast<InstanceList*>(user);
     std::string lower = ObjectNameOf(instance);
     std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });
-    if (instance->chunk == list->chunk && lower.find(list->name) != std::string::npos && IsSceneObjectNode(instance))
+    if ((list->chunk == nullptr || instance->chunk == list->chunk) && lower.find(list->name) != std::string::npos &&
+        IsSceneObjectNode(instance))
     {
         list->found.push_back(instance);
     }
@@ -1086,6 +1087,51 @@ void CameraTraceFrame()
                 player != nullptr ? OwnNameOf(player).c_str() : "none", at.x, at.y, at.z, apart);
 }
 
+// $TWIN_SCENE_SCRIPTS=SECONDS:NAME[:NAME...]: SECONDS into each cutscene watched (game frames, 60 a second), the behaviour scripts
+// of the instances whose object's name holds a NAME logged, any chunk's (as the hop's scripts step logs them: the hop waits while a
+// cutscene plays): what a cutscene that never ends waits for (check_cutscene_skips.py's stalls)
+void SceneScriptsFrame()
+{
+    static const char* setting = std::getenv("TWIN_SCENE_SCRIPTS");
+    static u32 frames = 0;
+    GameController* controller = G_GameController;
+    if (setting == nullptr || controller == nullptr)
+    {
+        return;
+    }
+
+    if (controller->State() != GameController::StateWatching)
+    {
+        frames = 0;
+        return;
+    }
+
+    std::string text = setting;
+    size_t colon = text.find(':');
+    if (++frames != static_cast<u32>(std::atof(text.c_str()) * 60.0f) || colon == std::string::npos)
+    {
+        return;
+    }
+
+    for (size_t start = colon + 1; start <= text.size();)
+    {
+        size_t end = text.find(':', start);
+        end = end == std::string::npos ? text.size() : end;
+        std::string name = text.substr(start, end - start);
+        std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return std::tolower(c); });
+        InstanceList list = {nullptr, name, {}};
+        ForEachLiveInstance(ListInstance, &list);
+        Native::Log("scene scripts: %u instances named like %s, %u frames into the cutscene", static_cast<u32>(list.found.size()),
+                    name.c_str(), frames);
+        for (InstanceContext* instance : list.found)
+        {
+            LogScripts(instance);
+        }
+
+        start = end + 1;
+    }
+}
+
 void SceneStateFrame()
 {
     // $TWIN_SCENE_STATE=SECONDS: that long into the play after it (1.5 s by default), counted in game frames (60 a second), so
@@ -1386,6 +1432,7 @@ void SweepFrame(bool fromPads)
         HopFrame();
         TriggerPlanFrame();
         SceneStateFrame();
+        SceneScriptsFrame();
         CameraTraceFrame();
         // $TWIN_TEST_HANG=SECONDS: the game's thread stopped that long once play starts (the hang watch's test)
         static const char* hang = std::getenv("TWIN_TEST_HANG");
@@ -1425,6 +1472,17 @@ void SweepFrame(bool fromPads)
         g_Warped = true;
         StringAssign(&controller->progress.startChunk, g_Level.c_str());
         controller->states.entry = EntrySaved;
+        // $TWIN_SWEEP_STORY=N: the story got to area N (and the areas open up to it), as a played game's progress would be there:
+        // the cutscenes a script starts only at a point of the story (StoryAreaCondition; check_cutscene_skips.py)
+        if (const char* story = std::getenv("TWIN_SWEEP_STORY"))
+        {
+            PlayState play = controller->progress.play;
+            play.story = static_cast<u32>(std::atoi(story));
+            play.open = std::max<u32>(play.open, play.story);
+            controller->progress.play = play;
+            Native::Log("sweep: the story at area %u", static_cast<u32>(play.story));
+        }
+
         controller->saveController.Take(&controller->progress, controller->chunkManager, nullptr);
         controller->SetNextState(GameController::StateLoadingLevel);
         Native::Log("sweep: loading %s", g_Level.c_str());

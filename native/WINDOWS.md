@@ -700,9 +700,16 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   every cutscene, checked or not; `$TWIN_SKIP_WAITS_FIRST=1` makes it go first where a skip rule is polled too; `$TWIN_HOP`'s
   `tell:NAME` (or `tell:NAME:MESSAGE`) sends user message MESSAGE (87) to the instances of the player's chunk whose object's name
   holds NAME, as a trigger tells them (a cutscene's director started where a test can't walk to its trigger).
+  `$TWIN_SWEEP_STORY=N` starts the sweep with the story at area N (the open areas up to it), as a played game's progress is
+  there: several directors start their cutscene only at a point of the story (`StoryAreaCondition`; the Psychetron room's two,
+  the beehive, Cortex's pipe, the shed), and told at story 0 they do nothing. `$TWIN_SCENE_SCRIPTS=12:director:act_cortex` logs
+  the behaviour scripts of the instances named like each NAME (any chunk), 12 s into every cutscene watched, as the hop's
+  `scripts:` step does in play (the hop waits while a cutscene plays): what a cutscene that never ends waits for.
   `native/tools/check_cutscene_skips.py [NAME...] [--waits]` plays each cutscene of its list watched and skipped (and skipped by
-  the waits) from the same start and compares what each leaves; its runs' folders and settings are absolute paths, and each run
-  is given the disc image (`$TWIN_TEST_PICK`), so a missed settings folder can't open the disc image dialog.
+  the waits) from the same start and compares what each leaves; a scene's own variables (the story, a later press of the
+  button for a part chained onto another's scene, an earlier scene state) are its list entry's fifth item. Its runs' folders and
+  settings are absolute paths, and each run is given the disc image (`$TWIN_TEST_PICK`), so a missed settings folder can't open
+  the disc image dialog.
 - `$TWIN_SCRIPT_DUMP=6147,6149` (or `all`; levelrecipes.cpp): those behaviour scripts logged as the game reads them and as the
   level recipes edit them: each state (the start marked, its bits: the child script in the top half), each body's condition (its
   ID and parameter, ! inverted, its interval) and jump, each command's ID and argument words. commands.h and conditions.h name the

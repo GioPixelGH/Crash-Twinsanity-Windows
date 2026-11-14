@@ -29,14 +29,23 @@ import local_config  # noqa: E402
 PLACE_TOLERANCE = 0.05
 
 # How each cutscene is reached: its census name, the chunk the sweep starts in, the hops ($TWIN_HOP: "tell:DIRECTOR" sends the
-# director the message its trigger sends, 87), the seconds played, and the run's own variables
+# director the message its trigger sends, 87), the seconds played, and the run's own variables if any ($TWIN_SWEEP_STORY: the story
+# at the director's point; $TWIN_SKIP_TEST: when the button is pressed, 0.5 s into the scene by default; $TWIN_SCENE_STATE). The
+# shed and Cortex's pipe start here but never end, watched too: their directors wait for something a played level brings (Cortex
+# with Crash, as TwinsanityEvolved's census starts them; a chunk's start leaves him idle); not here at all (THE LIST 42,
+# NATIVE.md): the Cortex follow (the same, its director's message starts nothing) and Madame Amberly's play fight (a moment of
+# her fight: her messages start nothing either)
 SCENES = [
     ("01_training", "Levels\\Earth\\Hub\\highpath", "", 60),
     ("03_bear", "Levels\\Earth\\DocAmok\\docamok3", "", 40),
+    # The party arena's second part (46's director chains it on in the same watching): the button pressed in that part
+    ("02_miniboss_start", "Levels\\Earth\\Hub\\bossarea", "wait3,tell:act_party_arena_director", 70, {"TWIN_SKIP_TEST": "4"}),
+    # Played as the bear ride's second part starts, once the story is there
+    ("31_beehive", "Levels\\Earth\\DocAmok\\docamok2", "", 40, {"TWIN_SWEEP_STORY": "4"}),
     ("04_cavern", "Levels\\Earth\\Cavern\\cavbridg", "", 25),
     ("06_tiki_mon", "Levels\\Earth\\Hub\\hubd", "wait3,tell:act_tiki_mon", 70),
     ("08_henchmania_bossfight", "Levels\\Ice\\HighSeas\\gpa12", "", 60),
-    ("09_battleship_switchthrower", "Levels\\Ice\\HighSeas\\gpa04", "wait3,tell:act_battleship_ngin_switchthrower:4", 50),
+    ("09_battleship_switchthrower", "Levels\\Ice\\HighSeas\\gpa04", "wait45,tell:act_battleship_ngin_switchthrower:4", 100),
     ("10_dingodile_intro", "Levels\\school\\Boiler\\boiler_6", "wait3,tell:act_dingodile_bossfight_director", 70),
     ("12_ukafight", "Levels\\Ice\\IceClimb\\ukafight", "wait3,tell:act_ukafight_cutscene_director", 70),
     ("13_icelab", "Levels\\Ice\\Hub\\labext", "wait3,tell:act_icelab_cutscene_director", 70),
@@ -45,7 +54,12 @@ SCENES = [
     ("16_school_hub", "Levels\\school\\Sch_Hub\\sch_hub", "wait3,tell:act_school_hub_cutscene_director", 70),
     ("17_dorm_room", "Levels\\school\\Cortex\\cogpa08", "", 50),
     ("18_ukauka_defeated", "Levels\\Ice\\IceClimb\\ukafight", "wait3,tell:act_ukauka_defeated_cutscene_director", 80),
-    ("20_henchmania", "Levels\\Ice\\HighSeas\\gpa11", "wait3,tell:act_henchmania_cutscene_director", 70),
+    # (Henchmania's fight starts a moment after: both states taken before it)
+    ("20_henchmania", "Levels\\Ice\\HighSeas\\gpa11", "wait3,tell:act_henchmania_cutscene_director", 70,
+     {"TWIN_SCENE_STATE": "0.1"}),
+    # The fight's start, the player put in the throne room's trigger: 0.7 s, its movie, then a scene whose skip ends 4.5 s of waits
+    # and stalls, giving it back (left as watched: THE LIST 42)
+    ("19_final_boss", "Levels\\AltEarth\\Core\\throne", "wait2,goto:0:0.1:-56", 60, {"TWIN_SWEEP_STORY": "23"}),
     ("22_totem_tied", "Levels\\Earth\\Totem\\l03stock", "wait3,tell:act_totem_tied_cutscene_director", 60),
     ("23_totem_falling", "Levels\\Earth\\Totem\\l03stock", "wait3,tell:act_totem_falling_cutscene_director", 60),
     ("24_rockslide", "Levels\\AltEarth\\RockSlid\\l10start", "wait3,tell:act_altearth_rockslide_cutscene_director", 60),
@@ -65,12 +79,16 @@ SCENES = [
     ("05_earth_hub", "Levels\\Earth\\Hub\\hubd", "wait3,tell:act_earth_hub_cutscene_director", 70),
     ("07_totem", "Levels\\Earth\\DocAmok\\docamok1", "wait3,tell:act_totem_cutscene_director", 70),
     ("11_psychotron", "Levels\\Ice\\Hub\\psycho", "wait3,tell:act_psychotron_cutscene_director", 80),
-    ("26_lab_psychetron_room", "Levels\\Ice\\Hub\\psycho", "wait3,tell:act_lab_psychetron_room_cutscene_director", 80),
-    ("27_slipslide_shed", "Levels\\Ice\\SlipSlide\\l05chasa", "wait3,tell:act_slipslide_shed_cutscene_director", 70),
+    ("26_lab_psychetron_room", "Levels\\Ice\\Hub\\psycho", "wait3,tell:act_lab_psychetron_room_cutscene_director", 80,
+     {"TWIN_SWEEP_STORY": "19"}),
+    ("27_slipslide_shed", "Levels\\Ice\\SlipSlide\\l05chasa", "wait3,tell:act_slipslide_shed_cutscene_director", 70,
+     {"TWIN_SWEEP_STORY": "9"}),
     ("30_bell_tower", "Levels\\school\\Madame\\amberly", "wait3,tell:act_bell_tower_cutscene_director", 70),
     ("34_dingodile_hut", "Levels\\Ice\\HighSeas\\gpa01", "wait3,tell:act_slipslide_dingodile_hut_cutscene", 70),
-    ("35_cortex_pipe", "Levels\\school\\Boiler\\boiler_1", "wait3,tell:act_br_cortex_pipe_cutscene_director", 70),
-    ("37_psychetron_room_h02j", "Levels\\Ice\\Hub\\psycho", "wait3,tell:act_psychetron_room_cutscene_h02j_director", 80),
+    ("35_cortex_pipe", "Levels\\school\\Boiler\\boiler_1", "wait3,tell:act_br_cortex_pipe_cutscene_director", 70,
+     {"TWIN_SWEEP_STORY": "15"}),
+    ("37_psychetron_room_h02j", "Levels\\Ice\\Hub\\psycho", "wait3,tell:act_psychetron_room_cutscene_h02j_director", 80,
+     {"TWIN_SWEEP_STORY": "12"}),
     ("39_beach_aku", "Levels\\Earth\\Hub\\beach", "wait3,tell:act_beach_aku_cutscene_director", 70),
     ("44_buschase", "Levels\\school\\RoofTop\\buschase", "wait3,tell:act_buschase_cutscene_director", 70),
     ("45_evilcrash_house", "Levels\\AltEarth\\Hub\\alta", "wait3,tell:act_evilcrash_house_cutscene_director", 80),
@@ -105,10 +123,15 @@ def run(scene, mode):
                TWIN_SWEEP_SECONDS=str(seconds), TWIN_SWEEP_TIMEOUT="180", TWIN_SWEEP_IDLE="1", TWIN_FIXED_TIME="1",
                TWIN_DETAILED_LOG="1", TWIN_SCENE_STATE="0.5", TWIN_HOP=hops,
                TWIN_SWEEP_GAME_TIME="1", TWINSANITY_AUDIO="frames", TWIN_TEST_PICK=local_config.disc_image())
+    # The scene's own variables (all three runs: $TWIN_SWEEP_STORY), the skip's press among them ($TWIN_SKIP_TEST: later for a
+    # part chained onto another's scene)
+    own = dict(scene[4]) if len(scene) > 4 else {}
+    press = own.pop("TWIN_SKIP_TEST", "0.5")
+    env.update(own)
     if mode == "skipped":
-        env.update(TWIN_SKIP_TEST="0.5")
+        env.update(TWIN_SKIP_TEST=press)
     if mode == "waits":
-        env.update(TWIN_SKIP_TEST="0.5", TWIN_SKIP_ALL_SCENES="1", TWIN_SKIP_WAITS_FIRST="1")
+        env.update(TWIN_SKIP_TEST=press, TWIN_SKIP_ALL_SCENES="1", TWIN_SKIP_WAITS_FIRST="1")
     log = folder / "log.txt"
     with open(log, "w") as out:
         try:
@@ -166,6 +189,22 @@ def key(line):
     return m.group(1) if m else line
 
 
+def keyed(block):
+    """A scene state's lines by what each is about. Instances of one name (a director in each of a level's chunks) are taken in
+    their lines' order, not the log's: the log lists the live instances as the game keeps them, which follows what was loaded when
+    (20_henchmania: six instances named act_HUB2_TO_HUB3_CUTSCENE_DIRECTOR, the same six lines in another order)"""
+    groups = {}
+    for line in block:
+        groups.setdefault(key(line), []).append(line)
+    lines = {}
+    for name, group in groups.items():
+        if len(group) == 1:
+            lines[name] = group[0]
+        else:
+            lines.update((f"{name} #{number}", line) for number, line in enumerate(sorted(group), 1))
+    return lines
+
+
 def compare(watched, skipped):
     """The differences between two runs' scene states, as text lines. Each cutscene's state is taken twice, a second apart: what
     changed between the two in either run goes on by itself (a patrol, a chase, an idle loop) and is compared by the graphs it
@@ -173,7 +212,7 @@ def compare(watched, skipped):
     notes as agents follows what it did: a skip rule's path tells others)"""
     differences = []
     for index in range(0, min(len(watched), len(skipped)) - 1, 2):
-        w0, w1, s0, s1 = ({key(line): line for line in block} for block in watched[index:index + 2] + skipped[index:index + 2])
+        w0, w1, s0, s1 = (keyed(block) for block in watched[index:index + 2] + skipped[index:index + 2])
         for name in sorted(set(w1) | set(s1)):
             a, b = w1.get(name), s1.get(name)
             if (a is None or b is None) and name.startswith("agent "):

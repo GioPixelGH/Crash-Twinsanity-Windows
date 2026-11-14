@@ -214,11 +214,22 @@ through its floor in both runs: the test starts in gpa01 without the ball's arri
 Rampage's start (the blimp left shown and flying); and in 6 a polled rule never skipped (the triangle polled in the cutscene for
 something else): the sentry's look, the dorm room, Rockslide Rumble's start, the bell tower, Aku Aku on the beach, the core's
 entrance. In those 21 the waits' skip goes first, and ends them as watched. The rule's skip stays where it ends the cutscene as
-watched too: the bear (THE LIST 22's other scene), Slip Slide's start, Uka Uka's defeat. Not skippable yet: the training on the high path (Coco's creature
-0.9 units off), Henchmania's start and the treasure room (an actor in another graph after), the Cortex pipe (the skip stalls and
-gives the scene back), the Mecha-Bandicoot fight's start, the final boss's, and those the director's message doesn't start (the
-Psychetron room's two, the shed, the beehive, the play fight, the Cortex follow): their rules skip them as before, or they play
-whole.
+watched too: the bear (THE LIST 22's other scene), Slip Slide's start, Uka Uka's defeat.
+
+Checked 2026-11-14 (THE LIST 42) and skipped by the waits first, 7 more (42 of the 51 now): the Mecha-Bandicoot fight's start
+(the party arena's second part, its director chained on in the same watching: the button pressed in it), the battleship's switch
+thrower (told once the battleship's rockets are done, as in play), the Psychetron room's two and the beehive (their directors
+start them only once the story has got to their area: the check starts there, `$TWIN_SWEEP_STORY`), Henchmania's start and the
+treasure room (their 1.2.0 differences were the check's own: several instances of one name, a director in each chunk or an
+extra for each character, compared by name in the log's order). Where a rule skips these it leaves an actor in its scene (the
+beehive's extra, Coco, Cortex of the treasure room) or things elsewhere (the switch thrower, a TNT crate), so the waits go first.
+Not skippable, and why: the training on the high path (Coco's creature ends 0.9 units from where watching leaves her; not found
+why), the final boss's start (0.7 s, then its movie, which skips as movies do, then a scene whose skip ends 4.5 s of waits and
+stalls: its agents wait for something they don't drive, and the scene is given back), the shed and Cortex's pipe (started from
+their chunk they never end, watched too: their directors wait for what a played level brings, Cortex with Crash as
+TwinsanityEvolved's census starts them; a chunk's start leaves him idle), the Cortex follow (the same, and its director's message
+starts nothing), Madame Amberly's play fight (a moment of her fight: her messages start nothing). Their rules skip them as before,
+or they play whole.
 
 ## Native bugs found by the level sweep
 

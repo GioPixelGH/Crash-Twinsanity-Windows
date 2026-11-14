@@ -29,6 +29,11 @@ VERIFIED = {
     # l05brawl differs, falling through its floor in both runs (the test starts in gpa01, without the ball's arrival)
     "05_earth_hub", "07_totem", "11_psychotron", "30_bell_tower", "34_dingodile_hut", "39_beach_aku", "44_buschase",
     "45_evilcrash_house", "49_crows_nest",
+    # THE LIST 42 (2026-11-14): the party arena's second part (the button pressed in it), the beehive, the Psychetron room's two
+    # (the story brought to their point: $TWIN_SWEEP_STORY), the switch thrower (told when the battleship's rockets are done);
+    # Henchmania's start and the treasure room, whose differences were the check's (instances of one name compared by name)
+    "02_miniboss_start", "09_battleship_switchthrower", "26_lab_psychetron_room", "31_beehive", "37_psychetron_room_h02j",
+    "20_henchmania", "36_treasure_room",
 }
 # The cutscenes whose skip is the waits' even where a skip rule is polled: the rule's skip leaves them unlike watching does (an
 # actor still taking the director's object, Crash stopped elsewhere in Classroom Chaos: THE LIST 22), or a polled rule never
@@ -39,6 +44,11 @@ WAITS_FIRST = {
     "05_earth_hub", "07_totem", "11_psychotron", "30_bell_tower", "39_beach_aku",
     # The rule left Dingodile and the snowball elsewhere (the hut), the blimp shown and flying (Rooftop Rampage's start)
     "34_dingodile_hut", "40_rooftop",
+    # THE LIST 42's, checked by the waits: the rule left the beehive's extra, the switch thrower and the rocket launcher, Coco of
+    # the Psychetron room's second visit, Cortex of the treasure room in their scenes, a TNT crate and an extra of Henchmania's
+    # start elsewhere
+    "02_miniboss_start", "09_battleship_switchthrower", "26_lab_psychetron_room", "31_beehive", "37_psychetron_room_h02j",
+    "20_henchmania", "36_treasure_room",
 }
 
 
