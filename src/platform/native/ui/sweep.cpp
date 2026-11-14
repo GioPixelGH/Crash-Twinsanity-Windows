@@ -798,6 +798,43 @@ void HopFrame()
         return;
     }
 
+    // "movie:H03_F": the game's movie with that in its file's name played as the game asks for one in play (RequestMovie), play
+    // going on after it (THE LIST 58: #49's crash decoding that movie, $TWIN_MOVIE_GUARD)
+    if (targets[next].rfind("movie:", 0) == 0)
+    {
+        auto upper = [](std::string text)
+        {
+            std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+            return text;
+        };
+        const std::string wanted = upper(targets[next].substr(6));
+        u32 index = GameMovie::Count;
+        std::string files;
+        for (u32 i = 0; i < GameMovie::Count && index == GameMovie::Count; i++)
+        {
+            const std::string file = g_Movies[i].file != nullptr ? g_Movies[i].file : "";
+            files += " " + file;
+            if (upper(file).find(wanted) != std::string::npos)
+            {
+                index = i;
+            }
+        }
+
+        if (index == GameMovie::Count)
+        {
+            Native::Log("hop: no movie's file is like %s:%s", wanted.c_str(), files.c_str());
+        }
+        else
+        {
+            G_GameController->RequestMovie(0, index);
+            Native::Log("hop: the movie %s (%u) asked for in %s", g_Movies[index].file, index, name.c_str());
+        }
+
+        next++;
+        lastHop = now;
+        return;
+    }
+
     // "mask": a mask picked up as an Aku Aku crate gives it (a hit point; the fourth makes the player invincible: THE LIST 15's
     // trails, $TWIN_MASK_TRACE)
     if (targets[next] == "mask")

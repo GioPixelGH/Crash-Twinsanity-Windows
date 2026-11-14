@@ -29,6 +29,15 @@ extern "C"
 #include <memory>
 #include <vector>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#else
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
+
 namespace
 {
 // The PS2's lent memory: the disc stream's buffer (0x50 sectors, 64 byte aligned), then the sound's ring
@@ -117,6 +126,45 @@ void ConvertPicture(const AVFrame* frame, Picture* picture)
     }
 }
 
+// $TWIN_MOVIE_GUARD=1 (tests, THE LIST 58): each piece of the stream the parser reads copied to end where a page that can't be read
+// begins, so that a read past its end crashes every time instead of now and then (#49). Else the piece itself
+const u8* Guarded(const std::vector<u8>& data)
+{
+    static const bool guard = std::getenv("TWIN_MOVIE_GUARD") != nullptr;
+    static u8* region = nullptr;
+    static size_t readable = 0;
+    if (!guard)
+    {
+        return data.data();
+    }
+
+#ifdef _WIN32
+    SYSTEM_INFO system;
+    GetSystemInfo(&system);
+    const size_t page = system.dwPageSize;
+#else
+    const size_t page = static_cast<size_t>(sysconf(_SC_PAGESIZE));
+#endif
+    size_t needed = (data.size() + page - 1) / page * page;
+    if (region == nullptr || needed > readable)
+    {
+        readable = std::max<size_t>(needed, 0x10000);
+#ifdef _WIN32
+        region = static_cast<u8*>(VirtualAlloc(nullptr, readable + page, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE));
+        DWORD old;
+        VirtualProtect(region + readable, page, PAGE_NOACCESS, &old);
+#else
+        region = static_cast<u8*>(mmap(nullptr, readable + page, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
+        mprotect(region + readable, page, PROT_NONE);
+#endif
+        Native::Log("movie: the stream's pieces read before a page that can't be read ($TWIN_MOVIE_GUARD)");
+    }
+
+    u8* at = region + readable - data.size();
+    std::memcpy(at, data.data(), data.size());
+    return at;
+}
+
 // The next picture in display order: false once there's none
 bool DecodeNext(Movie* movie)
 {
@@ -174,8 +222,12 @@ bool DecodeNext(Movie* movie)
             return false;
         }
 
-        const u8* at = data.data();
+        // The parser reads up to AV_INPUT_BUFFER_PADDING_SIZE bytes past a piece's end (ff_combine_frame copies a picture's end
+        // with that much after it): they're there, zeros. Without them it read past the vector's end, which crashed as the
+        // memory after it happened not to be there (#49, after the Twins' backstory scene; THE LIST 58)
         int left = static_cast<int>(data.size());
+        data.resize(data.size() + AV_INPUT_BUFFER_PADDING_SIZE, 0);
+        const u8* at = Guarded(data);
         while (left > 0)
         {
             int used = av_parser_parse2(movie->parser, movie->codec, &movie->packet->data, &movie->packet->size, at, left,

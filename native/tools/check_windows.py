@@ -124,6 +124,14 @@ SCENARIOS = [
           expect=[r"a 1024x1024 texture at 2800/4 \(psm 0\) read from the target 2800/4 \(psm 0",
                   r"game: the player in levels\\altearth\\core\\corea"],
           forbid=[r"a 256x\d+ texture at 2800/4 \(psm 0\) read from the target"])),
+    # Issue #49 (THE LIST 58): the movie after the Twins' backstory scene crashed in FFmpeg's parser, which reads up to 64 bytes
+    # past each piece of the stream (its padding, there since); $TWIN_MOVIE_GUARD puts a page that can't be read right after each
+    # piece, so a read past it crashes every time. The movie played whole (the hop's wait comes once play is back)
+    ("The Twins' backstory movie decoded, nothing read past the stream (#49)", "Levels\\school\\Sch_Hub\\sch_hub", 115,
+     "idle,wait3,movie:H03_F,wait5",
+     dict(env={"TWIN_MOVIE_GUARD": "1"},
+          expect=[r"movie: the stream's pieces read before a page that can't be read", r"movie: \\FMV\\H03_F\.PSS",
+                  r"hop: the movie \S+H03_f \(\d+\) asked for", r"hop: waiting 5 s"])),
     # THE LIST 65: F1 in play opens the settings over the game's own pause, and their back resumes play (settingsshots.cpp's
     # SettingsPlayTestFrame)
     ("The settings opened from play by F1 and closed back to play (1.3.0)", "Levels\\Earth\\Hub\\beach", 25, "idle",
