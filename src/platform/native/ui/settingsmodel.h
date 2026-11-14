@@ -117,6 +117,10 @@ struct SettingsView
     bool flashOn;
     // When the page changed (the view's cross-fade) and the selection's row (its bar slides)
     u32 pageChanges;
+    // The live preview (THE LIST 66): on the display and accessibility tabs the game shows behind (no backdrop) and the panel goes
+    // aside; hidden, the screen draws nothing while its button is held (H, the right trigger, or the mouse on its prompt)
+    bool preview;
+    bool hidden;
 };
 
 SettingsView CurrentSettingsView();

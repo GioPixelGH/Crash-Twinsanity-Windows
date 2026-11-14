@@ -54,6 +54,13 @@ constexpr f32 RowPitch = 48.0f;
 constexpr f32 RowPad = 22.0f;
 constexpr f32 ValueWidth = 280.0f;
 constexpr f32 ChevronGap = 14.0f;
+// The live preview (THE LIST 66): the panel drawn at two thirds of its size on the right from near the top to above its
+// description (taller in its own pixels: thirteen rows show), the left column's title and tabs on a shade fading to the game
+constexpr f32 PreviewScale = 0.66f;
+constexpr f32 PreviewRight = 1256.0f;
+constexpr f32 PreviewTop = 40.0f;
+constexpr f32 PreviewPanelHeight = 690.0f;
+constexpr f32 PreviewShadeRight = 340.0f;
 
 std::string Text(u32 id)
 {
@@ -760,7 +767,28 @@ void DrawSettingsView(OverlayFrame& frame, std::vector<HitRegion>& regions)
     SettingsView view = CurrentSettingsView();
     const std::vector<Row>& rows = SettingsRows(view.page);
     f32 now = Seconds();
-    frame.Backdrop(now);
+    // The live preview's hide held: only the game
+    if (view.hidden)
+    {
+        return;
+    }
+
+    if (view.preview)
+    {
+        // The game behind: a shade under the title and the tabs, its last 40 pixels fading out
+        BoxStyle shade;
+        shade.fill = Hex(0x071f45, 0.62f);
+        frame.Box(-1000.0f, -1000.0f, 1000.0f + PreviewShadeRight - 40.0f, 1000.0f + ReferenceHeight, shade);
+        for (s32 strip = 0; strip < 8; strip++)
+        {
+            shade.fill.a = 0.62f * static_cast<f32>(8 - strip) / 9.0f;
+            frame.Box(PreviewShadeRight - 40.0f + static_cast<f32>(strip) * 5.0f, -1000.0f, 5.0f, 1000.0f + ReferenceHeight, shade);
+        }
+    }
+    else
+    {
+        frame.Backdrop(now);
+    }
 
     // The title and its line
     TextStyle title = Display(66.0f, Orange);
@@ -818,7 +846,17 @@ void DrawSettingsView(OverlayFrame& frame, std::vector<HitRegion>& regions)
     panel.shadowOffset = 26.0f;
     panel.shadowBlur = 50.0f;
     panel.shadowColour = Hex(0x000000, 0.4f);
-    frame.Box(PanelX, PanelY, PanelWidth, PanelHeight, panel);
+    // (The preview's panel: its parts drawn through the overlay's transform, their regions moved after)
+    const f32 panelHeight = view.preview ? PreviewPanelHeight : PanelHeight;
+    const f32 previewShiftX = PreviewRight - (PanelX + PanelWidth) * PreviewScale;
+    const f32 previewShiftY = PreviewTop - PanelY * PreviewScale;
+    const size_t panelRegions = regions.size();
+    if (view.preview)
+    {
+        frame.Transform(PreviewScale, previewShiftX, previewShiftY);
+    }
+
+    frame.Box(PanelX, PanelY, PanelWidth, panelHeight, panel);
 
     // The page's cross-fade, the list's scroll (smooth) and the selection bar's slide
     Animation& a = g_Animation;
@@ -852,7 +890,7 @@ void DrawSettingsView(OverlayFrame& frame, std::vector<HitRegion>& regions)
     }
 
     f32 rowsTop = PanelY + PanelPadY;
-    f32 rowsHeight = PanelHeight - PanelPadY * 2.0f;
+    f32 rowsHeight = panelHeight - PanelPadY * 2.0f;
     f32 contentHeight = static_cast<f32>(visible.size()) * RowPitch;
     f32 maxScroll = std::max(0.0f, contentHeight - rowsHeight);
     f32 selectedTop = static_cast<f32>(selectedLine) * RowPitch;
@@ -1107,7 +1145,41 @@ void DrawSettingsView(OverlayFrame& frame, std::vector<HitRegion>& regions)
                               : selectedRow.descriptionText ? selectedRow.descriptionText()
                                                             : Text(selectedRow.description);
     TextStyle describe = Body(19.0f, Hex(0xd6e8ff));
-    DescriptionLine(frame, Sentence(description), 360.0f, 612.0f + OverlayLineHeight(describe) * 0.5f, describe);
+    if (view.preview)
+    {
+        // The preview's: the panel's regions moved with it, the description under it in lines as wide as it on a dark box
+        frame.NoTransform();
+        for (size_t i = panelRegions; i < regions.size(); i++)
+        {
+            HitRegion& region = regions[i];
+            region.x = region.x * PreviewScale + previewShiftX;
+            region.y = region.y * PreviewScale + previewShiftY;
+            region.width *= PreviewScale;
+            region.height *= PreviewScale;
+        }
+
+        describe.size = 17.0f;
+        const f32 left = PreviewRight - PanelWidth * PreviewScale;
+        const f32 width = PanelWidth * PreviewScale;
+        const f32 top = PreviewTop + panelHeight * PreviewScale + 18.0f;
+        const f32 lineHeight = OverlayLineHeight(describe);
+        std::vector<std::string> lines = Wrapped(Sentence(description), width - 28.0f, describe);
+        if (!lines.empty())
+        {
+            BoxStyle backing;
+            backing.fill = Hex(0x071f45, 0.82f);
+            backing.radius = 12.0f;
+            frame.Box(left, top, width, lineHeight * static_cast<f32>(lines.size()) + 16.0f, backing);
+            for (size_t i = 0; i < lines.size(); i++)
+            {
+                DescriptionLine(frame, lines[i], left + 14.0f, top + 8.0f + lineHeight * (static_cast<f32>(i) + 0.5f), describe);
+            }
+        }
+    }
+    else
+    {
+        DescriptionLine(frame, Sentence(description), 360.0f, 612.0f + OverlayLineHeight(describe) * 0.5f, describe);
+    }
 
     // The countdown: keep these display settings?
     if (view.keeping)
@@ -1141,6 +1213,13 @@ void DrawSettingsView(OverlayFrame& frame, std::vector<HitRegion>& regions)
     {
         std::string clear = CurrentPromptStyle() == PromptKeyboard ? "del" : PromptOfButton(SDL_GAMEPAD_BUTTON_WEST);
         items.push_back({clear, "", Sentence(Text(TextClear)), HitKind::FooterClear});
+    }
+
+    // (The preview's hide: H, or the right trigger)
+    if (view.preview)
+    {
+        std::string hide = CurrentPromptStyle() == PromptKeyboard ? "h" : PromptOfButton(GamepadTriggerBase + 1);
+        items.push_back({hide, "", Sentence(Text(TextHideHold)), HitKind::FooterHide});
     }
 
     items.push_back({TabPrompt(false), TabPrompt(true), Sentence(Text(TextTabs)), HitKind::FooterTabs});

@@ -313,6 +313,7 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x20C | mouse | souris | maus | ratón | mouse |
 | 0x20D | master volume | volume général | gesamtlautstärke | volumen general | volume generale |
 | 0x20E | all the sound at once: music, effects, voices and movies. | tout le son à la fois : musique, effets, voix et vidéos. | der ganze ton auf einmal: musik, effekte, stimmen und filme. | todo el sonido a la vez: música, efectos, voces y vídeos. | tutto l'audio insieme: musica, effetti, voci e filmati. |
+| 0x20F | hide (hold) | masquer (maintenir) | ausblenden (halten) | ocultar (mantener) | nascondi (tieni premuto) |
 
 ## English (29 lines)
 

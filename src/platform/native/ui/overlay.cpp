@@ -187,6 +187,20 @@ std::vector<OverlayFrame::Command> g_Recording;
 std::vector<OverlayFrame::Command> g_Submitted;
 std::mutex g_SubmitLock;
 OverlayFrame g_Frame;
+// The later commands' scale and shift (OverlayFrame::Transform)
+f32 g_Scale = 1.0f;
+f32 g_ShiftX = 0.0f;
+f32 g_ShiftY = 0.0f;
+
+f32 PlacedX(f32 x)
+{
+    return x * g_Scale + g_ShiftX;
+}
+
+f32 PlacedY(f32 y)
+{
+    return y * g_Scale + g_ShiftY;
+}
 
 // The window as the overlay's hook saw it last
 std::atomic<int> g_WindowPixelWidth{0};
@@ -202,6 +216,19 @@ std::vector<OverlayFrame::Command>& OverlayFrame::Commands()
 void OverlayFrame::Clear()
 {
     g_Recording.clear();
+    NoTransform();
+}
+
+void OverlayFrame::Transform(f32 scale, f32 shiftX, f32 shiftY)
+{
+    g_Scale = scale;
+    g_ShiftX = shiftX;
+    g_ShiftY = shiftY;
+}
+
+void OverlayFrame::NoTransform()
+{
+    Transform(1.0f, 0.0f, 0.0f);
 }
 
 bool OverlayFrame::Empty() const
@@ -221,11 +248,16 @@ void OverlayFrame::Box(f32 x, f32 y, f32 width, f32 height, const BoxStyle& styl
 {
     Command command{};
     command.kind = CommandKind::Box;
-    command.x = x;
-    command.y = y;
-    command.width = width;
-    command.height = height;
+    command.x = PlacedX(x);
+    command.y = PlacedY(y);
+    command.width = width * g_Scale;
+    command.height = height * g_Scale;
     command.box = style;
+    command.box.radius *= g_Scale;
+    command.box.border *= g_Scale;
+    command.box.lip *= g_Scale;
+    command.box.shadowOffset *= g_Scale;
+    command.box.shadowBlur *= g_Scale;
     g_Recording.push_back(command);
 }
 
@@ -238,12 +270,19 @@ void OverlayFrame::Text(const std::string& gameText, f32 x, f32 y, const TextSty
 
     Command command{};
     command.kind = CommandKind::Text;
-    f32 width = OverlayTextWidth(gameText, style);
-    command.x = align == OverlayAlign::Left ? x : align == OverlayAlign::Right ? x - width : x - width * 0.5f;
-    command.y = y;
+    TextStyle placed = style;
+    placed.size *= g_Scale;
+    placed.letterSpacing *= g_Scale;
+    placed.outline *= g_Scale;
+    placed.dropX *= g_Scale;
+    placed.dropY *= g_Scale;
+    f32 width = OverlayTextWidth(gameText, placed);
+    f32 left = PlacedX(x);
+    command.x = align == OverlayAlign::Left ? left : align == OverlayAlign::Right ? left - width : left - width * 0.5f;
+    command.y = PlacedY(y);
     command.width = width;
     command.text = GameTextCodepoints(gameText);
-    command.textStyle = style;
+    command.textStyle = placed;
     g_Recording.push_back(command);
 }
 
@@ -252,10 +291,10 @@ void OverlayFrame::Image(OverlayImage image, f32 x, f32 y, f32 width, f32 height
     Command command{};
     command.kind = CommandKind::Image;
     command.image = image;
-    command.x = x;
-    command.y = y;
-    command.width = width;
-    command.height = height;
+    command.x = PlacedX(x);
+    command.y = PlacedY(y);
+    command.width = width * g_Scale;
+    command.height = height * g_Scale;
     command.alpha = alpha;
     g_Recording.push_back(command);
 }
@@ -264,10 +303,10 @@ void OverlayFrame::Clip(f32 x, f32 y, f32 width, f32 height)
 {
     Command command{};
     command.kind = CommandKind::Clip;
-    command.x = x;
-    command.y = y;
-    command.width = width;
-    command.height = height;
+    command.x = PlacedX(x);
+    command.y = PlacedY(y);
+    command.width = width * g_Scale;
+    command.height = height * g_Scale;
     g_Recording.push_back(command);
 }
 

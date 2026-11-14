@@ -67,6 +67,12 @@ The defaults (`src/platform/native/ui/bindings.cpp`, `Infos`; rebound on the opt
   the settings open over it, and closing them resumes as the pause menu's resume does (`Paused`, `TakeSettingsResume`) instead
   of showing the pause menu. While Select is held, Start isn't passed to the game, so the pair never pauses or resumes by
   itself. Neither was in use: the game reads no Select, and F1 had no binding. `$TWIN_SETTINGS_PLAY_TEST` checks it.
+- The live preview (1.3.0, THE LIST 66): on the Display and Accessibility tabs the settings draw no backdrop, so the paused game
+  shows each change at once (its scene is drawn again every frame while paused: `GameContext::GameEndFrame`'s
+  `DrawRendererScenes`; from the main menu, the menu's own scene). The title and the tabs keep their place on a shade; the panel
+  is drawn at two thirds of its size on the right through the overlay's transform (`OverlayFrame::Transform`, its hit regions
+  moved with it), its description under it in lines. H, a pad's right trigger, or the mouse held on the bar's "hide (hold)"
+  hides the whole screen while held (never over a question); the rows still take their keys meanwhile.
 - Any of the mouse's buttons (left, right, middle, 4, 5) and the wheel's turns up and down can be bound to a key cell (a turn holds
   its key for one of the pad's reads). The mouse's buttons are keys only in play: in the menus the left button picks and the
   right goes back. A binding taken by another action swaps with it. A `bindings.txt` from before this scheme (no `version=2`)

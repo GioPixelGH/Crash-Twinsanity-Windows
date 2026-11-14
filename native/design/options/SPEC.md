@@ -34,3 +34,7 @@ and centred, drawn at the window's real pixel resolution — never through the P
 - Scroll: the panel scrolls smoothly when rows overflow, with a thin orange scrollbar.
 - Animations: selection bar slides between rows (~80 ms ease-out); tab change cross-fades the panel (~120 ms).
 - Mouse: hover selects, click picks/steps, chevrons clickable, drag sliders, wheel scrolls; game-art cursor on top.
+- Live preview (1.3.0, THE LIST 66), on Display and Accessibility: no backdrop, the paused game (or the main menu's scene)
+  behind. Title and tabs in place on a #071f45 62% shade (to x 300, fading out by 340). The panel at 0.66 of its size on the
+  right (right edge 1256, top 40; 690 tall in its own pixels: 13 rows). The description under it, wrapped to its width, Fredoka
+  600 17px on a #071f45 82% box (radius 12). The footer adds "H" (or the right trigger) "Hide (hold)": held, nothing is drawn.

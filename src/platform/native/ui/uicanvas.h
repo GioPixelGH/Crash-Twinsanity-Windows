@@ -20,6 +20,8 @@ enum class HitKind : u32
     FooterBack,
     FooterTabs,
     FooterClear,
+    // The live preview's hide (held)
+    FooterHide,
     KeepYes,
     KeepNo,
     // Portable mode's dialog: yes (or its one button, OK) and no

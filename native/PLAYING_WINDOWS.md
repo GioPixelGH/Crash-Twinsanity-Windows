@@ -119,6 +119,9 @@ There are seven tabs:
 6. **Accessibility**: camera shake and shadows that help you see.
 7. **Mods**: the mods you have.
 
+On **Display** and **Accessibility** the game shows behind the options, so you see each change at once. Hold **H** (or the
+right trigger) to hide the options and see the whole picture.
+
 **Game**
 
 | Option | What it does |

@@ -726,6 +726,7 @@ const NativeTextLine g_NativeTexts[] = {
     {TextSectionMouse, {"mouse", "souris", "maus", "ratón", "mouse"}},
     {TextMasterVolume, {"master volume", "volume général", "gesamtlautstärke", "volumen general", "volume generale"}},
     {TextDescMasterVolume, {"all the sound at once: music, effects, voices and movies.", "tout le son à la fois : musique, effets, voix et vidéos.", "der ganze ton auf einmal: musik, effekte, stimmen und filme.", "todo el sonido a la vez: música, efectos, voces y vídeos.", "tutto l'audio insieme: musica, effetti, voci e filmati."}},
+    {TextHideHold, {"hide (hold)", "masquer (maintenir)", "ausblenden (halten)", "ocultar (mantener)", "nascondi (tieni premuto)"}},
 };
 const u32 g_NativeTextCount = sizeof(g_NativeTexts) / sizeof(g_NativeTexts[0]);
 const char* const g_TextLanguages[TextLanguages] = {"English", "French", "German", "Spanish", "Italian"};

@@ -759,6 +759,8 @@ bool g_MouseClicked = false;
 bool g_MouseRightClicked = false;
 s32 g_Wheel = 0;
 bool g_Dragging = false;
+// The live preview's hide held by the mouse on its prompt (until the button's let go)
+bool g_MouseHiding = false;
 // The stick's and the D-pad's repeat (400 ms, then every 80 ms)
 std::chrono::steady_clock::time_point g_RepeatAt;
 s32 g_HeldDirection = -1;
@@ -964,6 +966,7 @@ bool WatchSettings(void*, SDL_Event* event)
         {
             g_MouseDown = false;
             g_Dragging = false;
+            g_MouseHiding = false;
         }
 
         break;
@@ -1674,6 +1677,9 @@ void TakeInput()
                 case HitKind::FooterClear:
                     Act(UiClear);
                     break;
+                case HitKind::FooterHide:
+                    g_MouseHiding = g_MouseDown;
+                    break;
                 default:
                     break;
                 }
@@ -1787,6 +1793,27 @@ void TakeInput()
 
 }
 
+// The live preview (THE LIST 66): the tabs whose changes show on the game's picture (the paused game's scene is drawn again each
+// frame: GameContext::GameEndFrame; the main menu's is its own)
+static bool PreviewTab(u32 tab)
+{
+    return tab == TabDisplay || tab == TabAccessibility;
+}
+
+// Its hide held: H, the last pad's right trigger past half, or the mouse on its prompt (never over a question)
+static bool PreviewHidden()
+{
+    if (g_Capturing || g_Keeping || g_Dialog != DialogNone)
+    {
+        return false;
+    }
+
+    const bool* keys = SDL_GetKeyboardState(nullptr);
+    SDL_Gamepad* gamepad = LastGamepad();
+    return g_MouseHiding || (keys != nullptr && keys[SDL_SCANCODE_H]) ||
+           (gamepad != nullptr && SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) > 16384);
+}
+
 // The model as the view sees it
 SettingsView CurrentSettingsView()
 {
@@ -1803,6 +1830,8 @@ SettingsView CurrentSettingsView()
     view.flashRows[1] = g_FlashRows[1];
     view.flashOn = flash < 0.6f && (static_cast<s32>(flash * 10.0f) & 1) == 0;
     view.pageChanges = g_PageChanges;
+    view.preview = PreviewTab(g_Tab);
+    view.hidden = view.preview && PreviewHidden();
     view.dialog = g_Dialog;
     view.dialogPortable = g_DialogPortable;
     view.dialogOnYes = g_DialogOnYes;

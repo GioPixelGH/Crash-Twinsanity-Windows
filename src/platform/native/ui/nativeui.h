@@ -343,6 +343,8 @@ enum NativeText : u32
     // The master volume (THE LIST 81)
     TextMasterVolume,
     TextDescMasterVolume,
+    // The live preview's prompt (THE LIST 66): the menu hidden while its button is held
+    TextHideHold,
     NativeTextEnd,
 };
 

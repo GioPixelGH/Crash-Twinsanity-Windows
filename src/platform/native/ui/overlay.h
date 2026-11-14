@@ -120,6 +120,10 @@ public:
     // A rectangle the frame's later commands are clipped to (none: the whole window), as a list's scroll needs
     void Clip(f32 x, f32 y, f32 width, f32 height);
     void NoClip();
+    // A scale and a shift for the later commands' places and sizes (a part of a screen drawn smaller elsewhere: the settings' live
+    // preview, THE LIST 66): a point (x, y) is drawn at (x * scale + shiftX, y * scale + shiftY). None after Clear or NoTransform
+    void Transform(f32 scale, f32 shiftX, f32 shiftY);
+    void NoTransform();
     bool Empty() const;
 
     struct Command;
