@@ -124,6 +124,16 @@ SCENARIOS = [
           expect=[r"a 1024x1024 texture at 2800/4 \(psm 0\) read from the target 2800/4 \(psm 0",
                   r"game: the player in levels\\altearth\\core\\corea"],
           forbid=[r"a 256x\d+ texture at 2800/4 \(psm 0\) read from the target"])),
+    # Issue #23 (THE LIST 59): after the angry skunk's scene watched in full, a player's camera stopped following Crash (once, at
+    # 47 fps; not seen here: the scene played straight or reached through huba and hubb, at 60 fps or uneven 40-60, Crash put
+    # where that player stood). The follow camera shown in play after it, near the player wherever it's put
+    ("The skunk's scene watched, the camera follows Crash after it (#23)", "Levels\\Earth\\Hub\\highpath", 50,
+     "idle,goto:-9:-4:-50,wait16,goto:-22.3:-3.7:-58.1,wait4,goto:-18.1:-3.7:-54.7,wait4",
+     dict(options="retail_fixes=1\n", env={"TWIN_CAMERA_TRACE": "1"},
+          expect=[r"cutscene skip: watched, \d+ agents: .*act_ANGRY_SKUNK_CUTSCENE_DIRECTOR",
+                  r"hop: the player put at \(-18\.1[\s\S]*camera trace: state 12, camera 0 at [^\n]*the player \S+ at \(-1[6-9]\.\d, "
+                  r"[^\n]* \d\.\d units apart"],
+          forbid=[r"camera trace: state 12, camera [1-9]", r"camera trace: state 12, .* (?:1[2-9]|[2-9]\d|\d{3,})\.\d units apart"])),
     # Issue #49 (THE LIST 58): the movie after the Twins' backstory scene crashed in FFmpeg's parser, which reads up to 64 bytes
     # past each piece of the stream (its padding, there since); $TWIN_MOVIE_GUARD puts a page that can't be read right after each
     # piece, so a read past it crashes every time. The movie played whole (the hop's wait comes once play is back)

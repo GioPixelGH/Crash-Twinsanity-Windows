@@ -1008,6 +1008,51 @@ void LogSceneInstance(InstanceContext* instance, void*)
 }
 }
 
+// $TWIN_CAMERA_TRACE=1 (THE LIST 59, #23's camera that stopped following Crash after the skunk's scene): every second of play or
+// of a scene the camera shown (the state word's: 0 the follow camera, 3 the game's rig, 4 the cutscenes'), where the view's camera
+// is (its instance's place), the player and how far apart they are
+void CameraTraceFrame()
+{
+    static const bool wanted = std::getenv("TWIN_CAMERA_TRACE") != nullptr;
+    static Clock::time_point last;
+    GameController* controller = G_GameController;
+    if (!wanted || controller == nullptr)
+    {
+        return;
+    }
+
+    u32 state = controller->State();
+    Clock::time_point now = Clock::now();
+    if ((state != GameController::StatePlaying && state != GameController::StateWatching) || now - last < std::chrono::seconds(1))
+    {
+        return;
+    }
+
+    last = now;
+    InstanceContext* player = ScenePlayer();
+    Vector4 at = {};
+    if (player != nullptr && player->place != nullptr)
+    {
+        player->place->SyncPosition();
+        at = player->place->position;
+    }
+
+    Reference* shown = controller->view.cameraObject;
+    auto* shownInstance = shown != nullptr ? static_cast<InstanceContext*>(shown->object) : nullptr;
+    Vector4 camera = {};
+    if (shownInstance != nullptr && shownInstance->place != nullptr)
+    {
+        shownInstance->place->SyncPosition();
+        camera = shownInstance->place->position;
+    }
+
+    f32 apart = std::sqrt((camera.x - at.x) * (camera.x - at.x) + (camera.y - at.y) * (camera.y - at.y) +
+                          (camera.z - at.z) * (camera.z - at.z));
+    Native::Log("camera trace: state %u, camera %u at (%.1f, %.1f, %.1f), the player %s at (%.1f, %.1f, %.1f), %.1f units apart", state,
+                static_cast<u32>(controller->states.camera), camera.x, camera.y, camera.z,
+                player != nullptr ? OwnNameOf(player).c_str() : "none", at.x, at.y, at.z, apart);
+}
+
 void SceneStateFrame()
 {
     // $TWIN_SCENE_STATE=SECONDS: that long into the play after it (1.5 s by default), counted in game frames (60 a second), so
@@ -1308,6 +1353,7 @@ void SweepFrame(bool fromPads)
         HopFrame();
         TriggerPlanFrame();
         SceneStateFrame();
+        CameraTraceFrame();
         // $TWIN_TEST_HANG=SECONDS: the game's thread stopped that long once play starts (the hang watch's test)
         static const char* hang = std::getenv("TWIN_TEST_HANG");
         static bool hung = false;
