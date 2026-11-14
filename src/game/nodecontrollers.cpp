@@ -552,6 +552,20 @@ void MaskController::Frame(TimeClock*)
                     static_cast<u32>(node->owner->flags.visible), node->particleTrails != nullptr ? 1u : 0u, nameOf(character),
                     character == player ? " (the player)" : "", nameOf(player), player != nullptr ? PlayerHitPoints() : 0u);
     }
+
+    // ... and every second out of the invincibility, a trail of it still emitting (THE LIST 46: left on by Leave)
+    static u32 trailFrames = 0;
+    if (controllerTrace && state != StateInvincible && trailFrames++ % 60 == 0)
+    {
+        for (u32 index = 0; index < InvincibilityTrails; index++)
+        {
+            if (trailSlots[index] >= 0)
+            {
+                Native::Log("mask trace: state %u, the invincibility's trail %u still there (emitter %d, enabled %d)",
+                            static_cast<u32>(state), index, trailSlots[index], g_EmitterRuntimes[trailSlots[index]].enabled);
+            }
+        }
+    }
 #endif
 
     switch (state)
@@ -840,6 +854,18 @@ void MaskController::StepInvincible()
         return;
     }
 
+#ifdef TWIN_NATIVE
+    // Bug fixes (THE LIST 46, #18): the three masks' invincibility ended once the character is hurt. It holds the hit points at
+    // their most (two masks') for its 8 s, and the 2 s of blinking after a hurt are the same invulnerability: hurt by what it
+    // stands on as the 8 s end, the character blinks on without the mask seeing it end, and once a second hurt leaves no mask
+    // Leave below lets the mask go without stopping the invincibility's trails, which go on emitting where they were until the
+    // next three masks take them again (on the PS2 too, NormanTheFox). Ended as its end does, the hurts then go as with two masks
+    if (NativeFixes::RetailFixes() && PlayerHitPoints() < BoostedMaskHitPoints)
+    {
+        EndInvincibility();
+        return;
+    }
+#endif
     if (PlayerHitPoints() < MaskHitPoints)
     {
         Leave();

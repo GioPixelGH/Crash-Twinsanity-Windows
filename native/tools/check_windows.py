@@ -107,6 +107,15 @@ SCENARIOS = [
     ("The two masks' stars back after a cutscene (#18)", "Levels\\Earth\\Hub\\highpath", 40, "idle,mask,wait3,goto:-9:-4:-50,wait30",
      dict(options="retail_fixes=1\n", env={"TWIN_MASK_TRACE": "1"},
           expect=[r"mask trace: shown again after the game was watched, state 4, its stars on"], forbid=[r"its stars off"])),
+    # Issue #18 (THE LIST 46): three masks' invincibility going on into a hurt's blinking (hurt as its 8 s end, standing on what
+    # hurts), then a second hurt: retail's mask leaves without stopping the invincibility's trails, which go on emitting where they
+    # were (on the PS2 too); under Bug fixes the first hurt ends the invincibility as its end does (the hop's hurt step, a hit
+    # point and the blinking, made while the 8 s still run)
+    ("Three masks' invincibility ended by a hurt, its trails stopped under Bug fixes (#18)", "Levels\\Earth\\Hub\\huba", 22,
+     "idle,wait3,mask,wait1,mask,wait1,mask,wait1,mask,wait2,hurt,wait1,hurt,wait10",
+     dict(options="skip_cutscenes=1\nretail_fixes=1\n", env={"TWIN_MASK_TRACE": "1"},
+          expect=[r"hop: the player hurt .*hit points 2 to 1", r"mask trace: AKUMASK, kind 1, state 2, .*hit points 1"],
+          forbid=[r"the invincibility's trail \d still there"])),
     # THE LIST 37: Bandicoot Pursuit's Evil Crash, whose first route step taken straight ahead misses it, stands for good (on the
     # PS2 too); under Bug fixes the step itself is his target and he follows Cortex (Crash put on the checkpoint crate, then the pad)
     ("Bandicoot Pursuit's Evil Crash follows Cortex under Bug fixes", "Levels\\AltEarth\\Hub\\altdoc", 14,

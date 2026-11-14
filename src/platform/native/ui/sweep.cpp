@@ -10,6 +10,7 @@
 #include "native.h"
 
 #include "game/agentlab.h"
+#include "game/agentparts.h"
 #include "game/agents.h"
 #include "game/behaviours.h"
 #include "game/chunkdata.h"
@@ -832,6 +833,27 @@ void HopFrame()
 
         next++;
         lastHop = now;
+        return;
+    }
+
+    // "hurt": the player hurt as a hit that isn't kept out leaves it, a hit point fewer and 2 s of blinking unless it's invulnerable
+    // already (THE LIST 46, #18: three masks' invincibility going on into a hurt's blinking)
+    if (targets[next] == "hurt")
+    {
+        auto* agentNode = static_cast<AgentNode*>(GetGameNode(&player->nodes, NodeCharacter));
+        auto* agent = agentNode != nullptr ? static_cast<CharacterAgent*>(agentNode->agent) : nullptr;
+        if (agent != nullptr)
+        {
+            auto* part = static_cast<CharacterPart*>(agent->part);
+            u32 points = part->flags.hitPoints;
+            part->flags.hitPoints = points > 1 ? points - 1 : points;
+            agent->StartInvincibility(0);
+            Native::Log("hop: the player hurt in %s, hit points %u to %u, invulnerable %u", name.c_str(), points,
+                        static_cast<u32>(part->flags.hitPoints), static_cast<u32>(part->bits.invulnerable));
+        }
+
+        next++;
+        lastHop = now - std::chrono::seconds(2);
         return;
     }
 
