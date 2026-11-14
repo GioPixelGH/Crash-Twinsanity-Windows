@@ -508,6 +508,7 @@ void MaskController::Frame(TimeClock*)
     {
         const MaskController* controller;
         u64 shown;
+        u32 frames;
     };
     static const bool controllerTrace = std::getenv("TWIN_MASK_TRACE") != nullptr;
     static Traced traced[8] = {};
@@ -553,9 +554,8 @@ void MaskController::Frame(TimeClock*)
                     character == player ? " (the player)" : "", nameOf(player), player != nullptr ? PlayerHitPoints() : 0u);
     }
 
-    // ... and every second out of the invincibility, a trail of it still emitting (THE LIST 46: left on by Leave)
-    static u32 trailFrames = 0;
-    if (controllerTrace && state != StateInvincible && trailFrames++ % 60 == 0)
+    // ... and every second out of the invincibility, a trail of it still there (THE LIST 46 and 57: left on by Leave or Hide)
+    if (slot != nullptr && state != StateInvincible && slot->frames++ % 60 == 0)
     {
         for (u32 index = 0; index < InvincibilityTrails; index++)
         {
@@ -849,6 +849,20 @@ void MaskController::StepInvincible()
 {
     if (character != PlayerInstance())
     {
+#ifdef TWIN_NATIVE
+        // Bug fixes (THE LIST 57, #18): the invincibility's trails stopped when its character stops being the player. Hide lets
+        // the mask go inactive without stopping them, and they go on emitting where the character last was: at the final boss
+        // (throne), whose scene makes the boss the player a moment, invulnerable, a two masks' mask flies onto it, then Nina is
+        // played and the golden particles stay in the arena (on the PS2 too: the retail PAL game in PCSX2, the mask's controller
+        // inactive with its three emitters on)
+        if (NativeFixes::RetailFixes())
+        {
+            for (u32 index = 0; index < InvincibilityTrails; index++)
+            {
+                trailSlots[index] = StopTrail(&trails[index], trailSlots[index]);
+            }
+        }
+#endif
         Hide();
         state = StateInactive;
         return;

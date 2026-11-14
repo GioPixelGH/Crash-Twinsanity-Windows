@@ -116,6 +116,16 @@ SCENARIOS = [
      dict(options="skip_cutscenes=1\nretail_fixes=1\n", env={"TWIN_MASK_TRACE": "1"},
           expect=[r"hop: the player hurt .*hit points 2 to 1", r"mask trace: AKUMASK, kind 1, state 2, .*hit points 1"],
           forbid=[r"the invincibility's trail \d still there"])),
+    # Issue #18 (THE LIST 57): at the final boss with two masks, the scene after its first makes the boss the player a moment,
+    # invulnerable: the mask flies onto it as onto three masks' character, then Nina is played and the mask goes inactive with the
+    # invincibility's trails on, golden particles left in the arena (the retail PAL game in PCSX2 too: emitters 18-20 on, as
+    # here); under Bug fixes they're stopped
+    ("The final boss with two masks, no particles left in the arena under Bug fixes (#18)", "Levels\\AltEarth\\Core\\throne", 18,
+     "mask,wait16",
+     dict(options="retail_fixes=1\n", env={"TWIN_MASK_TRACE": "1"},
+          expect=[r"mask trace: AKUMASK, kind 1, state 5, .*its character \|throne\|act_FINAL_BOSS",
+                  r"mask trace: AKUMASK, kind 1, state 0, .*the player \|throne\|act_NINA"],
+          forbid=[r"the invincibility's trail \d still there"])),
     # THE LIST 37: Bandicoot Pursuit's Evil Crash, whose first route step taken straight ahead misses it, stands for good (on the
     # PS2 too); under Bug fixes the step itself is his target and he follows Cortex (Crash put on the checkpoint crate, then the pad)
     ("Bandicoot Pursuit's Evil Crash follows Cortex under Bug fixes", "Levels\\AltEarth\\Hub\\altdoc", 14,
