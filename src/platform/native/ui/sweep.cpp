@@ -835,6 +835,17 @@ void HopFrame()
         return;
     }
 
+    // "credits": the end credits rolled as the game's end asks for them (PlayCredits), the chunk after them loaded and played
+    // (THE LIST 44: #20's game that closed instead)
+    if (targets[next] == "credits")
+    {
+        G_GameController->PlayCredits();
+        Native::Log("hop: the credits asked for in %s", name.c_str());
+        next++;
+        lastHop = now;
+        return;
+    }
+
     // "mask": a mask picked up as an Aku Aku crate gives it (a hit point; the fourth makes the player invincible: THE LIST 15's
     // trails, $TWIN_MASK_TRACE)
     if (targets[next] == "mask")

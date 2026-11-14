@@ -124,6 +124,13 @@ SCENARIOS = [
           expect=[r"a 1024x1024 texture at 2800/4 \(psm 0\) read from the target 2800/4 \(psm 0",
                   r"game: the player in levels\\altearth\\core\\corea"],
           forbid=[r"a 256x\d+ texture at 2800/4 \(psm 0\) read from the target"])),
+    # Issue #20 (THE LIST 44): on 1.0.18 the game closed as the end credits ended, instead of going on in the Iceberg Lab (not on
+    # 1.1.0, its reporter says). The credits asked for as the game's end does (the hop's credits step), rolled to their end (135 s,
+    # not counted as play), then the Iceberg Lab loaded and played
+    ("The end credits rolled to their end, the Iceberg Lab after them (#20)", "Levels\\Earth\\Hub\\beach", 12,
+     "idle,wait3,credits,wait5",
+     dict(expect=[r"hop: the credits asked for", r"game: the credits \(state 19\)",
+                  r"game: the player in levels\\ice\\hub\\labext", r"hop: waiting 5 s in levels\\ice\\hub\\labext"])),
     # Issue #23 (THE LIST 59): after the angry skunk's scene watched in full, a player's camera stopped following Crash (once, at
     # 47 fps; not seen here: the scene played straight or reached through huba and hubb, at 60 fps or uneven 40-60, Crash put
     # where that player stood). The follow camera shown in play after it, near the player wherever it's put
