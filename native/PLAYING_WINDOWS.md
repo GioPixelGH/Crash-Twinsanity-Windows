@@ -152,8 +152,9 @@ game could make.
   the original's free camera. A level's own fixed cameras still work as they did.
 - **Improved menus**: the pause menu starts at the top, with Restart Checkpoint second. Gems and Extras are rows of it, and
   back from them brings you back to it. Quit Game is called Return to Title.
-- **Level select**: start any level from the main menu (Options > Enhancements > Level). What you save in such a game is
-  kept apart from your own saves, which come back once you're at the title again.
+- **Level select**: start any level. Choose Level Select in the main menu or the pause menu, pick a level on the gems' pages,
+  then say yes. (Options > Enhancements > Level works too.) What you save in such a game is kept apart from your own saves,
+  which come back once you're at the title again.
 
 **Display**
 

@@ -498,7 +498,7 @@ void Build()
     enhancements.push_back(Section(TextSectionMenus));
     enhancements.push_back(Toggle(TextImprovedMenus, TextDescImprovedMenus, OptionImprovedMenus));
     // The level select (THE LIST 12, levelselect.cpp): the option, then (on) the level chosen and its start from the main menu, or
-    // a line saying the main menu is where it starts from
+    // a line saying the main menu is where it starts from (THE LIST 80: also the gems' pages, in the main menu and the pause menu)
     enhancements.push_back(Section(TextSectionLevels));
     enhancements.push_back(Toggle(TextLevelSelect, TextDescLevelSelect, OptionLevelSelect));
     Row levelSelectLevel = Choice(

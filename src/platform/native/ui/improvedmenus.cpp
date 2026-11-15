@@ -1,4 +1,5 @@
-// The improved menus (THE LIST 79, #48: ichagas7's BETTER MENUS.pdf, its part 2; the game option improved_menus, off).
+// The improved menus (THE LIST 79, #48: ichagas7's BETTER MENUS.pdf, its part 2; the game option improved_menus, off) and the level
+// select's gems' pages (THE LIST 80, #48's Level Select Menu.pdf; with the level select on, levelselect.cpp).
 //
 // The improved menus: the pause menu starts at its first row instead of resume, restart checkpoint comes second, the gems' pages
 // (the pause menu's shoulder pages: each world's levels with their gems) and the extras are rows of it (back from them comes back
@@ -6,33 +7,68 @@
 // so); resume goes (back and start resume play, as before).
 // Disable autosave stays the original's action, shown while an autosave waits. The pause page has both layouts' rows
 // (olegpages.cpp's PausePage::Construct); each frame the layout chosen is shown.
+//
+// The level select's gems' pages: with the level select on, every level's title shows on them and each level can be picked:
+// "play this level?" yes / no on the quit's confirmation screen (its menu given a page of ours and its title our text while it
+// asks), yes starting the level as the level select does (its own memory card: the campaign's saves never change). They open
+// from a "level select" row in the main menu (this file runs their pages and their back there) and in the pause menu (the
+// original's with the option on, the improved menus' gems row then named level select); from play, yes goes through the title
+// (levelselect.cpp's StartLevelFromPlay).
 #include "ui/nativeui.h"
 
 #include "ui/bindings.h"
 #include "native.h"
 
+#include "game/clock.h"
 #include "game/gamecontroller.h"
 #include "game/language.h"
+#include "game/memory.h"
 #include "game/menus.h"
 #include "game/oleg.h"
 #include "game/olegpages.h"
+#include "game/pads.h"
 #include "game/widgets.h"
 
 #include <cstdlib>
+#include <cstring>
 #include <string>
 
 namespace NativeUi
 {
 namespace
 {
+// As olegpages.cpp's ShowScreen: every other screen hidden and the screen shown, over half a second
+constexpr f32 ScreenChangeSeconds = 0.5f;
 constexpr u32 Worlds = 4;
+// Past every area: each level's title shown and each levels page reached
+constexpr u32 EveryArea = 24;
 
+// The gems' pages opened from the main menu, the world's page shown
+bool g_FromMainMenu = false;
+u32 g_World = 0;
+// The level picked on them (-1 none)
+s32 g_Picked = -1;
 // The pause page a pause menu row asked for (a reason, ReasonNone none), the row (its ID), and the pause menu shown again from
-// its page (the row the one selected first)
+// its page (the row the one selected first); the main menu likewise from the gems' pages
 u32 g_PausePageAsked = GameController::ReasonNone;
 u32 g_PauseRow = 0;
 bool g_PauseReturning = false;
+bool g_MainMenuReturning = false;
+// The game's own: the quit screen's page, the main menu's first item, the levels screens' widgets (the select hint added with
+// the level select on)
+MenuPage* g_QuitPage = nullptr;
+u32 g_MainMenuFirst = 0;
+u64 g_LevelsScreens[Worlds] = {};
 bool g_Captured = false;
+// The level confirmation's page and its vtable (the quit page's, but its back)
+OlegPage* g_ConfirmPage = nullptr;
+GccVTableEntry g_ConfirmVTable[10];
+
+void ShowScreen(OLEG& oleg, u32 screen)
+{
+    oleg.Hide(oleg.screens[OLEG::ScreenAllButOverlays], static_cast<s32>(g_ClockUnitsPerSecond * ScreenChangeSeconds), 0);
+    oleg.Show(oleg.screens[screen], static_cast<s32>(g_ClockUnitsPerSecond * ScreenChangeSeconds), 0);
+}
 
 void SetShown(MenuItem* item, bool shown)
 {
@@ -56,6 +92,62 @@ bool Shown(const Widget& widget)
     return widget.State() == Widget::StateShown;
 }
 
+// The quit screen's menu given a page and its title a text (the menu entered again if it was on another page)
+void PointQuitScreen(OLEG& oleg, MenuPage* page, u32 title)
+{
+    MenuWidget& menu = oleg.quitMenu;
+    menu.home = page;
+    menu.firstPage = page;
+    oleg.quitTitle.text = title;
+    if (menu.current != nullptr && menu.current != page)
+    {
+        menu.current->Leave();
+        menu.current = nullptr;
+    }
+}
+
+// The confirmation's back (its no too): the gems' page it came from again
+u32 ConfirmBack(MenuPage*, u32)
+{
+    GameController* controller = G_GameController;
+    if (controller != nullptr)
+    {
+        if (g_FromMainMenu)
+        {
+            ShowScreen(controller->oleg, OLEG::ScreenLevels + g_World);
+        }
+        else
+        {
+            controller->BackToPauseMenu();
+        }
+    }
+
+    return 1;
+}
+
+OlegPage* ConfirmPage()
+{
+    if (g_ConfirmPage != nullptr)
+    {
+        return g_ConfirmPage;
+    }
+
+    std::memcpy(g_ConfirmVTable, g_QuitPageVTable, sizeof(g_ConfirmVTable));
+    g_ConfirmVTable[MenuPage::BackSlot].function = reinterpret_cast<void*>(&ConfirmBack);
+    auto* page = static_cast<OlegPage*>(MemoryAllocate(sizeof(OlegPage)));
+    OlegPage::ConstructTitled(page, TextPlayLevel, nullptr);
+    page->vtable = g_ConfirmVTable;
+    ActionItem* yes = ActionItem::Construct(static_cast<ActionItem*>(MemoryAllocate(sizeof(ActionItem))), NativeItems::YesText,
+                                            NativeItems::PlayLevelYes, ActionItem::ActionPlayLevel);
+    BackItem* no = BackItem::Construct(static_cast<BackItem*>(MemoryAllocate(sizeof(BackItem))), NativeItems::NoText,
+                                       NativeItems::No, nullptr, MenuPlayers);
+    page->Add(yes);
+    page->Add(no);
+    page->SetFirstItem(no->Id());
+    g_ConfirmPage = page;
+    return page;
+}
+
 // The pause page's rows of the layout chosen, and the one selected first (options, resume, or the row its page was asked from)
 void LayOutPause(OLEG& oleg)
 {
@@ -66,9 +158,13 @@ void LayOutPause(OLEG& oleg)
     }
 
     const bool improved = IsOn(OptionImprovedMenus);
+    const bool levelSelect = IsOn(OptionLevelSelect);
     SetShown(page->Find(NativeItems::RestartCheckpointHigher), improved);
-    SetShown(page->Find(NativeItems::LevelsHigher), improved);
+    MenuItem* levels = page->Find(NativeItems::LevelsHigher);
+    SetShown(levels, improved);
+    SetText(levels, levelSelect ? TextLevelSelect : TextGems);
     SetShown(page->Find(NativeItems::RestartCheckpoint), !improved);
+    SetShown(page->Find(NativeItems::Levels), !improved && levelSelect);
     SetShown(page->Find(NativeItems::Extras), improved);
     SetText(page->Find(NativeItems::QuitGame), improved ? TextReturnToTitle : NativeItems::QuitGameText);
     SetShown(page->Find(NativeItems::Resume), !improved);
@@ -82,11 +178,31 @@ void LayOutPause(OLEG& oleg)
     }
 }
 
+void LayOutMainMenu(OLEG& oleg)
+{
+    MenuPage* page = oleg.mainMenu.firstPage;
+    if (page == nullptr)
+    {
+        return;
+    }
+
+    SetShown(page->Find(NativeItems::MainMenuLevels), IsOn(OptionLevelSelect));
+    if (g_MainMenuReturning)
+    {
+        page->SetFirstItem(NativeItems::MainMenuLevels);
+    }
+    else
+    {
+        page->flags.firstItem = g_MainMenuFirst;
+    }
+}
+
 // ------------------------------------------------------------------------------------------------------------- the menus test
-// $TWIN_MENUS_TEST=1 (improved_menus=1 and level_select=1 in options.txt; headless): from the Vivendi logo to the main menu, the
-// Iceberg Lab started by the level select; in play the pause menu (its rows and the first selected), the gems' pages from their
-// row and back, the extras from theirs and their back row, return to title's confirmation and its no. Each step logged ("menus
-// test:"), "menus test: done" at the end, "menus test: stuck" if a step waits a minute
+// $TWIN_MENUS_TEST=1 (improved_menus=1 and level_select=1 in options.txt; headless): from the Vivendi logo to the main menu, its
+// level select row, the gems' pages, the second world's second level picked and played (the confirmation's yes); in play the
+// pause menu (its rows and the first selected), the gems' pages from their row and back, the extras from theirs and their back
+// row, return to title's confirmation and its no, then from the gems' pages Jungle Bungle played from play (through the title). Each step
+// logged ("menus test:"), "menus test: done" at the end, "menus test: stuck" if a step waits a minute
 struct Test
 {
     bool on = false;
@@ -200,6 +316,7 @@ void TestFrame(GameController* controller)
     u32 world = 0;
     MenuWidget* levels = ShownLevels(oleg, &world);
     const bool pause = Shown(oleg.pauseMenu);
+    const bool quit = Shown(oleg.quitMenu);
     switch (test.step)
     {
     case 0:
@@ -209,35 +326,85 @@ void TestFrame(GameController* controller)
         }
         else if (state == GameController::StateMainMenu && Shown(oleg.mainMenu))
         {
-            StartLevel(4);
+            Native::Log("menus test: the main menu: %s", Rows(oleg.mainMenu.current).c_str());
             Next();
         }
         break;
     case 1:
-        // In play for 3 seconds, then paused
-        test.playFrames = state == GameController::StatePlaying ? test.playFrames + 1 : 0;
-        if (test.playFrames >= 150)
+        if (Shown(oleg.mainMenu) && Choose(oleg.mainMenu, NativeItems::MainMenuLevels))
         {
-            Press(PadBitStart);
             Next();
         }
         break;
     case 2:
+        if (levels != nullptr)
+        {
+            Native::Log("menus test: the gems' pages from the main menu, world %u, on %s", world + 1, GameText(oleg.levelName.text));
+            Press(PadBitR1);
+            Next();
+        }
+        break;
+    case 3:
+    case 17:
+        // From the main menu the second world's second level (Ice Climb, area 7); from play the first world's second (Jungle
+        // Bungle, area 1)
+        if (levels != nullptr && world == (test.step == 3 ? 1u : 0u) && Choose(*levels, test.step == 3 ? 7 : 1))
+        {
+            Native::Log("menus test: world %u, %s picked", world + 1, GameText(oleg.levelName.text));
+            Next();
+        }
+        break;
+    case 4:
+    case 18:
+        if (quit)
+        {
+            MenuItem* selected = Selected(oleg.quitMenu.current);
+            if (selected != nullptr && selected->Id() == NativeItems::No)
+            {
+                Native::Log("menus test: the confirmation: %s %s", GameText(oleg.quitTitle.text), Rows(oleg.quitMenu.current).c_str());
+            }
+
+            if (Choose(oleg.quitMenu, NativeItems::PlayLevelYes))
+            {
+                Next();
+            }
+        }
+        break;
     case 5:
-    case 8:
+    case 19:
+        // In play for 3 seconds, then paused (or the end)
+        test.playFrames = state == GameController::StatePlaying ? test.playFrames + 1 : 0;
+        if (test.playFrames >= 150)
+        {
+            test.playFrames = 0;
+            if (test.step == 19)
+            {
+                Native::Log("menus test: done");
+                std::exit(0);
+            }
+
+            Press(PadBitStart);
+            Next();
+        }
+
+        break;
+    case 6:
+    case 9:
+    case 12:
         if (pause)
         {
             Native::Log("menus test: the pause menu: %s", Rows(oleg.pauseMenu.current).c_str());
             Next();
         }
         break;
-    case 3:
+    case 7:
+    case 16:
         if (pause && Choose(oleg.pauseMenu, NativeItems::LevelsHigher))
         {
             Next();
         }
         break;
-    case 4:
+    case 8:
         if (levels != nullptr)
         {
             Native::Log("menus test: the gems' pages from the pause menu, world %u: back", world + 1);
@@ -245,13 +412,13 @@ void TestFrame(GameController* controller)
             Next();
         }
         break;
-    case 6:
+    case 10:
         if (pause && Choose(oleg.pauseMenu, NativeItems::Extras))
         {
             Next();
         }
         break;
-    case 7:
+    case 11:
         // Its back row (the original's resume) chosen
         if (Shown(oleg.extrasMenu) && Choose(oleg.extrasMenu, NativeItems::ExtrasResume))
         {
@@ -259,14 +426,14 @@ void TestFrame(GameController* controller)
             Next();
         }
         break;
-    case 9:
+    case 13:
         if (pause && Choose(oleg.pauseMenu, NativeItems::QuitGame))
         {
             Next();
         }
         break;
-    case 10:
-        if (Shown(oleg.quitMenu))
+    case 14:
+        if (quit)
         {
             // Its no, selected first
             Native::Log("menus test: return to title asks: %s %s: no", GameText(oleg.quitTitle.text),
@@ -275,12 +442,11 @@ void TestFrame(GameController* controller)
             Next();
         }
         break;
-    case 11:
+    case 15:
         if (pause)
         {
             Native::Log("menus test: the pause menu again: %s", Rows(oleg.pauseMenu.current).c_str());
-            Native::Log("menus test: done");
-            std::exit(0);
+            Next();
         }
         break;
     default:
@@ -292,9 +458,9 @@ void TestFrame(GameController* controller)
 void QuitScreenAsQuit()
 {
     GameController* controller = G_GameController;
-    if (controller != nullptr)
+    if (controller != nullptr && g_QuitPage != nullptr)
     {
-        controller->oleg.quitTitle.text = IsOn(OptionImprovedMenus) ? TextReturnToTitleAsk : NativeItems::QuitTitleText;
+        PointQuitScreen(controller->oleg, g_QuitPage, IsOn(OptionImprovedMenus) ? TextReturnToTitleAsk : NativeItems::QuitTitleText);
     }
 }
 
@@ -309,6 +475,58 @@ u32 TakePausePage()
     const u32 asked = g_PausePageAsked;
     g_PausePageAsked = GameController::ReasonNone;
     return asked;
+}
+
+void OpenLevelsFromMainMenu()
+{
+    GameController* controller = G_GameController;
+    if (controller == nullptr || controller->State() != GameController::StateMainMenu)
+    {
+        return;
+    }
+
+    g_FromMainMenu = true;
+    g_World = 0;
+    ShowScreen(controller->oleg, OLEG::ScreenLevels);
+}
+
+void PickLevel(u32 area)
+{
+    GameController* controller = G_GameController;
+    if (controller == nullptr || !IsOn(OptionLevelSelect) || area >= 25 || g_QuitPage == nullptr)
+    {
+        return;
+    }
+
+    g_Picked = g_AreaLevels[area];
+    PointQuitScreen(controller->oleg, ConfirmPage(), TextPlayLevel);
+    ShowScreen(controller->oleg, OLEG::ScreenQuit);
+}
+
+void PlayPickedLevel()
+{
+    GameController* controller = G_GameController;
+    if (controller == nullptr || g_Picked < 0)
+    {
+        return;
+    }
+
+    const u32 level = static_cast<u32>(g_Picked);
+    g_Picked = -1;
+    if (controller->State() == GameController::StateMainMenu)
+    {
+        g_FromMainMenu = false;
+        StartLevel(level);
+    }
+    else
+    {
+        StartLevelFromPlay(level);
+    }
+}
+
+u32 LevelsOpen(u32 open)
+{
+    return IsOn(OptionLevelSelect) && open < EveryArea ? EveryArea : open;
 }
 
 bool BackToPauseMenuInstead(MenuWidget* menu)
@@ -340,6 +558,44 @@ bool BackToPauseMenuInstead(MenuWidget* menu)
     return true;
 }
 
+bool MainMenuLevelsFrame()
+{
+    GameController* controller = G_GameController;
+    if (!g_FromMainMenu || controller == nullptr)
+    {
+        return false;
+    }
+
+    OLEG& oleg = controller->oleg;
+    MenuWidget& levels = oleg.levelsMenus[g_World];
+    if (!Shown(levels))
+    {
+        // Fading, or the confirmation up
+        return true;
+    }
+
+    if (levels.current == &g_ResumePage)
+    {
+        // Back: the main menu again, on its level select row
+        g_FromMainMenu = false;
+        g_MainMenuReturning = true;
+        LayOutMainMenu(oleg);
+        ShowScreen(oleg, OLEG::ScreenMainMenu);
+        return true;
+    }
+
+    // The shoulders: the worlds' pages round (as in the pause menu, but without the pause and extras pages)
+    const bool back = GetButtonState(controller->pad, PadL1, true) || GetButtonState(controller->pad, PadL2, true);
+    const bool on = GetButtonState(controller->pad, PadR1, true) || GetButtonState(controller->pad, PadR2, true);
+    if (back || on)
+    {
+        g_World = (g_World + (on ? 1 : Worlds - 1)) % Worlds;
+        ShowScreen(oleg, OLEG::ScreenLevels + g_World);
+    }
+
+    return true;
+}
+
 void ImprovedMenusFrame()
 {
     GameController* controller = G_GameController;
@@ -352,17 +608,42 @@ void ImprovedMenusFrame()
     if (!g_Captured)
     {
         g_Captured = true;
+        g_QuitPage = oleg.quitMenu.firstPage;
+        g_MainMenuFirst = oleg.mainMenu.firstPage->flags.firstItem;
+        for (u32 w = 0; w < Worlds; w++)
+        {
+            g_LevelsScreens[w] = oleg.screens[OLEG::ScreenLevels + w];
+        }
+
         static const char* test = std::getenv("TWIN_MENUS_TEST");
         g_Test.on = test != nullptr && test[0] == '1';
     }
 
-    // Back on the pause menu: its first row as usual again
+    // Back on the pause menu or the main menu: their first rows as usual again
     if (g_PauseReturning && oleg.pauseMenu.current == oleg.pauseMenu.firstPage)
     {
         g_PauseReturning = false;
     }
 
+    if (g_MainMenuReturning && oleg.mainMenu.current == oleg.mainMenu.firstPage)
+    {
+        g_MainMenuReturning = false;
+    }
+
+    if (g_FromMainMenu && controller->State() != GameController::StateMainMenu)
+    {
+        g_FromMainMenu = false;
+    }
+
     LayOutPause(oleg);
+    LayOutMainMenu(oleg);
+    // The levels screens' select hint while a level can be picked
+    for (u32 w = 0; w < Worlds; w++)
+    {
+        oleg.screens[OLEG::ScreenLevels + w] =
+            IsOn(OptionLevelSelect) ? g_LevelsScreens[w] | oleg.screens[OLEG::ScreenSelectHint] : g_LevelsScreens[w];
+    }
+
     if (g_Test.on)
     {
         TestFrame(controller);

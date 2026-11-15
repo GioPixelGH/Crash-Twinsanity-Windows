@@ -369,12 +369,21 @@ MenuPage* ActionItem::Activate(u32 player, MenuPage* page)
         // From the last checkpoint (or the saved one, or the level's start), as a lost life does but keeping the lives
         controller->RequestRestart(EntryCheckpoint);
         break;
-    // The improved menus' (THE LIST 79: improvedmenus.cpp)
+    // The improved menus and the level select's (THE LIST 79, 80: improvedmenus.cpp)
     case ActionPausePageLevels:
         NativeUi::AskPausePage(GameController::ReasonFirstLevels, Id());
         break;
     case ActionPausePageExtras:
         NativeUi::AskPausePage(GameController::ReasonExtras, Id());
+        break;
+    case ActionMainMenuLevels:
+        NativeUi::OpenLevelsFromMainMenu();
+        break;
+    case ActionPickLevel:
+        NativeUi::PickLevel(Id());
+        break;
+    case ActionPlayLevel:
+        NativeUi::PlayPickedLevel();
         break;
 #endif
     default:
@@ -398,6 +407,13 @@ MainMenuPage* MainMenuPage::Construct(MainMenuPage* page)
                                                 OptionsItem, ActionItem::ActionOptions);
     page->Add(newGame);
     page->Add(loadGame);
+#ifdef TWIN_NATIVE
+    // Native: the level select's row (THE LIST 80; shown while the option's on: improvedmenus.cpp)
+    ActionItem* levels = ActionItem::Construct(Allocate<ActionItem>(), NativeUi::TextLevelSelect, NativeItems::MainMenuLevels,
+                                               ActionItem::ActionMainMenuLevels);
+    levels->shown = 0;
+    page->Add(levels);
+#endif
     page->Add(options);
     return page;
 }
@@ -843,9 +859,10 @@ PausePage* PausePage::Construct(PausePage* page, PadButtons*, Font*)
     BackItem* resume = BackItem::Construct(Allocate<BackItem>(), ResumeText, ResumeItem, &g_ResumePage, MenuPlayers);
 #ifdef TWIN_NATIVE
     // Native: the rows of both layouts (improvedmenus.cpp shows one's each frame: THE LIST 79's improved menus, the original's),
-    // made before any is added (adding can grow the page's list). The improved: options, restart checkpoint, the gems' pages, save,
-    // load, disable autosave, extras, return to title, from the first. The original: options, save, load, disable autosave, restart
-    // checkpoint, quit game, resume, from resume
+    // made before any is added (adding can grow the page's list). The improved: options, restart checkpoint, the gems' pages (the
+    // level select's with it on), save, load, disable autosave, extras, return to title, from the first. The original: options,
+    // save, load, disable autosave, restart checkpoint, the level select's row with it on (THE LIST 80), quit game, resume, from
+    // resume
     MenuItem* rows[] = {
         options,
         ActionItem::Construct(Allocate<ActionItem>(), NativeUi::TextRestartCheckpoint, NativeItems::RestartCheckpointHigher,
@@ -857,6 +874,8 @@ PausePage* PausePage::Construct(PausePage* page, PadButtons*, Font*)
         disableAutosave,
         ActionItem::Construct(Allocate<ActionItem>(), NativeUi::TextRestartCheckpoint, RestartCheckpointItem,
                               ActionItem::ActionRestartCheckpoint),
+        ActionItem::Construct(Allocate<ActionItem>(), NativeUi::TextLevelSelect, NativeItems::Levels,
+                              ActionItem::ActionPausePageLevels),
         ActionItem::Construct(Allocate<ActionItem>(), NativeItems::ExtrasText, NativeItems::Extras,
                               ActionItem::ActionPausePageExtras),
         quit,
@@ -865,7 +884,8 @@ PausePage* PausePage::Construct(PausePage* page, PadButtons*, Font*)
     for (MenuItem* row : rows)
     {
         const u32 id = row->Id();
-        if (id == NativeItems::RestartCheckpointHigher || id == NativeItems::LevelsHigher || id == NativeItems::Extras)
+        if (id == NativeItems::RestartCheckpointHigher || id == NativeItems::LevelsHigher || id == NativeItems::Levels ||
+            id == NativeItems::Extras)
         {
             row->shown = 0;
         }
@@ -1157,7 +1177,17 @@ LevelsPage* LevelsPage::Construct(LevelsPage* page, u32 world, MenuWidget* menu)
     {
         for (u32 level = 0; level < LevelsPerWorld; level++)
         {
+#ifdef TWIN_NATIVE
+            // Native: a level picked asks to play it with the level select on (THE LIST 80: improvedmenus.cpp), else nothing as
+            // before (an action item leading nowhere, as the link)
+            auto* item = Allocate<ActionItem>();
+            LinkItem::ConstructNamed(item, "", layout.levels[level], nullptr, MenuPlayers);
+            item->action = ActionItem::ActionPickLevel;
+            item->vtable = g_ActionItemVTable;
+            items[level] = item;
+#else
             items[level] = LinkItem::ConstructNamed(Allocate<LinkItem>(), "", layout.levels[level], nullptr, MenuPlayers);
+#endif
         }
     }
 

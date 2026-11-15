@@ -1313,6 +1313,14 @@ u32 GameController::MainMenu(TimeClock* clock)
         return NoState;
     }
 
+#ifdef TWIN_NATIVE
+    // The level select's gems' pages opened from here (THE LIST 80): their pages, their back and their confirmation
+    if (NativeUi::MainMenuLevelsFrame())
+    {
+        UpdateSaving(clock);
+        return NoState;
+    }
+#endif
     MenuWidget* menu = oleg.ShownMenu();
     if (menu != nullptr && menu->menuFlags.leaves != 0 && menu->current == &g_ResumePage)
     {
@@ -2036,7 +2044,8 @@ u32 GameController::PausePage()
 
     u32 area = progress.play.open;
 #ifdef TWIN_NATIVE
-    // Native: a page the improved menus' rows ask for (THE LIST 79)
+    // Native: every levels page with the level select on (THE LIST 80), and a page the improved menus' rows ask for (THE LIST 79)
+    area = NativeUi::LevelsOpen(area);
     const u32 asked = NativeUi::TakePausePage();
     if (asked != ReasonNone && reason == ReasonStart)
     {

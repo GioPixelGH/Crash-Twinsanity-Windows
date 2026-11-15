@@ -368,6 +368,8 @@ enum NativeText : u32
     TextReturnToTitle,
     TextGems,
     TextReturnToTitleAsk,
+    // The level select's confirmation on the gems' pages (THE LIST 80, #48)
+    TextPlayLevel,
     NativeTextEnd,
 };
 
@@ -604,15 +606,26 @@ constexpr u32 LevelNameTexts = 0x47;
 const char* LevelChunk(u32 level);
 bool CanStartLevel();
 void StartLevel(u32 level);
+// From play (the level select's gems' pages in the pause menu, THE LIST 80): back to the title, then the level started from the
+// main menu as StartLevel does
+void StartLevelFromPlay(u32 level);
 void LevelSelectFrame();
-// The improved menus (improvedmenus.cpp, THE LIST 79, #48), called from the game's menus: the quit screen's title as the layout
-// asks (quit game, or return to title); a pause menu row asking for a pause page (the gems' first or the extras: a reason) and
-// the pause page asked for once (ReasonNone none); back from the gems' pages or the extras to the pause menu (whether it went
-// there); the frame's work (the rows each layout shows); the menus test's buttons ($TWIN_MENUS_TEST)
+// The improved menus and the level select's gems' pages (improvedmenus.cpp, THE LIST 79 and 80, #48), called from the game's menus:
+// the quit screen made the quit's again (it's also the level confirmation's); a pause menu row asking for a pause page (the
+// gems' first or the extras: a reason) and the pause page asked for once (ReasonNone none); the main menu's level select opening
+// the gems' pages; a level of them picked (its area: the confirmation, the level select on) and the level confirmed; the last
+// area whose level's shown (every one with the level select on); back from the gems' pages or the extras to the pause menu (the
+// improved menus: whether it went there); the main menu's frame while the gems' pages opened from it are up (whether they are);
+// the frame's work (the rows each layout shows, the level select's hint); the menus test's buttons ($TWIN_MENUS_TEST)
 void QuitScreenAsQuit();
 void AskPausePage(u32 reason, u32 fromItem);
 u32 TakePausePage();
+void OpenLevelsFromMainMenu();
+void PickLevel(u32 area);
+void PlayPickedLevel();
+u32 LevelsOpen(u32 open);
 bool BackToPauseMenuInstead(MenuWidget* menu);
+bool MainMenuLevelsFrame();
 void ImprovedMenusFrame();
 u32 MenusTestButtons();
 // The speedrun timer (speedrun.cpp, the game option): its frame's work (started at New Game, a split at each level's end, stopped

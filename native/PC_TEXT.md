@@ -332,6 +332,7 @@ English slot); an empty cell shows the English. To translate: fill that column i
 | 0x21C | return to title | retour au titre | zurück zum titel | volver al título | torna al titolo |  |
 | 0x21D | gems | gemmes | edelsteine | gemas | gemme |  |
 | 0x21E | return to title? | retour au titre ? | zurück zum titel? | ¿volver al título? | tornare al titolo? |  |
+| 0x21F | play this level? | jouer ce niveau ? | dieses level spielen? | ¿jugar este nivel? | giocare il livello? |  |
 
 ## English (29 lines)
 

@@ -47,6 +47,10 @@ constexpr const char* LevelChunks[LevelCount] = {
 
 // The level select's play under way (its card in use) until the game is back at the title
 bool g_Session = false;
+// A level picked from play (StartLevelFromPlay: -1 none), started once the game is back at the title and on to the main menu, and
+// the title's frames waited first
+s32 g_FromPlay = -1;
+u32 g_TitleFrames = 0;
 
 // The level's first area (-1 none)
 s32 FirstArea(u32 level)
@@ -101,6 +105,21 @@ void StartLevel(u32 level)
                 LevelChunks[level]);
 }
 
+void StartLevelFromPlay(u32 level)
+{
+    GameController* controller = G_GameController;
+    if (level >= LevelCount || controller == nullptr || !IsOn(OptionLevelSelect))
+    {
+        return;
+    }
+
+    // As the pause menu's quit does, then on from the title (LevelSelectFrame)
+    g_FromPlay = static_cast<s32>(level);
+    g_TitleFrames = 0;
+    controller->QuitToTitle();
+    Native::Log("level select: level %u picked in play, through the title", level);
+}
+
 void LevelSelectFrame()
 {
     GameController* controller = G_GameController;
@@ -127,6 +146,22 @@ void LevelSelectFrame()
         g_Session = false;
         Native::UseMemoryCard(Native::Mods::CardName().c_str());
         Native::Log("level select: its play over, the player's own saves again");
+    }
+
+    // A level picked in play: at the title (its first frames done) on to the main menu, there the level started
+    if (g_FromPlay >= 0 && controller != nullptr)
+    {
+        const u32 state = controller->State();
+        if (state == GameController::StateTitle && ++g_TitleFrames == 3)
+        {
+            controller->SetNextState(GameController::StateMainMenu);
+        }
+        else if (state == GameController::StateMainMenu)
+        {
+            const u32 level = static_cast<u32>(g_FromPlay);
+            g_FromPlay = -1;
+            StartLevel(level);
+        }
     }
 }
 }

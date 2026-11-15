@@ -1749,6 +1749,9 @@ void OLEG::UpdateHud(PlayerCharacter* character)
         MenuPage* page = levels->firstPage;
         u32 selected = page->ItemAgain(page->selections[0])->Id();
         u32 open = progress->play.open;
+#ifdef TWIN_NATIVE
+        open = NativeUi::LevelsOpen(open);
+#endif
         levelName.text = open < selected ? UnknownLevelText : static_cast<u32>(g_AreaLevels[selected]) + LevelNameTexts;
     }
 
@@ -2265,6 +2268,10 @@ void LevelWidget::Draw(Renderer* renderer)
         u32 area = item->Id();
         s32 level = g_AreaLevels[area];
         u32 open = controller->progress.play.open;
+#ifdef TWIN_NATIVE
+        // Native: every level's title with the level select on (THE LIST 80: any can be picked)
+        open = NativeUi::LevelsOpen(open);
+#endif
         u32 title = area <= open ? OLEG::SpriteLevelTitles + level : OLEG::SpriteLockedLevel;
         const LevelProgress* found = &controller->progress.levels[level];
         u32 layer = flags.layer;

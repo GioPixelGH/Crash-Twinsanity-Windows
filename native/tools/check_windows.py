@@ -416,8 +416,9 @@ def game_options(exe, work):
     ($TWIN_PAD_SCRIPT) with infinite lives, the speedrun timer and the shadows on crates on (the bug fixes off): the death costs no
     life, the play restarts, the timer starts at New Game, crates' materials take shadows; a slide jumped from its first moment
     with the slide jump "any moment"; the level select's test start of the Iceberg Lab from the main menu on its own card; the
-    improved menus (1.3.0, THE LIST 79: $TWIN_MENUS_TEST, a level started by the level select): the pause menu from its first
-    row, back from the gems' pages and the extras to their rows, return to title asked: (passed, what happened)"""
+    improved menus with the level select (1.3.0, THE LIST 79 and 80: $TWIN_MENUS_TEST): the main menu's level select row, a level
+    picked on the gems' pages and played, the pause menu from its first row, back from the gems' pages and the extras to their
+    rows, return to title asked, a level picked in play played through the title: (passed, what happened)"""
     fixed = {"TWIN_FIXED_TIME": "1", "TWINSANITY_AUDIO": "frames"}
     sea = run_for(exe, work / "game-options-sea",
                   ["infinite_lives=1", "speedrun_timer=1", "shadows_on_crates=1", "retail_fixes=0"],
@@ -436,10 +437,11 @@ def game_options(exe, work):
         "a slide jump from its first moment": "slide jump: a long jump from the slide's steering" in slide,
         "the level select's Iceberg Lab on its own card": ("memorycard-level-select" in level and
                                                             "Levels\\Ice\\Hub\\labext loaded" in level),
-        "the improved menus": (
-            "menus test: the pause menu: [options], restart checkpoint, gems, save game" in menus and
-            "options, restart checkpoint, [gems], save game" in menus and
+        "the improved menus and the gems' pages' level select": (
+            "menus test: the pause menu: [options], restart checkpoint, level select" in menus and
+            "options, restart checkpoint, [level select], save game" in menus and
             "load game, [extras], return to title" in menus and "return to title asks: return to title?" in menus and
+            "level select: level 5 (area 7)" in menus and "level select: level 1 (area 1)" in menus and
             "menus test: done" in menus),
     }
     failed = [name for name, ok in checks.items() if not ok]

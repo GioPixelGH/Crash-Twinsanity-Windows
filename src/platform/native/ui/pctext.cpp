@@ -742,6 +742,7 @@ const NativeTextLine g_NativeTexts[] = {
     {TextReturnToTitle, {"return to title", "retour au titre", "zurück zum titel", "volver al título", "torna al titolo"}},
     {TextGems, {"gems", "gemmes", "edelsteine", "gemas", "gemme"}},
     {TextReturnToTitleAsk, {"return to title?", "retour au titre ?", "zurück zum titel?", "¿volver al título?", "tornare al titolo?"}},
+    {TextPlayLevel, {"play this level?", "jouer ce niveau ?", "dieses level spielen?", "¿jugar este nivel?", "giocare il livello?"}},
 };
 const u32 g_NativeTextCount = sizeof(g_NativeTexts) / sizeof(g_NativeTexts[0]);
 const char* const g_TextLanguages[TextLanguages] = {"English", "French", "German", "Spanish", "Italian"};

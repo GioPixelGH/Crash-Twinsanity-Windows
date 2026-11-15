@@ -348,16 +348,23 @@ have made itself (`src/platform/native/gameoptions.h`):
   open areas raised to it; its play's saves go to a card of its own (`memorycard-level-select` in the settings folder,
   `Native::UseMemoryCard`) until the game is back at the title, so the player's saves never get a progress no played game has.
   `$TWIN_LEVEL_SELECT_TEST=N` starts level N from the main menu (the checks).
+  With it on, the gems' pages are a level select too (THE LIST 80, #48's Level Select Menu.pdf; `improvedmenus.cpp`): every
+  level's title shows on them, the select hint too, and picking a level asks "play this level?" on the quit's confirmation
+  screen (its menu given a page of ours and its title our text while it asks); yes starts the level the same way. They open
+  from a "level select" row in the main menu (there the shoulders go round the four worlds, and back is the main menu again, on
+  that row) and in the pause menu (after restart checkpoint); from play, yes goes back to the title first, as quit does, then
+  on (`StartLevelFromPlay`), so what wasn't saved is lost as with quit.
 - The improved menus (`improved_menus`, THE LIST 79, #48: ichagas7's BETTER MENUS.pdf, its part 2; `improvedmenus.cpp`): the
   pause menu starts on its first row (options) instead of resume; restart checkpoint comes second; the gems' pages (the
-  shoulders' pages of each world's levels and their gems) and the extras are rows of it, and back from them comes back to the
-  pause menu, on that row, instead of to play (the extras' resume reads "back" and
+  shoulders' pages of each world's levels and their gems) and the extras are rows of it ("level select" with the level select
+  on), and back from them comes back to the pause menu, on that row, instead of to play (the extras' resume reads "back" and
   does the same); quit game reads "return to title" and its confirmation asks so; resume goes (back and start still resume
   play). Disable autosave stays the original's action, shown while an autosave waits (`StopSaving`: not a stored setting). The
   pause page has both layouts' rows (`PausePage::Construct`); each frame shows the chosen one's. The shoulders still go round
-  the pages. `$TWIN_MENUS_TEST=1` (with `level_select=1` and `improved_menus=1`, headless): a level started by the level
-  select, then the pause menu, the gems' pages and the extras from their rows and back, return to title asked and refused, each
-  step logged ("menus test:").
+  the pages. `$TWIN_MENUS_TEST=1` (with `level_select=1` and `improved_menus=1`, headless) goes through both: the main menu's
+  level select row, a level picked on the gems' pages and played, the pause menu, the gems' pages and the extras from their
+  rows and back, return to title asked and refused, then a level picked in play and played through the title, each step logged
+  ("menus test:").
 
 check_windows' "game options" line runs the first, the slide jump, the speedrun timer, the shadows on crates, the level
 select's cases and the menus test.
