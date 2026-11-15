@@ -39,4 +39,10 @@ enum class GpuWork : u32
     Count,
 };
 u64 GpuWorkNanoseconds(GpuWork kind);
+// The card's time by pass too (THE LIST 68): the calling thread's calls from now on counted to LABEL (a string that lives as long
+// as the program: hwgs.cpp's passes, "draw", "depth copy", ...; nullptr for none: the window's thread's are "the window"). Up to
+// MostLabels; the names and nanoseconds so far, for $TWIN_GL_CALLS' log
+constexpr u32 MostLabels = 24;
+void GpuTimeLabel(const char* label);
+u32 GpuLabelTimes(const char** names, u64* nanoseconds);
 }

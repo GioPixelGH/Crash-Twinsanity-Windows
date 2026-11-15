@@ -102,8 +102,9 @@ struct Waiting
     GLuint query;
     // The thread's frame it was begun in
     u32 frame;
-    // Its kind of work (GpuWork)
+    // Its kind of work (GpuWork) and its label's index
     u32 kind;
+    u32 label;
 };
 
 struct Timer
@@ -129,6 +130,12 @@ std::atomic<u64> g_Nanoseconds{0};
 // The kind of call being timed (set by the timed entry points), and each kind's nanoseconds
 thread_local GpuWork t_Kind = GpuWork::Draws;
 std::atomic<u64> g_KindNanoseconds[static_cast<u32>(GpuWork::Count)] = {};
+// The labels (0: none, the window's thread's or a call before any label; a label past MostLabels counted as none), each one's
+// nanoseconds; the calling thread's label now
+const char* g_Labels[MostLabels] = {"the window and the rest"};
+std::atomic<u32> g_LabelCount{1};
+std::atomic<u64> g_LabelNanoseconds[MostLabels] = {};
+thread_local u32 t_Label = 0;
 // A context timing, and one found not to (its driver's timer has no bits, or its results never came)
 std::atomic<bool> g_Working{false};
 std::atomic<bool> g_Failed{false};
@@ -272,12 +279,12 @@ void GpuTimeBegin()
     if (stuckTest && !timer.stuckMade)
     {
         timer.stuckMade = true;
-        timer.waiting.push_back({query, timer.frames, 0});
+        timer.waiting.push_back({query, timer.frames, 0, 0});
         return;
     }
 
     g_Real.BeginQuery(GL_TIME_ELAPSED, query);
-    timer.waiting.push_back({query, timer.frames, static_cast<u32>(SDL_IsMainThread() ? GpuWork::Window : t_Kind)});
+    timer.waiting.push_back({query, timer.frames, static_cast<u32>(SDL_IsMainThread() ? GpuWork::Window : t_Kind), t_Label});
     timer.began = true;
 }
 
@@ -346,6 +353,7 @@ void GpuTimeFrame()
         g_Real.GetQueryObjectui64v(oldest.query, GL_QUERY_RESULT, &nanoseconds);
         read += nanoseconds;
         g_KindNanoseconds[oldest.kind].fetch_add(nanoseconds * TimedEvery, std::memory_order_relaxed);
+        g_LabelNanoseconds[oldest.label].fetch_add(nanoseconds * TimedEvery, std::memory_order_relaxed);
         timer.results++;
         timer.waiting.pop_front();
         timer.spare.push_back(oldest.query);
@@ -385,5 +393,47 @@ bool GpuTimeKnown()
 u64 GpuWorkNanoseconds(GpuWork kind)
 {
     return g_KindNanoseconds[static_cast<u32>(kind)].load(std::memory_order_relaxed);
+}
+
+void GpuTimeLabel(const char* label)
+{
+    if (label == nullptr)
+    {
+        t_Label = 0;
+        return;
+    }
+
+    // (Only the render thread adds labels: the list's reads elsewhere see a name before its count)
+    const u32 count = g_LabelCount.load(std::memory_order_acquire);
+    for (u32 i = 1; i < count; i++)
+    {
+        if (g_Labels[i] == label)
+        {
+            t_Label = i;
+            return;
+        }
+    }
+
+    if (count == MostLabels)
+    {
+        t_Label = 0;
+        return;
+    }
+
+    g_Labels[count] = label;
+    g_LabelCount.store(count + 1, std::memory_order_release);
+    t_Label = count;
+}
+
+u32 GpuLabelTimes(const char** names, u64* nanoseconds)
+{
+    const u32 count = g_LabelCount.load(std::memory_order_acquire);
+    for (u32 i = 0; i < count; i++)
+    {
+        names[i] = g_Labels[i];
+        nanoseconds[i] = g_LabelNanoseconds[i].load(std::memory_order_relaxed);
+    }
+
+    return count;
 }
 }

@@ -17,6 +17,8 @@ its lines' average, the summary the runs' median with their range. The numbers:
     card ...       the card's time a frame by kind of call (ms): the render thread's draws, clears, copies, uploads, and the
                    window's thread's (the picture shown, the UI)
     gl ...         OpenGL calls a frame: all of them, draws, binds, uniforms, state, data uploads, blits, reads, other
+    pass ...       the card's time a frame by the GPU renderer's pass (ms): its draws, its copies of a target and of the depth,
+                   GS memory's conversions to and from the targets, textures decoded, the picture's copy, the window's
     hw ...         the GPU renderer's batches, textures decoded, GS memory's pages uploaded and downloaded, copies of a target,
                    pictures read back and fallbacks, a frame
 
@@ -66,6 +68,8 @@ FIELDS = {
 # The counts' line ($TWIN_GL_CALLS: hw/gl.cpp's and the GPU renderer's, a frame)
 COUNTS = re.compile(r"graphics counts: (.*?) \(a frame")
 # The GPU renderer's own counts in it (hwgs.cpp's stats); the rest OpenGL's calls, and the card's time by kind (ms)
+# The card's time by the GPU renderer's pass ($TWIN_GL_CALLS: gputime.h's labels, ms a frame)
+PASSES = re.compile(r"graphics card by pass: (.*?) \(ms a frame\)")
 RENDERER = {"batches", "decodes", "page uploads", "page downloads", "copies", "readbacks", "fallbacks"}
 ORDER = ["fps", "game", "waiting", "present", "vu1", "render", "gs", "opengl", "cardwait", "picture", "card", "one"]
 # Smaller is better for all but the frames a second
@@ -115,6 +119,7 @@ def one_run(args, index):
     text = (folder / "log.txt").read_text(errors="replace")
     lines = [line for line in text.splitlines() if "] performance: " in line]
     counts = [match.group(1) for match in map(COUNTS.search, text.splitlines()) if match]
+    passes = [match.group(1) for match in map(PASSES.search, text.splitlines()) if match]
     if len(lines) < 2:
         sys.exit(f"run {index}: {len(lines)} performance lines (exit {process.returncode}): see {folder / 'log.txt'}")
     place = re.search(r"the player in (\S+)", lines[-1])
@@ -132,6 +137,10 @@ def one_run(args, index):
             name = name.strip()
             key = name if name.startswith("card ") else ("hw " if name in RENDERER else "gl ") + name
             sums.setdefault(key, []).append(float(value))
+    for line in passes[1:]:
+        for item in line.split(";"):
+            name, _, value = item.strip().rpartition(" ")
+            sums.setdefault("pass " + name, []).append(float(value))
     for name, values in sums.items():
         numbers[name] = sum(values) / len(values)
     return numbers
@@ -139,7 +148,7 @@ def one_run(args, index):
 
 def summary(runs):
     names = [name for name in ORDER if all(name in run for run in runs)]
-    names += sorted({name for run in runs for name in run if name.startswith(("card ", "gl ", "hw "))} - set(names))
+    names += sorted({name for run in runs for name in run if name.startswith(("card ", "gl ", "hw ", "pass "))} - set(names))
     return {name: {"median": statistics.median(run[name] for run in runs if name in run),
                    "low": min(run[name] for run in runs if name in run), "high": max(run[name] for run in runs if name in run)}
             for name in names}
@@ -149,7 +158,7 @@ def show(result, before=None):
     print(f"{result['chunk']} at {result['scale']}x, cores {result['cores']}, {result['threads']} thread(s), {result['runs']} runs "
           f"of {result['seconds']} s, {result.get('exe', '?')}")
     for name, value in result["summary"].items():
-        digits = 2 if name.startswith("card") else 1
+        digits = 3 if name.startswith("pass ") else 2 if name.startswith("card") else 1
         line = f"  {name:22} {value['median']:9.{digits}f}   ({value['low']:.{digits}f}-{value['high']:.{digits}f})"
         if before and name in before["summary"]:
             old = before["summary"][name]["median"]

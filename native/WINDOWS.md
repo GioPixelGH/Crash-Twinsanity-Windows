@@ -170,6 +170,28 @@ The base for phase E (2026-11-15, three runs of 60 s, the median and the range; 
 So on two cores the render thread is the limit (the game's thread waits 5.3 ms for it), and of it the GS's emulation; the
 card works 1 ms of the 16.4. OpenGL's calls are 63 a batch, most of them uniforms and state, all set at every batch.
 
+The card's time by the GPU renderer's pass (`$TWIN_GL_CALLS`' `graphics card by pass:` line, perf.py's `pass` numbers; each
+pass of hwgs.cpp labels its calls, gputime.h's `GpuTimeLabel`): at 1x of its 1.0 ms the draws were 0.58, GS memory written
+from the targets 0.20 (the same at 4x: memory's side), textures decoded 0.13, memory written into a target 0.07, a target's
+copies 0.04; 79 passes a frame. The conversions are the shadows' and the colour filter's reinterpretations of a buffer (their
+depth and colour read as 8 or 16 bit textures): the accurate path's own (THE LIST 23, 24).
+
+Fewer passes (THE LIST 68): the 9 textures decoded a frame were each 1024x1024 decoded whole (89,000 tiles of 8x8 a frame),
+where the draws read strips of 10 to 34 texels across the screen (`$TWIN_HW_DECODE_TRACE`): a texture read from a render
+target a piece at a time was decoded whole so the next pieces would find it decoded, and its width past the buffer's (its
+texels lie on other pages there) and its rows below the screen were decoded with it. Now the rows asked for, across the
+buffer's width and a tile more (21,000 tiles); the rest is decoded when a draw asks for it, so the texels drawn are the same
+(the 25 pictures as 1.2.0's), and fewer of memory's pages are written from the targets first. Decoding only the stale tiles
+inside the box would have saved a tenth of what was left. Three runs of 60 s each (the program before it with the passes'
+labels, then with it):
+
+| What | Before | After |
+| --- | --- | --- |
+| Frames a second | 59.1 | 63.4 |
+| The render thread | 14.4 ms (the GS 12.8) | 13.2 ms (the GS 11.6: fewer tiles and pages checked) |
+| The card | 1.00 ms: textures decoded 0.132, memory from the targets 0.197 | 0.96 ms: 0.083, 0.137 |
+| OpenGL's calls | 14,358 | 14,281 (16 pages' downloads a frame, 17 before) |
+
 ### Hitches
 
 THE LIST 19 (#23: frames of 0.25-1.8 s as new areas load, GNRTX-3's i7-2600 and GT 730 on NVIDIA 472.12, his first 1.1.0
@@ -655,7 +677,12 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   Levels\Earth\Hub\bossarea` with `500-800:ly=0`. With the pictures above, a real run (a window or fullscreen, three threads) is
   the same place every time: a bug seen there is measured in the window as shown and in the picture drawn at once.
 - `$TWIN_FRAME_STATS`: each frame's time, VU1's work, the primitives, the render thread's time and the GPU renderer's batches, texture decodes, uploads, downloads and copies.
-- `$TWIN_GL_CALLS`: after each performance line, the render thread's OpenGL calls a frame by kind and the most called, the GPU renderer's counts and the card's time by kind ("The performance measure (perf.py)", under "Speed").
+- `$TWIN_GL_CALLS`: after each performance line, the render thread's OpenGL calls a frame by kind and the most called, the GPU renderer's counts, the card's time by kind and by the GPU renderer's pass ("The performance measure (perf.py)", under "Speed").
+- `$TWIN_HW_DECODE_TRACE=1`: each texture the hardware renderer decodes from GS memory's copy, to stderr (the log): its place,
+  format and size, the region the draw asked for ("(whole)" when the strips' rule widened it), the stale tiles' box, their
+  pages and count (`decode: #62858054 2c00/4 psm 27 1024x1024 levels 1, asked 0,0-33,257 (whole), stale 0,0-263,263, 37 pages,
+  1089 tiles of 1089`). `$TWIN_HW_DECODE_WHOLE=1`: a texture read from a render target a strip at a time decoded whole, as before
+  1.3.0 ("Fewer passes" under "Speed").
 - `$TWIN_HW_SOURCE_TRACE=1`: each kind of texture the hardware renderer samples straight from a target (a buffer it drew)
   rather than decoding it from memory, logged once ("graphics: a 256x256 texture at 2800/4 (psm 0) read from the target ...");
   `$TWIN_HW_NO_TARGET_TEXTURES=1`: none, every texture decoded from memory's copy (an effect's buffer then at the PS2's

@@ -36,6 +36,7 @@
 #define XXH_INLINE_ALL
 #include "xxhash.h"
 
+#include "../gputime.h"
 #include "../png.h"
 #include "../renderwork.h"
 
@@ -1470,6 +1471,8 @@ private:
 
     void Pass(u64 identity, const char* cause)
     {
+        // (The card's time by pass: gputime.h)
+        NativeGraphics::GpuTimeLabel(cause);
         static const bool counting = std::getenv("TWIN_HW_STATS") != nullptr;
         if (counting && identity != passIdentity_)
         {
@@ -2625,9 +2628,11 @@ GLuint HwGs::DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 
     Gs::PageSet needed;
     bool anyStale = false;
     Rect stale[7];
+    u32 staleTiles = 0;
     auto findStale = [&]() {
         needed.reset();
         anyStale = false;
+        staleTiles = 0;
         for (u32 i = 0; i < t.levelCount; i++)
         {
             GpuTexture::Level& L = t.levels[i];
@@ -2644,6 +2649,7 @@ GLuint HwGs::DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 
                     }
 
                     anyStale = true;
+                    staleTiles++;
                     needed.set(page);
                     stale[i].left = std::min(stale[i].left, tx * 8);
                     stale[i].top = std::min(stale[i].top, ty * 8);
@@ -2654,13 +2660,23 @@ GLuint HwGs::DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 
         }
     };
     findStale();
-    // A big texture read from a render target a piece at a time (the effects' strips): the whole of it decoded at once,
-    // so the next pieces find it decoded
+    const Rect asked = want[0];
+    bool forced = false;
+    // A big texture read from a render target a piece at a time (the effects' strips, each a column of the screen): the rows
+    // asked decoded across the buffer's width and a tile more (the last strip's filtering reads a texel or two past it) at
+    // once, so the next pieces find them decoded (THE LIST 68: the whole texture was, 1024x1024 where the strips read 512x514
+    // or 256x258; past the buffer's width its texels lie on other pages, and any tile not decoded now is when a draw asks for
+    // it, so the texels drawn are the same; $TWIN_HW_DECODE_WHOLE=1 decodes the whole as before)
+    static const bool decodeWhole = std::getenv("TWIN_HW_DECODE_WHOLE") != nullptr;
     if (!whole && anyStale && (needed & newestMask_).any())
     {
+        forced = true;
+        const s32 bufferWidth = base.bw != 0 ? static_cast<s32>(base.bw) * 64 : static_cast<s32>(base.width);
+        const s32 across = std::min(std::max(bufferWidth + 7, want[0].right), static_cast<s32>(base.width) - 1);
         for (u32 i = 0; i < t.levelCount; i++)
         {
-            want[i] = {0, 0, static_cast<s32>(t.levels[i].width) - 1, static_cast<s32>(t.levels[i].height) - 1};
+            want[i] = decodeWhole ? Rect{0, 0, static_cast<s32>(t.levels[i].width) - 1, static_cast<s32>(t.levels[i].height) - 1}
+                                  : Rect{0, want[i].top, across, want[i].bottom};
         }
 
         findStale();
@@ -2752,6 +2768,17 @@ GLuint HwGs::DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 
         }
 
         stats.decodes++;
+        static const bool decodeTrace = std::getenv("TWIN_HW_DECODE_TRACE") != nullptr;
+        if (decodeTrace)
+        {
+            std::fprintf(stderr, "decode: #%llu %x/%u psm %u %ux%u levels %u, asked %d,%d-%d,%d%s, stale %d,%d-%d,%d, %zu pages, "
+                         "%u tiles of %d\n",
+                         static_cast<unsigned long long>(gs_.primitivesDrawn), state.levels[0].bp, state.levels[0].bw,
+                         state.levels[0].psm, state.levels[0].width, state.levels[0].height, t.levelCount, asked.left, asked.top,
+                         asked.right, asked.bottom, forced ? " (whole)" : (whole ? " (whole anyway)" : ""), stale[0].left,
+                         stale[0].top, stale[0].right, stale[0].bottom, needed.count(), staleTiles,
+                         (stale[0].right / 8 - stale[0].left / 8 + 1) * (stale[0].bottom / 8 - stale[0].top / 8 + 1));
+        }
     }
 
     // A replacement looked for when it's decoded whole from data the CPU wrote (render targets' textures aren't replaced,
@@ -6053,6 +6080,8 @@ bool HwGs::CopyDisplay(u32 slot, GLsync drawn, NativeGraphics::ShownTexture* sho
         return false;
     }
 
+    // (The card's time of the copy below: gputime.h's labels)
+    NativeGraphics::GpuTimeLabel("picture copy");
     Gl& gl = GetGl();
     if (drawn != nullptr)
     {

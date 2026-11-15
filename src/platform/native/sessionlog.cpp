@@ -429,6 +429,24 @@ void LogRendererCounts(u64 frames)
     }
 
     Native::Log("%s (a frame, over %llu frames; card times in ms)", line.c_str(), static_cast<unsigned long long>(frames));
+    // The card's time by the GPU renderer's pass (THE LIST 68: gputime.h's labels)
+    if (NativeGraphics::GpuTimeKnown())
+    {
+        const char* names[NativeGraphics::MostLabels];
+        u64 nanoseconds[NativeGraphics::MostLabels];
+        static u64 lastLabel[NativeGraphics::MostLabels] = {};
+        const u32 labels = NativeGraphics::GpuLabelTimes(names, nanoseconds);
+        std::string passes = "graphics card by pass:";
+        for (u32 i = 0; i < labels; i++)
+        {
+            std::snprintf(part, sizeof(part), "%s %s %.3f", i == 0 ? "" : ";", names[i],
+                          static_cast<double>(nanoseconds[i] - lastLabel[i]) * perFrame / 1e6);
+            passes += part;
+            lastLabel[i] = nanoseconds[i];
+        }
+
+        Native::Log("%s (ms a frame)", passes.c_str());
+    }
     std::sort(most.begin(), most.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
     std::string top = "graphics calls a frame, the most:";
     for (size_t i = 0; i < most.size() && i < 12 && most[i].first != 0; i++)
