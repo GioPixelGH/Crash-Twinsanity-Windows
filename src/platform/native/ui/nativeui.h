@@ -561,6 +561,9 @@ void LogOptions();
 // The languages (languages.cpp): a text choice's bank's language by its content when it isn't the choice's name ("portuguese";
 // nullptr when it is, or isn't recognised; option 1-5), and the log's line about them (the disc open)
 const char* TextBankLanguage(s32 option);
+// Whether the text bank the game loads by that name (its Language folder's: "English") is written in Portuguese (#25's disc's
+// English slot): the port's own texts then shown in Brazilian Portuguese where they have it (pctext.cpp, THE LIST 56)
+bool TextBankPortuguese(const char* language);
 void LogLanguages();
 void LogResolution();
 // The settings changed since the log last gave them, a line each ("options: refresh_60hz 3 -> 1 (144 Hz -> 60 Hz)"): options.txt's

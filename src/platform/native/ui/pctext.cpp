@@ -753,6 +753,17 @@ s32 TextLanguageIndex(const char* language)
     return -1;
 }
 
+const char* NativeTextFor(const NativeTextLine& line, s32 index, bool portuguese)
+{
+    const char* own = line.languages[PortugueseColumn];
+    if (portuguese)
+    {
+        return own != nullptr && *own != '\0' ? own : line.languages[0];
+    }
+
+    return line.languages[index >= 0 ? index : 0];
+}
+
 // UTF-8 to the game's Windows-1252 (the characters the table uses: Latin-1's and the right quote); unknown is false
 bool ToGameText(const char* utf8, std::string* out)
 {
@@ -967,9 +978,11 @@ const char** ApplyTextOverrides(u32 file, const char* language, const char** lin
 
     if (file == CodeTexts)
     {
+        // (A bank whose content is Portuguese, whatever its name: THE LIST 56, #25)
+        const bool portuguese = TextBankPortuguese(language);
         for (const NativeTextLine& text : g_NativeTexts)
         {
-            kept[text.text] = Keep(text.languages[index >= 0 ? index : 0]);
+            kept[text.text] = Keep(NativeTextFor(text, index, portuguese));
         }
     }
 

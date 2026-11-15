@@ -133,6 +133,20 @@ const char* TextBankLanguage(s32 option)
     return content.empty() ? nullptr : content.c_str();
 }
 
+bool TextBankPortuguese(const char* language)
+{
+    for (s32 option = 1; option <= 5 && language != nullptr; option++)
+    {
+        if (std::strcmp(language, OptionNames[option]) == 0)
+        {
+            const char* content = TextBankLanguage(option);
+            return content != nullptr && std::strcmp(content, "portuguese") == 0;
+        }
+    }
+
+    return false;
+}
+
 void LogLanguages()
 {
     std::string unlike;

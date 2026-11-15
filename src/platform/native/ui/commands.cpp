@@ -840,6 +840,13 @@ void TestControls()
 // note's line (the Enhancements tab's warning, THE LIST 64) one line in the panel's row, in the description's letters
 void TestDescriptions()
 {
+    // The native texts' Brazilian Portuguese (THE LIST 56): a Portuguese bank's line its own, the English's when it has none;
+    // the other banks' their language's
+    const NativeTextLine both = {0, {"en", "fr", "de", "es", "it", "pt"}};
+    const NativeTextLine english = {0, {"en", "fr", "de", "es", "it"}};
+    Check(std::strcmp(NativeTextFor(both, 1, false), "fr") == 0 && std::strcmp(NativeTextFor(both, 0, true), "pt") == 0 &&
+              std::strcmp(NativeTextFor(english, 0, true), "en") == 0 && std::strcmp(NativeTextFor(english, -1, false), "en") == 0,
+          "the native texts' Portuguese chosen for a Portuguese bank, the English where it has none");
     constexpr f32 NoteRoom = 860.0f - 2.0f * 18.0f - 2.0f * 22.0f;
     u32 measured = 0;
     f32 widest = 0.0f;
@@ -871,14 +878,22 @@ void TestDescriptions()
                     continue;
                 }
 
-                for (u32 language = 0; language < TextLanguages; language++)
+                // (Brazilian Portuguese's too where a line has it: THE LIST 56)
+                for (u32 language = 0; language < NativeTextColumns; language++)
                 {
+                    const char* line = g_NativeTexts[i].languages[language];
+                    if (language == PortugueseColumn && (line == nullptr || *line == '\0'))
+                    {
+                        continue;
+                    }
+
                     std::string text;
-                    ToGameText(g_NativeTexts[i].languages[language], &text);
+                    Check(ToGameText(line, &text), "description 0x%X in %s: a character the game's text can't hold", row.description,
+                          language == PortugueseColumn ? "Portuguese" : g_TextLanguages[language]);
                     const f32 width = DescriptionWidth(text);
                     widest = std::max(widest, width);
                     Check(width > 0.0f && width <= DescriptionRoom, "description 0x%X in %s: %.0f of %.0f pixels", row.description,
-                          g_TextLanguages[language], width, DescriptionRoom);
+                          language == PortugueseColumn ? "Portuguese" : g_TextLanguages[language], width, DescriptionRoom);
                     measured++;
                 }
             }
