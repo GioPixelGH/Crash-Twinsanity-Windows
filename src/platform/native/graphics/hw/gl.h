@@ -132,6 +132,13 @@ struct Gl
 bool LoadGl();
 Gl& GetGl();
 
+// THE LIST 69: the calls that would change nothing left out (gl.cpp; $TWIN_HW_STATE_CACHE=0 turns it off). A uniform's value
+// always; the context's state (switches, viewport, masks, blending, the bound objects, a texture's sampling) only on the
+// calling thread and when OWN says its context is the renderer's own (with one thread the window's code shares it).
+// ForgetGlState: the calling thread's context state unknown again (another context made current, the renderer made again)
+void CacheGlState(bool own);
+void ForgetGlState();
+
 // $TWIN_GL_CALLS: the render thread's calls while it emulates the GS, counted by entry point since the start (perf.py's counts)
 struct GlCallCount
 {

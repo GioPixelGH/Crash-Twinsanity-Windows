@@ -1592,12 +1592,17 @@ void HwGs::MakeCurrent()
     if (SDL_GL_GetCurrentContext() != context_)
     {
         SDL_GL_MakeCurrent(window_, context_);
+        // (Its state may not be as this thread last set it: gl.h)
+        ForgetGlState();
     }
 }
 
 bool HwGs::Init()
 {
-    if (!RenderContext(&window_, &context_) && !PresenterContext(&window_, &context_))
+    // The render thread's context, or the window's (one thread: the window's code draws in it too), or one of its own
+    const bool rendering = RenderContext(&window_, &context_);
+    const bool shared = !rendering && PresenterContext(&window_, &context_);
+    if (!rendering && !shared)
     {
         // No window: one of its own, hidden
         if (!SDL_WasInit(SDL_INIT_VIDEO) && !SDL_InitSubSystem(SDL_INIT_VIDEO))
@@ -1633,6 +1638,8 @@ bool HwGs::Init()
         return false;
     }
 
+    // The calls that would change nothing left out (THE LIST 69): the context's state only where the context is ours alone
+    CacheGlState(!shared);
     Gl& gl = GetGl();
     gl.GenVertexArrays(1, &vertexArray_);
     gl.GenBuffers(1, &vertexBuffer_);

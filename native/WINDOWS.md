@@ -192,6 +192,27 @@ labels, then with it):
 | The card | 1.00 ms: textures decoded 0.132, memory from the targets 0.197 | 0.96 ms: 0.083, 0.137 |
 | OpenGL's calls | 14,358 | 14,281 (16 pages' downloads a frame, 17 before) |
 
+Fewer calls (THE LIST 69): the hardware renderer set every uniform and most of the context's state at every batch, mostly to
+what they already were. hw/gl.cpp now leaves out each call that would change nothing, above the counted entry points (so
+`$TWIN_GL_CALLS` counts what reaches the driver): a uniform's value by program and location (a program's own state: only the
+renderer uses its programs, and it makes one current before setting its uniforms), a texture's sampling by texture, and the
+context's switches, viewport, scissor, masks, blending, stencil, active unit, bound textures, framebuffers, vertex array,
+buffer and program. The context's state only where the context is the renderer's own (the render thread's, or its own hidden
+window's): with one thread (`$TWIN_RENDER_THREAD=0`) the window's code draws in it too, so there only the uniforms are left
+out. Deleting a bound texture or framebuffer leaves 0 bound, as OpenGL does; another context made current, or the renderer
+made again, forgets the state. `$TWIN_HW_STATE_CACHE=0` makes every call. The pictures: the 25 as 1.2.0's, and windowed runs
+at a fixed time with one and with three threads (compare/tools/cmp_options.py, `B:TWIN_HW_STATE_CACHE=0`) the same frame for
+frame. Three runs of 60 s each (the program with 68, then with this):
+
+| What | Before | After |
+| --- | --- | --- |
+| OpenGL's calls a frame | 14,281: uniforms 6,169, state 5,515, binds 1,968 | 2,936: uniforms 535, state 922, binds 851 |
+| The render thread | 13.2 ms: the GS 11.6, OpenGL 1.5 | 12.2 ms: the GS 10.9, OpenGL 1.1 |
+| Frames a second | 63.4 | 67.1 |
+
+The calls left are 13 a batch: the draw and its vertexes, the texture bound, and the viewport set twice (the far bigger one
+the draws use, then the target's again for the passes after: leaving that out would need each of them checked).
+
 ### Hitches
 
 THE LIST 19 (#23: frames of 0.25-1.8 s as new areas load, GNRTX-3's i7-2600 and GT 730 on NVIDIA 472.12, his first 1.1.0
@@ -683,6 +704,8 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   pages and count (`decode: #62858054 2c00/4 psm 27 1024x1024 levels 1, asked 0,0-33,257 (whole), stale 0,0-263,263, 37 pages,
   1089 tiles of 1089`). `$TWIN_HW_DECODE_WHOLE=1`: a texture read from a render target a strip at a time decoded whole, as before
   1.3.0 ("Fewer passes" under "Speed").
+- `$TWIN_HW_STATE_CACHE=0`: every OpenGL call of the hardware renderer made, even one that changes nothing, as before 1.3.0
+  ("Fewer calls" under "Speed"): to tell a drawing difference from the calls left out.
 - `$TWIN_HW_SOURCE_TRACE=1`: each kind of texture the hardware renderer samples straight from a target (a buffer it drew)
   rather than decoding it from memory, logged once ("graphics: a 256x256 texture at 2800/4 (psm 0) read from the target ...");
   `$TWIN_HW_NO_TARGET_TEXTURES=1`: none, every texture decoded from memory's copy (an effect's buffer then at the PS2's
