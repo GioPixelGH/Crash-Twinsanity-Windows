@@ -89,6 +89,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionDoubleJump, "double_jump", 0, 2},
     {OptionMaskTouch, "mask_touch", 0, 1},
     {OptionAspect1610, "aspect_16_10", 0, 1},
+    {OptionImprovedMenus, "improved_menus", 0, 1},
 };
 
 s32 g_Values[OptionCount];
@@ -455,6 +456,7 @@ void Frame()
     SettingsShotsFrame();
     PortableTestFrame();
     LevelSelectFrame();
+    ImprovedMenusFrame();
     SpeedrunFrame();
     MouseFrame();
     ApplyGameSettingsOnce();

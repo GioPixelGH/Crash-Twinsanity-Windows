@@ -113,7 +113,7 @@ constexpr u32 ResumeText = 0x1B;
 constexpr u32 ResumeItem = 0xC;
 #ifdef TWIN_NATIVE
 // The native pause menu item (an ID no page uses)
-constexpr u32 RestartCheckpointItem = 0xF0;
+constexpr u32 RestartCheckpointItem = NativeItems::RestartCheckpoint;
 #endif
 // The extras: their title, the gem extras' titles (the gem's after the first), links (IDs 0xE on) and items (16 each, their IDs
 // their indexes), the complete game's movie item and its texts before and once the game's done, and resume's ID
@@ -343,6 +343,10 @@ MenuPage* ActionItem::Activate(u32 player, MenuPage* page)
         ShowScreen(oleg, OLEG::ScreenScreenPosition);
         break;
     case ActionQuit:
+#ifdef TWIN_NATIVE
+        // (The quit screen is also the level select's confirmation: its own page and title back)
+        NativeUi::QuitScreenAsQuit();
+#endif
         ShowScreen(oleg, OLEG::ScreenQuit);
         break;
     case ActionTitle:
@@ -364,6 +368,13 @@ MenuPage* ActionItem::Activate(u32 player, MenuPage* page)
     case ActionRestartCheckpoint:
         // From the last checkpoint (or the saved one, or the level's start), as a lost life does but keeping the lives
         controller->RequestRestart(EntryCheckpoint);
+        break;
+    // The improved menus' (THE LIST 79: improvedmenus.cpp)
+    case ActionPausePageLevels:
+        NativeUi::AskPausePage(GameController::ReasonFirstLevels, Id());
+        break;
+    case ActionPausePageExtras:
+        NativeUi::AskPausePage(GameController::ReasonExtras, Id());
         break;
 #endif
     default:
@@ -830,17 +841,45 @@ PausePage* PausePage::Construct(PausePage* page, PadButtons*, Font*)
                                                         ActionItem::ActionDisableAutosave);
     ActionItem* quit = ActionItem::Construct(Allocate<ActionItem>(), QuitGameText, QuitGameItem, ActionItem::ActionQuit);
     BackItem* resume = BackItem::Construct(Allocate<BackItem>(), ResumeText, ResumeItem, &g_ResumePage, MenuPlayers);
+#ifdef TWIN_NATIVE
+    // Native: the rows of both layouts (improvedmenus.cpp shows one's each frame: THE LIST 79's improved menus, the original's),
+    // made before any is added (adding can grow the page's list). The improved: options, restart checkpoint, the gems' pages, save,
+    // load, disable autosave, extras, return to title, from the first. The original: options, save, load, disable autosave, restart
+    // checkpoint, quit game, resume, from resume
+    MenuItem* rows[] = {
+        options,
+        ActionItem::Construct(Allocate<ActionItem>(), NativeUi::TextRestartCheckpoint, NativeItems::RestartCheckpointHigher,
+                              ActionItem::ActionRestartCheckpoint),
+        ActionItem::Construct(Allocate<ActionItem>(), NativeUi::TextGems, NativeItems::LevelsHigher,
+                              ActionItem::ActionPausePageLevels),
+        save,
+        load,
+        disableAutosave,
+        ActionItem::Construct(Allocate<ActionItem>(), NativeUi::TextRestartCheckpoint, RestartCheckpointItem,
+                              ActionItem::ActionRestartCheckpoint),
+        ActionItem::Construct(Allocate<ActionItem>(), NativeItems::ExtrasText, NativeItems::Extras,
+                              ActionItem::ActionPausePageExtras),
+        quit,
+        resume,
+    };
+    for (MenuItem* row : rows)
+    {
+        const u32 id = row->Id();
+        if (id == NativeItems::RestartCheckpointHigher || id == NativeItems::LevelsHigher || id == NativeItems::Extras)
+        {
+            row->shown = 0;
+        }
+
+        page->Add(row);
+    }
+#else
     page->Add(options);
     page->Add(save);
     page->Add(load);
     page->Add(disableAutosave);
-#ifdef TWIN_NATIVE
-    // Native: "restart checkpoint" before "quit game"
-    page->Add(ActionItem::Construct(Allocate<ActionItem>(), NativeUi::TextRestartCheckpoint, RestartCheckpointItem,
-                                    ActionItem::ActionRestartCheckpoint));
-#endif
     page->Add(quit);
     page->Add(resume);
+#endif
     page->SetFirstItem(ResumeItem);
     return page;
 }

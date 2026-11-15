@@ -9,6 +9,7 @@
 #include "common.h"
 
 class MenuPage;
+class MenuWidget;
 struct MenuInput;
 struct MenuItem;
 struct MenuSounds;
@@ -359,6 +360,14 @@ enum NativeText : u32
     TextDescMaskTouch,
     // The automatic camera's third choice (THE LIST 83, #42, #45)
     TextCameraAssisted,
+    // The improved menus (THE LIST 79, #48): the row, its description and its section; the pause menu's return to title, its
+    // row to the gems' pages and return to title's confirmation
+    TextImprovedMenus,
+    TextDescImprovedMenus,
+    TextSectionMenus,
+    TextReturnToTitle,
+    TextGems,
+    TextReturnToTitleAsk,
     NativeTextEnd,
 };
 
@@ -537,6 +546,9 @@ enum Option : u32
     OptionMaskTouch,
     // The 16:10 TV (THE LIST 43): the game's widescreen picture made 16:10, the Steam Deck's screen (on by default there)
     OptionAspect1610,
+    // The improved menus (THE LIST 79, #48: improvedmenus.cpp): the pause menu from its first row, restart checkpoint higher, the
+    // gems' pages and the extras as rows, return to title
+    OptionImprovedMenus,
     OptionCount,
 };
 
@@ -593,6 +605,16 @@ const char* LevelChunk(u32 level);
 bool CanStartLevel();
 void StartLevel(u32 level);
 void LevelSelectFrame();
+// The improved menus (improvedmenus.cpp, THE LIST 79, #48), called from the game's menus: the quit screen's title as the layout
+// asks (quit game, or return to title); a pause menu row asking for a pause page (the gems' first or the extras: a reason) and
+// the pause page asked for once (ReasonNone none); back from the gems' pages or the extras to the pause menu (whether it went
+// there); the frame's work (the rows each layout shows); the menus test's buttons ($TWIN_MENUS_TEST)
+void QuitScreenAsQuit();
+void AskPausePage(u32 reason, u32 fromItem);
+u32 TakePausePage();
+bool BackToPauseMenuInstead(MenuWidget* menu);
+void ImprovedMenusFrame();
+u32 MenusTestButtons();
 // The speedrun timer (speedrun.cpp, the game option): its frame's work (started at New Game, a split at each level's end, stopped
 // at the credits) and its text queued in the game's font after OLEG's widgets
 void SpeedrunFrame();

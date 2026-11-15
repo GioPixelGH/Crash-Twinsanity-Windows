@@ -494,6 +494,9 @@ void Build()
     // The automatic camera (THE LIST 55, #42, PR #45): free (0), behind the character by itself (1) or assisted (2, THE LIST 83)
     enhancements.push_back(Section(TextSectionCamera));
     enhancements.push_back(OptionChoice(TextAutoCamera, TextDescAutoCamera, OptionAutoCamera, {0, 1, TextCameraAssisted}));
+    // The improved menus (THE LIST 79, #48, improvedmenus.cpp)
+    enhancements.push_back(Section(TextSectionMenus));
+    enhancements.push_back(Toggle(TextImprovedMenus, TextDescImprovedMenus, OptionImprovedMenus));
     // The level select (THE LIST 12, levelselect.cpp): the option, then (on) the level chosen and its start from the main menu, or
     // a line saying the main menu is where it starts from
     enhancements.push_back(Section(TextSectionLevels));
@@ -1108,7 +1111,7 @@ void ResetTab(u32 tab)
         break;
     case TabEnhancements:
         ResetOptions({OptionRetailFixes, OptionInfiniteLives, OptionStrongMask, OptionMaskTouch, OptionSlideJump,
-                      OptionDoubleJump, OptionAutoCamera, OptionLevelSelect});
+                      OptionDoubleJump, OptionAutoCamera, OptionImprovedMenus, OptionLevelSelect});
         break;
     case TabControls:
         // The options, and the keys and buttons as the table's own two resets put them back

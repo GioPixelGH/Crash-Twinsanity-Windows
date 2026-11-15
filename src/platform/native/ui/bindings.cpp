@@ -517,7 +517,7 @@ void ReadBindings(const bool* keys, SDL_Gamepad* gamepad, BoundPad* pad)
         return;
     }
 
-    pad->buttons = UiShotsButtons() | MouseMenuButtons();
+    pad->buttons = UiShotsButtons() | MenusTestButtons() | MouseMenuButtons();
     bool playing = InPlay();
     // The mouse's buttons and wheel as keys only in play (in the menus they're the mouse's own), with the window in front (or
     // holding the mouse)

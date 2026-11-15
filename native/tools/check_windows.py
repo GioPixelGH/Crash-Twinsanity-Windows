@@ -415,8 +415,9 @@ def game_options(exe, work):
     """The game options of 1.2.0 (gameoptions.h), each run headless at a fixed time: Crash walked into the beach's sea
     ($TWIN_PAD_SCRIPT) with infinite lives, the speedrun timer and the shadows on crates on (the bug fixes off): the death costs no
     life, the play restarts, the timer starts at New Game, crates' materials take shadows; a slide jumped from its first moment
-    with the slide jump "any moment"; the level select's test start of the Iceberg Lab from the main menu on its own card:
-    (passed, what happened)"""
+    with the slide jump "any moment"; the level select's test start of the Iceberg Lab from the main menu on its own card; the
+    improved menus (1.3.0, THE LIST 79: $TWIN_MENUS_TEST, a level started by the level select): the pause menu from its first
+    row, back from the gems' pages and the extras to their rows, return to title asked: (passed, what happened)"""
     fixed = {"TWIN_FIXED_TIME": "1", "TWINSANITY_AUDIO": "frames"}
     sea = run_for(exe, work / "game-options-sea",
                   ["infinite_lives=1", "speedrun_timer=1", "shadows_on_crates=1", "retail_fixes=0"],
@@ -426,6 +427,8 @@ def game_options(exe, work):
                     None, 40)
     level = run_for(exe, work / "game-options-level", ["level_select=1"], {"TWIN_LEVEL_SELECT_TEST": "4"}, ["--headless"], None,
                     40)
+    menus = run_for(exe, work / "game-options-menus", ["improved_menus=1", "level_select=1"], {"TWIN_MENUS_TEST": "1"},
+                    ["--headless"], None, 120)
     checks = {
         "a death free": "infinite lives: a death that cost no life" in sea and "game: restarting" in sea,
         "the timer started": "speedrun: the timer started (New Game)" in sea,
@@ -433,6 +436,11 @@ def game_options(exe, work):
         "a slide jump from its first moment": "slide jump: a long jump from the slide's steering" in slide,
         "the level select's Iceberg Lab on its own card": ("memorycard-level-select" in level and
                                                             "Levels\\Ice\\Hub\\labext loaded" in level),
+        "the improved menus": (
+            "menus test: the pause menu: [options], restart checkpoint, gems, save game" in menus and
+            "options, restart checkpoint, [gems], save game" in menus and
+            "load game, [extras], return to title" in menus and "return to title asks: return to title?" in menus and
+            "menus test: done" in menus),
     }
     failed = [name for name, ok in checks.items() if not ok]
     return not failed, ", ".join(checks) if not failed else "NOT: " + ", ".join(failed)

@@ -326,6 +326,12 @@ English slot); an empty cell shows the English. To translate: fill that column i
 | 0x216 | three masks' touch | toucher à trois masques | berührung mit drei masken | toque con tres máscaras | tocco con tre maschere |  |
 | 0x217 | with three masks, what you touch is hit as by a spin: crates break, enemies are beaten. | avec trois masques, ce que tu touches est frappé comme par la toupie : caisses, ennemis. | mit drei masken trifft jede berührung wie drehen: kisten brechen, gegner fallen. | con tres máscaras, lo que tocas recibe un giro: las cajas se rompen, los enemigos caen. | con tre maschere, ciò che tocchi è colpito come girando: casse rotte, nemici battuti. |  |
 | 0x218 | assisted | assistée | unterstützt | asistida | assistita |  |
+| 0x219 | improved menus | menus améliorés | bessere menüs | menús mejorados | menu migliorati |  |
+| 0x21A | the pause menu from its first row: restart checkpoint higher, gems and extras as rows, return to title. | le menu pause dès sa première ligne : recommencer plus haut, gemmes et bonus en lignes, retour au titre. | das pausenmenü ab der ersten zeile: neu starten weiter oben, edelsteine und extras als zeilen, zum titel. | el menú de pausa desde su primera fila: reiniciar más arriba, gemas y extras como filas, volver al título. | il menu di pausa dalla prima riga: ricomincia più in alto, gemme ed extra come righe, torna al titolo. |  |
+| 0x21B | menus | menus | menüs | menús | menu |  |
+| 0x21C | return to title | retour au titre | zurück zum titel | volver al título | torna al titolo |  |
+| 0x21D | gems | gemmes | edelsteine | gemas | gemme |  |
+| 0x21E | return to title? | retour au titre ? | zurück zum titel? | ¿volver al título? | tornare al titolo? |  |
 
 ## English (29 lines)
 

@@ -1404,6 +1404,14 @@ u32 GameController::Paused(TimeClock* clock)
         return NoState;
     }
 
+#ifdef TWIN_NATIVE
+    // The improved menus (THE LIST 79): back from the gems' pages and the extras goes to the pause menu, not to play
+    if (!resume && NativeUi::BackToPauseMenuInstead(menu))
+    {
+        return NoState;
+    }
+#endif
+
     oleg.Hide(oleg.screens[OLEG::ScreenAllButOverlays], static_cast<s32>(g_ClockUnitsPerSecond * FadeSeconds), 0);
     if (states.returnState == StateWatching)
     {
@@ -2027,6 +2035,14 @@ u32 GameController::PausePage()
     }
 
     u32 area = progress.play.open;
+#ifdef TWIN_NATIVE
+    // Native: a page the improved menus' rows ask for (THE LIST 79)
+    const u32 asked = NativeUi::TakePausePage();
+    if (asked != ReasonNone && reason == ReasonStart)
+    {
+        return asked;
+    }
+#endif
     if (back)
     {
         switch (reason)

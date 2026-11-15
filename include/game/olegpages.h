@@ -8,6 +8,28 @@ class Font;
 
 // OLEG's menus' pages and their items (their vtables the retail ones)
 
+#ifdef TWIN_NATIVE
+// The native menus' items (IDs no retail page uses) and the retail ones and texts the native menus touch (improvedmenus.cpp): the
+// pause menu's restart checkpoint, the improved menus' higher one (THE LIST 79), their rows to the gems' pages and to the extras;
+// the options, quit game, resume and the extras' resume; texts: quit game, its confirmation's title, extras, back, resume
+namespace NativeItems
+{
+constexpr u32 RestartCheckpoint = 0xF0;
+constexpr u32 RestartCheckpointHigher = 0xF1;
+constexpr u32 LevelsHigher = 0xF2;
+constexpr u32 Extras = 0xF4;
+constexpr u32 Options = 0x1E;
+constexpr u32 QuitGame = 0xB;
+constexpr u32 Resume = 0xC;
+constexpr u32 ExtrasResume = 0x1C;
+constexpr u32 QuitGameText = 0x1A;
+constexpr u32 QuitTitleText = 0x45;
+constexpr u32 ExtrasText = 0x17;
+constexpr u32 BackText = 4;
+constexpr u32 ResumeText = 0x1B;
+}
+#endif
+
 // A page of OLEG's (D_002F4610): a menu page for the first player, its parent given
 class OlegPage : public MenuPage
 {
@@ -66,6 +88,9 @@ struct ActionItem : LinkItem
 #ifdef TWIN_NATIVE
         // Native: play again from the last checkpoint
         ActionRestartCheckpoint = 0x100,
+        // Native (THE LIST 79: improvedmenus.cpp): the improved pause menu's rows to the gems' pages and to the extras
+        ActionPausePageLevels = 0x101,
+        ActionPausePageExtras = 0x102,
 #endif
     };
 
