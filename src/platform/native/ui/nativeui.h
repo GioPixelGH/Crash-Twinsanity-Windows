@@ -347,6 +347,9 @@ enum NativeText : u32
     TextHideHold,
     // The drop shadow's third choice (THE LIST 52, #11): with a ring around it
     TextDropShadowOutlined,
+    // Aku Aku's shadow (THE LIST 84, #51)
+    TextMaskShadow,
+    TextDescMaskShadow,
     NativeTextEnd,
 };
 
@@ -517,6 +520,8 @@ enum Option : u32
     OptionShadowsOnCrates,
     // The master volume (THE LIST 81): the whole output's gain, 0 to 100 (audio.cpp's stream)
     OptionMasterVolume,
+    // Aku Aku's shadow (THE LIST 84, #51)
+    OptionMaskShadow,
     OptionCount,
 };
 

@@ -26,6 +26,7 @@
 #ifdef TWIN_NATIVE
 #include "game/chunkdata.h"
 #include "game/objects.h"
+#include "game/shadows.h"
 #include "fixes.h"
 #include "native.h"
 
@@ -591,6 +592,15 @@ void MaskController::Frame(TimeClock*)
     default:
         break;
     }
+
+#ifdef TWIN_NATIVE
+    // Aku Aku's shadow (THE LIST 84, #51): while it comes down to, follows or leaves the character and is drawn (not while it's on
+    // the character's face, nor hidden while the game is watched)
+    if (!flags.hidden && (state == StateArriving || state == StateGotMask || state == StateGotBoostedMask || state == StateLeaving))
+    {
+        CastMaskShadow(node->owner);
+    }
+#endif
 }
 
 void MaskController::Restart(u32)

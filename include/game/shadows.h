@@ -222,3 +222,8 @@ extern "C"
     extern Matrix4x4 g_ShadowToCamera RETAIL(D_003B0770);
     extern Matrix4x4 g_ShadowToScreen RETAIL(D_003B07B0);
 }
+
+#ifdef TWIN_NATIVE
+// Aku Aku's shadow (mask_shadow, THE LIST 84, #51): a round shadow straight down under a mask's instance into its chunk's shadows
+void CastMaskShadow(InstanceContext* mask);
+#endif

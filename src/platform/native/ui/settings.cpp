@@ -649,10 +649,11 @@ void Build()
     controls.push_back(OptionSlider(TextCameraSpeed, TextDescCameraSpeed, OptionCameraSpeed, 1, 10));
 
     // The accessibility: the camera's shake, and the shadows that show where things are (the drop shadow, THE LIST 14, #11, #35,
-    // off, on or outlined, THE LIST 52; the shadows on crates, THE LIST 38)
+    // off, on or outlined, THE LIST 52; Aku Aku's, THE LIST 84, #51; the shadows on crates, THE LIST 38)
     std::vector<Row>& access = g_Rows[TabAccessibility];
     access.push_back(Toggle(TextCameraShake, TextDescCameraShake, OptionCameraShake));
     access.push_back(OptionChoice(TextDropShadow, TextDescDropShadow, OptionDropShadow, {0, 1, TextDropShadowOutlined}));
+    access.push_back(Toggle(TextMaskShadow, TextDescMaskShadow, OptionMaskShadow));
     access.push_back(Toggle(TextShadowsOnCrates, TextDescShadowsOnCrates, OptionShadowsOnCrates));
 
     // The table: the actions in the research's order by key, alt key and the controller's button
@@ -1104,7 +1105,7 @@ void ResetTab(u32 tab)
         ResetControllerBindings();
         break;
     case TabAccessibility:
-        ResetOptions({OptionCameraShake, OptionDropShadow, OptionShadowsOnCrates});
+        ResetOptions({OptionCameraShake, OptionDropShadow, OptionMaskShadow, OptionShadowsOnCrates});
         break;
     default:
         break;

@@ -105,6 +105,33 @@ void CastDropShadow(InstanceContext* instance)
     }
 }
 }
+
+// Aku Aku's shadow (mask_shadow, THE LIST 84, #51: the masks were the only things that cast none): a round shadow straight down
+// under the mask, as the drop shadow is (a smaller cylinder), while it's drawn; MaskController::Frame asks for it while the mask
+// comes down to, follows or leaves the character. The cylinder starts under the mask (from its middle, the mask's lower half took
+// its own shadow)
+void CastMaskShadow(InstanceContext* mask)
+{
+    constexpr f32 MaskRadius = 0.3f;
+    constexpr f32 BelowMask = 0.5f;
+    if (!NativeGame::MaskShadow() || mask == nullptr || mask->chunk == nullptr || mask->chunk->shadows == nullptr ||
+        !mask->flags.visible)
+    {
+        return;
+    }
+
+    ObjectPlace* place = mask->place;
+    RotateAndTranslate(place);
+    const f32 offset[3] = {0.0f, 0.0f, 0.0f};
+    f32 size[4] = {MaskRadius, DropReach, MaskRadius, 1.0f};
+    ShadowEntry* entry = mask->chunk->shadows->Add(ShadowCylinder, offset, size);
+    if (entry != nullptr)
+    {
+        InitIdentityMatrix(&entry->frame);
+        *RowOf(&entry->frame, 3) = *RowOf(&place->matrix, 3);
+        RowOf(&entry->frame, 3)->y = RowOf(&entry->frame, 3)->y - BelowMask;
+    }
+}
 #endif
 
 extern "C"

@@ -66,6 +66,12 @@ bool NativeGame::DropShadowOutlined()
     return NativeUi::GetOption(NativeUi::OptionDropShadow) == DropShadowOutline;
 }
 
+// Aku Aku's shadow
+bool NativeGame::MaskShadow()
+{
+    return NativeUi::IsOn(NativeUi::OptionMaskShadow);
+}
+
 // The shadows on crates
 bool NativeGame::ShadowsOnCrates()
 {

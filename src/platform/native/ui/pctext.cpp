@@ -728,6 +728,8 @@ const NativeTextLine g_NativeTexts[] = {
     {TextDescMasterVolume, {"all the sound at once: music, effects, voices and movies.", "tout le son à la fois : musique, effets, voix et vidéos.", "der ganze ton auf einmal: musik, effekte, stimmen und filme.", "todo el sonido a la vez: música, efectos, voces y vídeos.", "tutto l'audio insieme: musica, effetti, voci e filmati."}},
     {TextHideHold, {"hide (hold)", "masquer (maintenir)", "ausblenden (halten)", "ocultar (mantener)", "nascondi (tieni premuto)"}},
     {TextDropShadowOutlined, {"outlined", "avec contour", "mit umriss", "con contorno", "con contorno"}},
+    {TextMaskShadow, {"aku aku's shadow", "ombre d'aku aku", "aku akus schatten", "sombra de aku aku", "ombra di aku aku"}},
+    {TextDescMaskShadow, {"aku aku's mask casts a round shadow while it follows you, as other things do.", "une ombre ronde sous le masque d'aku aku quand il te suit, comme les autres objets.", "ein runder schatten unter aku akus maske, während sie dir folgt, wie bei anderen dingen.", "una sombra redonda bajo la máscara de aku aku mientras te sigue, como las demás cosas.", "un'ombra rotonda sotto la maschera di aku aku mentre ti segue, come le altre cose."}},
 };
 const u32 g_NativeTextCount = sizeof(g_NativeTexts) / sizeof(g_NativeTexts[0]);
 const char* const g_TextLanguages[TextLanguages] = {"English", "French", "German", "Spanish", "Italian"};

@@ -315,6 +315,8 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x20E | all the sound at once: music, effects, voices and movies. | tout le son à la fois : musique, effets, voix et vidéos. | der ganze ton auf einmal: musik, effekte, stimmen und filme. | todo el sonido a la vez: música, efectos, voces y vídeos. | tutto l'audio insieme: musica, effetti, voci e filmati. |
 | 0x20F | hide (hold) | masquer (maintenir) | ausblenden (halten) | ocultar (mantener) | nascondi (tieni premuto) |
 | 0x210 | outlined | avec contour | mit umriss | con contorno | con contorno |
+| 0x211 | aku aku's shadow | ombre d'aku aku | aku akus schatten | sombra de aku aku | ombra di aku aku |
+| 0x212 | aku aku's mask casts a round shadow while it follows you, as other things do. | une ombre ronde sous le masque d'aku aku quand il te suit, comme les autres objets. | ein runder schatten unter aku akus maske, während sie dir folgt, wie bei anderen dingen. | una sombra redonda bajo la máscara de aku aku mientras te sigue, como las demás cosas. | un'ombra rotonda sotto la maschera di aku aku mentre ti segue, come le altre cose. |
 
 ## English (29 lines)
 

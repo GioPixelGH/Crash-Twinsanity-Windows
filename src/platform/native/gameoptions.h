@@ -54,6 +54,13 @@ bool DropShadow();
 bool DropShadowOutlined();
 }
 
+// Aku Aku's shadow (mask_shadow, THE LIST 84, #51): a round shadow under the mask while it comes down to, follows or leaves the
+// played character (shadows.cpp's CastMaskShadow, from MaskController::Frame)
+namespace NativeGame
+{
+bool MaskShadow();
+}
+
 // The played character's shadow on the tops of crates too (shadows_on_crates; the PS2 draws none there): the crates' opaque
 // materials made shadow receivers (fixes.cpp's MaterialRead, the community mod's change)
 namespace NativeGame
