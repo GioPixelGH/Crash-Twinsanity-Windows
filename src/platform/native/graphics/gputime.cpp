@@ -31,8 +31,11 @@ constexpr GLenum GL_QUERY_RESULT_AVAILABLE = 0x8867;
 constexpr u32 TimedEvery = 8;
 // Queries a thread has begun and not read past which its driver is taken never to give their results (some 30 timed frames)
 constexpr size_t MostWaiting = 8192;
-// A thread's frames after which a query's result not there yet, with a later one's there, is taken never to come (its begin
-// refused: no result ever, holding back every one after it): left out, the ones after it read
+// A thread's frames after which a query's result not there yet is taken never to come (its begin refused: no result ever, holding
+// back every one after it): left out, the ones after it read. (1.2.0 left one out only when the next one's result was there: on
+// the beach in a window at unlimited frames on two cores, 1.2.0 too, several in a row never came 0.5 s into the start, the
+// next ones waited behind them and the card's time was unknown from 10 s on, as in #32's log. A result comes a frame or two
+// after its query, so one 120 frames old won't)
 constexpr u32 StuckFrames = 120;
 
 // OpenGL's own entry points: the work the timed ones give the card, and the queries'
@@ -99,6 +102,8 @@ struct Waiting
     GLuint query;
     // The thread's frame it was begun in
     u32 frame;
+    // Its kind of work (GpuWork)
+    u32 kind;
 };
 
 struct Timer
@@ -115,10 +120,15 @@ struct Timer
     // The frames its results couldn't be read (another context current), and the queries left out (their results never came)
     u64 unread = 0;
     u64 leftOut = 0;
+    // The results read
+    u64 results = 0;
     bool stuckMade = false;
 };
 thread_local Timer t_Timer;
 std::atomic<u64> g_Nanoseconds{0};
+// The kind of call being timed (set by the timed entry points), and each kind's nanoseconds
+thread_local GpuWork t_Kind = GpuWork::Draws;
+std::atomic<u64> g_KindNanoseconds[static_cast<u32>(GpuWork::Count)] = {};
 // A context timing, and one found not to (its driver's timer has no bits, or its results never came)
 std::atomic<bool> g_Working{false};
 std::atomic<bool> g_Failed{false};
@@ -156,6 +166,7 @@ bool Ready(Timer& timer)
 
 void TimedDrawArrays(GLenum mode, GLint first, GLsizei count)
 {
+    t_Kind = GpuWork::Draws;
     GpuTimeBegin();
     g_Real.DrawArrays(mode, first, count);
     GpuTimeEnd();
@@ -163,6 +174,7 @@ void TimedDrawArrays(GLenum mode, GLint first, GLsizei count)
 
 void TimedClear(GLbitfield mask)
 {
+    t_Kind = GpuWork::Clears;
     GpuTimeBegin();
     g_Real.Clear(mask);
     GpuTimeEnd();
@@ -171,6 +183,7 @@ void TimedClear(GLbitfield mask)
 void TimedBlitFramebuffer(GLint x0, GLint y0, GLint x1, GLint y1, GLint toX0, GLint toY0, GLint toX1, GLint toY1, GLbitfield mask,
                           GLenum filter)
 {
+    t_Kind = GpuWork::Copies;
     GpuTimeBegin();
     g_Real.BlitFramebuffer(x0, y0, x1, y1, toX0, toY0, toX1, toY1, mask, filter);
     GpuTimeEnd();
@@ -179,6 +192,7 @@ void TimedBlitFramebuffer(GLint x0, GLint y0, GLint x1, GLint y1, GLint toX0, GL
 void TimedTexImage2D(GLenum target, GLint level, GLint internalFormat, GLsizei width, GLsizei height, GLint border, GLenum format,
                      GLenum type, const void* pixels)
 {
+    t_Kind = GpuWork::Uploads;
     GpuTimeBegin();
     g_Real.TexImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
     GpuTimeEnd();
@@ -187,6 +201,7 @@ void TimedTexImage2D(GLenum target, GLint level, GLint internalFormat, GLsizei w
 void TimedTexSubImage2D(GLenum target, GLint level, GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type,
                         const void* pixels)
 {
+    t_Kind = GpuWork::Uploads;
     GpuTimeBegin();
     g_Real.TexSubImage2D(target, level, x, y, width, height, format, type, pixels);
     GpuTimeEnd();
@@ -194,6 +209,7 @@ void TimedTexSubImage2D(GLenum target, GLint level, GLint x, GLint y, GLsizei wi
 
 void TimedGenerateMipmap(GLenum target)
 {
+    t_Kind = GpuWork::Uploads;
     GpuTimeBegin();
     g_Real.GenerateMipmap(target);
     GpuTimeEnd();
@@ -256,12 +272,12 @@ void GpuTimeBegin()
     if (stuckTest && !timer.stuckMade)
     {
         timer.stuckMade = true;
-        timer.waiting.push_back({query, timer.frames});
+        timer.waiting.push_back({query, timer.frames, 0});
         return;
     }
 
     g_Real.BeginQuery(GL_TIME_ELAPSED, query);
-    timer.waiting.push_back({query, timer.frames});
+    timer.waiting.push_back({query, timer.frames, static_cast<u32>(SDL_IsMainThread() ? GpuWork::Window : t_Kind)});
     timer.began = true;
 }
 
@@ -298,9 +314,9 @@ void GpuTimeFrame()
         return;
     }
 
-    // The results there, in their order, up to the first one that isn't; one not there after StuckFrames while the next one is
-    // never comes (a player's log at 3x and 144 Hz had 8219 waiting after 4 s of the title, the user's at 8x with SSAA 8357, the
-    // time unknown from then on): left out, the rest read
+    // The results there, in their order, up to the first one that isn't; one not there after StuckFrames never comes (a player's
+    // log at 3x and 144 Hz had 8219 waiting after 4 s of the title, the user's at 8x with SSAA 8357, the time unknown from then
+    // on): left out, the rest read
     u64 read = 0;
     while (!timer.waiting.empty())
     {
@@ -309,23 +325,16 @@ void GpuTimeFrame()
         g_Real.GetQueryObjectiv(oldest.query, GL_QUERY_RESULT_AVAILABLE, &available);
         if (available == 0)
         {
-            GLint nextAvailable = 0;
-            if (timer.frames - oldest.frame < StuckFrames || timer.waiting.size() < 2)
-            {
-                break;
-            }
-
-            g_Real.GetQueryObjectiv(timer.waiting[1].query, GL_QUERY_RESULT_AVAILABLE, &nextAvailable);
-            if (nextAvailable == 0)
+            if (timer.frames - oldest.frame < StuckFrames)
             {
                 break;
             }
 
             if (timer.leftOut++ == 0)
             {
-                Native::Log("graphics: a timer query's result not there %u frames after it was begun, the next one's there: left "
-                            "out (the card's time a little short)",
-                            timer.frames - oldest.frame);
+                Native::Log("graphics: a timer query's result not there %u frames after it was begun (%s): left out (the card's "
+                            "time a little short)",
+                            timer.frames - oldest.frame, SDL_IsMainThread() ? "the window's thread's" : "the render thread's");
             }
 
             // (A new name for the next one: this one's may never be usable)
@@ -336,6 +345,8 @@ void GpuTimeFrame()
         GLuint64 nanoseconds = 0;
         g_Real.GetQueryObjectui64v(oldest.query, GL_QUERY_RESULT, &nanoseconds);
         read += nanoseconds;
+        g_KindNanoseconds[oldest.kind].fetch_add(nanoseconds * TimedEvery, std::memory_order_relaxed);
+        timer.results++;
         timer.waiting.pop_front();
         timer.spare.push_back(oldest.query);
     }
@@ -351,6 +362,14 @@ void GpuTimeFrame()
         timer.usable = false;
         g_Failed = true;
     }
+    // (Most never coming, the card's time would read short: unknown instead)
+    else if (timer.leftOut > MostWaiting && timer.leftOut > timer.results)
+    {
+        Native::Log("graphics: %llu timer queries' results never came, %llu did: the card's time unknown",
+                    static_cast<unsigned long long>(timer.leftOut), static_cast<unsigned long long>(timer.results));
+        timer.usable = false;
+        g_Failed = true;
+    }
 }
 
 u64 GpuBusyNanoseconds()
@@ -361,5 +380,10 @@ u64 GpuBusyNanoseconds()
 bool GpuTimeKnown()
 {
     return g_Working && !g_Failed;
+}
+
+u64 GpuWorkNanoseconds(GpuWork kind)
+{
+    return g_KindNanoseconds[static_cast<u32>(kind)].load(std::memory_order_relaxed);
 }
 }

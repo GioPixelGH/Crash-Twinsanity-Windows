@@ -2,8 +2,10 @@
 
 // The OpenGL 3.3 core entry points the hardware renderer uses, loaded through SDL (nothing of macOS's or Linux's own)
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 namespace Hw
 {
@@ -129,4 +131,13 @@ struct Gl
 // The entry points (loaded the first time, with a context current); false when one is missing
 bool LoadGl();
 Gl& GetGl();
+
+// $TWIN_GL_CALLS: the render thread's calls while it emulates the GS, counted by entry point since the start (perf.py's counts)
+struct GlCallCount
+{
+    const char* name;
+    const std::atomic<std::uint64_t>* calls;
+};
+bool CountingGlCalls();
+const std::vector<GlCallCount>& GlCallCounts();
 }

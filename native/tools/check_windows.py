@@ -246,7 +246,7 @@ LOG_START = [
     # shaders or their bits needs display.cpp's KnownPrograms made again from check_windows' runs' shaders.txt)
     r"\] graphics: \d+ shader programs made at the start in \d+ ms \(\d+ listed in shaders\.txt, \d+ this version's own\)",
     # (each thread's first timer query never begun, $TWIN_GPU_TIME_TEST=stuck: left out, the card's time still known)
-    r"\] graphics: a timer query's result not there \d+ frames after it was begun, the next one's there: left out",
+    r"\] graphics: a timer query's result not there \d+ frames after it was begun \(the (?:render|window's) thread's\): left out",
     r"\] game: Levels\\Earth\\Hub\\beach loaded in [\d.]+ s",
     r"\] performance: [\d.]+ fps over \d+ s of play, the slowest frame \d+ ms; a frame's work: the game [\d.]+ ms .*"
     r"the window's present [\d.]+ ms, VU1 [\d.]+ ms, the render thread [\d.]+ ms \(the GS [\d.]+, OpenGL [\d.]+, waiting for "

@@ -11,6 +11,8 @@
 #include "native.h"
 
 #include "graphics/gputime.h"
+#include "graphics/hw/gl.h"
+#include "graphics/hw/hwgs.h"
 #include "graphics/renderthread.h"
 #include "graphics/renderwork.h"
 #include "ui/nativeui.h"
@@ -331,6 +333,113 @@ void FormatSummary(char* out, size_t size)
                   total, played, static_cast<double>(g_Play.frames) / g_Play.seconds, below, g_Play.slowest * 1000.0, work);
 }
 
+// $TWIN_GL_CALLS (native/tools/perf.py, THE LIST 67): after each performance line, the render thread's work a frame since the
+// last counted: its OpenGL calls by kind (hw/gl.cpp's counts: draws, binds, uniforms, state, data uploads, blits, reads, other)
+// and the GPU renderer's own counts (hwgs.cpp's stats: batches, textures decoded, GS memory's pages uploaded and downloaded,
+// copies of a target, pictures read back), then the entry points called most
+void LogRendererCounts(u64 frames)
+{
+    if (!Hw::CountingGlCalls() || frames == 0)
+    {
+        return;
+    }
+
+    struct Group
+    {
+        const char* name;
+        std::vector<std::string> entries;
+        u64 count = 0;
+    };
+    static std::vector<Group> groups = {
+        {"draws", {"DrawArrays", "Clear"}},
+        {"binds", {"BindTexture", "BindFramebuffer", "BindVertexArray", "BindBuffer", "UseProgram", "ActiveTexture",
+                   "FramebufferTexture2D"}},
+        {"uniforms", {"Uniform1i", "Uniform1f", "Uniform2f", "Uniform3f", "Uniform4f", "Uniform1iv", "Uniform4ui", "Uniform1ui"}},
+        {"state", {"Enable", "Disable", "BlendFuncSeparate", "BlendEquationSeparate", "BlendColor", "ColorMask", "DepthMask",
+                   "DepthFunc", "Viewport", "Scissor", "StencilFunc", "StencilOp", "StencilMask", "PixelStorei", "TexParameteri",
+                   "TexParameterf", "ReadBuffer", "DrawBuffer", "PointSize", "LineWidth", "ClearColor", "ClearStencil",
+                   "VertexAttribPointer", "VertexAttribIPointer", "EnableVertexAttribArray"}},
+        {"data uploads", {"TexImage2D", "TexSubImage2D", "BufferData", "GenerateMipmap"}},
+        {"blits", {"BlitFramebuffer"}},
+        {"reads", {"ReadPixels", "Finish"}},
+    };
+    static std::vector<u64> last;
+    static NativeGraphics::HardwareStats lastStats = {};
+    const auto& counts = Hw::GlCallCounts();
+    last.resize(counts.size(), 0);
+    const double perFrame = 1.0 / static_cast<double>(frames);
+    u64 all = 0;
+    u64 grouped = 0;
+    for (Group& group : groups)
+    {
+        group.count = 0;
+    }
+
+    std::vector<std::pair<u64, const char*>> most;
+    for (size_t i = 0; i < counts.size(); i++)
+    {
+        const u64 now = counts[i].calls->load(std::memory_order_relaxed);
+        const u64 calls = now - last[i];
+        last[i] = now;
+        all += calls;
+        most.emplace_back(calls, counts[i].name);
+        for (Group& group : groups)
+        {
+            if (std::find(group.entries.begin(), group.entries.end(), counts[i].name) != group.entries.end())
+            {
+                group.count += calls;
+                grouped += calls;
+            }
+        }
+    }
+
+    const NativeGraphics::HardwareStats stats = NativeGraphics::GetHardwareStats();
+    auto statsPerFrame = [perFrame](u64 now, u64 before) { return static_cast<double>(now - before) * perFrame; };
+    char part[160];
+    std::snprintf(part, sizeof(part), "graphics counts: calls %.1f", static_cast<double>(all) * perFrame);
+    std::string line = part;
+    for (const Group& group : groups)
+    {
+        std::snprintf(part, sizeof(part), ", %s %.1f", group.name, static_cast<double>(group.count) * perFrame);
+        line += part;
+    }
+
+    std::snprintf(part, sizeof(part), ", other %.1f, batches %.1f, decodes %.1f, page uploads %.1f, page downloads %.1f",
+                  static_cast<double>(all - grouped) * perFrame, statsPerFrame(stats.batches, lastStats.batches),
+                  statsPerFrame(stats.decodes, lastStats.decodes), statsPerFrame(stats.uploads, lastStats.uploads),
+                  statsPerFrame(stats.downloads, lastStats.downloads));
+    line += part;
+    std::snprintf(part, sizeof(part), ", copies %.1f, readbacks %.1f, fallbacks %.1f", statsPerFrame(stats.copies, lastStats.copies),
+                  statsPerFrame(stats.readbacks, lastStats.readbacks), statsPerFrame(stats.fallbacks, lastStats.fallbacks));
+    line += part;
+    lastStats = stats;
+    // The card's time by kind of call (gputime.h), when it's known
+    if (NativeGraphics::GpuTimeKnown())
+    {
+        using NativeGraphics::GpuWork;
+        static u64 lastCard[static_cast<u32>(GpuWork::Count)] = {};
+        const char* names[] = {"card draws", "card clears", "card copies", "card uploads", "card window"};
+        for (u32 kind = 0; kind < static_cast<u32>(GpuWork::Count); kind++)
+        {
+            const u64 now = NativeGraphics::GpuWorkNanoseconds(static_cast<GpuWork>(kind));
+            std::snprintf(part, sizeof(part), ", %s %.2f", names[kind], static_cast<double>(now - lastCard[kind]) * perFrame / 1e6);
+            line += part;
+            lastCard[kind] = now;
+        }
+    }
+
+    Native::Log("%s (a frame, over %llu frames; card times in ms)", line.c_str(), static_cast<unsigned long long>(frames));
+    std::sort(most.begin(), most.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
+    std::string top = "graphics calls a frame, the most:";
+    for (size_t i = 0; i < most.size() && i < 12 && most[i].first != 0; i++)
+    {
+        std::snprintf(part, sizeof(part), "%s %s %.1f", i == 0 ? "" : ",", most[i].second, static_cast<double>(most[i].first) * perFrame);
+        top += part;
+    }
+
+    Native::Log("%s", top.c_str());
+}
+
 void LogPerformance()
 {
     char played[32];
@@ -355,6 +464,7 @@ void LogPerformance()
 
     g_MinutePrograms = programs;
     g_MinuteProgramNanoseconds = programNanoseconds;
+    LogRendererCounts(g_Minute.frames);
 }
 
 // A frame of play over SlowFrameSeconds: where its time went, the game thread's (its background loading, of it the chunks', their

@@ -135,6 +135,41 @@ Comparing two builds' pictures: `$TWIN_FIXED_TIME=1` with `$TWINSANITY_AUDIO=fra
 gives the same frames run after run (with the sound in real time, a run's speed changes what the game does with it after a
 few hundred frames).
 
+### The performance measure (perf.py)
+
+THE LIST 67 (1.3.0's phase E): `native/tools/perf.py` measures the same place played the same way, so a change to the renderer
+is measured before and after it on one PC. Each run plays the beach from the level sweep's start with no input
+(`$TWIN_SWEEP_LEVEL`, `$TWIN_SWEEP_IDLE`: the same view every time) in a 1280x720 window at 1x, unlimited frames with v-sync
+off, the process on two cores (affinity 0x5: two physical cores where each has two threads, a weak PC's count), with a
+performance line every 10 s and `$TWIN_GL_CALLS`. The first 10 s (the loading's end) are left out; three runs of 60 s by default,
+the summary their median and range; `--out FILE.json` keeps it, `--before FILE.json` prints each number beside the kept one's
+and the change, `--show` shows a kept one. `--cores`, `--scale`, `--chunk`, `--threads one`, `--option`, `--env` change the
+run; a player's portable folder (build/native/dist) is copied first, its User folder never used. The window opens on the
+screen: the PC left alone while it runs (about 5 minutes).
+
+`$TWIN_GL_CALLS` (hw/gl.cpp, sessionlog.cpp; with the performance lines) logs after each one the render thread's work a frame
+since the last: its OpenGL calls by kind (`graphics counts: calls 14370, draws 321, binds 1987, uniforms 6198, state 5534,
+data uploads 330, ...`: each entry point of hw/gl.cpp counted while the GS is emulated, a plain add on the render thread), the
+GPU renderer's own counts (batches, textures decoded, GS memory's pages uploaded and downloaded, copies of a target, pictures
+read back) and the card's time by kind (`card draws 0.86, card clears 0.00, card copies 0.00, card uploads 0.19, card window
+0.01`, ms); then the twelve entry points called most (`graphics calls a frame, the most: Uniform1f 2524, Uniform1i 1653,
+Disable 1084, ...`). The numbers above are the beach's at 1x before phase E (i7-8700K, RTX 4070 SUPER).
+
+The base for phase E (2026-11-15, three runs of 60 s, the median and the range; the program as of 1.3.0's phase D):
+
+| What | A frame |
+| --- | --- |
+| Frames a second | 60.9 (60.8-61.4) |
+| The game's thread | 8.3 ms, and 5.3 waiting; the window's present 2.9 |
+| VU1's thread | 10.0 ms |
+| The render thread | 14.3 ms (14.0-14.3): the GS 12.5, OpenGL 1.6, the picture handed over 0.1 |
+| The graphics card | 1.04 ms: the render thread's draws 0.84, uploads 0.19, the window's 0.01 |
+| OpenGL's calls | 14,383: uniforms 6,204, state 5,540, binds 1,988, data uploads 330, draws 321 |
+| The GPU renderer | 229 batches, 10 copies of a target, 17 pages' downloads, 15 uploads, 9 decodes |
+
+So on two cores the render thread is the limit (the game's thread waits 5.3 ms for it), and of it the GS's emulation; the
+card works 1 ms of the 16.4. OpenGL's calls are 63 a batch, most of them uniforms and state, all set at every batch.
+
 ### Hitches
 
 THE LIST 19 (#23: frames of 0.25-1.8 s as new areas load, GNRTX-3's i7-2600 and GT 730 on NVIDIA 472.12, his first 1.1.0
@@ -541,12 +576,17 @@ has no timer entry points or no bits (`GL_QUERY_COUNTER_BITS` 0), its results ne
 old the oldest is, the frames read with another context current and the queries left out), or `$TWIN_GPU_TIME=0` (which
 leaves the entry points as they are: for measuring the timing's own cost). The results are read in their order, so one that
 never comes held back every one after it: #32's log at 3x and 144 Hz had 8219 waiting 4 s into the title, the user's at 8x
-with SSAA 8357, and the card's time was unknown for the rest of the session (1.1.0). Since 1.2.0 a query whose result isn't
-there 120 frames after it was begun, while the next one's is, is left out (`graphics: a timer query's result not there N
-frames after it was begun, the next one's there: left out`, once a thread), and none is begun on a frame its thread ends with
-another context current (its results couldn't be read). The cause wasn't reproduced here (a query whose begin the driver
-refused is the likeliest: its result never comes); `$TWIN_GPU_TIME_TEST=stuck` makes each thread's first query one such, and
-the log's check has it. Measured on the beach in
+with SSAA 8357, and the card's time was unknown for the rest of the session (1.1.0). 1.2.0 left out a query whose result
+wasn't there 120 frames after it was begun while the next one's was, and begins none on a frame its thread ends with another
+context current (its results couldn't be read). That wasn't enough: on the beach in a 1280x720 window at unlimited frames on
+two cores (perf.py's runs), 1.2.0 too, several queries in a row never came half a second into the start on the render thread,
+the next ones waited behind them and the card's time was unknown from 10 s on (8200-8500 waiting), as in #32's 1.2.0 log.
+Since 1.3.0 (THE LIST 67) a query not there after 120 frames is left out whatever the next one's (a result comes a frame or
+two after its query): `graphics: a timer query's result not there N frames after it was begun (the render thread's): left
+out`, once a thread; if most never come (more left out than read, past 8192), the time is unknown again (`graphics: N timer
+queries' results never came, M did`). Why they never came wasn't found (a begin the driver refused is the likeliest);
+`$TWIN_GPU_TIME_TEST=stuck` makes each thread's first query one such, and the log's check has it. The time is kept by kind
+too (the render thread's draws, clears, copies and uploads, the window's thread's): `$TWIN_GL_CALLS` logs it. Measured on the beach in
 a 1280x720 window at 144 Hz (RTX 4070 SUPER): at 4x the render thread 14 ms a frame, the card 2.2 ms; at 1x with one thread,
 the game's thread 28 ms, the card 1.1 ms. Without a window (the checks) the card's time reads higher (2.2 ms at 1x against
 1.1): an idle card's lower clocks, most likely.
@@ -615,6 +655,7 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   Levels\Earth\Hub\bossarea` with `500-800:ly=0`. With the pictures above, a real run (a window or fullscreen, three threads) is
   the same place every time: a bug seen there is measured in the window as shown and in the picture drawn at once.
 - `$TWIN_FRAME_STATS`: each frame's time, VU1's work, the primitives, the render thread's time and the GPU renderer's batches, texture decodes, uploads, downloads and copies.
+- `$TWIN_GL_CALLS`: after each performance line, the render thread's OpenGL calls a frame by kind and the most called, the GPU renderer's counts and the card's time by kind ("The performance measure (perf.py)", under "Speed").
 - `$TWIN_HW_SOURCE_TRACE=1`: each kind of texture the hardware renderer samples straight from a target (a buffer it drew)
   rather than decoding it from memory, logged once ("graphics: a 256x256 texture at 2800/4 (psm 0) read from the target ...");
   `$TWIN_HW_NO_TARGET_TEXTURES=1`: none, every texture decoded from memory's copy (an effect's buffer then at the PS2's

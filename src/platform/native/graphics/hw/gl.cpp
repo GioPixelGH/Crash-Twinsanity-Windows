@@ -5,6 +5,7 @@
 
 #include <SDL3/SDL.h>
 
+#include <atomic>
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
@@ -70,6 +71,10 @@ bool Load(T& function, const char* name)
 // The render thread's OpenGL calls counted as such while it emulates the GS (renderwork.h: the log's split of its time); a picture
 // read back is a wait for the card. OpenGL's own entry points behind them
 Gl g_Real;
+// $TWIN_GL_CALLS (native/tools/perf.py, THE LIST 67): the same calls counted by entry point too. Only the render thread adds to a
+// count (a plain add, no locked instruction); the game's thread reads them for the log
+bool g_CountingCalls = false;
+std::vector<GlCallCount> g_CallCounts;
 
 template <auto Member>
 struct Counted;
@@ -77,12 +82,19 @@ struct Counted;
 template <typename R, typename... A, R (*Gl::*Member)(A...)>
 struct Counted<Member>
 {
+    static inline std::atomic<std::uint64_t> calls{0};
+
     template <NativeGraphics::Work Kind>
     static R Call(A... arguments)
     {
         if (NativeGraphics::t_Work != NativeGraphics::Work::Gs)
         {
             return (g_Real.*Member)(arguments...);
+        }
+
+        if (g_CountingCalls)
+        {
+            calls.store(calls.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
         }
 
         NativeGraphics::WorkSpan span(Kind);
@@ -94,7 +106,8 @@ void CountCalls()
 {
     using NativeGraphics::Work;
     g_Real = g_Gl;
-#define TWIN_COUNTED(name, kind) g_Gl.name = &Counted<&Gl::name>::Call<Work::kind>
+    g_CountingCalls = std::getenv("TWIN_GL_CALLS") != nullptr;
+#define TWIN_COUNTED(name, kind)                                                                                                        g_Gl.name = &Counted<&Gl::name>::Call<Work::kind>;                                                                                  g_CallCounts.push_back({#name, &Counted<&Gl::name>::calls})
     TWIN_COUNTED(GenTextures, OpenGl);
     TWIN_COUNTED(DeleteTextures, OpenGl);
     TWIN_COUNTED(BindTexture, OpenGl);
@@ -289,5 +302,15 @@ bool LoadGl()
 Gl& GetGl()
 {
     return g_Gl;
+}
+
+bool CountingGlCalls()
+{
+    return g_CountingCalls;
+}
+
+const std::vector<GlCallCount>& GlCallCounts()
+{
+    return g_CallCounts;
 }
 }
