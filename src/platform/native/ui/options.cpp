@@ -90,6 +90,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionMaskTouch, "mask_touch", 0, 1},
     {OptionAspect1610, "aspect_16_10", 0, 1},
     {OptionImprovedMenus, "improved_menus", 0, 1},
+    {OptionRestartCheckpoint, "restart_checkpoint", 0, 1},
 };
 
 s32 g_Values[OptionCount];

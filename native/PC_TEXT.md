@@ -333,6 +333,7 @@ English slot); an empty cell shows the English. To translate: fill that column i
 | 0x21D | gems | gemmes | edelsteine | gemas | gemme |  |
 | 0x21E | return to title? | retour au titre ? | zurück zum titel? | ¿volver al título? | tornare al titolo? |  |
 | 0x21F | play this level? | jouer ce niveau ? | dieses level spielen? | ¿jugar este nivel? | giocare il livello? |  |
+| 0x220 | a restart checkpoint row in the pause menu (the ps2's pause menu has none). | une ligne recommencer dans le menu pause (celui de la ps2 n'en a pas). | eine zeile neu starten im pausenmenü (das der ps2 hat keine). | una fila reiniciar en el menú de pausa (el de la ps2 no la tiene). | una riga ricomincia nel menu di pausa (quello della ps2 non ce l'ha). |  |
 
 ## English (29 lines)
 

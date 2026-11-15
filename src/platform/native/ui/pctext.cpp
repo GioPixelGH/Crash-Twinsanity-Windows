@@ -743,6 +743,7 @@ const NativeTextLine g_NativeTexts[] = {
     {TextGems, {"gems", "gemmes", "edelsteine", "gemas", "gemme"}},
     {TextReturnToTitleAsk, {"return to title?", "retour au titre ?", "zurück zum titel?", "¿volver al título?", "tornare al titolo?"}},
     {TextPlayLevel, {"play this level?", "jouer ce niveau ?", "dieses level spielen?", "¿jugar este nivel?", "giocare il livello?"}},
+    {TextDescRestartCheckpoint, {"a restart checkpoint row in the pause menu (the ps2's pause menu has none).", "une ligne recommencer dans le menu pause (celui de la ps2 n'en a pas).", "eine zeile neu starten im pausenmenü (das der ps2 hat keine).", "una fila reiniciar en el menú de pausa (el de la ps2 no la tiene).", "una riga ricomincia nel menu di pausa (quello della ps2 non ce l'ha)."}},
 };
 const u32 g_NativeTextCount = sizeof(g_NativeTexts) / sizeof(g_NativeTexts[0]);
 const char* const g_TextLanguages[TextLanguages] = {"English", "French", "German", "Spanish", "Italian"};

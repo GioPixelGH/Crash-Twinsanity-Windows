@@ -418,7 +418,8 @@ def game_options(exe, work):
     with the slide jump "any moment"; the level select's test start of the Iceberg Lab from the main menu on its own card; the
     improved menus with the level select (1.3.0, THE LIST 79 and 80: $TWIN_MENUS_TEST): the main menu's level select row, a level
     picked on the gems' pages and played, the pause menu from its first row, back from the gems' pages and the extras to their
-    rows, return to title asked, a level picked in play played through the title: (passed, what happened)"""
+    rows, return to title asked, a level picked in play played through the title, with the restart checkpoint row on (THE LIST
+    85), and the original menus' first pause menu without it (the row's option off): (passed, what happened)"""
     fixed = {"TWIN_FIXED_TIME": "1", "TWINSANITY_AUDIO": "frames"}
     sea = run_for(exe, work / "game-options-sea",
                   ["infinite_lives=1", "speedrun_timer=1", "shadows_on_crates=1", "retail_fixes=0"],
@@ -428,8 +429,10 @@ def game_options(exe, work):
                     None, 40)
     level = run_for(exe, work / "game-options-level", ["level_select=1"], {"TWIN_LEVEL_SELECT_TEST": "4"}, ["--headless"], None,
                     40)
-    menus = run_for(exe, work / "game-options-menus", ["improved_menus=1", "level_select=1"], {"TWIN_MENUS_TEST": "1"},
-                    ["--headless"], None, 120)
+    menus = run_for(exe, work / "game-options-menus", ["improved_menus=1", "level_select=1", "restart_checkpoint=1"],
+                    {"TWIN_MENUS_TEST": "1"}, ["--headless"], None, 120)
+    original = run_for(exe, work / "game-options-menus-original", ["level_select=1"], {"TWIN_MENUS_TEST": "2"}, ["--headless"],
+                       None, 90)
     checks = {
         "a death free": "infinite lives: a death that cost no life" in sea and "game: restarting" in sea,
         "the timer started": "speedrun: the timer started (New Game)" in sea,
@@ -443,6 +446,9 @@ def game_options(exe, work):
             "load game, [extras], return to title" in menus and "return to title asks: return to title?" in menus and
             "level select: level 5 (area 7)" in menus and "level select: level 1 (area 1)" in menus and
             "menus test: done" in menus),
+        "the original pause menu without restart checkpoint": (
+            "menus test: the pause menu: options, save game, load game" in original and
+            "restart checkpoint" not in original.split("menus test: the pause menu:")[-1] and "menus test: done" in original),
     }
     failed = [name for name, ok in checks.items() if not ok]
     return not failed, ", ".join(checks) if not failed else "NOT: " + ", ".join(failed)

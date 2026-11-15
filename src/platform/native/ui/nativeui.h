@@ -371,6 +371,8 @@ enum NativeText : u32
     TextReturnToTitleAsk,
     // The level select's confirmation on the gems' pages (THE LIST 80, #48)
     TextPlayLevel,
+    // The pause menu's restart checkpoint row as a game option (THE LIST 85): its description (its name the row's own text)
+    TextDescRestartCheckpoint,
     NativeTextEnd,
 };
 
@@ -552,6 +554,8 @@ enum Option : u32
     // The improved menus (THE LIST 79, #48: improvedmenus.cpp): the pause menu from its first row, restart checkpoint higher, the
     // gems' pages and the extras as rows, return to title
     OptionImprovedMenus,
+    // The pause menu's restart checkpoint row (THE LIST 85: HAB3X's row, the PS2's pause menu has none; improvedmenus.cpp shows it)
+    OptionRestartCheckpoint,
     OptionCount,
 };
 

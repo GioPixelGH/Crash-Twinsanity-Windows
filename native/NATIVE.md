@@ -352,10 +352,10 @@ have made itself (`src/platform/native/gameoptions.h`):
   level's title shows on them, the select hint too, and picking a level asks "play this level?" on the quit's confirmation
   screen (its menu given a page of ours and its title our text while it asks); yes starts the level the same way. They open
   from a "level select" row in the main menu (there the shoulders go round the four worlds, and back is the main menu again, on
-  that row) and in the pause menu (after restart checkpoint); from play, yes goes back to the title first, as quit does, then
+  that row) and in the pause menu (before quit game); from play, yes goes back to the title first, as quit does, then
   on (`StartLevelFromPlay`), so what wasn't saved is lost as with quit.
 - The improved menus (`improved_menus`, THE LIST 79, #48: ichagas7's BETTER MENUS.pdf, its part 2; `improvedmenus.cpp`): the
-  pause menu starts on its first row (options) instead of resume; restart checkpoint comes second; the gems' pages (the
+  pause menu starts on its first row (options) instead of resume; restart checkpoint comes second (with its option on); the gems' pages (the
   shoulders' pages of each world's levels and their gems) and the extras are rows of it ("level select" with the level select
   on), and back from them comes back to the pause menu, on that row, instead of to play (the extras' resume reads "back" and
   does the same); quit game reads "return to title" and its confirmation asks so; resume goes (back and start still resume
@@ -368,6 +368,12 @@ have made itself (`src/platform/native/gameoptions.h`):
   level select row, a level picked on the gems' pages and played, the pause menu, the gems' pages and the extras from their
   rows and back, return to title asked and refused, then a level picked in play and played through the title, each step logged
   ("menus test:").
+- The pause menu's restart checkpoint (`restart_checkpoint`, THE LIST 85, off; Enhancements > Menus): HAB3X's row (play again
+  from the last checkpoint), which the PS2's pause menu doesn't have, shown only with this option on (until
+  1.3.0 it was always there). It is independent of the improved menus: they decide where it goes (second, or before the level
+  select's row and quit game as HAB3X put it), this whether it's there. The row is still built with the pause page (from the
+  game's heap as before, so the allocations stay 1.2.0's) and only hidden. `$TWIN_MENUS_TEST=2` (with `level_select=1`) stops
+  at the first pause menu: check_windows runs it with the original menus and the row off, and the full test with it on.
 
 check_windows' "game options" line runs the first, the slide jump, the speedrun timer, the shadows on crates, the level
 select's cases and the menus test.

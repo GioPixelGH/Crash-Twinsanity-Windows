@@ -497,6 +497,8 @@ void Build()
     // The improved menus (THE LIST 79, #48, improvedmenus.cpp)
     enhancements.push_back(Section(TextSectionMenus));
     enhancements.push_back(Toggle(TextImprovedMenus, TextDescImprovedMenus, OptionImprovedMenus));
+    // The pause menu's restart checkpoint row (THE LIST 85; with the improved menus it comes second)
+    enhancements.push_back(Toggle(TextRestartCheckpoint, TextDescRestartCheckpoint, OptionRestartCheckpoint));
     // The level select (THE LIST 12, levelselect.cpp): the option, then (on) the level chosen and its start from the main menu, or
     // a line saying the main menu is where it starts from (THE LIST 80: also the gems' pages, in the main menu and the pause menu)
     enhancements.push_back(Section(TextSectionLevels));
@@ -1111,7 +1113,8 @@ void ResetTab(u32 tab)
         break;
     case TabEnhancements:
         ResetOptions({OptionRetailFixes, OptionInfiniteLives, OptionStrongMask, OptionMaskTouch, OptionSlideJump,
-                      OptionDoubleJump, OptionAutoCamera, OptionImprovedMenus, OptionLevelSelect});
+                      OptionDoubleJump, OptionAutoCamera, OptionImprovedMenus, OptionRestartCheckpoint,
+                      OptionLevelSelect});
         break;
     case TabControls:
         // The options, and the keys and buttons as the table's own two resets put them back

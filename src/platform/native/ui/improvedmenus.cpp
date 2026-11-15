@@ -209,6 +209,8 @@ void LayOutPause(OLEG& oleg)
     SetShown(levels, improved || levelSelect);
     SetText(levels, levelSelect ? TextLevelSelect : TextGems);
     SetShown(page->Find(NativeItems::Extras), improved);
+    // Restart checkpoint only with its option on (THE LIST 85: HAB3X's row, the PS2's pause menu has none)
+    SetShown(page->Find(NativeItems::RestartCheckpoint), IsOn(OptionRestartCheckpoint));
     SetText(page->Find(NativeItems::QuitGame), improved ? TextReturnToTitle : NativeItems::QuitGameText);
     SetShown(page->Find(NativeItems::Resume), !improved);
     const u32 first = g_PauseReturning && g_PauseRow != 0 ? g_PauseRow : improved ? NativeItems::Options : NativeItems::Resume;
@@ -245,10 +247,12 @@ void LayOutMainMenu(OLEG& oleg)
 // level select row, the gems' pages, the second world's second level picked and played (the confirmation's yes); in play the
 // pause menu (its rows and the first selected), the gems' pages from their row and back, the extras from theirs and their back
 // row, return to title's confirmation and its no, then from the gems' pages Jungle Bungle played from play (through the title). Each step
-// logged ("menus test:"), "menus test: done" at the end, "menus test: stuck" if a step waits a minute
+// logged ("menus test:"), "menus test: done" at the end, "menus test: stuck" if a step waits a minute. $TWIN_MENUS_TEST=2 ends
+// at the first pause menu (the original menus' rows: improved_menus=0 and level_select=1, restart_checkpoint on or off; THE LIST 85)
 struct Test
 {
     bool on = false;
+    bool toFirstPause = false;
     u32 step = 0;
     u32 frame = 0;
     u32 stepFrame = 0;
@@ -437,6 +441,12 @@ void TestFrame(GameController* controller)
         if (pause)
         {
             Native::Log("menus test: the pause menu: %s", Rows(oleg.pauseMenu.current).c_str());
+            if (test.toFirstPause)
+            {
+                Native::Log("menus test: done");
+                std::exit(0);
+            }
+
             Next();
         }
         break;
@@ -672,7 +682,8 @@ void ImprovedMenusFrame()
         }
 
         static const char* test = std::getenv("TWIN_MENUS_TEST");
-        g_Test.on = test != nullptr && test[0] == '1';
+        g_Test.on = test != nullptr && (test[0] == '1' || test[0] == '2');
+        g_Test.toFirstPause = g_Test.on && test[0] == '2';
     }
 
     // Back on the pause menu or the main menu: their first rows as usual again
