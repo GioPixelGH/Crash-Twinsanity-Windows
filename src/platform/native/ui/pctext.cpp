@@ -680,7 +680,7 @@ const NativeTextLine g_NativeTexts[] = {
     {TextSpeedrunTimer, {"speedrun timer", "chrono speedrun", "speedrun-timer", "cronómetro speedrun", "cronometro speedrun"}},
     {TextDescSpeedrunTimer, {"real time from new game, with each level's time as you finish it.", "temps réel depuis nouvelle partie, avec le temps de chaque niveau fini.", "echtzeit ab neues spiel, mit der zeit jedes beendeten levels.", "tiempo real desde nueva partida, con el tiempo de cada nivel al acabarlo.", "tempo reale da nuova partita, con il tempo di ogni livello finito."}},
     {TextDropShadow, {"drop shadow", "ombre au sol", "bodenschatten", "sombra bajo el personaje", "ombra a terra"}},
-    {TextDescDropShadow, {"a round shadow under you while you're in the air, to see where you'll land.", "une ombre ronde sous toi en l'air, pour voir où tu vas atterrir.", "ein runder schatten unter dir in der luft, um zu sehen, wo du landest.", "una sombra redonda bajo ti en el aire, para ver dónde caerás.", "un'ombra rotonda sotto di te in aria, per vedere dove atterrerai."}},
+    {TextDescDropShadow, {"a round shadow under you in the air, to see where you'll land. outlined adds a yellow ring that shows on dark ground.", "une ombre ronde sous toi en l'air, pour voir où tu atterris. avec contour : un anneau jaune, visible sur sol sombre.", "ein runder schatten unter dir in der luft zeigt, wo du landest. mit umriss: ein gelber ring, auch auf dunklem boden.", "una sombra redonda bajo ti en el aire, para ver dónde caerás. con contorno: un anillo amarillo visible en suelo oscuro.", "un'ombra rotonda sotto di te in aria, per vedere dove atterri. con contorno: un anello giallo, visibile sul terreno scuro."}},
     {TextShadowsOnCrates, {"shadows on crates", "ombres sur les caisses", "schatten auf kisten", "sombras en las cajas", "ombre sulle casse"}},
     {TextDescShadowsOnCrates, {"your shadow falls on the tops of crates too. from a level's next loading.", "ton ombre tombe aussi sur le dessus des caisses. au prochain chargement d'un niveau.", "dein schatten fällt auch auf kisten. ab dem nächsten laden eines levels.", "tu sombra cae también sobre las cajas. desde la próxima carga de un nivel.", "la tua ombra cade anche sopra le casse. dal prossimo caricamento di un livello."}},
     {TextFxaa, {"fxaa", "fxaa", "fxaa", "fxaa", "fxaa"}},
@@ -727,6 +727,7 @@ const NativeTextLine g_NativeTexts[] = {
     {TextMasterVolume, {"master volume", "volume général", "gesamtlautstärke", "volumen general", "volume generale"}},
     {TextDescMasterVolume, {"all the sound at once: music, effects, voices and movies.", "tout le son à la fois : musique, effets, voix et vidéos.", "der ganze ton auf einmal: musik, effekte, stimmen und filme.", "todo el sonido a la vez: música, efectos, voces y vídeos.", "tutto l'audio insieme: musica, effetti, voci e filmati."}},
     {TextHideHold, {"hide (hold)", "masquer (maintenir)", "ausblenden (halten)", "ocultar (mantener)", "nascondi (tieni premuto)"}},
+    {TextDropShadowOutlined, {"outlined", "avec contour", "mit umriss", "con contorno", "con contorno"}},
 };
 const u32 g_NativeTextCount = sizeof(g_NativeTexts) / sizeof(g_NativeTexts[0]);
 const char* const g_TextLanguages[TextLanguages] = {"English", "French", "German", "Spanish", "Italian"};

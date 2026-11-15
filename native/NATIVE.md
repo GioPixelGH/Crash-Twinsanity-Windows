@@ -297,7 +297,14 @@ drop shadow and the shadows on crates in Accessibility since 1.3.0's tabs), none
 - The drop shadow (`drop_shadow`, #11, #35): while the played character is off the ground, a round shadow straight down under
   it (a cylinder's volume of 0.5, 20 down, as the game's own shadow circles: `CastDropShadow` in `shadows.cpp`), so the spot it
   lands on is marked whatever the lighting's slant; drawn as the game's shadows are, on the surfaces that take them. Checked:
-  Crash's fall onto the beach at the start shows the disc under him.
+  Crash's fall onto the beach at the start shows the disc under him. Its third choice, "outlined" (`drop_shadow=2`, THE LIST 52,
+  #11: the shadow alone hardly shows on dark ground), adds a yellow ring around it: the ground straight under the character found
+  as the character finds its own (a line of sight down through the player's probes' surfaces and the solid objects, crates among
+  them), and the ring (0.5 to 0.62 across, 32 sides) drawn as flat triangles once the shadows are applied
+  (`OutlineDropShadow` in `renderer/shadows.cpp`), depth tested from 0.4 above the ground so the ground doesn't hide it and
+  nearer things do, the scissor at the screen's edges (left at 1024 by 1024, a ring below the screen drew into the GS memory past
+  the frame: the pictures after it changed), left out when it's all off the screen. Checked: the physics test's jumps on the
+  beach show it under Crash (a yellow ring, the pictures otherwise the same and the jumps' measures alike).
 - Shadows on crates (`shadows_on_crates`, THE LIST 38; TwinsanityEvolved 0.9.3's idea): the crates' opaque materials made
   shadow receivers (the community mod's change, also in the bug fixes: `MaterialRead`), from a level's next loading. Checked:
   the beach's 47 crate shaders change (`TWIN_FIXES_TRACE` names them).

@@ -45,10 +45,13 @@ bool SlideSteering();
 }
 
 // The drop shadow (drop_shadow, #11, #35): a round shadow on the ground under the played character while it's off the ground,
-// as Crash 4's (shadows.cpp's CastDropShadow: drawn as the game's shadows are)
+// as Crash 4's (shadows.cpp's CastDropShadow: drawn as the game's shadows are); 0 off, 1 on, 2 with a yellow ring around it on the
+// ground (THE LIST 52, #11: the shadow alone hardly shows on dark ground; renderer/shadows.cpp's OutlineDropShadow)
 namespace NativeGame
 {
+constexpr s32 DropShadowOutline = 2;
 bool DropShadow();
+bool DropShadowOutlined();
 }
 
 // The played character's shadow on the tops of crates too (shadows_on_crates; the PS2 draws none there): the crates' opaque

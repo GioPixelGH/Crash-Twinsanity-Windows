@@ -2,6 +2,7 @@
 #include "gsvalues.h"
 
 #include <bit>
+#include <cmath>
 #include "gsregs.h"
 
 namespace
@@ -333,15 +334,183 @@ void DrawShadowMesh(RigidModel* mesh, const Matrix4x4* toScreen, const Matrix4x4
 }
 }
 
+namespace
+{
+// The drop shadow's outline (drop_shadow 2, THE LIST 52, #11: the shadow alone hardly shows on dark ground), asked for by the game's
+// shadows while they're drawn (OutlineDropShadow) and drawn once they've been taken away from the screen: a yellow ring around
+// the ground's point (a strip of flat triangles, its colour only), depth tested at a height above the ground so the ground doesn't
+// hide it and nearer things (the character over it, a ledge in front) do
+struct DropOutline
+{
+    bool due;
+    f32 radius;
+    Vector4 ground;
+    Matrix4x4 chunkToWorld;
+};
+DropOutline g_DropOutline{};
+constexpr u32 OutlineSegments = 32;
+constexpr f32 OutlineWidth = 0.12f;
+constexpr f32 OutlineDepthLift = 0.4f;
+constexpr f32 TwoPi = 6.2831853f;
+// The ring left out when a corner is behind the camera, too far off the screen for the GS's 16 bit coordinates, or when it's all
+// off the screen; drawn with the scissor at the screen's edges (ApplyShadows leaves it at 1024 by 1024: a ring below the screen
+// would draw into the GS memory past the frame, the depth and the textures there)
+constexpr f32 OutlineNearest = 0.05f;
+constexpr f32 OutlineMostOff = 1536.0f;
+constexpr u64 GsXyzZShift = 32;
+constexpr u32 OutlineSettingWrites = 14;
+const u64 OutlineColour = std::bit_cast<u64>(GS_RGBAQ{.r = 0xFF, .g = 0xD8, .b = 0x20, .a = 0x80, .q = 1.0f});
+const u64 OutlineStrip = std::bit_cast<u64>(GS_PRIM{.prim_type = GS_PRIM_TRI_STRIP, .ctxt = 1});
+const u64 NearerOrSame = std::bit_cast<u64>(GS_TEST{.ztest_enable = 1, .ztest_method = GS_ZBUFF_GEQUAL});
+const u64 NoAlphaWritten = std::bit_cast<u64>(GS_FRAME{.draw_mask = 0xFF000000});
+
+struct OutlineBounds
+{
+    f32 left = OutlineMostOff;
+    f32 top = OutlineMostOff;
+    f32 right = -OutlineMostOff;
+    f32 bottom = -OutlineMostOff;
+};
+
+// A point of the ring in the chunk: its XYZ2 on the screen (the screen's pixels' bounds kept), the depth the lifted point's
+bool OutlineVertex(const Vector4& local, u64* xyz, OutlineBounds* bounds)
+{
+    Vector4 world;
+    Vector4 screen;
+    VuTransformPoint(&g_DropOutline.chunkToWorld, &local, &world);
+    VuTransformPoint(&g_RenderView->toScreen, &world, &screen);
+    Vector4 lifted = local;
+    lifted.y = lifted.y + OutlineDepthLift;
+    Vector4 liftedWorld;
+    Vector4 liftedScreen;
+    VuTransformPoint(&g_DropOutline.chunkToWorld, &lifted, &liftedWorld);
+    VuTransformPoint(&g_RenderView->toScreen, &liftedWorld, &liftedScreen);
+    if (!(screen.w > OutlineNearest) || !(liftedScreen.w > OutlineNearest))
+    {
+        return false;
+    }
+
+    f32 x = screen.x / screen.w;
+    f32 y = screen.y / screen.w;
+    f32 z = liftedScreen.z / liftedScreen.w;
+    f32 pixelX = x / GsSubpixels - static_cast<f32>(GsScreenMiddle - static_cast<s32>(g_DisplayWidth >> 1));
+    f32 pixelY = y / GsSubpixels - static_cast<f32>(GsScreenMiddle - static_cast<s32>(g_DisplayHeight >> 1));
+    if (!(std::fabs(pixelX) < OutlineMostOff) || !(std::fabs(pixelY) < OutlineMostOff))
+    {
+        return false;
+    }
+
+    bounds->left = pixelX < bounds->left ? pixelX : bounds->left;
+    bounds->right = pixelX > bounds->right ? pixelX : bounds->right;
+    bounds->top = pixelY < bounds->top ? pixelY : bounds->top;
+    bounds->bottom = pixelY > bounds->bottom ? pixelY : bounds->bottom;
+    z = z < 0.0f ? 0.0f : (z > 2.0f * GsDepthRange ? 2.0f * GsDepthRange : z);
+    *xyz = static_cast<u64>(static_cast<u32>(static_cast<s32>(x)) & 0xFFFF) |
+           static_cast<u64>(static_cast<u32>(static_cast<s32>(y)) & 0xFFFF) << GsXyzYShift |
+           static_cast<u64>(static_cast<u32>(z)) << GsXyzZShift;
+    return true;
+}
+
+// Drawn in the second context as ApplyShadows left it (the frame, the depth not written), its offset the scene's, the scissor the
+// screen's, then what it changed put back as ApplyShadows left it (the whole scissor, its sprite and white among them)
+void DrawDropOutline()
+{
+    constexpr u32 Vertices = 2 * (OutlineSegments + 1);
+    u64 xyz[Vertices];
+    OutlineBounds bounds;
+    f32 inner = g_DropOutline.radius;
+    f32 outer = inner + OutlineWidth;
+    for (u32 step = 0; step <= OutlineSegments; step++)
+    {
+        f32 angle = static_cast<f32>(step) * (TwoPi / static_cast<f32>(OutlineSegments));
+        f32 cosine = std::cos(angle);
+        f32 sine = std::sin(angle);
+        for (u32 side = 0; side < 2; side++)
+        {
+            f32 radius = side == 0 ? outer : inner;
+            Vector4 local = g_DropOutline.ground;
+            local.x = local.x + cosine * radius;
+            local.z = local.z + sine * radius;
+            if (!OutlineVertex(local, &xyz[step * 2 + side], &bounds))
+            {
+                return;
+            }
+        }
+    }
+
+    u32 width = g_DisplayWidth;
+    u32 height = g_DisplayHeight;
+    if (bounds.right < 0.0f || bounds.bottom < 0.0f || bounds.left >= static_cast<f32>(width) ||
+        bounds.top >= static_cast<f32>(height))
+    {
+        return;
+    }
+
+    RenderBucket& bucket = g_FrameBuckets.buckets[BucketShadows];
+    u32 pixels = width * height;
+    u32 pairCount = OutlineSettingWrites + Vertices;
+    u32* tag = BeginPacket(bucket);
+    tag[0] = (pairCount + 2) | CountTag;
+    tag[1] = 0;
+    tag[2] = VifFlushA;
+    tag[3] = pairCount | VifDirect | 1;
+    GsWriter pairs{reinterpret_cast<GsWrite*>(tag + 4)};
+    pairs.Write(AddressDataTag(pairCount), GifAddressData);
+    u64 frame = Zeroed(pixels >> FrameBufferPagesShift) | static_cast<u64>(width >> GsWidthShift) << GsFrameWidthShift;
+    u64 offset = Zeroed((GsScreenMiddle - (width >> 1)) << GsSubpixelShift) |
+                 static_cast<u64>((GsScreenMiddle - (height >> 1)) << GsSubpixelShift) << GsOffsetYShift;
+    u64 screen = static_cast<u64>(width - 1) << GsScissorRightShift | static_cast<u64>(height - 1) << GsScissorBottomShift;
+    pairs.Write(AttributesFromPrim, GsPrmodeCont);
+    pairs.Write(offset, SecondContext(GsXyOffset));
+    pairs.Write(screen, SecondContext(GsScissor));
+    pairs.Write(frame | NoAlphaWritten, SecondContext(GsFrame));
+    pairs.Write(NearerOrSame, SecondContext(GsTest));
+    pairs.Write(OutlineStrip, GsPrim);
+    pairs.Write(OutlineColour, GsRgbaq);
+    for (u64 vertex : xyz)
+    {
+        pairs.Write(vertex, GsXyz2);
+    }
+
+    pairs.Write(DepthAlways, SecondContext(GsTest));
+    pairs.Write(frame, SecondContext(GsFrame));
+    pairs.Write(WholeScissor, SecondContext(GsScissor));
+    pairs.Write(0, SecondContext(GsXyOffset));
+    pairs.Write(BlendedSprite, GsPrim);
+    pairs.Write(White, GsRgbaq);
+    pairs.Write(AttributesFromPrmode, GsPrmodeCont);
+    auto* flush = reinterpret_cast<u32*>(pairs.at);
+    flush[0] = VifFlushA;
+    flush[1] = 0;
+    flush[2] = 0;
+    flush[3] = 0;
+    EndPacket(bucket, reinterpret_cast<u8*>(flush + 4));
+}
+}
+
 namespace Platform::Graphics
 {
 void BeginShadows()
 {
+    g_DropOutline.due = false;
     StartShadows(nullptr);
 }
 
 void EndShadows()
 {
     ApplyShadows(nullptr);
+    if (g_DropOutline.due)
+    {
+        g_DropOutline.due = false;
+        DrawDropOutline();
+    }
+}
+
+void OutlineDropShadow(const Vector4* ground, f32 radius, const Matrix4x4* chunkToWorld)
+{
+    g_DropOutline.due = true;
+    g_DropOutline.radius = radius;
+    g_DropOutline.ground = *ground;
+    g_DropOutline.chunkToWorld = *chunkToWorld;
 }
 }

@@ -60,6 +60,12 @@ bool NativeGame::DropShadow()
     return NativeUi::IsOn(NativeUi::OptionDropShadow);
 }
 
+// Its outline (THE LIST 52, #11)
+bool NativeGame::DropShadowOutlined()
+{
+    return NativeUi::GetOption(NativeUi::OptionDropShadow) == DropShadowOutline;
+}
+
 // The shadows on crates
 bool NativeGame::ShadowsOnCrates()
 {

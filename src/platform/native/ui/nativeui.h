@@ -345,6 +345,8 @@ enum NativeText : u32
     TextDescMasterVolume,
     // The live preview's prompt (THE LIST 66): the menu hidden while its button is held
     TextHideHold,
+    // The drop shadow's third choice (THE LIST 52, #11): with a ring around it
+    TextDropShadowOutlined,
     NativeTextEnd,
 };
 
@@ -509,7 +511,7 @@ enum Option : u32
     OptionLevelSelect,
     // The speedrun timer (speedrun.cpp)
     OptionSpeedrunTimer,
-    // The drop shadow under the player (dropshadow.cpp)
+    // The drop shadow under the player (shadows.cpp's CastDropShadow): 0 off, 1 on, 2 outlined (THE LIST 52)
     OptionDropShadow,
     // The player's shadow on crates' tops too
     OptionShadowsOnCrates,

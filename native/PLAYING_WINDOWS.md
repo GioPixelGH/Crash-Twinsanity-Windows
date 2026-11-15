@@ -171,6 +171,7 @@ voices keep their own volumes under it.
 
 - **Camera shake**: on as in the original. Turn it off if the shaking bothers you.
 - **Drop shadow**: a round shadow under you while you're in the air, so you see where you'll land. Off by default.
+  Pick **outlined** to add a yellow ring around it. It shows on dark ground too.
 - **Shadows on crates**: your shadow falls on crates too, from the next level loaded. Off by default.
 
 ## Mods

@@ -14,12 +14,16 @@
 #include "retail/libc.h"
 
 #ifdef TWIN_NATIVE
+#include <bit>
 #include <cstdlib>
 
 #include "gameoptions.h"
 #include "game/agents.h"
 #include "game/characters.h"
+#include "game/collision.h"
 #include "game/gamecontroller.h"
+#include "game/instances.h"
+#include "game/layout.h"
 
 namespace
 {
@@ -29,6 +33,40 @@ namespace
 // surfaces that take shadows: the shadows on crates option adds the crates' tops)
 constexpr f32 DropRadius = 0.5f;
 constexpr f32 DropReach = 20.0f;
+// Its outline (drop_shadow 2, THE LIST 52, #11: the shadow alone hardly shows on dark ground): the ground's point straight under
+// the character found as the character finds its own ground (characterframe.cpp: the player's probes' surfaces and the solid
+// objects, crates among them, from a quarter unit up), its distance below kept in the entry's spare word and the entry marked in
+// its spare byte (Add clears it), for ChunkShadows::Draw to draw a ring there (Platform::Graphics::OutlineDropShadow)
+constexpr u8 OutlineMark = 1;
+constexpr f32 GroundCastRaise = 0.25f;
+constexpr u16 MostGround = 4;
+
+// How far below a point the ground is (straight down, as far as DropReach), or less than 0 when there's none
+f32 GroundBelow(InstanceContext* instance, const Vector4* point)
+{
+    void* results[MostGround];
+    InstanceQuery query;
+    query.results = results;
+    query.count = 0;
+    query.most = MostGround;
+    query.distance = NoHitDistance;
+    query.bits.value = InstanceQueryBits::AllWanted;
+    query.wantedFlags = ReferencedObjectFlags::CollisionActive;
+    query.unwantedFlags = ReferencedObjectFlags::Asleep;
+    query.skipped[0] = nullptr;
+    query.skipped[1] = nullptr;
+    query.instance = nullptr;
+    SkipInQuery(&query, instance);
+    Vector4 from = *point;
+    from.y = from.y + GroundCastRaise;
+    Vector4 way = {0.0f, -(DropReach + GroundCastRaise), 0.0f, 1.0f};
+    if (LineOfSight(instance->chunk, &from, &way, SurfaceFlags::SolidToPlayerProbes, &query, SolidObjectNodeKinds) == 0)
+    {
+        return -1.0f;
+    }
+
+    return -way.y - GroundCastRaise;
+}
 
 void CastDropShadow(InstanceContext* instance)
 {
@@ -55,6 +93,15 @@ void CastDropShadow(InstanceContext* instance)
     {
         InitIdentityMatrix(&entry->frame);
         *RowOf(&entry->frame, 3) = *RowOf(&place->matrix, 3);
+        if (NativeGame::DropShadowOutlined())
+        {
+            f32 below = GroundBelow(instance, RowOf(&place->matrix, 3));
+            if (below >= 0.0f)
+            {
+                entry->unused4D[0] = OutlineMark;
+                entry->unused5C = std::bit_cast<u32>(below);
+            }
+        }
     }
 }
 }
@@ -600,6 +647,9 @@ ShadowEntry* ChunkShadows::Add(u8 kind, const f32* offset, const f32* size)
     }
 
     entry->kind = kind;
+#ifdef TWIN_NATIVE
+    entry->unused4D[0] = 0;
+#endif
     entry->offset[0] = offset[0];
     entry->offset[1] = offset[1];
     entry->offset[2] = offset[2];
@@ -755,6 +805,14 @@ void ChunkShadows::Draw(const Vector4* planes, const Matrix4x4*, const Matrix4x4
         Matrix4x4 toCamera;
         VuMultiplyMatrices(&world, &g_ShadowToCamera, &toCamera);
         DrawShadowEntry(entry, &toScreen, &toCamera, &world);
+#ifdef TWIN_NATIVE
+        if (entry->unused4D[0] == OutlineMark)
+        {
+            Vector4 ground = *RowOf(&entry->frame, 3);
+            ground.y = ground.y - std::bit_cast<f32>(entry->unused5C);
+            Platform::Graphics::OutlineDropShadow(&ground, DropRadius, view);
+        }
+#endif
     }
 
     if (current == first)

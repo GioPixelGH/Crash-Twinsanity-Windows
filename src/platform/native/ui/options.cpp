@@ -82,7 +82,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionSlideJump, "slide_jump", 0, 2},
     {OptionLevelSelect, "level_select", 0, 1},
     {OptionSpeedrunTimer, "speedrun_timer", 0, 1},
-    {OptionDropShadow, "drop_shadow", 0, 1},
+    {OptionDropShadow, "drop_shadow", 0, 2},
     {OptionShadowsOnCrates, "shadows_on_crates", 0, 1},
     {OptionMasterVolume, "master_volume", 100, 100},
 };
