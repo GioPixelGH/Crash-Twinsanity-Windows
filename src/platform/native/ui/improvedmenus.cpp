@@ -60,9 +60,19 @@ MenuPage* g_QuitPage = nullptr;
 u32 g_MainMenuFirst = 0;
 u64 g_LevelsScreens[Worlds] = {};
 bool g_Captured = false;
-// The level confirmation's page and its vtable (the quit page's, but its back)
+// The level confirmation's page and its vtable (the quit page's, but its back); the gems' pages' levels' vtable (the link's, but
+// its activation)
 OlegPage* g_ConfirmPage = nullptr;
 GccVTableEntry g_ConfirmVTable[10];
+GccVTableEntry g_LevelItemVTable[15];
+// The pause page's rows in each layout's order (all of them: the hidden ones too)
+constexpr u32 PauseRows = 9;
+constexpr u32 ImprovedOrder[PauseRows] = {NativeItems::Options,     NativeItems::RestartCheckpoint, NativeItems::Levels,
+                                          NativeItems::SaveGame,    NativeItems::LoadGame,          NativeItems::DisableAutosave,
+                                          NativeItems::Extras,      NativeItems::QuitGame,          NativeItems::Resume};
+constexpr u32 OriginalOrder[PauseRows] = {NativeItems::Options,         NativeItems::SaveGame, NativeItems::LoadGame,
+                                          NativeItems::DisableAutosave, NativeItems::RestartCheckpoint, NativeItems::Levels,
+                                          NativeItems::Extras,          NativeItems::QuitGame, NativeItems::Resume};
 
 void ShowScreen(OLEG& oleg, u32 screen)
 {
@@ -125,6 +135,13 @@ u32 ConfirmBack(MenuPage*, u32)
     return 1;
 }
 
+// A level of the gems' pages activated: the confirmation (the level select on), leading nowhere as the link
+MenuPage* LevelActivate(MenuItem* item, u32, MenuPage*)
+{
+    PickLevel(item->Id());
+    return item->target;
+}
+
 OlegPage* ConfirmPage()
 {
     if (g_ConfirmPage != nullptr)
@@ -148,7 +165,35 @@ OlegPage* ConfirmPage()
     return page;
 }
 
-// The pause page's rows of the layout chosen, and the one selected first (options, resume, or the row its page was asked from)
+// A page's items put in an order (by their IDs; nothing done unless it has exactly those)
+void Order(MenuPage* page, const u32* ids, u32 count)
+{
+    if (page->items.count != count)
+    {
+        return;
+    }
+
+    MenuItem* ordered[PauseRows];
+    bool same = true;
+    for (u32 i = 0; i < count; i++)
+    {
+        ordered[i] = page->Find(ids[i]);
+        if (ordered[i] == nullptr)
+        {
+            return;
+        }
+
+        same = same && ordered[i] == page->items.data[i];
+    }
+
+    for (u32 i = 0; !same && i < count; i++)
+    {
+        page->items.data[i] = ordered[i];
+    }
+}
+
+// The pause page's rows of the layout chosen in its order, and the one selected first (options, resume, or the row its page was
+// asked from)
 void LayOutPause(OLEG& oleg)
 {
     MenuPage* page = oleg.pauseMenu.firstPage;
@@ -159,12 +204,10 @@ void LayOutPause(OLEG& oleg)
 
     const bool improved = IsOn(OptionImprovedMenus);
     const bool levelSelect = IsOn(OptionLevelSelect);
-    SetShown(page->Find(NativeItems::RestartCheckpointHigher), improved);
-    MenuItem* levels = page->Find(NativeItems::LevelsHigher);
-    SetShown(levels, improved);
+    Order(page, improved ? ImprovedOrder : OriginalOrder, PauseRows);
+    MenuItem* levels = page->Find(NativeItems::Levels);
+    SetShown(levels, improved || levelSelect);
     SetText(levels, levelSelect ? TextLevelSelect : TextGems);
-    SetShown(page->Find(NativeItems::RestartCheckpoint), !improved);
-    SetShown(page->Find(NativeItems::Levels), !improved && levelSelect);
     SetShown(page->Find(NativeItems::Extras), improved);
     SetText(page->Find(NativeItems::QuitGame), improved ? TextReturnToTitle : NativeItems::QuitGameText);
     SetShown(page->Find(NativeItems::Resume), !improved);
@@ -399,7 +442,7 @@ void TestFrame(GameController* controller)
         break;
     case 7:
     case 16:
-        if (pause && Choose(oleg.pauseMenu, NativeItems::LevelsHigher))
+        if (pause && Choose(oleg.pauseMenu, NativeItems::Levels))
         {
             Next();
         }
@@ -503,6 +546,19 @@ void PickLevel(u32 area)
     ShowScreen(controller->oleg, OLEG::ScreenQuit);
 }
 
+const GccVTableEntry* LevelItemVTable()
+{
+    static bool made = false;
+    if (!made)
+    {
+        made = true;
+        std::memcpy(g_LevelItemVTable, g_LinkItemVTable, sizeof(g_LevelItemVTable));
+        g_LevelItemVTable[MenuItem::ActivateSlot].function = reinterpret_cast<void*>(&LevelActivate);
+    }
+
+    return g_LevelItemVTable;
+}
+
 void PlayPickedLevel()
 {
     GameController* controller = G_GameController;
@@ -548,7 +604,7 @@ bool BackToPauseMenuInstead(MenuWidget* menu)
     // The pause menu again, on the row that led here (the row of the page shown, when it came by the shoulders)
     if (g_PauseRow == 0 || (reason == GameController::ReasonExtras) != (g_PauseRow == NativeItems::Extras))
     {
-        g_PauseRow = reason == GameController::ReasonExtras ? NativeItems::Extras : NativeItems::LevelsHigher;
+        g_PauseRow = reason == GameController::ReasonExtras ? NativeItems::Extras : NativeItems::Levels;
     }
 
     g_PauseReturning = true;

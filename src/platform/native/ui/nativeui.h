@@ -10,6 +10,7 @@
 
 class MenuPage;
 class MenuWidget;
+struct GccVTableEntry;
 struct MenuInput;
 struct MenuItem;
 struct MenuSounds;
@@ -613,7 +614,8 @@ void LevelSelectFrame();
 // The improved menus and the level select's gems' pages (improvedmenus.cpp, THE LIST 79 and 80, #48), called from the game's menus:
 // the quit screen made the quit's again (it's also the level confirmation's); a pause menu row asking for a pause page (the
 // gems' first or the extras: a reason) and the pause page asked for once (ReasonNone none); the main menu's level select opening
-// the gems' pages; a level of them picked (its area: the confirmation, the level select on) and the level confirmed; the last
+// the gems' pages; a level of them picked (its area: the confirmation, the level select on; the levels' vtable that asks it) and
+// the level confirmed; the last
 // area whose level's shown (every one with the level select on); back from the gems' pages or the extras to the pause menu (the
 // improved menus: whether it went there); the main menu's frame while the gems' pages opened from it are up (whether they are);
 // the frame's work (the rows each layout shows, the level select's hint); the menus test's buttons ($TWIN_MENUS_TEST)
@@ -622,6 +624,8 @@ void AskPausePage(u32 reason, u32 fromItem);
 u32 TakePausePage();
 void OpenLevelsFromMainMenu();
 void PickLevel(u32 area);
+// The gems' pages' levels' vtable (the link's, its activation PickLevel)
+const GccVTableEntry* LevelItemVTable();
 void PlayPickedLevel();
 u32 LevelsOpen(u32 open);
 bool BackToPauseMenuInstead(MenuWidget* menu);

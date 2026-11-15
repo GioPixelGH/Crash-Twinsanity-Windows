@@ -360,8 +360,11 @@ have made itself (`src/platform/native/gameoptions.h`):
   on), and back from them comes back to the pause menu, on that row, instead of to play (the extras' resume reads "back" and
   does the same); quit game reads "return to title" and its confirmation asks so; resume goes (back and start still resume
   play). Disable autosave stays the original's action, shown while an autosave waits (`StopSaving`: not a stored setting). The
-  pause page has both layouts' rows (`PausePage::Construct`); each frame shows the chosen one's. The shoulders still go round
-  the pages. `$TWIN_MENUS_TEST=1` (with `level_select=1` and `improved_menus=1`, headless) goes through both: the main menu's
+  pause page has the rows of both layouts (`PausePage::Construct`); each frame puts them in the chosen layout's order and shows
+  its rows. The new rows (the gems', the extras', the main menu's level select) are kept in the native build's own storage, not
+  the game's heap, and the levels' items keep their size (their vtable a copy with its activation): with the game's
+  allocations as 1.2.0's the pictures' check stays byte for byte (rows from the game's heap moved the beach's particles a few
+  pixels from frame 1500 on). The shoulders still go round the pages. `$TWIN_MENUS_TEST=1` (with `level_select=1` and `improved_menus=1`, headless) goes through both: the main menu's
   level select row, a level picked on the gems' pages and played, the pause menu, the gems' pages and the extras from their
   rows and back, return to title asked and refused, then a level picked in play and played through the title, each step logged
   ("menus test:").

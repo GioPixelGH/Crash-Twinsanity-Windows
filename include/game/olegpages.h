@@ -10,20 +10,21 @@ class Font;
 
 #ifdef TWIN_NATIVE
 // The native menus' items (IDs no retail page uses) and the retail ones and texts the native menus touch (improvedmenus.cpp): the
-// pause menu's restart checkpoint, the improved menus' higher one (THE LIST 79), their row to the gems' pages, the original menu's
-// row to them with the level select on (THE LIST 80), the improved menus' extras row, the main menu's level select, the level
-// confirmation's yes; the options, quit game, resume, the extras' resume and the confirmations' no; texts: quit game, its
-// confirmation's title, extras, yes, no, back, resume
+// pause menu's restart checkpoint, its row to the gems' pages (THE LIST 79's improved menus, and the level select's: THE LIST
+// 80), the improved menus' extras row, the main menu's level select, the level confirmation's yes; the options, save game, load
+// game, disable autosave, quit game, resume, the extras' resume and the confirmations' no; texts: quit game, its confirmation's
+// title, extras, yes, no, back, resume
 namespace NativeItems
 {
 constexpr u32 RestartCheckpoint = 0xF0;
-constexpr u32 RestartCheckpointHigher = 0xF1;
-constexpr u32 LevelsHigher = 0xF2;
-constexpr u32 Levels = 0xF3;
+constexpr u32 Levels = 0xF2;
 constexpr u32 Extras = 0xF4;
 constexpr u32 MainMenuLevels = 0xF5;
 constexpr u32 PlayLevelYes = 0xF6;
 constexpr u32 Options = 0x1E;
+constexpr u32 SaveGame = 1;
+constexpr u32 LoadGame = 2;
+constexpr u32 DisableAutosave = 0xA;
 constexpr u32 QuitGame = 0xB;
 constexpr u32 Resume = 0xC;
 constexpr u32 ExtrasResume = 0x1C;
@@ -97,11 +98,10 @@ struct ActionItem : LinkItem
         // Native: play again from the last checkpoint
         ActionRestartCheckpoint = 0x100,
         // Native (THE LIST 79, 80: improvedmenus.cpp): the pause menu's rows to the gems' pages (the level select's with it on)
-        // and to the extras, the main menu's level select, a level of the gems' pages picked, and its confirmation's yes
+        // and to the extras, the main menu's level select, and the level confirmation's yes
         ActionPausePageLevels = 0x101,
         ActionPausePageExtras = 0x102,
         ActionMainMenuLevels = 0x103,
-        ActionPickLevel = 0x104,
         ActionPlayLevel = 0x105,
 #endif
     };
