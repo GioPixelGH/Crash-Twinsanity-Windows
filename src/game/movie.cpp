@@ -254,12 +254,22 @@ void MoviePlayer::Draw()
     widescreen = widescreen && !NativeFixes::Ultrawide();
 #endif
 #ifdef TWIN_NATIVE
-    if (g_WidescreenTv != 0 && NativeFixes::SuperUltrawide())
+    if (g_WidescreenTv != 0 && (NativeFixes::SuperUltrawide() || NativeFixes::Widescreen1610()))
     {
-        // 32:9: each movie at its own shape in the middle (a 16:9 one half the width, a 4:3 one three eighths)
-        const f32 share = (flags.widescreen != 0 ? 16.0f / 9.0f : 4.0f / 3.0f) / (32.0f / 9.0f);
-        area.x = static_cast<s32>(widthLevel * 0.5f * (1.0f - share));
-        area.width = static_cast<s32>(widthLevel * share);
+        // 32:9: each movie at its own shape in the middle (a 16:9 one half the width, a 4:3 one three eighths); 16:10 (THE LIST 43)
+        // the same, a 4:3 one five sixths of the width, a 16:9 one the whole width and nine tenths of the height
+        const f32 share = (flags.widescreen != 0 ? 16.0f / 9.0f : 4.0f / 3.0f) / NativeFixes::WideTvAspect();
+        if (share <= 1.0f)
+        {
+            area.x = static_cast<s32>(widthLevel * 0.5f * (1.0f - share));
+            area.width = static_cast<s32>(widthLevel * share);
+        }
+        else
+        {
+            // (Rounded, the same rows left above as below)
+            area.y = static_cast<s32>(static_cast<f32>(screenHeight) * 0.5f * (1.0f - 1.0f / share) + 0.5f);
+            area.height = static_cast<s32>(screenHeight) - 2 * area.y;
+        }
     }
     else
 #endif

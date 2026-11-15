@@ -88,6 +88,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionMaskShadow, "mask_shadow", 0, 1},
     {OptionDoubleJump, "double_jump", 0, 2},
     {OptionMaskTouch, "mask_touch", 0, 1},
+    {OptionAspect1610, "aspect_16_10", 0, 1},
 };
 
 s32 g_Values[OptionCount];
@@ -123,7 +124,7 @@ void Read()
     g_Read = true;
     for (const OptionInfo& info : Infos)
     {
-        g_Values[info.option] = info.defaultValue;
+        g_Values[info.option] = DefaultOption(info.option);
     }
 
     std::ifstream file(SettingsPath());
@@ -281,6 +282,12 @@ bool WatchEvent(void*, SDL_Event* event)
 
 s32 DefaultOption(Option option)
 {
+    // The 16:10 TV (THE LIST 43): a Steam Deck's own screen's shape, on there by default
+    if (option == OptionAspect1610)
+    {
+        return Native::SteamDeckModel() != nullptr ? 1 : 0;
+    }
+
     for (const OptionInfo& info : Infos)
     {
         if (info.option == option)

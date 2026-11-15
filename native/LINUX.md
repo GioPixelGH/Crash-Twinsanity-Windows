@@ -35,8 +35,8 @@ Not tried on a Deck yet: **testers wanted**. An issue with your `log.txt` (above
 the most.
 
 On a Deck the game starts fullscreen, on the Deck's own 1280 x 800 screen, at 2x the PS2's resolution (the first start's
-defaults: Options > Display changes them, and the Reset puts these back). The picture is 16:9 (or 4:3), with thin bars above
-and below on the 16:10 screen. The log's `system:` line names the Deck's model (`Jupiter` the LCD one, `Galileo` the OLED
+defaults: Options > Display changes them, and the Reset puts these back). The picture is 16:10, the Deck's screen's own shape
+(Options > Display > Widescreen: 16:9 puts thin bars above and below). The log's `system:` line names the Deck's model (`Jupiter` the LCD one, `Galileo` the OLED
 one); `$TWIN_STEAM_DECK=1` makes another computer start as a Deck, `0` a Deck as a PC.
 
 1. **Desktop Mode** (the Steam button > Power > Switch to Desktop): download the AppImage, for example into

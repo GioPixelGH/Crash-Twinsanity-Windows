@@ -77,6 +77,12 @@ bool Ultrawide()
     return g_WidescreenTv != 0 && NativeUi::IsOn(NativeUi::OptionUltrawide) && !NativeUi::IsOn(NativeUi::OptionSuperUltrawide);
 }
 
+bool Widescreen1610()
+{
+    return g_WidescreenTv != 0 && NativeUi::IsOn(NativeUi::OptionAspect1610) && !NativeUi::IsOn(NativeUi::OptionUltrawide) &&
+           !NativeUi::IsOn(NativeUi::OptionSuperUltrawide);
+}
+
 bool SuperUltrawide()
 {
     return g_WidescreenTv != 0 && NativeUi::IsOn(NativeUi::OptionSuperUltrawide);
@@ -89,7 +95,9 @@ f32 WideTvAspect()
     constexpr f32 UltrawideAspect = 0x1.2AAAA8p+1f;
     // 32:9 the same way, the game's projection and 2D squeeze (renderer.cpp's ScreenSqueeze) taking the shape
     constexpr f32 SuperUltrawideAspect = 32.0f / 9.0f;
-    return SuperUltrawide() ? SuperUltrawideAspect : Ultrawide() ? UltrawideAspect : WideAspect;
+    // 16:10 (THE LIST 43): the Steam Deck's screen
+    constexpr f32 Aspect1610 = 1.6f;
+    return SuperUltrawide() ? SuperUltrawideAspect : Ultrawide() ? UltrawideAspect : Widescreen1610() ? Aspect1610 : WideAspect;
 }
 
 bool SkipCutscenes()

@@ -552,17 +552,27 @@ void Build()
                    std::to_string(512 * scale);
         }));
     display.push_back(Choice(
-        // The TV's shape: 4:3, 16:9 (the game's widescreen), 21:9 or 32:9 (the game's widescreen made wider, fixes.cpp's
-        // Ultrawide and SuperUltrawide)
+        // The TV's shape: 4:3, 16:10 (THE LIST 43, the Steam Deck's), 16:9 (the game's widescreen), 21:9 or 32:9 (the game's
+        // widescreen made narrower or wider, fixes.cpp's Widescreen1610, Ultrawide and SuperUltrawide)
         GameTextWidescreen, TextDescWidescreen,
-        [] { return g_WidescreenTv == 0 ? 0 : IsOn(OptionSuperUltrawide) ? 3 : IsOn(OptionUltrawide) ? 2 : 1; },
+        [] {
+            return g_WidescreenTv == 0           ? 0
+                   : IsOn(OptionSuperUltrawide) ? 4
+                   : IsOn(OptionUltrawide)      ? 3
+                   : IsOn(OptionAspect1610)     ? 1
+                                                : 2;
+        },
         [](s32 value) {
             g_WidescreenTv = static_cast<u8>(value != 0 ? 1 : 0);
             SetOption(OptionWidescreen, value != 0 ? 1 : 0);
-            SetOption(OptionUltrawide, value == 2 ? 1 : 0);
-            SetOption(OptionSuperUltrawide, value == 3 ? 1 : 0);
+            SetOption(OptionAspect1610, value == 1 ? 1 : 0);
+            SetOption(OptionUltrawide, value == 3 ? 1 : 0);
+            SetOption(OptionSuperUltrawide, value == 4 ? 1 : 0);
         },
-        3, [](s32 value) { return std::string(value == 0 ? "4:3" : value == 1 ? "16:9" : value == 2 ? "21:9" : "32:9"); }));
+        4, [](s32 value) {
+            static const char* const Shapes[] = {"4:3", "16:10", "16:9", "21:9", "32:9"};
+            return std::string(Shapes[value]);
+        }));
     display.push_back(OptionChoice(TextRefreshRate, TextDescRefreshRate, OptionRefresh60,
                                    {Text50Hz, Text60Hz, Text120Hz, Text144Hz, TextUnlimited}));
     display.push_back(Toggle(TextVSync, TextDescVSync, OptionVSync));
@@ -1084,7 +1094,7 @@ void ResetTab(u32 tab)
         ResetOptions({OptionWidescreen, OptionUltrawide, OptionRefresh60, OptionTextureFilter, OptionCrtFilter, OptionTexturePack,
                       OptionTextureUpscale, OptionAntiAliasing, OptionVSync, OptionRenderDistance});
         ResetOptions({OptionAnisotropy});
-        ResetOptions({OptionSuperUltrawide});
+        ResetOptions({OptionSuperUltrawide, OptionAspect1610});
         break;
     case TabAudio:
         SetMusic(DefaultOption(OptionMusicVolume));

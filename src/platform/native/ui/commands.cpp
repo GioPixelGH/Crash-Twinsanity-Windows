@@ -623,6 +623,8 @@ void TestResolution()
               DefaultResolutionFor(true).windowWidth == 1280 && DefaultResolutionFor(true).windowHeight == 720,
           "a Steam Deck's defaults: 2x, fullscreen");
     Check(DefaultResolution().fullscreen == (Native::SteamDeckModel() != nullptr), "this computer's defaults");
+    // The 16:10 TV (THE LIST 43): a Steam Deck's screen's shape, on by default there only
+    Check(DefaultOption(OptionAspect1610) == (Native::SteamDeckModel() != nullptr ? 1 : 0), "16:10 by default on a Steam Deck only");
 
     // The page's choices applied only when the player changes them
     NoteChoices(1, 2);

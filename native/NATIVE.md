@@ -399,7 +399,7 @@ The 21:9 option (`OptionUltrawide`, "ultrawide" in options.txt, off): with the g
 0x3FE38E39 where the renderer loads it (the view's projection in `SetRendererView` and `DrawRendererScene`, the 2D's squeeze in
 `FitPlaceToScreen`/`FitSizeToScreen`, `renderer.cpp`), and every movie pillarboxed to the middle three quarters (the patch's nop at
 0x2AF408, `MoviePlayer::Draw`). Checked with `--snapshots`: the beach's opening shows a wider view squeezed into the same picture.
-The option is the Display tab's "Widescreen" choice 21:9 (4:3, 16:9, 21:9, 32:9; 21:9 is widescreen on and `OptionUltrawide`); the presenter (`ViewRect`, `graphics/display.cpp`) still shapes the picture 16:9:
+The option is the Display tab's "Widescreen" choice 21:9 (4:3, 16:10, 16:9, 21:9, 32:9; 21:9 is widescreen on and `OptionUltrawide`); the presenter (`ViewRect`, `graphics/display.cpp`) still shapes the picture 16:9:
 `NativeFixes::Ultrawide()` tells both.
 
 32:9 (since 1.2.0, THE LIST 35, after TwinsanityEvolved 0.9.3's idea; `OptionSuperUltrawide`, "super_ultrawide", off): the same
@@ -409,6 +409,14 @@ anchor moved in by 16/32), as a 16:9 TV shows them; the pause page and the HUD, 
 size; the FPS counter sits in the middle 16:9's corner; each movie keeps its own shape in the middle (a 16:9 one half the width,
 a 4:3 one three eighths: `MoviePlayer::Draw`). Checked in a 1920x540 window: the beach shows more of the world at the sides, the
 pause page and its hints where 16:9 has them.
+
+16:10 (1.3.0, THE LIST 43: the Steam Deck's 1280 x 800 screen; `OptionAspect1610`, "aspect_16_10", off, on by default on a
+Steam Deck, `DefaultOption`): the same way at 1.6 (`WideTvAspect`: the projection and the 2D's squeeze, `Widescreen1610`), the
+window's picture 16:10 (`ViewRect`); being narrower than 16:9, the widgets at the sides simply come in. Each movie keeps its own
+shape (`MoviePlayer::Draw`): a 16:9 one the whole width and nine tenths of the height, a 4:3 one five sixths of the width.
+Checked in a 1280x800 window (`$TWIN_SWEEP_SHOTS`, black rows and columns counted at the edges): at 16:9 the beach and the
+H03_F movie have 40 rows of bars above and below; at 16:10 the beach has none and the movie 40 and 41. `$TWIN_STEAM_DECK=1`
+starts with `aspect_16_10=1`, a PC with 0 (also the `ui` self-test).
 
 Already in the port before these: the skip itself (condition 572, now any button held), movies answering it too, the faster loading
 and 60 Hz (their own options), widescreen at start-up, and movies at their own rate (the native player paces them by their

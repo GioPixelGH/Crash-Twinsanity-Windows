@@ -535,6 +535,8 @@ enum Option : u32
     OptionDoubleJump,
     // Three masks' touch (THE LIST 54, #18): what the invincible character touches hit as by a spin
     OptionMaskTouch,
+    // The 16:10 TV (THE LIST 43): the game's widescreen picture made 16:10, the Steam Deck's screen (on by default there)
+    OptionAspect1610,
     OptionCount,
 };
 
