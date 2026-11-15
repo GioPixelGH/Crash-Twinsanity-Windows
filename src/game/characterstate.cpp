@@ -28,6 +28,9 @@
 #ifdef TWIN_NATIVE
 #include "fixes.h"
 #include "gameoptions.h"
+#include "native.h"
+
+#include <cstdlib>
 #endif
 
 extern "C"
@@ -439,6 +442,11 @@ u32 CharacterAgent::ContactAttack(const Vector4* normal)
     }
 
     bool spinning = kind == AttackSpin;
+#ifdef TWIN_NATIVE
+    // Three masks' touch (the game option, THE LIST 54, #18): while three masks make the played character invincible, what it
+    // touches is hit as by its spin
+    spinning = spinning || (NativeGame::MaskTouch() && NativeGame::MaskTouching(instance));
+#endif
     if (normal->y == -1.0f && velocity.y < -1.0f)
     {
         return spinning ? AttackLandOnSpinning : AttackLandOn;
@@ -461,6 +469,18 @@ void CharacterAgent::Touched(InstanceContext* other, const Vector4* normal)
     }
 
     u32 kind = ContactAttack(normal);
+#ifdef TWIN_NATIVE
+    // $TWIN_MASK_TRACE: what three masks' touch hits as by a spin (where it is)
+    static const bool trace = std::getenv("TWIN_MASK_TRACE") != nullptr;
+    if (trace && NativeGame::MaskTouch() && NativeGame::MaskTouching(instance))
+    {
+        ObjectPlace* place = other->place;
+        place->SyncPosition();
+        Native::Log("mask trace: three masks' touch: attack %u on the instance at (%.1f, %.1f, %.1f)", kind,
+                    static_cast<double>(place->position.x), static_cast<double>(place->position.y),
+                    static_cast<double>(place->position.z));
+    }
+#endif
     if (kind == AttackLandOnSpinning)
     {
         QueueAttack(other, AttackLandOn, instance, kinds);

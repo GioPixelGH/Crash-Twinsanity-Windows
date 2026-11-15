@@ -1,6 +1,7 @@
 // The game options of 1.2.0: see gameoptions.h
 #include "gameoptions.h"
 
+#include "game/clock.h"
 #include "ui/nativeui.h"
 
 // Infinite lives
@@ -31,6 +32,29 @@ u32 NativeGame::SlideJump()
 u32 NativeGame::DoubleJump()
 {
     return static_cast<u32>(NativeUi::GetOption(NativeUi::OptionDoubleJump));
+}
+
+// Three masks' touch: the option, and the character the mask last said was invincible, until when
+bool NativeGame::MaskTouch()
+{
+    return NativeUi::IsOn(NativeUi::OptionMaskTouch);
+}
+
+namespace
+{
+const void* g_MaskTouchCharacter = nullptr;
+u32 g_MaskTouchUntil = 0;
+}
+
+void NativeGame::SetMaskTouching(const void* character)
+{
+    g_MaskTouchCharacter = character;
+    g_MaskTouchUntil = g_GlobalClock.time + static_cast<u32>(MaskTouchSeconds * g_ClockUnitsPerSecond);
+}
+
+bool NativeGame::MaskTouching(const void* character)
+{
+    return character != nullptr && character == g_MaskTouchCharacter && static_cast<s32>(g_MaskTouchUntil - g_GlobalClock.time) >= 0;
 }
 
 namespace

@@ -279,6 +279,15 @@ have made itself (`src/platform/native/gameoptions.h`):
   takes the played character's mask as any hit does (one hit point: hit points are 1 + the masks) instead of dealing 100, and
   the invincibility of three masks or the blink after a hit keeps explosions out (`CharacterAgent::Contact`; the bug fixes'
   community change does that last part for everyone). Not under the bug fixes: the original game means explosions to kill.
+- Three masks' touch (`mask_touch`, THE LIST 54, #18: NormanTheFox asked that the invincibility break crates and beat enemies
+  as in the earlier games): while three masks make the played character invincible, whatever it touches is hit as by its spin
+  (`CharacterAgent::ContactAttack` gives the spin's attack kind, as when it touches something spinning: a crate's, a
+  creature's or a pickup's own script answers it, so crates broken this way count as any, and a save stays one the game could
+  make). The mask's controller tells it each frame it's invincible on the player and the game isn't watched
+  (`MaskController::Frame` through `NativeGame::SetMaskTouching`, good for a tenth of a second); explosions still go as they
+  did (the stronger mask or the bug fixes keep them out). `$TWIN_MASK_TRACE` logs each touch it makes a spin. Checked on the
+  beach with four masks (`$TWIN_HOP`'s `mask` step) and the hop's `fly` through a crate and through the crabs: at 0 the crate
+  stays whole and nothing is hit; at 1 the crate gives its contents and the crabs take spin attacks.
 - The automatic camera (`auto_camera`): in `FollowCameraRig::Frame` (`followrig.cpp`) the look axes' yaw and pitch input are
   zero whatever the stick, the mouse or the camera keys give (the zoom stays), they count as let go for the "camera still"
   test, and while the character moves the yaw's swing behind it runs as the shoulders' press has it (`yaw.rateScale` 1: the

@@ -733,6 +733,8 @@ const NativeTextLine g_NativeTexts[] = {
     {TextDoubleJump, {"double jump", "double saut", "doppelsprung", "doble salto", "doppio salto"}},
     {TextDescDoubleJump, {"also later in the fall (weaker the later) or at any moment of it, and after a slide jump.", "aussi plus tard dans la chute (plus faible) ou à tout moment, et après un saut glissé.", "auch später im fallen (schwächer) oder jederzeit, und nach einem rutschsprung.", "también más tarde en la caída (más débil) o en cualquier momento, y tras un salto deslizante.", "anche più tardi nella caduta (più debole) o in qualunque momento, e dopo un salto in scivolata."}},
     {TextDoubleJumpLater, {"later", "plus tard", "später", "más tarde", "più tardi"}},
+    {TextMaskTouch, {"three masks' touch", "toucher à trois masques", "berührung mit drei masken", "toque con tres máscaras", "tocco con tre maschere"}},
+    {TextDescMaskTouch, {"with three masks, what you touch is hit as by a spin: crates break, enemies are beaten.", "avec trois masques, ce que tu touches est frappé comme par la toupie : caisses, ennemis.", "mit drei masken trifft jede berührung wie drehen: kisten brechen, gegner fallen.", "con tres máscaras, lo que tocas recibe un giro: las cajas se rompen, los enemigos caen.", "con tre maschere, ciò che tocchi è colpito come girando: casse rotte, nemici battuti."}},
 };
 const u32 g_NativeTextCount = sizeof(g_NativeTexts) / sizeof(g_NativeTexts[0]);
 const char* const g_TextLanguages[TextLanguages] = {"English", "French", "German", "Spanish", "Italian"};

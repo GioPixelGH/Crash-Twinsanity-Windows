@@ -56,6 +56,18 @@ constexpr f32 DoubleJumpLaterSeconds = 1.0f;
 u32 DoubleJump();
 }
 
+// Three masks' touch (mask_touch, THE LIST 54, #18): while three masks make the played character invincible, what it touches is
+// hit as by its spin (characterstate.cpp's CharacterAgent::ContactAttack): crates break and enemies are beaten as a spin does it,
+// by their own scripts, so a save stays one the game could make. The mask's controller says so each frame it's invincible on the
+// player (nodecontrollers.cpp's MaskController::Frame), for MaskTouchSeconds of the global clock
+namespace NativeGame
+{
+constexpr f32 MaskTouchSeconds = 0.1f;
+bool MaskTouch();
+void SetMaskTouching(const void* character);
+bool MaskTouching(const void* character);
+}
+
 // The drop shadow (drop_shadow, #11, #35): a round shadow on the ground under the played character while it's off the ground,
 // as Crash 4's (shadows.cpp's CastDropShadow: drawn as the game's shadows are); 0 off, 1 on, 2 with a yellow ring around it on the
 // ground (THE LIST 52, #11: the shadow alone hardly shows on dark ground; renderer/shadows.cpp's OutlineDropShadow)

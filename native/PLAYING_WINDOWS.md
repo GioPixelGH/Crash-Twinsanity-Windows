@@ -141,6 +141,8 @@ game could make.
 - **Bug fixes**: optional fixes of the original game's bugs. Off plays exactly like the PS2.
 - **Infinite lives**: dying costs no life.
 - **Stronger Aku Aku**: with one or two masks, TNT and Nitro take a mask instead of a life, as in the earlier Crash games.
+- **Three masks' touch**: while three masks make you invincible, what you touch is hit as if you spun. Crates break and
+  enemies are beaten.
 - **Slide jump**: the long jump from a slide at any moment of it. Or easier: also just after the slide, and steered in the
   air.
 - **Double jump**: later in a fall, or at any moment of it, and after a slide jump too. Later ones are weaker; at any moment

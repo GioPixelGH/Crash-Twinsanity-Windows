@@ -354,6 +354,9 @@ enum NativeText : u32
     TextDoubleJump,
     TextDescDoubleJump,
     TextDoubleJumpLater,
+    // Three masks' touch (THE LIST 54, #18)
+    TextMaskTouch,
+    TextDescMaskTouch,
     NativeTextEnd,
 };
 
@@ -528,6 +531,8 @@ enum Option : u32
     OptionMaskShadow,
     // The double jump (THE LIST 53, #47): original, later, any moment
     OptionDoubleJump,
+    // Three masks' touch (THE LIST 54, #18): what the invincible character touches hit as by a spin
+    OptionMaskTouch,
     OptionCount,
 };
 

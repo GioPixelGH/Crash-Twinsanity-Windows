@@ -28,6 +28,7 @@
 #include "game/objects.h"
 #include "game/shadows.h"
 #include "fixes.h"
+#include "gameoptions.h"
 #include "native.h"
 
 #include <cstdlib>
@@ -599,6 +600,12 @@ void MaskController::Frame(TimeClock*)
     if (!flags.hidden && (state == StateArriving || state == StateGotMask || state == StateGotBoostedMask || state == StateLeaving))
     {
         CastMaskShadow(node->owner);
+    }
+
+    // Three masks' touch (THE LIST 54, #18): the played character invincible with it, as its touches are told (characterstate.cpp)
+    if (state == StateInvincible && character == PlayerInstance() && !GameWatched())
+    {
+        NativeGame::SetMaskTouching(character);
     }
 #endif
 }
