@@ -30,7 +30,7 @@
 
 #include "hwgs.h"
 
-#include "gl.h"
+#include "gpu.h"
 #include "replace.h"
 
 #define XXH_INLINE_ALL
@@ -233,8 +233,8 @@ struct Target
     bool aligned = false;
     u32 pageWidthShift = 6;
     u32 pageHeightShift = 5;
-    GLuint texture = 0;
-    GLuint fbo = 0;
+    u32 texture = 0;
+    u32 fbo = 0;
     // Whether GL could make its framebuffer whole (HAB3X's 148af1e): not when its size at the scale is nothing, past the GPU's
     // biggest texture or past the draws' viewport (see TargetFor), or GL had no memory for it. A draw into an incomplete
     // framebuffer is a GL error (macOS's GL aborts on it): such a target's draws are the software GS's, and it's never shown or
@@ -249,7 +249,7 @@ struct Target
     // 2800/4 where bossarea's sky had been drawn, read from it at its scale were blocks of 3x3 replicated texels)
     Gs::PageSet drawn;
     // A colour target's float buffer of wrapping sums not yet added to it (resolve), its framebuffers by depth-stencil buffer
-    GLuint accum = 0;
+    u32 accum = 0;
     bool accumPending = false;
     // A colour target's alpha changes (a batch that can write it, an upload): a stencil made from it is good while it's the same
     u64 alphaVersion = 0;
@@ -262,21 +262,6 @@ struct Target
     // Each page's pixels (y << 11 | x) and their bounding rectangle
     std::vector<std::vector<u32>> pixels;
     std::vector<Rect> rects;
-};
-
-struct HwVertex
-{
-    f32 x;
-    f32 y;
-    u32 z;
-    u8 r;
-    u8 g;
-    u8 b;
-    u8 a;
-    f32 s;
-    f32 t;
-    f32 q;
-    f32 fog;
 };
 
 // A primitive's pages when it has few (most have one or two): EnsureValid's and MarkDrawn's tests made a page at a time, the
@@ -292,7 +277,7 @@ struct BatchKey
 {
     Target* colour;
     Target* depth;
-    GLuint texture;
+    u32 texture;
     u32 primitive;
     u32 program;
     u32 minFilter;
@@ -1083,54 +1068,52 @@ void main()
 
 struct Program
 {
-    GLuint id = 0;
+    u32 id = 0;
     // Made at the start (WarmPrograms) and not drawn with yet: its compile and link asked for, its status and uniforms not, its
     // shaders kept for their messages
     bool pending = false;
-    GLuint vertex = 0;
-    GLuint fragment = 0;
-    GLint viewSize;
-    GLint viewOrigin;
-    GLint depthCopy;
-    GLint nativeZtst;
-    GLint targetScale;
-    GLint zMax;
-    GLint zMaxU;
-    GLint depthReverse;
-    GLint pointSize;
-    GLint tex;
-    GLint texSize;
-    GLint texActual;
-    GLint texSnap;
-    GLint aref;
-    GLint fogColour;
-    GLint ta0;
-    GLint ta1;
-    GLint aem;
-    GLint lodK;
-    GLint lodL;
-    GLint lodMax;
-    GLint lodBias;
-    GLint dimx;
-    GLint scale;
-    GLint destination;
-    GLint blendOn;
-    GLint blendA;
-    GLint blendB;
-    GLint blendC;
-    GLint blendD;
-    GLint blendFix;
-    GLint pabe;
-    GLint colclamp;
-    GLint datm;
-    GLint frameMask;
-    GLint clut;
-    GLint clutOffset;
+    s32 viewSize;
+    s32 viewOrigin;
+    s32 depthCopy;
+    s32 nativeZtst;
+    s32 targetScale;
+    s32 zMax;
+    s32 zMaxU;
+    s32 depthReverse;
+    s32 pointSize;
+    s32 tex;
+    s32 texSize;
+    s32 texActual;
+    s32 texSnap;
+    s32 aref;
+    s32 fogColour;
+    s32 ta0;
+    s32 ta1;
+    s32 aem;
+    s32 lodK;
+    s32 lodL;
+    s32 lodMax;
+    s32 lodBias;
+    s32 dimx;
+    s32 scale;
+    s32 destination;
+    s32 blendOn;
+    s32 blendA;
+    s32 blendB;
+    s32 blendC;
+    s32 blendD;
+    s32 blendFix;
+    s32 pabe;
+    s32 colclamp;
+    s32 datm;
+    s32 frameMask;
+    s32 clut;
+    s32 clutOffset;
 };
 
 struct CachedTexture
 {
-    GLuint id = 0;
+    u32 id = 0;
     u32 width = 0;
     u32 height = 0;
     u32 levels = 0;
@@ -1140,7 +1123,7 @@ struct CachedTexture
     std::vector<u8> tiles;
     // The replacement (a pack's texture) looked for at level 0's version: its texture (0: none), whether it has mipmaps
     u32 replacementVersion = ~0u;
-    GLuint replacement = 0;
+    u32 replacement = 0;
     bool replacementMipmaps = false;
     bool dumped = false;
 };
@@ -1185,7 +1168,7 @@ struct GpuTextureKeyHash
 
 struct GpuTexture
 {
-    GLuint id = 0;
+    u32 id = 0;
     struct Level
     {
         u32 width;
@@ -1204,9 +1187,9 @@ struct GpuTexture
     // is still good
     u32 oldestTile = 0;
     // A replacement (a pack's texture) looked for when the texture was last decoded whole from the CPU's data; 0: none
-    GLuint replacement = 0;
+    u32 replacement = 0;
     // The texture drawn with (its own, its replacement, or a decode of the same content made for another place)
-    GLuint shown = 0;
+    u32 shown = 0;
     // Shown from the content cache: good while every page is older than this and no target holds a newer copy (0: not)
     u32 contentEpoch = 0;
     std::vector<u16> pageList;
@@ -1216,50 +1199,16 @@ struct GpuTexture
 // hash of its GS blocks, format, size, CLUT and TEXA
 struct ContentTexture
 {
-    GLuint id = 0;
-    GLuint replacement = 0;
+    u32 id = 0;
+    u32 replacement = 0;
 };
 
-GLuint CompileShader(GLenum kind, const std::string& source)
+// A program of the renderer's own passes, made at once (one that fails stops the program: the sources are ours)
+u32 MakeProgram(Gpu& gpu, const char* vertex, const std::string& fragment, bool dualSource)
 {
-    Gl& gl = GetGl();
-    GLuint shader = gl.CreateShader(kind);
-    const char* text = source.c_str();
-    gl.ShaderSource(shader, 1, &text, nullptr);
-    gl.CompileShader(shader);
-    GLint ok = 0;
-    gl.GetShaderiv(shader, GL_COMPILE_STATUS, &ok);
-    if (!ok)
+    u32 program = gpu.StartProgram(vertex, fragment, dualSource);
+    if (!gpu.FinishProgram(program))
     {
-        char log[2048];
-        gl.GetShaderInfoLog(shader, sizeof(log), nullptr, log);
-        std::fprintf(stderr, "graphics: hardware shader: %s\n", log);
-        std::abort();
-    }
-
-    return shader;
-}
-
-GLuint LinkProgram(GLuint vertex, GLuint fragment, bool dualSource)
-{
-    Gl& gl = GetGl();
-    GLuint program = gl.CreateProgram();
-    gl.AttachShader(program, vertex);
-    gl.AttachShader(program, fragment);
-    if (dualSource)
-    {
-        gl.BindFragDataLocationIndexed(program, 0, 0, "outColour");
-        gl.BindFragDataLocationIndexed(program, 0, 1, "outFactor");
-    }
-
-    gl.LinkProgram(program);
-    GLint linked = 0;
-    gl.GetProgramiv(program, GL_LINK_STATUS, &linked);
-    if (!linked)
-    {
-        char log[2048];
-        gl.GetProgramInfoLog(program, sizeof(log), nullptr, log);
-        std::fprintf(stderr, "graphics: hardware program: %s\n", log);
         std::abort();
     }
 
@@ -1294,10 +1243,11 @@ public:
     u32 scale() const { return scale_; }
     bool DisplayTexture(NativeGraphics::DisplayTexture* display, Target** shown, Rect* rect);
     bool ReadDisplay(Gs::DisplayImage& image);
-    bool CopyDisplay(u32 slot, GLsync drawn, NativeGraphics::ShownTexture* shown);
+    bool CopyDisplay(u32 slot, void* drawn, NativeGraphics::ShownTexture* shown);
     void MakeCurrent();
 
     HardwareStats stats = {};
+    Hw::Gpu& gpu() { return gpu_; }
 
 private:
     Target* TargetFor(u32 bp, u32 bw, u32 psm, u32 height, bool frame = false);
@@ -1324,14 +1274,17 @@ public:
     u32 WarmPrograms(const std::vector<u32>& list);
 
 private:
-    GLuint FramebufferFor(Target* colour, Target* depth);
-    GLuint CopyOf(Target* target);
-    GLuint CopyTarget(Target* target, const Rect* region = nullptr);
+    u32 FramebufferFor(Target* colour, Target* depth);
+    u32 CopyOf(Target* target);
+    u32 CopyTarget(Target* target, const Rect* region = nullptr);
     Target* ScratchStencil(Target* colour);
-    void Staging(u32 width, u32 height, bool depth, GLuint* texture, GLuint* fbo);
+    void Staging(u32 width, u32 height, bool depth, u32* texture, u32* fbo);
 
     Gs::Gs& gs_;
     u32 scale_;
+    // The graphics card's API (THE LIST 70: OpenGL's, glreplay.cpp) and the commands recorded for it
+    std::unique_ptr<Hw::Backend> backend_;
+    Hw::Gpu gpu_;
     // The draw making a depth target has its depth in the top half (the target is made reversed)
     bool nextDepthHigh_ = false;
     bool nativeSmall_ = std::getenv("TWIN_HW_NATIVE_SMALL") == nullptr || std::getenv("TWIN_HW_NATIVE_SMALL")[0] != '0';
@@ -1355,21 +1308,18 @@ private:
         }
     };
     std::unordered_map<std::tuple<u32, u32, u32, u32, u32>, Gs::PageSet, LevelKeyHash> levelPages_;
-    std::map<std::pair<Target*, Target*>, GLuint> framebuffers_;
+    std::map<std::pair<Target*, Target*>, u32> framebuffers_;
     std::unordered_map<u32, Program> programs_;
     std::unordered_map<const void*, CachedTexture> textures_;
-    GLuint vertexArray_ = 0;
-    GLuint vertexBuffer_ = 0;
-    GLuint depthProgram_ = 0;
-    GLuint mergeProgram_ = 0;
-    GLuint mergeTexture_ = 0;
-    GLuint mergeFbo_ = 0;
+    u32 depthProgram_ = 0;
+    u32 mergeProgram_ = 0;
+    u32 mergeTexture_ = 0;
+    u32 mergeFbo_ = 0;
     u32 mergeWidth_ = 0;
     u32 mergeHeight_ = 0;
-    GLuint emptyArray_ = 0;
     // Staging textures by size and kind (1x), and the copy of a target sampled while it's drawn into
-    std::map<std::tuple<u32, u32, bool>, std::pair<GLuint, GLuint>> staging_;
-    std::map<std::tuple<u32, u32>, std::pair<GLuint, GLuint>> copies_;
+    std::map<std::tuple<u32, u32, bool>, std::pair<u32, u32>> staging_;
+    std::map<std::tuple<u32, u32>, std::pair<u32, u32>> copies_;
     BatchKey key_ = {};
     bool batching_ = false;
     // The last primitive drawn the whole way, for the next to be drawn the same way while nothing it depended on has changed:
@@ -1387,38 +1337,39 @@ private:
         Target* colour = nullptr;
         Target* depth = nullptr;
         const GpuTexture* texture = nullptr;
-        GLuint textureId = 0;
+        u32 textureId = 0;
         bool shaderBlend = false;
     } last_;
     // Counts the targets made and destroyed
     u64 targetsVersion_ = 0;
-    std::vector<HwVertex> vertexes_;
+    // The batch's vertexes: the list's after its batchStart (gpu.h)
+    size_t BatchVertexes() { return gpu_.list().vertexes.size() - gpu_.list().batchStart; }
+    void DropBatch() { gpu_.list().vertexes.resize(gpu_.list().batchStart); }
     // A batch blended by the shader: its primitives' rectangles (one overlapping an earlier one starts a new batch, as the
     // destination copy is from before the batch)
     std::vector<Rect> batchRects_;
     // Stencil buffers for the destination alpha test of draws without a depth buffer, by colour target
     std::map<Target*, std::unique_ptr<Target>> scratchStencils_;
-    GLuint dateProgram_ = 0;
+    u32 dateProgram_ = 0;
     // GS local memory on the GPU, the layouts' tables (32, 16, 16S, 8, 4 bit), the passes between it and the targets
-    GLuint memTexture_ = 0;
+    u32 memTexture_ = 0;
     // The buffer CPU writes go to memory's copy through (the GPU copies from it: no wait for the texture's earlier use)
-    GLuint uploadBuffer_ = 0;
-    GLuint memFbo_ = 0;
-    GLuint fwdTables_[5] = {};
-    GLuint invTables_[5] = {};
-    GLuint memFromTargetProgram_ = 0;
-    GLuint copyColourProgram_ = 0;
-    GLuint copyWordProgram_ = 0;
+    u32 memFbo_ = 0;
+    u32 fwdTables_[5] = {};
+    u32 invTables_[5] = {};
+    u32 memFromTargetProgram_ = 0;
+    u32 copyColourProgram_ = 0;
+    u32 copyWordProgram_ = 0;
     // A rectangle of a texture copied into the framebuffer bound (its size given) at the same places
-    void CopyRect(GLuint program, GLuint source, f32 viewWidth, f32 viewHeight, s32 x0, s32 y0, s32 x1, s32 y1);
-    GLuint targetFromMemProgram_ = 0;
+    void CopyRect(u32 program, u32 source, f32 viewWidth, f32 viewHeight, s32 x0, s32 y0, s32 x1, s32 y1);
+    u32 targetFromMemProgram_ = 0;
     // Each page's state: memory's copy out of date, local memory's (the CPU's) out of date, the shadow of what memory's copy
     // holds good (for re-uploads of the same bytes), and when its content last changed
     Gs::PageSet memStale_;
     // Pages whose content memory's copy has from a target at a higher scale than 1 (read back at the PS2's resolution)
     Gs::PageSet scaledPages_;
     // A depth target's copy as floats (the shader's native depth test reads it), by size
-    std::map<std::pair<u32, u32>, std::pair<GLuint, GLuint>> depthCopies_;
+    std::map<std::pair<u32, u32>, std::pair<u32, u32>> depthCopies_;
     Gs::PageSet cpuStale_;
     Gs::PageSet shadowGood_;
     std::vector<u8> shadow_;
@@ -1433,8 +1384,8 @@ private:
     GpuTexture* lastTexture_ = nullptr;
     u64 lastTextureGeneration_ = 0;
     u32 lastTextureClut_ = 0;
-    GLuint decodeProgram_ = 0;
-    GLuint decodeFbo_ = 0;
+    u32 decodeProgram_ = 0;
+    u32 decodeFbo_ = 0;
     // TWIN_HW_STATS: the render passes begun (a draw into another framebuffer or attachment than the last), by cause
     u64 passIdentity_ = 0;
     std::map<std::string, u64> passCounts_;
@@ -1472,7 +1423,7 @@ private:
     void Pass(u64 identity, const char* cause)
     {
         // (The card's time by pass: gputime.h)
-        NativeGraphics::GpuTimeLabel(cause);
+        gpu_.Label(cause);
         static const bool counting = std::getenv("TWIN_HW_STATS") != nullptr;
         if (counting && identity != passIdentity_)
         {
@@ -1481,10 +1432,10 @@ private:
 
         passIdentity_ = identity;
     }
-    GLuint clutTexture_ = 0;
+    u32 clutTexture_ = 0;
     u32 clutUploaded_ = 0;
     // The CLUT's texture, uploaded when it changed
-    GLuint CurrentClut();
+    u32 CurrentClut();
     // The game's colour filter at the scale (DepthIndexColour): the pages its copies of the depth buffer wrote and nothing else
     // wrote since, the depth target they're the copy of, and whether the draw being added is such a copy
     Gs::PageSet depthCopyPages_;
@@ -1493,41 +1444,38 @@ private:
     // Rings of textures written by the CPU (a texture the GPU may still read is never changed: the driver would wait for it):
     // CLUTs, and staging for memory's pages (copied into memory's copy on the GPU)
     static constexpr u32 ClutRing = 64;
-    GLuint clutRing_[ClutRing] = {};
+    u32 clutRing_[ClutRing] = {};
     u32 clutNext_ = 0;
     static constexpr u32 StagingRing = 8;
-    GLuint memStaging_[StagingRing] = {};
-    GLuint stagingFbo_[StagingRing] = {};
+    u32 memStaging_[StagingRing] = {};
+    u32 stagingFbo_[StagingRing] = {};
     u32 stagingNext_ = 0;
     // Replacement images' textures, made once each
-    std::map<NativeGraphics::ReplacementKey, GLuint> replacementTextures_;
-    GLuint DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 right, s32 bottom);
-    void DecodePasses(const Gs::Gs::DrawState& state, GLuint texture, const Rect* rects, u32 levels);
+    std::map<NativeGraphics::ReplacementKey, u32> replacementTextures_;
+    u32 DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 right, s32 bottom);
+    void DecodePasses(const Gs::Gs::DrawState& state, u32 texture, const Rect* rects, u32 levels);
     u64 ContentHash(const Gs::Gs::DrawState& state);
-    GLuint MakeLevels(const Gs::Gs::DrawState& state);
+    u32 MakeLevels(const Gs::Gs::DrawState& state);
     std::unordered_map<u64, ContentTexture> contents_;
     void SyncMem(const Gs::PageSet& pages);
     void SyncCpu(const Gs::PageSet& pages);
     void MemFromTarget(Target* target, const Gs::PageSet& pages);
     void TargetFromMem(Target* target, const Gs::PageSet& pages);
-    void UseLayout(GLuint program, u32 psm, u32 bp, u32 bw, u32 pagesDown);
-    GLuint resolveProgram_ = 0;
-    std::map<std::pair<Target*, Target*>, GLuint> accumFramebuffers_;
+    void UseLayout(u32 program, u32 psm, u32 bp, u32 bw, u32 pagesDown);
+    u32 resolveProgram_ = 0;
+    std::map<std::pair<Target*, Target*>, u32> accumFramebuffers_;
     void Resolve(Target* target);
-    GLuint AccumFramebufferFor(Target* colour, Target* depth);
+    u32 AccumFramebufferFor(Target* colour, Target* depth);
     const char* downloadReason_ = "";
     std::vector<u8> readback_;
     std::vector<u32> upload_;
     std::vector<f32> uploadDepth_;
     std::map<std::string, bool> reported_;
-    SDL_Window* ownWindow_ = nullptr;
-    SDL_GLContext context_ = nullptr;
-    SDL_Window* window_ = nullptr;
     // The shown picture's copies for the render thread's hand-over
     struct ShownCopy
     {
-        GLuint texture = 0;
-        GLuint fbo = 0;
+        u32 texture = 0;
+        u32 fbo = 0;
         u32 width = 0;
         u32 height = 0;
     };
@@ -1538,8 +1486,8 @@ HwGs* g_Hw = nullptr;
 // Whether g_Hw is there, for the other threads (the UI's settings)
 std::atomic<bool> g_HwActive{false};
 // The draws' viewport (see Flush)
-constexpr GLint BigViewSize = 16384;
-constexpr GLint BigViewOrigin = 4096;
+constexpr s32 BigViewSize = 16384;
+constexpr s32 BigViewOrigin = 4096;
 // Where a vertex goes past x / 16 * scale + 0.5, in pixels (TWIN_HW_VERTEX_OFFSET, 256ths)
 // The hook told of each program made while drawing (StartHardwareRenderer's caller's: the next start makes it first)
 void (*g_ProgramMade)(u32 sourceHash, u32 bits) = nullptr;
@@ -1563,19 +1511,7 @@ int g_Anisotropy = 1;
 int AnisotropyMost()
 {
     static const int most = [] {
-        GLfloat value = 0.0f;
-        auto getFloat = reinterpret_cast<void (*)(GLenum, GLfloat*)>(SDL_GL_GetProcAddress("glGetFloatv"));
-        Gl& gl = GetGl();
-        while (gl.GetError() != GL_NO_ERROR)
-        {
-        }
-
-        if (getFloat != nullptr)
-        {
-            getFloat(0x84FF, &value);
-        }
-
-        const int found = gl.GetError() == GL_NO_ERROR && value >= 1.0f ? static_cast<int>(value) : 1;
+        const int found = g_Hw != nullptr ? g_Hw->gpu().backend().MaxAnisotropy() : 1;
         std::fprintf(stderr, "graphics: anisotropic filtering up to %dx on this card\n", found);
         return found;
     }();
@@ -1589,82 +1525,27 @@ HwGs::~HwGs()
 
 void HwGs::MakeCurrent()
 {
-    if (SDL_GL_GetCurrentContext() != context_)
-    {
-        SDL_GL_MakeCurrent(window_, context_);
-        // (Its state may not be as this thread last set it: gl.h)
-        ForgetGlState();
-    }
+    backend_->MakeCurrent();
 }
 
 bool HwGs::Init()
 {
     // The render thread's context, or the window's (one thread: the window's code draws in it too), or one of its own
-    const bool rendering = RenderContext(&window_, &context_);
-    const bool shared = !rendering && PresenterContext(&window_, &context_);
-    if (!rendering && !shared)
-    {
-        // No window: one of its own, hidden
-        if (!SDL_WasInit(SDL_INIT_VIDEO) && !SDL_InitSubSystem(SDL_INIT_VIDEO))
-        {
-            std::fprintf(stderr, "graphics: hardware renderer: no video: %s\n", SDL_GetError());
-            return false;
-        }
-
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-        ownWindow_ = SDL_CreateWindow("graphics", 64, 64, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
-        if (ownWindow_ == nullptr)
-        {
-            std::fprintf(stderr, "graphics: hardware renderer: no window: %s\n", SDL_GetError());
-            return false;
-        }
-
-        context_ = SDL_GL_CreateContext(ownWindow_);
-        if (context_ == nullptr)
-        {
-            std::fprintf(stderr, "graphics: hardware renderer: no OpenGL 3.3: %s\n", SDL_GetError());
-            return false;
-        }
-
-        window_ = ownWindow_;
-    }
-
-    MakeCurrent();
-    if (!LoadGl())
+    SDL_Window* window = nullptr;
+    SDL_GLContext context = nullptr;
+    const bool rendering = RenderContext(&window, &context);
+    const bool shared = !rendering && PresenterContext(&window, &context);
+    backend_.reset(Hw::StartGlBackend(rendering || shared ? window : nullptr, rendering || shared ? context : nullptr, shared));
+    if (backend_ == nullptr)
     {
         return false;
     }
 
-    // The calls that would change nothing left out (THE LIST 69): the context's state only where the context is ours alone
-    CacheGlState(!shared);
-    Gl& gl = GetGl();
-    gl.GenVertexArrays(1, &vertexArray_);
-    gl.GenBuffers(1, &vertexBuffer_);
-    gl.BindVertexArray(vertexArray_);
-    gl.BindBuffer(GL_ARRAY_BUFFER, vertexBuffer_);
-    gl.VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(HwVertex), reinterpret_cast<void*>(offsetof(HwVertex, x)));
-    gl.VertexAttribIPointer(1, 1, GL_UNSIGNED_INT, sizeof(HwVertex), reinterpret_cast<void*>(offsetof(HwVertex, z)));
-    gl.VertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_FALSE, sizeof(HwVertex), reinterpret_cast<void*>(offsetof(HwVertex, r)));
-    gl.VertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(HwVertex), reinterpret_cast<void*>(offsetof(HwVertex, s)));
-    gl.VertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(HwVertex), reinterpret_cast<void*>(offsetof(HwVertex, fog)));
-    for (GLuint i = 0; i < 5; i++)
-    {
-        gl.EnableVertexAttribArray(i);
-    }
-
-    gl.GenVertexArrays(1, &emptyArray_);
-    GLuint vertex = CompileShader(GL_VERTEX_SHADER, DepthVertexSource);
-    GLuint fragment = CompileShader(GL_FRAGMENT_SHADER, DepthFragmentSource);
-    depthProgram_ = LinkProgram(vertex, fragment, false);
-    resolveProgram_ = LinkProgram(CompileShader(GL_VERTEX_SHADER, MergeVertexSource), CompileShader(GL_FRAGMENT_SHADER, ResolveFragmentSource),
-                                  false);
-    dateProgram_ = LinkProgram(CompileShader(GL_VERTEX_SHADER, MergeVertexSource), CompileShader(GL_FRAGMENT_SHADER, DateFragmentSource),
-                               false);
-    mergeProgram_ = LinkProgram(CompileShader(GL_VERTEX_SHADER, MergeVertexSource), CompileShader(GL_FRAGMENT_SHADER, MergeFragmentSource),
-                                false);
+    gpu_.Start(backend_.get());
+    depthProgram_ = MakeProgram(gpu_, DepthVertexSource, DepthFragmentSource, false);
+    resolveProgram_ = MakeProgram(gpu_, MergeVertexSource, ResolveFragmentSource, false);
+    dateProgram_ = MakeProgram(gpu_, MergeVertexSource, DateFragmentSource, false);
+    mergeProgram_ = MakeProgram(gpu_, MergeVertexSource, MergeFragmentSource, false);
     InitMemory();
     gs_.SetBackend(this);
     return true;
@@ -1724,104 +1605,65 @@ u32 ProgramSourceHash()
 
 Program HwGs::StartProgram(u32 bits)
 {
-    const std::string header = ProgramDefines(bits);
-    Gl& gl = GetGl();
     Program p;
-    p.vertex = gl.CreateShader(GL_VERTEX_SHADER);
-    const char* vertexText = VertexSource;
-    gl.ShaderSource(p.vertex, 1, &vertexText, nullptr);
-    gl.CompileShader(p.vertex);
-    p.fragment = gl.CreateShader(GL_FRAGMENT_SHADER);
-    const std::string fragmentSource = header + FragmentSource;
-    const char* fragmentText = fragmentSource.c_str();
-    gl.ShaderSource(p.fragment, 1, &fragmentText, nullptr);
-    gl.CompileShader(p.fragment);
-    p.id = gl.CreateProgram();
-    gl.AttachShader(p.id, p.vertex);
-    gl.AttachShader(p.id, p.fragment);
-    gl.BindFragDataLocationIndexed(p.id, 0, 0, "outColour");
-    gl.BindFragDataLocationIndexed(p.id, 0, 1, "outFactor");
-    gl.LinkProgram(p.id);
+    p.id = gpu_.StartProgram(VertexSource, ProgramDefines(bits) + FragmentSource, true);
     p.pending = true;
     return p;
 }
 
 bool HwGs::FinishProgram(Program& p)
 {
-    Gl& gl = GetGl();
-    GLint linked = 0;
-    gl.GetProgramiv(p.id, GL_LINK_STATUS, &linked);
-    if (!linked)
+    Gpu& gpu = gpu_;
+    if (!gpu.FinishProgram(p.id))
     {
-        char log[2048];
-        for (GLuint shader : {p.vertex, p.fragment})
-        {
-            GLint compiled = 0;
-            gl.GetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
-            if (!compiled)
-            {
-                gl.GetShaderInfoLog(shader, sizeof(log), nullptr, log);
-                std::fprintf(stderr, "graphics: hardware shader: %s\n", log);
-            }
-        }
-
-        gl.GetProgramInfoLog(p.id, sizeof(log), nullptr, log);
-        std::fprintf(stderr, "graphics: hardware program: %s\n", log);
         return false;
     }
 
-    gl.DeleteShader(p.vertex);
-    gl.DeleteShader(p.fragment);
-    p.vertex = 0;
-    p.fragment = 0;
-    p.viewSize = gl.GetUniformLocation(p.id, "viewSize");
-    p.viewOrigin = gl.GetUniformLocation(p.id, "viewOrigin");
-    p.depthCopy = gl.GetUniformLocation(p.id, "depthCopy");
-    p.nativeZtst = gl.GetUniformLocation(p.id, "nativeZtst");
-    p.targetScale = gl.GetUniformLocation(p.id, "targetScale");
-    p.zMax = gl.GetUniformLocation(p.id, "zMax");
-    p.zMaxU = gl.GetUniformLocation(p.id, "zMaxU");
-    p.depthReverse = gl.GetUniformLocation(p.id, "depthReverse");
-    p.pointSize = gl.GetUniformLocation(p.id, "pointSize");
-    p.tex = gl.GetUniformLocation(p.id, "tex");
-    p.texSize = gl.GetUniformLocation(p.id, "texSize");
-    p.texActual = gl.GetUniformLocation(p.id, "texActual");
-    p.texSnap = gl.GetUniformLocation(p.id, "texSnap");
-    p.aref = gl.GetUniformLocation(p.id, "aref");
-    p.fogColour = gl.GetUniformLocation(p.id, "fogColour");
-    p.ta0 = gl.GetUniformLocation(p.id, "ta0");
-    p.ta1 = gl.GetUniformLocation(p.id, "ta1");
-    p.aem = gl.GetUniformLocation(p.id, "aem");
-    p.lodK = gl.GetUniformLocation(p.id, "lodK");
-    p.lodL = gl.GetUniformLocation(p.id, "lodL");
-    p.lodMax = gl.GetUniformLocation(p.id, "lodMax");
-    p.lodBias = gl.GetUniformLocation(p.id, "lodBias");
-    p.dimx = gl.GetUniformLocation(p.id, "dimx");
-    p.scale = gl.GetUniformLocation(p.id, "scale");
-    p.destination = gl.GetUniformLocation(p.id, "destination");
-    p.blendOn = gl.GetUniformLocation(p.id, "blendOn");
-    p.blendA = gl.GetUniformLocation(p.id, "blendA");
-    p.blendB = gl.GetUniformLocation(p.id, "blendB");
-    p.blendC = gl.GetUniformLocation(p.id, "blendC");
-    p.blendD = gl.GetUniformLocation(p.id, "blendD");
-    p.blendFix = gl.GetUniformLocation(p.id, "blendFix");
-    p.pabe = gl.GetUniformLocation(p.id, "pabe");
-    p.colclamp = gl.GetUniformLocation(p.id, "colclamp");
-    p.datm = gl.GetUniformLocation(p.id, "datm");
-    p.frameMask = gl.GetUniformLocation(p.id, "frameMask");
-    p.clut = gl.GetUniformLocation(p.id, "clut");
-    p.clutOffset = gl.GetUniformLocation(p.id, "clutOffset");
+    p.viewSize = gpu.UniformLocation(p.id, "viewSize");
+    p.viewOrigin = gpu.UniformLocation(p.id, "viewOrigin");
+    p.depthCopy = gpu.UniformLocation(p.id, "depthCopy");
+    p.nativeZtst = gpu.UniformLocation(p.id, "nativeZtst");
+    p.targetScale = gpu.UniformLocation(p.id, "targetScale");
+    p.zMax = gpu.UniformLocation(p.id, "zMax");
+    p.zMaxU = gpu.UniformLocation(p.id, "zMaxU");
+    p.depthReverse = gpu.UniformLocation(p.id, "depthReverse");
+    p.pointSize = gpu.UniformLocation(p.id, "pointSize");
+    p.tex = gpu.UniformLocation(p.id, "tex");
+    p.texSize = gpu.UniformLocation(p.id, "texSize");
+    p.texActual = gpu.UniformLocation(p.id, "texActual");
+    p.texSnap = gpu.UniformLocation(p.id, "texSnap");
+    p.aref = gpu.UniformLocation(p.id, "aref");
+    p.fogColour = gpu.UniformLocation(p.id, "fogColour");
+    p.ta0 = gpu.UniformLocation(p.id, "ta0");
+    p.ta1 = gpu.UniformLocation(p.id, "ta1");
+    p.aem = gpu.UniformLocation(p.id, "aem");
+    p.lodK = gpu.UniformLocation(p.id, "lodK");
+    p.lodL = gpu.UniformLocation(p.id, "lodL");
+    p.lodMax = gpu.UniformLocation(p.id, "lodMax");
+    p.lodBias = gpu.UniformLocation(p.id, "lodBias");
+    p.dimx = gpu.UniformLocation(p.id, "dimx");
+    p.scale = gpu.UniformLocation(p.id, "scale");
+    p.destination = gpu.UniformLocation(p.id, "destination");
+    p.blendOn = gpu.UniformLocation(p.id, "blendOn");
+    p.blendA = gpu.UniformLocation(p.id, "blendA");
+    p.blendB = gpu.UniformLocation(p.id, "blendB");
+    p.blendC = gpu.UniformLocation(p.id, "blendC");
+    p.blendD = gpu.UniformLocation(p.id, "blendD");
+    p.blendFix = gpu.UniformLocation(p.id, "blendFix");
+    p.pabe = gpu.UniformLocation(p.id, "pabe");
+    p.colclamp = gpu.UniformLocation(p.id, "colclamp");
+    p.datm = gpu.UniformLocation(p.id, "datm");
+    p.frameMask = gpu.UniformLocation(p.id, "frameMask");
+    p.clut = gpu.UniformLocation(p.id, "clut");
+    p.clutOffset = gpu.UniformLocation(p.id, "clutOffset");
     p.pending = false;
     return true;
 }
 
 u32 HwGs::WarmPrograms(const std::vector<u32>& list)
 {
-    // As many of the driver's threads as it likes (0xFFFFFFFF), where it has them
-    if (GetGl().MaxShaderCompilerThreads != nullptr)
-    {
-        GetGl().MaxShaderCompilerThreads(0xFFFFFFFFu);
-    }
+    // The driver's threads compiling them, where it has them
+    gpu_.backend().ParallelCompiles();
 
     std::vector<u32> started;
     for (u32 bits : list)
@@ -1891,7 +1733,7 @@ const Program& HwGs::ProgramFor(u32 bits)
     return programs_[bits] = p;
 }
 
-void HwGs::Staging(u32 width, u32 height, bool depth, GLuint* texture, GLuint* fbo)
+void HwGs::Staging(u32 width, u32 height, bool depth, u32* texture, u32* fbo)
 {
     auto key = std::make_tuple(width, height, depth);
     auto found = staging_.find(key);
@@ -1902,28 +1744,25 @@ void HwGs::Staging(u32 width, u32 height, bool depth, GLuint* texture, GLuint* f
         return;
     }
 
-    Gl& gl = GetGl();
-    gl.GenTextures(1, texture);
-    gl.BindTexture(GL_TEXTURE_2D, *texture);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-    gl.GenFramebuffers(1, fbo);
-    gl.BindFramebuffer(GL_FRAMEBUFFER, *fbo);
+    Gpu& gpu = gpu_;
+    gpu.GenTextures(1, texture);
+    gpu.BindTexture(*texture);
+    gpu.TexParameter(ParamMinFilter, FilterNearest);
+    gpu.TexParameter(ParamMagFilter, FilterNearest);
+    gpu.TexParameter(ParamMaxLevel, 0);
+    gpu.GenFramebuffers(1, fbo);
+    gpu.BindFramebuffer(*fbo);
     Pass(*fbo, "staging");
     if (depth)
     {
-        gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_DEPTH32F_STENCIL8), static_cast<GLsizei>(width),
-                      static_cast<GLsizei>(height), 0, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, nullptr);
-        gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, *texture, 0);
-        gl.DrawBuffer(GL_NONE);
-        gl.ReadBuffer(GL_NONE);
+        gpu.TexImage(0, FormatDepth32fStencil8, static_cast<s32>(width), static_cast<s32>(height), nullptr);
+        gpu.AttachDepthStencil(*texture);
+        gpu.NoColour();
     }
     else
     {
-        gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA8), static_cast<GLsizei>(width), static_cast<GLsizei>(height), 0,
-                      GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-        gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *texture, 0);
+        gpu.TexImage(0, FormatRgba8, static_cast<s32>(width), static_cast<s32>(height), nullptr);
+        gpu.AttachColour(*texture);
     }
 
     staging_[key] = {*texture, *fbo};
@@ -2001,63 +1840,59 @@ Target* HwGs::TargetFor(u32 bp, u32 bw, u32 psm, u32 height, bool frame)
         }
     }
 
-    Gl& gl = GetGl();
-    gl.GenTextures(1, &t.texture);
-    gl.BindTexture(GL_TEXTURE_2D, t.texture);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-    GLsizei w = static_cast<GLsizei>(t.width * t.scale);
-    GLsizei h = static_cast<GLsizei>(t.height * t.scale);
-    gl.GenFramebuffers(1, &t.fbo);
-    gl.BindFramebuffer(GL_FRAMEBUFFER, t.fbo);
+    Gpu& gpu = gpu_;
+    gpu.GenTextures(1, &t.texture);
+    gpu.BindTexture(t.texture);
+    gpu.TexParameter(ParamMinFilter, FilterNearest);
+    gpu.TexParameter(ParamMagFilter, FilterNearest);
+    gpu.TexParameter(ParamMaxLevel, 0);
+    s32 w = static_cast<s32>(t.width * t.scale);
+    s32 h = static_cast<s32>(t.height * t.scale);
+    gpu.GenFramebuffers(1, &t.fbo);
+    gpu.BindFramebuffer(t.fbo);
     // No storage for a size GL can't make or the draws can't reach (the framebuffer left incomplete, the target the software
     // GS's): the GPU's biggest texture, and the draws' viewport, which reaches BigViewSize - BigViewOrigin pixels into a target
     // (12288: a 2048-row target at 6x, a 640-wide one at 8x is 5120)
-    static GLint biggest = 0;
+    static s32 biggest = 0;
     if (biggest == 0)
     {
-        gl.GetIntegerv(GL_MAX_TEXTURE_SIZE, &biggest);
-        biggest = std::max<GLint>(biggest, 1);
+        biggest = gpu.backend().MaxTextureSize();
+        biggest = std::max<s32>(biggest, 1);
     }
 
     // ($TWIN_HW_MAX_TARGET: a smaller largest side, for the check of the software GS's taking over)
-    static const GLsizei testLargest = std::getenv("TWIN_HW_MAX_TARGET") != nullptr ? std::atoi(std::getenv("TWIN_HW_MAX_TARGET")) : 0;
-    const GLsizei largest = std::min<GLsizei>(testLargest > 0 ? testLargest : biggest, BigViewSize - BigViewOrigin);
+    static const s32 testLargest = std::getenv("TWIN_HW_MAX_TARGET") != nullptr ? std::atoi(std::getenv("TWIN_HW_MAX_TARGET")) : 0;
+    const s32 largest = std::min<s32>(testLargest > 0 ? testLargest : biggest, BigViewSize - BigViewOrigin);
     const bool fits = w > 0 && h > 0 && w <= largest && h <= largest;
-    while (gl.GetError() != GL_NO_ERROR)
-    {
-    }
-
+    // (Errors before it forgotten)
+    gpu.OutOfMemory();
     if (t.depth)
     {
         if (fits)
         {
-            gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_DEPTH32F_STENCIL8), w, h, 0, GL_DEPTH_STENCIL,
-                          GL_FLOAT_32_UNSIGNED_INT_24_8_REV, nullptr);
+            gpu.TexImage(0, FormatDepth32fStencil8, w, h, nullptr);
         }
 
-        gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, t.texture, 0);
-        gl.DrawBuffer(GL_NONE);
-        gl.ReadBuffer(GL_NONE);
+        gpu.AttachDepthStencil(t.texture);
+        gpu.NoColour();
     }
     else
     {
         if (fits)
         {
-            gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA8), w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+            gpu.TexImage(0, FormatRgba8, w, h, nullptr);
         }
 
-        gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, t.texture, 0);
+        gpu.AttachColour(t.texture);
     }
 
-    // (GL_OUT_OF_MEMORY: the graphics card's memory full at a high scale)
-    const GLenum error = gl.GetError();
-    t.complete = fits && error == GL_NO_ERROR && gl.CheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+    // (An error: the graphics card's memory full at a high scale)
+    const bool failed = gpu.OutOfMemory();
+    t.complete = fits && !failed && gpu.FramebufferComplete();
     if (!t.complete)
     {
         std::fprintf(stderr, "graphics: hardware renderer: the target %x/%u class %u (%dx%d at the scale%s) can't be drawn into: "
-                     "the software GS draws it\n", bp, bw, cls, w, h, error == GL_OUT_OF_MEMORY ? ", no memory for it" : "");
+                     "the software GS draws it\n", bp, bw, cls, w, h, failed ? ", no memory for it" : "");
     }
 
     targets_.push_back(std::move(made));
@@ -2084,12 +1919,12 @@ void HwGs::DestroyTarget(Target* target)
         }
     }
 
-    Gl& gl = GetGl();
+    Gpu& gpu = gpu_;
     for (auto it = framebuffers_.begin(); it != framebuffers_.end();)
     {
         if (it->first.first == target || it->first.second == target)
         {
-            gl.DeleteFramebuffers(1, &it->second);
+            gpu.DeleteFramebuffers(1, &it->second);
             it = framebuffers_.erase(it);
         }
         else
@@ -2115,7 +1950,7 @@ void HwGs::DestroyTarget(Target* target)
         {
             if (it->first.second == stencil)
             {
-                gl.DeleteFramebuffers(1, &it->second);
+                gpu.DeleteFramebuffers(1, &it->second);
                 it = framebuffers_.erase(it);
             }
             else
@@ -2124,7 +1959,7 @@ void HwGs::DestroyTarget(Target* target)
             }
         }
 
-        gl.DeleteTextures(1, &stencil->texture);
+        gpu.DeleteTextures(1, &stencil->texture);
         scratchStencils_.erase(scratch);
     }
 
@@ -2132,7 +1967,7 @@ void HwGs::DestroyTarget(Target* target)
     {
         if (it->first.first == target || it->first.second == target)
         {
-            gl.DeleteFramebuffers(1, &it->second);
+            gpu.DeleteFramebuffers(1, &it->second);
             it = accumFramebuffers_.erase(it);
         }
         else
@@ -2143,17 +1978,17 @@ void HwGs::DestroyTarget(Target* target)
 
     if (target->accum != 0)
     {
-        gl.DeleteTextures(1, &target->accum);
+        gpu.DeleteTextures(1, &target->accum);
     }
 
-    gl.DeleteFramebuffers(1, &target->fbo);
-    gl.DeleteTextures(1, &target->texture);
+    gpu.DeleteFramebuffers(1, &target->fbo);
+    gpu.DeleteTextures(1, &target->texture);
     targets_.erase(std::remove_if(targets_.begin(), targets_.end(), [&](const auto& t) { return t.get() == target; }),
                    targets_.end());
     targetsVersion_++;
 }
 
-GLuint HwGs::FramebufferFor(Target* colour, Target* depth)
+u32 HwGs::FramebufferFor(Target* colour, Target* depth)
 {
     if (depth == nullptr)
     {
@@ -2167,12 +2002,12 @@ GLuint HwGs::FramebufferFor(Target* colour, Target* depth)
         return found->second;
     }
 
-    Gl& gl = GetGl();
-    GLuint fbo = 0;
-    gl.GenFramebuffers(1, &fbo);
-    gl.BindFramebuffer(GL_FRAMEBUFFER, fbo);
-    gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colour->texture, 0);
-    gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depth->texture, 0);
+    Gpu& gpu = gpu_;
+    u32 fbo = 0;
+    gpu.GenFramebuffers(1, &fbo);
+    gpu.BindFramebuffer(fbo);
+    gpu.AttachColour(colour->texture);
+    gpu.AttachDepthStencil(depth->texture);
     framebuffers_[key] = fbo;
     return fbo;
 }
@@ -2341,21 +2176,21 @@ constexpr FamilyInfo Families[5] = {
 
 void HwGs::InitMemory()
 {
-    Gl& gl = GetGl();
+    Gpu& gpu = gpu_;
     shadow_.assign(Gs::LocalMemoryBytes, 0);
     memStale_.set();
     cpuStale_.reset();
     shadowGood_.reset();
-    gl.GenTextures(1, &memTexture_);
-    gl.BindTexture(GL_TEXTURE_2D, memTexture_);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-    gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_R32UI), 1024, 1024, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
-    gl.GenFramebuffers(1, &memFbo_);
-    gl.BindFramebuffer(GL_FRAMEBUFFER, memFbo_);
-    gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, memTexture_, 0);
-    if (gl.CheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    gpu.GenTextures(1, &memTexture_);
+    gpu.BindTexture(memTexture_);
+    gpu.TexParameter(ParamMinFilter, FilterNearest);
+    gpu.TexParameter(ParamMagFilter, FilterNearest);
+    gpu.TexParameter(ParamMaxLevel, 0);
+    gpu.TexImage(0, FormatR32ui, 1024, 1024, nullptr);
+    gpu.GenFramebuffers(1, &memFbo_);
+    gpu.BindFramebuffer(memFbo_);
+    gpu.AttachColour(memTexture_);
+    if (!gpu.FramebufferComplete())
     {
         std::fprintf(stderr, "graphics: hardware renderer: GS memory's framebuffer isn't complete\n");
     }
@@ -2403,67 +2238,60 @@ void HwGs::InitMemory()
             std::fprintf(stderr, "graphics: hardware renderer: layout %u's table isn't whole\n", f);
         }
 
-        gl.GenTextures(1, &fwdTables_[f]);
-        gl.BindTexture(GL_TEXTURE_2D, fwdTables_[f]);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-        gl.PixelStorei(GL_UNPACK_ALIGNMENT, 4);
-        gl.PixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-        gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_R32UI), static_cast<GLsizei>(info.pageWidth),
-                      static_cast<GLsizei>(info.pageHeight), 0, GL_RED_INTEGER, GL_UNSIGNED_INT, forward.data());
-        gl.GenTextures(1, &invTables_[f]);
-        gl.BindTexture(GL_TEXTURE_2D, invTables_[f]);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-        gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_R32UI), 1024, static_cast<GLsizei>(units / 1024), 0, GL_RED_INTEGER,
-                      GL_UNSIGNED_INT, inverse.data());
+        gpu.GenTextures(1, &fwdTables_[f]);
+        gpu.BindTexture(fwdTables_[f]);
+        gpu.TexParameter(ParamMinFilter, FilterNearest);
+        gpu.TexParameter(ParamMagFilter, FilterNearest);
+        gpu.TexParameter(ParamMaxLevel, 0);
+        gpu.PixelStore(StoreUnpackAlignment, 4);
+        gpu.PixelStore(StoreUnpackRowLength, 0);
+        gpu.TexImage(0, FormatR32ui, static_cast<s32>(info.pageWidth), static_cast<s32>(info.pageHeight), forward.data());
+        gpu.GenTextures(1, &invTables_[f]);
+        gpu.BindTexture(invTables_[f]);
+        gpu.TexParameter(ParamMinFilter, FilterNearest);
+        gpu.TexParameter(ParamMagFilter, FilterNearest);
+        gpu.TexParameter(ParamMaxLevel, 0);
+        gpu.TexImage(0, FormatR32ui, 1024, static_cast<s32>(units / 1024), inverse.data());
     }
 
     std::string header = "#version 330 core\n";
-    memFromTargetProgram_ = LinkProgram(CompileShader(GL_VERTEX_SHADER, MemRectVertexSource),
-                                        CompileShader(GL_FRAGMENT_SHADER, header + MemCommonSource + MemFromTargetSource), false);
-    targetFromMemProgram_ = LinkProgram(CompileShader(GL_VERTEX_SHADER, MemRectVertexSource),
-                                        CompileShader(GL_FRAGMENT_SHADER, header + MemCommonSource + TargetFromMemSource), false);
-    copyColourProgram_ = LinkProgram(CompileShader(GL_VERTEX_SHADER, MemRectVertexSource), CompileShader(GL_FRAGMENT_SHADER, CopyColourSource),
-                                     false);
-    copyWordProgram_ = LinkProgram(CompileShader(GL_VERTEX_SHADER, MemRectVertexSource), CompileShader(GL_FRAGMENT_SHADER, CopyWordSource),
-                                   false);
-    decodeProgram_ = LinkProgram(CompileShader(GL_VERTEX_SHADER, MemRectVertexSource),
-                                 CompileShader(GL_FRAGMENT_SHADER, header + MemCommonSource + DecodeSource), false);
-    gl.GenFramebuffers(1, &decodeFbo_);
-    gl.GenTextures(1, &clutTexture_);
-    gl.BindTexture(GL_TEXTURE_2D, clutTexture_);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-    gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_R16UI), 512, 1, 0, GL_RED_INTEGER, GL_UNSIGNED_SHORT, nullptr);
-    for (GLuint& clut : clutRing_)
+    memFromTargetProgram_ = MakeProgram(gpu_, MemRectVertexSource, header + MemCommonSource + MemFromTargetSource, false);
+    targetFromMemProgram_ = MakeProgram(gpu_, MemRectVertexSource, header + MemCommonSource + TargetFromMemSource, false);
+    copyColourProgram_ = MakeProgram(gpu_, MemRectVertexSource, CopyColourSource, false);
+    copyWordProgram_ = MakeProgram(gpu_, MemRectVertexSource, CopyWordSource, false);
+    decodeProgram_ = MakeProgram(gpu_, MemRectVertexSource, header + MemCommonSource + DecodeSource, false);
+    gpu.GenFramebuffers(1, &decodeFbo_);
+    gpu.GenTextures(1, &clutTexture_);
+    gpu.BindTexture(clutTexture_);
+    gpu.TexParameter(ParamMinFilter, FilterNearest);
+    gpu.TexParameter(ParamMagFilter, FilterNearest);
+    gpu.TexParameter(ParamMaxLevel, 0);
+    gpu.TexImage(0, FormatR16ui, 512, 1, nullptr);
+    for (u32& clut : clutRing_)
     {
-        gl.GenTextures(1, &clut);
-        gl.BindTexture(GL_TEXTURE_2D, clut);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-        gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_R16UI), 512, 1, 0, GL_RED_INTEGER, GL_UNSIGNED_SHORT, nullptr);
+        gpu.GenTextures(1, &clut);
+        gpu.BindTexture(clut);
+        gpu.TexParameter(ParamMinFilter, FilterNearest);
+        gpu.TexParameter(ParamMagFilter, FilterNearest);
+        gpu.TexParameter(ParamMaxLevel, 0);
+        gpu.TexImage(0, FormatR16ui, 512, 1, nullptr);
     }
 
     for (u32 i = 0; i < StagingRing; i++)
     {
-        gl.GenTextures(1, &memStaging_[i]);
-        gl.BindTexture(GL_TEXTURE_2D, memStaging_[i]);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-        gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_R32UI), 1024, 1024, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
-        gl.GenFramebuffers(1, &stagingFbo_[i]);
-        gl.BindFramebuffer(GL_FRAMEBUFFER, stagingFbo_[i]);
-        gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, memStaging_[i], 0);
+        gpu.GenTextures(1, &memStaging_[i]);
+        gpu.BindTexture(memStaging_[i]);
+        gpu.TexParameter(ParamMinFilter, FilterNearest);
+        gpu.TexParameter(ParamMagFilter, FilterNearest);
+        gpu.TexParameter(ParamMaxLevel, 0);
+        gpu.TexImage(0, FormatR32ui, 1024, 1024, nullptr);
+        gpu.GenFramebuffers(1, &stagingFbo_[i]);
+        gpu.BindFramebuffer(stagingFbo_[i]);
+        gpu.AttachColour(memStaging_[i]);
     }
 }
 
-GLuint HwGs::DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 right, s32 bottom)
+u32 HwGs::DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 right, s32 bottom)
 {
     const Gs::RegTex0& tex0 = state.context->tex0;
     const Gs::TextureLevel& base = state.levels[0];
@@ -2504,10 +2332,10 @@ GLuint HwGs::DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 
             if (gpuTextures_.size() > 4096)
             {
                 Flush();
-                Gl& gl = GetGl();
+                Gpu& gpu = gpu_;
                 for (auto& e : gpuTextures_)
                 {
-                    gl.DeleteTextures(1, &e.second.id);
+                    gpu.DeleteTextures(1, &e.second.id);
                 }
 
                 gpuTextures_.clear();
@@ -2522,12 +2350,12 @@ GLuint HwGs::DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 
         lastTextureClut_ = gs_.clutVersion();
     }
 
-    Gl& gl = GetGl();
+    Gpu& gpu = gpu_;
     GpuTexture& t = *entry;
     if (t.id == 0)
     {
-        gl.GenTextures(1, &t.id);
-        gl.BindTexture(GL_TEXTURE_2D, t.id);
+        gpu.GenTextures(1, &t.id);
+        gpu.BindTexture(t.id);
         t.levelCount = state.levelCount;
         for (u32 i = 0; i < state.levelCount; i++)
         {
@@ -2549,12 +2377,11 @@ GLuint HwGs::DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 
                 }
             }
 
-            gl.TexImage2D(GL_TEXTURE_2D, static_cast<GLint>(i), static_cast<GLint>(GL_RGBA8), static_cast<GLsizei>(lv.width),
-                          static_cast<GLsizei>(lv.height), 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+            gpu.TexImage(static_cast<s32>(i), FormatRgba8, static_cast<s32>(lv.width), static_cast<s32>(lv.height), nullptr);
         }
 
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, static_cast<GLint>(state.levelCount - 1));
+        gpu.TexParameter(ParamBaseLevel, 0);
+        gpu.TexParameter(ParamMaxLevel, static_cast<s32>(state.levelCount - 1));
         for (u32 page = 0; page < Gs::PageCount; page++)
         {
             if (t.pages.test(page))
@@ -2719,17 +2546,16 @@ GLuint HwGs::DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 
 
                 if (image != nullptr)
                 {
-                    GLuint& made = replacementTextures_[replacementKey];
+                    u32& made = replacementTextures_[replacementKey];
                     if (made == 0)
                     {
-                        gl.GenTextures(1, &made);
-                        gl.BindTexture(GL_TEXTURE_2D, made);
-                        gl.PixelStorei(GL_UNPACK_ALIGNMENT, 4);
-                        gl.PixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-                        gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA8), static_cast<GLsizei>(image->width),
-                                      static_cast<GLsizei>(image->height), 0, GL_RGBA, GL_UNSIGNED_BYTE, image->pixels.data());
-                        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-                        gl.GenerateMipmap(GL_TEXTURE_2D);
+                        gpu.GenTextures(1, &made);
+                        gpu.BindTexture(made);
+                        gpu.PixelStore(StoreUnpackAlignment, 4);
+                        gpu.PixelStore(StoreUnpackRowLength, 0);
+                        gpu.TexImage(0, FormatRgba8, static_cast<s32>(image->width), static_cast<s32>(image->height), image->pixels.data());
+                        gpu.TexParameter(ParamBaseLevel, 0);
+                        gpu.GenerateMipmap();
                     }
 
                     c.replacement = made;
@@ -2803,17 +2629,16 @@ GLuint HwGs::DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 
         if (image != nullptr)
         {
             // Each replacement made a texture once (the textures that share it, and the decodes again, use that one)
-            GLuint& made = replacementTextures_[replacementKey];
+            u32& made = replacementTextures_[replacementKey];
             if (made == 0)
             {
-                gl.GenTextures(1, &made);
-                gl.BindTexture(GL_TEXTURE_2D, made);
-                gl.PixelStorei(GL_UNPACK_ALIGNMENT, 4);
-                gl.PixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-                gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA8), static_cast<GLsizei>(image->width),
-                              static_cast<GLsizei>(image->height), 0, GL_RGBA, GL_UNSIGNED_BYTE, image->pixels.data());
-                gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-                gl.GenerateMipmap(GL_TEXTURE_2D);
+                gpu.GenTextures(1, &made);
+                gpu.BindTexture(made);
+                gpu.PixelStore(StoreUnpackAlignment, 4);
+                gpu.PixelStore(StoreUnpackRowLength, 0);
+                gpu.TexImage(0, FormatRgba8, static_cast<s32>(image->width), static_cast<s32>(image->height), image->pixels.data());
+                gpu.TexParameter(ParamBaseLevel, 0);
+                gpu.GenerateMipmap();
             }
 
             t.replacement = made;
@@ -2857,20 +2682,19 @@ GLuint HwGs::DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 
     return t.shown;
 }
 
-GLuint HwGs::MakeLevels(const Gs::Gs::DrawState& state)
+u32 HwGs::MakeLevels(const Gs::Gs::DrawState& state)
 {
-    Gl& gl = GetGl();
-    GLuint id = 0;
-    gl.GenTextures(1, &id);
-    gl.BindTexture(GL_TEXTURE_2D, id);
+    Gpu& gpu = gpu_;
+    u32 id = 0;
+    gpu.GenTextures(1, &id);
+    gpu.BindTexture(id);
     for (u32 i = 0; i < state.levelCount; i++)
     {
-        gl.TexImage2D(GL_TEXTURE_2D, static_cast<GLint>(i), static_cast<GLint>(GL_RGBA8), static_cast<GLsizei>(state.levels[i].width),
-                      static_cast<GLsizei>(state.levels[i].height), 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        gpu.TexImage(static_cast<s32>(i), FormatRgba8, static_cast<s32>(state.levels[i].width), static_cast<s32>(state.levels[i].height), nullptr);
     }
 
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, static_cast<GLint>(state.levelCount - 1));
+    gpu.TexParameter(ParamBaseLevel, 0);
+    gpu.TexParameter(ParamMaxLevel, static_cast<s32>(state.levelCount - 1));
     return id;
 }
 
@@ -2933,26 +2757,26 @@ u64 HwGs::ContentHash(const Gs::Gs::DrawState& state)
     return result;
 }
 
-GLuint HwGs::CurrentClut()
+u32 HwGs::CurrentClut()
 {
     if (clutUploaded_ != gs_.clutVersion())
     {
-        Gl& gl = GetGl();
+        Gpu& gpu = gpu_;
         clutTexture_ = clutRing_[clutNext_++ % ClutRing];
-        gl.BindTexture(GL_TEXTURE_2D, clutTexture_);
-        gl.PixelStorei(GL_UNPACK_ALIGNMENT, 2);
-        gl.PixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-        gl.TexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 512, 1, GL_RED_INTEGER, GL_UNSIGNED_SHORT, gs_.clut());
-        gl.PixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        gpu.BindTexture(clutTexture_);
+        gpu.PixelStore(StoreUnpackAlignment, 2);
+        gpu.PixelStore(StoreUnpackRowLength, 0);
+        gpu.TexSubImage(0, 0, 0, 512, 1, FormatR16ui, gs_.clut());
+        gpu.PixelStore(StoreUnpackAlignment, 4);
         clutUploaded_ = gs_.clutVersion();
     }
 
     return clutTexture_;
 }
 
-void HwGs::DecodePasses(const Gs::Gs::DrawState& state, GLuint texture, const Rect* rects, u32 levels)
+void HwGs::DecodePasses(const Gs::Gs::DrawState& state, u32 texture, const Rect* rects, u32 levels)
 {
-    Gl& gl = GetGl();
+    Gpu& gpu = gpu_;
     const Gs::RegTex0& tex0 = state.context->tex0;
     const Gs::TextureLevel& base = state.levels[0];
     const bool indexed = base.psm == Gs::PSMT8 || base.psm == Gs::PSMT4 || base.psm == Gs::PSMT8H || base.psm == Gs::PSMT4HL ||
@@ -2962,13 +2786,13 @@ void HwGs::DecodePasses(const Gs::Gs::DrawState& state, GLuint texture, const Re
         CurrentClut();
     }
 
-    gl.BindFramebuffer(GL_FRAMEBUFFER, decodeFbo_);
-    gl.Disable(GL_SCISSOR_TEST);
-    gl.Disable(GL_DEPTH_TEST);
-    gl.Disable(GL_STENCIL_TEST);
-    gl.Disable(GL_BLEND);
-    gl.ColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    gl.BindVertexArray(emptyArray_);
+    gpu.BindFramebuffer(decodeFbo_);
+    gpu.Disable(CapScissorTest);
+    gpu.Disable(CapDepthTest);
+    gpu.Disable(CapStencilTest);
+    gpu.Disable(CapBlend);
+    gpu.ColorMask(true, true, true, true);
+    gpu.BindVertexes(false);
     Gs::RegTexa texa = gs_.texa();
     for (u32 i = 0; i < levels; i++)
     {
@@ -2978,83 +2802,81 @@ void HwGs::DecodePasses(const Gs::Gs::DrawState& state, GLuint texture, const Re
         }
 
         const Gs::TextureLevel& lv = state.levels[i];
-        gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, static_cast<GLint>(i));
+        gpu.AttachColour(texture, static_cast<s32>(i));
         Pass((1ull << 40) | (static_cast<u64>(texture) << 4) | i, "texture decode");
-        gl.Viewport(0, 0, static_cast<GLsizei>(lv.width), static_cast<GLsizei>(lv.height));
+        gpu.Viewport(0, 0, static_cast<s32>(lv.width), static_cast<s32>(lv.height));
         UseLayout(decodeProgram_, lv.psm, lv.bp, lv.bw, 1);
-        gl.ActiveTexture(GL_TEXTURE0);
-        gl.BindTexture(GL_TEXTURE_2D, memTexture_);
-        gl.ActiveTexture(GL_TEXTURE0 + 3);
-        gl.BindTexture(GL_TEXTURE_2D, clutTexture_);
-        gl.ActiveTexture(GL_TEXTURE0);
-        auto uniform = [&](const char* name) { return gl.GetUniformLocation(decodeProgram_, name); };
-        gl.Uniform1i(uniform("mem"), 0);
-        gl.Uniform1i(uniform("clut"), 3);
-        gl.Uniform1i(uniform("psm"), static_cast<GLint>(lv.psm));
-        gl.Uniform1i(uniform("cpsm"), static_cast<GLint>(tex0.cpsm));
-        gl.Uniform1i(uniform("csa"), static_cast<GLint>(tex0.csa));
-        gl.Uniform1ui(uniform("ta0"), static_cast<GLuint>(texa.ta0));
-        gl.Uniform1ui(uniform("ta1"), static_cast<GLuint>(texa.ta1));
-        gl.Uniform1i(uniform("aem"), static_cast<GLint>(texa.aem));
-        gl.Uniform2f(uniform("viewSize"), static_cast<f32>(lv.width), static_cast<f32>(lv.height));
-        gl.Uniform4f(uniform("rect"), static_cast<f32>(rects[i].left), static_cast<f32>(rects[i].top), static_cast<f32>(rects[i].right + 1),
-                     static_cast<f32>(rects[i].bottom + 1));
-        gl.DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        gpu.ActiveTexture(0);
+        gpu.BindTexture(memTexture_);
+        gpu.ActiveTexture(3);
+        gpu.BindTexture(clutTexture_);
+        gpu.ActiveTexture(0);
+        auto uniform = [&](const char* name) { return gpu.UniformLocation(decodeProgram_, name); };
+        gpu.Uniform1i(uniform("mem"), 0);
+        gpu.Uniform1i(uniform("clut"), 3);
+        gpu.Uniform1i(uniform("psm"), static_cast<s32>(lv.psm));
+        gpu.Uniform1i(uniform("cpsm"), static_cast<s32>(tex0.cpsm));
+        gpu.Uniform1i(uniform("csa"), static_cast<s32>(tex0.csa));
+        gpu.Uniform1ui(uniform("ta0"), static_cast<u32>(texa.ta0));
+        gpu.Uniform1ui(uniform("ta1"), static_cast<u32>(texa.ta1));
+        gpu.Uniform1i(uniform("aem"), static_cast<s32>(texa.aem));
+        gpu.Uniform2f(uniform("viewSize"), static_cast<f32>(lv.width), static_cast<f32>(lv.height));
+        gpu.Uniform4f(uniform("rect"), static_cast<f32>(rects[i].left), static_cast<f32>(rects[i].top), static_cast<f32>(rects[i].right + 1), static_cast<f32>(rects[i].bottom + 1));
+        gpu.DrawArrays(PrimitiveTriangleStrip, 0, 4);
     }
 }
 
-void HwGs::CopyRect(GLuint program, GLuint source, f32 viewWidth, f32 viewHeight, s32 x0, s32 y0, s32 x1, s32 y1)
+void HwGs::CopyRect(u32 program, u32 source, f32 viewWidth, f32 viewHeight, s32 x0, s32 y0, s32 x1, s32 y1)
 {
-    Gl& gl = GetGl();
-    gl.Viewport(0, 0, static_cast<GLsizei>(viewWidth), static_cast<GLsizei>(viewHeight));
-    gl.Disable(GL_SCISSOR_TEST);
-    gl.Disable(GL_DEPTH_TEST);
-    gl.Disable(GL_STENCIL_TEST);
-    gl.Disable(GL_BLEND);
-    gl.ColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    gl.UseProgram(program);
-    gl.ActiveTexture(GL_TEXTURE0);
-    gl.BindTexture(GL_TEXTURE_2D, source);
-    gl.Uniform1i(gl.GetUniformLocation(program, "source"), 0);
-    gl.Uniform2f(gl.GetUniformLocation(program, "viewSize"), viewWidth, viewHeight);
-    gl.Uniform4f(gl.GetUniformLocation(program, "rect"), static_cast<f32>(x0), static_cast<f32>(y0), static_cast<f32>(x1),
-                 static_cast<f32>(y1));
-    gl.BindVertexArray(emptyArray_);
-    gl.DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    Gpu& gpu = gpu_;
+    gpu.Viewport(0, 0, static_cast<s32>(viewWidth), static_cast<s32>(viewHeight));
+    gpu.Disable(CapScissorTest);
+    gpu.Disable(CapDepthTest);
+    gpu.Disable(CapStencilTest);
+    gpu.Disable(CapBlend);
+    gpu.ColorMask(true, true, true, true);
+    gpu.UseProgram(program);
+    gpu.ActiveTexture(0);
+    gpu.BindTexture(source);
+    gpu.Uniform1i(gpu.UniformLocation(program, "source"), 0);
+    gpu.Uniform2f(gpu.UniformLocation(program, "viewSize"), viewWidth, viewHeight);
+    gpu.Uniform4f(gpu.UniformLocation(program, "rect"), static_cast<f32>(x0), static_cast<f32>(y0), static_cast<f32>(x1), static_cast<f32>(y1));
+    gpu.BindVertexes(false);
+    gpu.DrawArrays(PrimitiveTriangleStrip, 0, 4);
 }
 
-void HwGs::UseLayout(GLuint program, u32 psm, u32 bp, u32 bw, u32 pagesDown)
+void HwGs::UseLayout(u32 program, u32 psm, u32 bp, u32 bw, u32 pagesDown)
 {
-    Gl& gl = GetGl();
+    Gpu& gpu = gpu_;
     u32 family = 0;
     bool xorZ = false;
     LayoutOf(psm, &family, &xorZ);
     const FamilyInfo& info = Families[family];
-    gl.UseProgram(program);
-    auto uniform = [&](const char* name) { return gl.GetUniformLocation(program, name); };
-    gl.Uniform1i(uniform("unitsPerBlock"), static_cast<GLint>(info.unitsPerBlock));
-    gl.Uniform1i(uniform("unitShift"), static_cast<GLint>(info.unitShift));
-    gl.Uniform1i(uniform("unitBits"), static_cast<GLint>(info.bits));
-    gl.Uniform1i(uniform("pageWidth"), static_cast<GLint>(info.pageWidth));
-    gl.Uniform1i(uniform("pageHeight"), static_cast<GLint>(info.pageHeight));
-    gl.Uniform1i(uniform("pagesAcross"), static_cast<GLint>(std::max<u32>(info.halfWidth ? bw >> 1 : bw, 1)));
-    gl.Uniform1i(uniform("pagesDown"), static_cast<GLint>(pagesDown));
-    gl.Uniform1i(uniform("basePointer"), static_cast<GLint>(bp));
-    gl.Uniform1i(uniform("xorZ"), xorZ ? 1 : 0);
-    gl.ActiveTexture(GL_TEXTURE0 + 1);
-    gl.BindTexture(GL_TEXTURE_2D, fwdTables_[family]);
-    gl.ActiveTexture(GL_TEXTURE0 + 2);
-    gl.BindTexture(GL_TEXTURE_2D, invTables_[family]);
-    gl.ActiveTexture(GL_TEXTURE0);
-    gl.Uniform1i(uniform("fwd"), 1);
-    gl.Uniform1i(uniform("inv"), 2);
+    gpu.UseProgram(program);
+    auto uniform = [&](const char* name) { return gpu.UniformLocation(program, name); };
+    gpu.Uniform1i(uniform("unitsPerBlock"), static_cast<s32>(info.unitsPerBlock));
+    gpu.Uniform1i(uniform("unitShift"), static_cast<s32>(info.unitShift));
+    gpu.Uniform1i(uniform("unitBits"), static_cast<s32>(info.bits));
+    gpu.Uniform1i(uniform("pageWidth"), static_cast<s32>(info.pageWidth));
+    gpu.Uniform1i(uniform("pageHeight"), static_cast<s32>(info.pageHeight));
+    gpu.Uniform1i(uniform("pagesAcross"), static_cast<s32>(std::max<u32>(info.halfWidth ? bw >> 1 : bw, 1)));
+    gpu.Uniform1i(uniform("pagesDown"), static_cast<s32>(pagesDown));
+    gpu.Uniform1i(uniform("basePointer"), static_cast<s32>(bp));
+    gpu.Uniform1i(uniform("xorZ"), xorZ ? 1 : 0);
+    gpu.ActiveTexture(1);
+    gpu.BindTexture(fwdTables_[family]);
+    gpu.ActiveTexture(2);
+    gpu.BindTexture(invTables_[family]);
+    gpu.ActiveTexture(0);
+    gpu.Uniform1i(uniform("fwd"), 1);
+    gpu.Uniform1i(uniform("inv"), 2);
 }
 
 
 
 void HwGs::MemFromTarget(Target* target, const Gs::PageSet& pages)
 {
-    Gl& gl = GetGl();
+    Gpu& gpu = gpu_;
     stats.downloads++;
     TraceConversion("from", target, pages);
     if (target->scale > 1)
@@ -3070,29 +2892,28 @@ void HwGs::MemFromTarget(Target* target, const Gs::PageSet& pages)
     bool xorZ = false;
     LayoutOf(target->psm, &family, &xorZ);
     UseLayout(memFromTargetProgram_, target->psm, target->bp, target->bw, target->height / Families[family].pageHeight);
-    gl.BindFramebuffer(GL_FRAMEBUFFER, memFbo_);
+    gpu.BindFramebuffer(memFbo_);
     Pass(memFbo_, "target to memory");
-    gl.Viewport(0, 0, 1024, 1024);
-    gl.Disable(GL_SCISSOR_TEST);
-    gl.Disable(GL_DEPTH_TEST);
-    gl.Disable(GL_STENCIL_TEST);
-    gl.Disable(GL_BLEND);
-    gl.ColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    gl.ActiveTexture(GL_TEXTURE0);
-    gl.BindTexture(GL_TEXTURE_2D, target->texture);
+    gpu.Viewport(0, 0, 1024, 1024);
+    gpu.Disable(CapScissorTest);
+    gpu.Disable(CapDepthTest);
+    gpu.Disable(CapStencilTest);
+    gpu.Disable(CapBlend);
+    gpu.ColorMask(true, true, true, true);
+    gpu.ActiveTexture(0);
+    gpu.BindTexture(target->texture);
     // (the memory sampler isn't read here: a table stands in for it, memory being the framebuffer)
-    gl.ActiveTexture(GL_TEXTURE0 + 3);
-    gl.BindTexture(GL_TEXTURE_2D, fwdTables_[0]);
-    gl.ActiveTexture(GL_TEXTURE0);
-    gl.Uniform1i(gl.GetUniformLocation(memFromTargetProgram_, "target"), 0);
-    gl.Uniform1i(gl.GetUniformLocation(memFromTargetProgram_, "mem"), 3);
-    gl.Uniform1i(gl.GetUniformLocation(memFromTargetProgram_, "targetScale"), static_cast<GLint>(target->scale));
-    gl.Uniform1i(gl.GetUniformLocation(memFromTargetProgram_, "depthReverse"), target->reversed ? 1 : 0);
-    gl.Uniform1i(gl.GetUniformLocation(memFromTargetProgram_, "storage"),
-                 target->depth ? 2 : (Is32Class(target->cls) ? 0 : 1));
-    gl.Uniform2f(gl.GetUniformLocation(memFromTargetProgram_, "viewSize"), 1024.0f, 1024.0f);
-    GLint rect = gl.GetUniformLocation(memFromTargetProgram_, "rect");
-    gl.BindVertexArray(emptyArray_);
+    gpu.ActiveTexture(3);
+    gpu.BindTexture(fwdTables_[0]);
+    gpu.ActiveTexture(0);
+    gpu.Uniform1i(gpu.UniformLocation(memFromTargetProgram_, "target"), 0);
+    gpu.Uniform1i(gpu.UniformLocation(memFromTargetProgram_, "mem"), 3);
+    gpu.Uniform1i(gpu.UniformLocation(memFromTargetProgram_, "targetScale"), static_cast<s32>(target->scale));
+    gpu.Uniform1i(gpu.UniformLocation(memFromTargetProgram_, "depthReverse"), target->reversed ? 1 : 0);
+    gpu.Uniform1i(gpu.UniformLocation(memFromTargetProgram_, "storage"), target->depth ? 2 : (Is32Class(target->cls) ? 0 : 1));
+    gpu.Uniform2f(gpu.UniformLocation(memFromTargetProgram_, "viewSize"), 1024.0f, 1024.0f);
+    s32 rect = gpu.UniformLocation(memFromTargetProgram_, "rect");
+    gpu.BindVertexes(false);
     for (u32 page = 0; page < Gs::PageCount; page++)
     {
         // Runs of pages: two rows of memory a page
@@ -3107,15 +2928,15 @@ void HwGs::MemFromTarget(Target* target, const Gs::PageSet& pages)
             end++;
         }
 
-        gl.Uniform4f(rect, 0.0f, static_cast<f32>(page * 2), 1024.0f, static_cast<f32>((end + 1) * 2));
-        gl.DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        gpu.Uniform4f(rect, 0.0f, static_cast<f32>(page * 2), 1024.0f, static_cast<f32>((end + 1) * 2));
+        gpu.DrawArrays(PrimitiveTriangleStrip, 0, 4);
         page = end;
     }
 }
 
 void HwGs::TargetFromMem(Target* target, const Gs::PageSet& pages)
 {
-    Gl& gl = GetGl();
+    Gpu& gpu = gpu_;
     stats.uploads++;
     target->drawn &= ~pages;
     TraceConversion("into", target, pages);
@@ -3141,35 +2962,34 @@ void HwGs::TargetFromMem(Target* target, const Gs::PageSet& pages)
     bool xorZ = false;
     LayoutOf(target->psm, &family, &xorZ);
     UseLayout(targetFromMemProgram_, target->psm, target->bp, target->bw, target->height / Families[family].pageHeight);
-    const GLint n = static_cast<GLint>(target->scale);
-    gl.BindFramebuffer(GL_FRAMEBUFFER, target->fbo);
+    const s32 n = static_cast<s32>(target->scale);
+    gpu.BindFramebuffer(target->fbo);
     Pass(target->fbo, "memory to target");
-    gl.Viewport(0, 0, static_cast<GLsizei>(target->width) * n, static_cast<GLsizei>(target->height) * n);
-    gl.Disable(GL_SCISSOR_TEST);
-    gl.Disable(GL_STENCIL_TEST);
-    gl.Disable(GL_BLEND);
+    gpu.Viewport(0, 0, static_cast<s32>(target->width) * n, static_cast<s32>(target->height) * n);
+    gpu.Disable(CapScissorTest);
+    gpu.Disable(CapStencilTest);
+    gpu.Disable(CapBlend);
     if (target->depth)
     {
-        gl.Enable(GL_DEPTH_TEST);
-        gl.DepthFunc(GL_ALWAYS);
-        gl.DepthMask(GL_TRUE);
-        gl.ColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+        gpu.Enable(CapDepthTest);
+        gpu.DepthFunc(CompareAlways);
+        gpu.DepthMask(true);
+        gpu.ColorMask(false, false, false, false);
     }
     else
     {
-        gl.Disable(GL_DEPTH_TEST);
-        gl.ColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        gpu.Disable(CapDepthTest);
+        gpu.ColorMask(true, true, true, true);
     }
 
-    gl.ActiveTexture(GL_TEXTURE0);
-    gl.BindTexture(GL_TEXTURE_2D, memTexture_);
-    gl.Uniform1i(gl.GetUniformLocation(targetFromMemProgram_, "mem"), 0);
-    gl.Uniform1i(gl.GetUniformLocation(targetFromMemProgram_, "targetScale"), n);
-    gl.Uniform1i(gl.GetUniformLocation(targetFromMemProgram_, "depthReverse"), target->reversed ? 1 : 0);
-    gl.Uniform1i(gl.GetUniformLocation(targetFromMemProgram_, "storage"), target->depth ? 2 : (Is32Class(target->cls) ? 0 : 1));
-    gl.Uniform2f(gl.GetUniformLocation(targetFromMemProgram_, "viewSize"), static_cast<f32>(target->width * n),
-                 static_cast<f32>(target->height * n));
-    GLuint mask[16] = {};
+    gpu.ActiveTexture(0);
+    gpu.BindTexture(memTexture_);
+    gpu.Uniform1i(gpu.UniformLocation(targetFromMemProgram_, "mem"), 0);
+    gpu.Uniform1i(gpu.UniformLocation(targetFromMemProgram_, "targetScale"), n);
+    gpu.Uniform1i(gpu.UniformLocation(targetFromMemProgram_, "depthReverse"), target->reversed ? 1 : 0);
+    gpu.Uniform1i(gpu.UniformLocation(targetFromMemProgram_, "storage"), target->depth ? 2 : (Is32Class(target->cls) ? 0 : 1));
+    gpu.Uniform2f(gpu.UniformLocation(targetFromMemProgram_, "viewSize"), static_cast<f32>(target->width * n), static_cast<f32>(target->height * n));
+    u32 mask[16] = {};
     for (u32 page = 0; page < Gs::PageCount; page++)
     {
         if (pages.test(page))
@@ -3182,7 +3002,7 @@ void HwGs::TargetFromMem(Target* target, const Gs::PageSet& pages)
     {
         char name[24];
         std::snprintf(name, sizeof(name), "pageMask[%u]", i);
-        gl.Uniform1ui(gl.GetUniformLocation(targetFromMemProgram_, name), mask[i]);
+        gpu.Uniform1ui(gpu.UniformLocation(targetFromMemProgram_, name), mask[i]);
     }
 
     // One draw over the pages' rectangle (the page mask leaves the others' pixels as they are)
@@ -3203,13 +3023,12 @@ void HwGs::TargetFromMem(Target* target, const Gs::PageSet& pages)
 
     if (all.right >= all.left)
     {
-        gl.BindVertexArray(emptyArray_);
-        gl.Uniform4f(gl.GetUniformLocation(targetFromMemProgram_, "rect"), static_cast<f32>(all.left * n), static_cast<f32>(all.top * n),
-                     static_cast<f32>((all.right + 1) * n), static_cast<f32>((all.bottom + 1) * n));
-        gl.DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        gpu.BindVertexes(false);
+        gpu.Uniform4f(gpu.UniformLocation(targetFromMemProgram_, "rect"), static_cast<f32>(all.left * n), static_cast<f32>(all.top * n), static_cast<f32>((all.right + 1) * n), static_cast<f32>((all.bottom + 1) * n));
+        gpu.DrawArrays(PrimitiveTriangleStrip, 0, 4);
     }
 
-    gl.ColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    gpu.ColorMask(true, true, true, true);
     target->alphaVersion++;
 }
 
@@ -3262,21 +3081,15 @@ void HwGs::SyncMem(const Gs::PageSet& pages)
     }
 
     Flush();
-    Gl& gl = GetGl();
+    Gpu& gpu = gpu_;
     static const bool staged = std::getenv("TWIN_HW_STAGED_UPLOADS") != nullptr;
     if (!staged)
     {
         // Each run of pages into a fresh buffer's storage (the old storage stays the GPU's until it's done with it), copied
         // into memory's copy by the GPU
-        if (uploadBuffer_ == 0)
-        {
-            gl.GenBuffers(1, &uploadBuffer_);
-        }
-
-        gl.BindBuffer(GL_PIXEL_UNPACK_BUFFER, uploadBuffer_);
-        gl.BindTexture(GL_TEXTURE_2D, memTexture_);
-        gl.PixelStorei(GL_UNPACK_ALIGNMENT, 4);
-        gl.PixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        gpu.BindTexture(memTexture_);
+        gpu.PixelStore(StoreUnpackAlignment, 4);
+        gpu.PixelStore(StoreUnpackRowLength, 0);
         const u8* memory = gs_.memory();
         for (u32 page = 0; page < Gs::PageCount; page++)
         {
@@ -3292,14 +3105,11 @@ void HwGs::SyncMem(const Gs::PageSet& pages)
             }
 
             const size_t bytes = static_cast<size_t>(end - page + 1) * 8192;
-            gl.BufferData(GL_PIXEL_UNPACK_BUFFER, static_cast<GLsizeiptr>(bytes), memory + static_cast<size_t>(page) * 8192, GL_STREAM_DRAW);
-            gl.TexSubImage2D(GL_TEXTURE_2D, 0, 0, static_cast<GLint>(page * 2), 1024, static_cast<GLsizei>((end - page + 1) * 2),
-                             GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
+            gpu.TexSubImage(0, 0, static_cast<s32>(page * 2), 1024, static_cast<s32>((end - page + 1) * 2), FormatR32ui, memory + static_cast<size_t>(page) * 8192, true);
             std::memcpy(shadow_.data() + static_cast<size_t>(page) * 8192, memory + static_cast<size_t>(page) * 8192, bytes);
             page = end;
         }
 
-        gl.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
         Pass(1ull << 50, "CPU writes to memory");
         memStale_ &= ~uploads;
         shadowGood_ |= uploads;
@@ -3308,9 +3118,9 @@ void HwGs::SyncMem(const Gs::PageSet& pages)
 
     // Into the next staging texture (at the pages' own rows), then copied into memory's copy by the GPU
     const u32 slot = stagingNext_++ % StagingRing;
-    gl.BindTexture(GL_TEXTURE_2D, memStaging_[slot]);
-    gl.PixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    gl.PixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    gpu.BindTexture(memStaging_[slot]);
+    gpu.PixelStore(StoreUnpackAlignment, 4);
+    gpu.PixelStore(StoreUnpackRowLength, 0);
     const u8* memory = gs_.memory();
     std::vector<std::pair<u32, u32>> runs;
     for (u32 page = 0; page < Gs::PageCount; page++)
@@ -3326,8 +3136,7 @@ void HwGs::SyncMem(const Gs::PageSet& pages)
             end++;
         }
 
-        gl.TexSubImage2D(GL_TEXTURE_2D, 0, 0, static_cast<GLint>(page * 2), 1024, static_cast<GLsizei>((end - page + 1) * 2),
-                         GL_RED_INTEGER, GL_UNSIGNED_INT, memory + static_cast<size_t>(page) * 8192);
+        gpu.TexSubImage(0, 0, static_cast<s32>(page * 2), 1024, static_cast<s32>((end - page + 1) * 2), FormatR32ui, memory + static_cast<size_t>(page) * 8192);
         runs.emplace_back(page, end);
         std::memcpy(shadow_.data() + static_cast<size_t>(page) * 8192, memory + static_cast<size_t>(page) * 8192,
                     static_cast<size_t>(end - page + 1) * 8192);
@@ -3335,7 +3144,7 @@ void HwGs::SyncMem(const Gs::PageSet& pages)
     }
 
     // The staging rows copied into memory's copy by drawing
-    gl.BindFramebuffer(GL_FRAMEBUFFER, memFbo_);
+    gpu.BindFramebuffer(memFbo_);
     Pass(memFbo_, "CPU writes to memory");
     for (const auto& run : runs)
     {
@@ -3364,7 +3173,7 @@ void HwGs::SyncCpu(const Gs::PageSet& pages)
         return;
     }
 
-    Gl& gl = GetGl();
+    Gpu& gpu = gpu_;
     stats.readbacks++;
     static const bool counting = std::getenv("TWIN_HW_STATS") != nullptr;
     if (counting)
@@ -3388,9 +3197,9 @@ void HwGs::SyncCpu(const Gs::PageSet& pages)
             }
         }
     }
-    gl.BindFramebuffer(GL_READ_FRAMEBUFFER, memFbo_);
-    gl.PixelStorei(GL_PACK_ALIGNMENT, 4);
-    gl.PixelStorei(GL_PACK_ROW_LENGTH, 0);
+    gpu.BindReadFramebuffer(memFbo_);
+    gpu.PixelStore(StorePackAlignment, 4);
+    gpu.PixelStore(StorePackRowLength, 0);
     gs_.NextGeneration();
     gs_.SetBackendQuiet(true);
     u8* memory = gs_.memory();
@@ -3408,8 +3217,7 @@ void HwGs::SyncCpu(const Gs::PageSet& pages)
         }
 
         u8* to = shadow_.data() + static_cast<size_t>(page) * 8192;
-        gl.ReadPixels(0, static_cast<GLint>(page * 2), 1024, static_cast<GLsizei>((end - page + 1) * 2), GL_RED_INTEGER,
-                      GL_UNSIGNED_INT, to);
+        gpu.ReadPixels(0, static_cast<s32>(page * 2), 1024, static_cast<s32>((end - page + 1) * 2), FormatR32ui, to);
         std::memcpy(memory + static_cast<size_t>(page) * 8192, to, static_cast<size_t>(end - page + 1) * 8192);
         for (u32 p = page; p <= end; p++)
         {
@@ -3521,32 +3329,31 @@ void HwGs::Download(Target* target)
             }
         }
     }
-    Gl& gl = GetGl();
+    Gpu& gpu = gpu_;
     // The target at the PS2's resolution (a sample of each pixel's), read back
-    GLuint small = 0;
-    GLuint smallFbo = 0;
+    u32 small = 0;
+    u32 smallFbo = 0;
     Staging(target->width, target->height, target->depth, &small, &smallFbo);
-    gl.Disable(GL_SCISSOR_TEST);
-    gl.BindFramebuffer(GL_READ_FRAMEBUFFER, target->fbo);
-    gl.BindFramebuffer(GL_DRAW_FRAMEBUFFER, smallFbo);
+    gpu.Disable(CapScissorTest);
+    gpu.BindReadFramebuffer(target->fbo);
+    gpu.BindDrawFramebuffer(smallFbo);
     Pass(smallFbo, "download");
-    GLint w = static_cast<GLint>(target->width);
-    GLint h = static_cast<GLint>(target->height);
+    s32 w = static_cast<s32>(target->width);
+    s32 h = static_cast<s32>(target->height);
     // Each pixel's sample is its block's first (the GS's sample point): the blit's nearest sample moved there
-    const GLint back = static_cast<GLint>(target->scale / 2);
-    gl.BlitFramebuffer(-back, -back, w * static_cast<GLint>(target->scale) - back, h * static_cast<GLint>(target->scale) - back, 0, 0, w, h,
-                       target->depth ? GL_DEPTH_BUFFER_BIT : GL_COLOR_BUFFER_BIT, GL_NEAREST);
-    gl.BindFramebuffer(GL_READ_FRAMEBUFFER, smallFbo);
-    gl.PixelStorei(GL_PACK_ALIGNMENT, 4);
-    gl.PixelStorei(GL_PACK_ROW_LENGTH, 0);
+    const s32 back = static_cast<s32>(target->scale / 2);
+    gpu.BlitFramebuffer(-back, -back, w * static_cast<s32>(target->scale) - back, h * static_cast<s32>(target->scale) - back, 0, 0, w, h, target->depth ? ClearDepth : ClearColour, FilterNearest);
+    gpu.BindReadFramebuffer(smallFbo);
+    gpu.PixelStore(StorePackAlignment, 4);
+    gpu.PixelStore(StorePackRowLength, 0);
     readback_.resize(static_cast<size_t>(w) * h * 4);
     if (target->depth)
     {
-        gl.ReadPixels(0, 0, w, h, GL_DEPTH_COMPONENT, GL_FLOAT, readback_.data());
+        gpu.ReadPixels(0, 0, w, h, FormatDepth32fStencil8, readback_.data());
     }
     else
     {
-        gl.ReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, readback_.data());
+        gpu.ReadPixels(0, 0, w, h, FormatRgba8, readback_.data());
     }
 
     // Written into local memory without telling the backend (local memory catches up), a new generation each side so the
@@ -3622,26 +3429,25 @@ void HwGs::Upload(Target* target, const Gs::PageSet& pages)
             }
         }
     }
-    Gl& gl = GetGl();
+    Gpu& gpu = gpu_;
     const u32 w = target->width;
     const u32 h = target->height;
-    GLuint small = 0;
-    GLuint smallFbo = 0;
+    u32 small = 0;
+    u32 smallFbo = 0;
     if (target->depth)
     {
         // A float staging texture of the depths over 2^32, written by the depth program
-        static std::map<std::pair<u32, u32>, GLuint> floats;
+        static std::map<std::pair<u32, u32>, u32> floats;
         auto key = std::make_pair(w, h);
         if (floats.find(key) == floats.end())
         {
-            GLuint texture = 0;
-            gl.GenTextures(1, &texture);
-            gl.BindTexture(GL_TEXTURE_2D, texture);
-            gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-            gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_R32F), static_cast<GLsizei>(w), static_cast<GLsizei>(h), 0,
-                          GL_RED, GL_FLOAT, nullptr);
+            u32 texture = 0;
+            gpu.GenTextures(1, &texture);
+            gpu.BindTexture(texture);
+            gpu.TexParameter(ParamMinFilter, FilterNearest);
+            gpu.TexParameter(ParamMagFilter, FilterNearest);
+            gpu.TexParameter(ParamMaxLevel, 0);
+            gpu.TexImage(0, FormatR32f, static_cast<s32>(w), static_cast<s32>(h), nullptr);
             floats[key] = texture;
         }
 
@@ -3712,65 +3518,62 @@ void HwGs::Upload(Target* target, const Gs::PageSet& pages)
         rects.push_back(all);
     }
 
-    gl.Disable(GL_SCISSOR_TEST);
-    gl.PixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    gl.PixelStorei(GL_UNPACK_ROW_LENGTH, static_cast<GLint>(w));
-    gl.BindTexture(GL_TEXTURE_2D, small);
+    gpu.Disable(CapScissorTest);
+    gpu.PixelStore(StoreUnpackAlignment, 4);
+    gpu.PixelStore(StoreUnpackRowLength, static_cast<s32>(w));
+    gpu.BindTexture(small);
     for (const Rect& r : rects)
     {
         size_t at = static_cast<size_t>(r.top) * w + static_cast<size_t>(r.left);
-        GLsizei rw = r.right - r.left + 1;
-        GLsizei rh = r.bottom - r.top + 1;
+        s32 rw = r.right - r.left + 1;
+        s32 rh = r.bottom - r.top + 1;
         if (target->depth)
         {
-            gl.TexSubImage2D(GL_TEXTURE_2D, 0, r.left, r.top, rw, rh, GL_RED, GL_FLOAT, &uploadDepth_[at]);
+            gpu.TexSubImage(0, r.left, r.top, rw, rh, FormatR32f, &uploadDepth_[at]);
         }
         else
         {
-            gl.TexSubImage2D(GL_TEXTURE_2D, 0, r.left, r.top, rw, rh, GL_RGBA, GL_UNSIGNED_BYTE, &upload_[at]);
+            gpu.TexSubImage(0, r.left, r.top, rw, rh, FormatRgba8, &upload_[at]);
         }
     }
 
-    gl.PixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    const GLint n = static_cast<GLint>(target->scale);
+    gpu.PixelStore(StoreUnpackRowLength, 0);
+    const s32 n = static_cast<s32>(target->scale);
     if (target->depth)
     {
-        gl.BindFramebuffer(GL_FRAMEBUFFER, target->fbo);
+        gpu.BindFramebuffer(target->fbo);
         Pass(target->fbo, "upload");
-        gl.Viewport(0, 0, static_cast<GLsizei>(w) * n, static_cast<GLsizei>(h) * n);
-        gl.UseProgram(depthProgram_);
-        gl.ActiveTexture(GL_TEXTURE0);
-        gl.BindTexture(GL_TEXTURE_2D, small);
-        gl.Uniform1i(gl.GetUniformLocation(depthProgram_, "staging"), 0);
-        gl.Uniform1f(gl.GetUniformLocation(depthProgram_, "scale"), static_cast<f32>(target->scale));
-        gl.Uniform2f(gl.GetUniformLocation(depthProgram_, "viewSize"), static_cast<f32>(w * target->scale),
-                     static_cast<f32>(h * target->scale));
-        gl.Disable(GL_BLEND);
-        gl.Disable(GL_STENCIL_TEST);
-        gl.Enable(GL_DEPTH_TEST);
-        gl.DepthFunc(GL_ALWAYS);
-        gl.DepthMask(GL_TRUE);
-        gl.ColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-        gl.BindVertexArray(emptyArray_);
-        GLint rectLocation = gl.GetUniformLocation(depthProgram_, "rect");
+        gpu.Viewport(0, 0, static_cast<s32>(w) * n, static_cast<s32>(h) * n);
+        gpu.UseProgram(depthProgram_);
+        gpu.ActiveTexture(0);
+        gpu.BindTexture(small);
+        gpu.Uniform1i(gpu.UniformLocation(depthProgram_, "staging"), 0);
+        gpu.Uniform1f(gpu.UniformLocation(depthProgram_, "scale"), static_cast<f32>(target->scale));
+        gpu.Uniform2f(gpu.UniformLocation(depthProgram_, "viewSize"), static_cast<f32>(w * target->scale), static_cast<f32>(h * target->scale));
+        gpu.Disable(CapBlend);
+        gpu.Disable(CapStencilTest);
+        gpu.Enable(CapDepthTest);
+        gpu.DepthFunc(CompareAlways);
+        gpu.DepthMask(true);
+        gpu.ColorMask(false, false, false, false);
+        gpu.BindVertexes(false);
+        s32 rectLocation = gpu.UniformLocation(depthProgram_, "rect");
         for (const Rect& r : rects)
         {
-            gl.Uniform4f(rectLocation, static_cast<f32>(r.left * n), static_cast<f32>(r.top * n), static_cast<f32>((r.right + 1) * n),
-                         static_cast<f32>((r.bottom + 1) * n));
-            gl.DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            gpu.Uniform4f(rectLocation, static_cast<f32>(r.left * n), static_cast<f32>(r.top * n), static_cast<f32>((r.right + 1) * n), static_cast<f32>((r.bottom + 1) * n));
+            gpu.DrawArrays(PrimitiveTriangleStrip, 0, 4);
         }
 
-        gl.ColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        gpu.ColorMask(true, true, true, true);
     }
     else
     {
-        gl.BindFramebuffer(GL_READ_FRAMEBUFFER, smallFbo);
-        gl.BindFramebuffer(GL_DRAW_FRAMEBUFFER, target->fbo);
+        gpu.BindReadFramebuffer(smallFbo);
+        gpu.BindDrawFramebuffer(target->fbo);
         Pass(target->fbo, "upload");
         for (const Rect& r : rects)
         {
-            gl.BlitFramebuffer(r.left, r.top, r.right + 1, r.bottom + 1, r.left * n, r.top * n, (r.right + 1) * n, (r.bottom + 1) * n,
-                               GL_COLOR_BUFFER_BIT, GL_NEAREST);
+            gpu.BlitFramebuffer(r.left, r.top, r.right + 1, r.bottom + 1, r.left * n, r.top * n, (r.right + 1) * n, (r.bottom + 1) * n, ClearColour, FilterNearest);
         }
     }
 
@@ -3926,9 +3729,9 @@ bool HwGs::Fallback(const Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, 
 }
 
 // The GL blend for the GS's ((A - B) * C >> 7) + D (A, B, D: 0 source, 1 destination, 2 zero); false when GL can't make it
-bool BlendFor(u32 a, u32 b, u32 d, GLenum factor, GLenum inverse, u32* equation, u32* source, u32* destination)
+bool BlendFor(u32 a, u32 b, u32 d, u32 factor, u32 inverse, u32* equation, u32* source, u32* destination)
 {
-    auto set = [&](GLenum e, GLenum s, GLenum dst) {
+    auto set = [&](u32 e, u32 s, u32 dst) {
         *equation = e;
         *source = s;
         *destination = dst;
@@ -3936,46 +3739,46 @@ bool BlendFor(u32 a, u32 b, u32 d, GLenum factor, GLenum inverse, u32* equation,
     };
     if (a == b)
     {
-        return d == 0 ? set(GL_FUNC_ADD, GL_ONE, GL_ZERO) : d == 1 ? set(GL_FUNC_ADD, GL_ZERO, GL_ONE) : set(GL_FUNC_ADD, GL_ZERO, GL_ZERO);
+        return d == 0 ? set(BlendAdd, FactorOne, FactorZero) : d == 1 ? set(BlendAdd, FactorZero, FactorOne) : set(BlendAdd, FactorZero, FactorZero);
     }
 
     u32 key = a * 9 + b * 3 + d;
     switch (key)
     {
     case 0 * 9 + 1 * 3 + 1:
-        return set(GL_FUNC_ADD, factor, inverse);
+        return set(BlendAdd, factor, inverse);
     case 0 * 9 + 1 * 3 + 2:
-        return set(GL_FUNC_SUBTRACT, factor, factor);
+        return set(BlendSubtract, factor, factor);
     case 0 * 9 + 2 * 3 + 1:
-        return set(GL_FUNC_ADD, factor, GL_ONE);
+        return set(BlendAdd, factor, FactorOne);
     case 0 * 9 + 2 * 3 + 2:
-        return set(GL_FUNC_ADD, factor, GL_ZERO);
+        return set(BlendAdd, factor, FactorZero);
     case 1 * 9 + 0 * 3 + 0:
-        return set(GL_FUNC_ADD, inverse, factor);
+        return set(BlendAdd, inverse, factor);
     case 1 * 9 + 0 * 3 + 2:
-        return set(GL_FUNC_REVERSE_SUBTRACT, factor, factor);
+        return set(BlendReverseSubtract, factor, factor);
     case 1 * 9 + 2 * 3 + 0:
-        return set(GL_FUNC_ADD, GL_ONE, factor);
+        return set(BlendAdd, FactorOne, factor);
     case 1 * 9 + 2 * 3 + 2:
-        return set(GL_FUNC_ADD, GL_ZERO, factor);
+        return set(BlendAdd, FactorZero, factor);
     case 2 * 9 + 0 * 3 + 1:
-        return set(GL_FUNC_REVERSE_SUBTRACT, factor, GL_ONE);
+        return set(BlendReverseSubtract, factor, FactorOne);
     case 2 * 9 + 0 * 3 + 0:
-        return set(GL_FUNC_ADD, inverse, GL_ZERO);
+        return set(BlendAdd, inverse, FactorZero);
     case 2 * 9 + 0 * 3 + 2:
-        return set(GL_FUNC_ADD, GL_ZERO, GL_ZERO);
+        return set(BlendAdd, FactorZero, FactorZero);
     case 2 * 9 + 1 * 3 + 0:
-        return set(GL_FUNC_SUBTRACT, GL_ONE, factor);
+        return set(BlendSubtract, FactorOne, factor);
     case 2 * 9 + 1 * 3 + 1:
-        return set(GL_FUNC_ADD, GL_ZERO, inverse);
+        return set(BlendAdd, FactorZero, inverse);
     case 2 * 9 + 1 * 3 + 2:
-        return set(GL_FUNC_ADD, GL_ZERO, GL_ZERO);
+        return set(BlendAdd, FactorZero, FactorZero);
     default:
         return false;
     }
 }
 
-GLuint HwGs::AccumFramebufferFor(Target* colour, Target* depth)
+u32 HwGs::AccumFramebufferFor(Target* colour, Target* depth)
 {
     auto key = std::make_pair(colour, depth);
     auto found = accumFramebuffers_.find(key);
@@ -3984,25 +3787,24 @@ GLuint HwGs::AccumFramebufferFor(Target* colour, Target* depth)
         return found->second;
     }
 
-    Gl& gl = GetGl();
+    Gpu& gpu = gpu_;
     if (colour->accum == 0)
     {
-        gl.GenTextures(1, &colour->accum);
-        gl.BindTexture(GL_TEXTURE_2D, colour->accum);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA16F), static_cast<GLsizei>(colour->width * colour->scale),
-                      static_cast<GLsizei>(colour->height * colour->scale), 0, GL_RGBA, GL_HALF_FLOAT, nullptr);
+        gpu.GenTextures(1, &colour->accum);
+        gpu.BindTexture(colour->accum);
+        gpu.TexParameter(ParamMaxLevel, 0);
+        gpu.TexParameter(ParamMinFilter, FilterNearest);
+        gpu.TexParameter(ParamMagFilter, FilterNearest);
+        gpu.TexImage(0, FormatRgba16f, static_cast<s32>(colour->width * colour->scale), static_cast<s32>(colour->height * colour->scale), nullptr);
     }
 
-    GLuint fbo = 0;
-    gl.GenFramebuffers(1, &fbo);
-    gl.BindFramebuffer(GL_FRAMEBUFFER, fbo);
-    gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colour->accum, 0);
+    u32 fbo = 0;
+    gpu.GenFramebuffers(1, &fbo);
+    gpu.BindFramebuffer(fbo);
+    gpu.AttachColour(colour->accum);
     if (depth != nullptr)
     {
-        gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depth->texture, 0);
+        gpu.AttachDepthStencil(depth->texture);
     }
 
     accumFramebuffers_[key] = fbo;
@@ -4018,32 +3820,32 @@ void HwGs::Resolve(Target* target)
     }
 
     target->accumPending = false;
-    Gl& gl = GetGl();
-    GLuint before = CopyTarget(target);
-    const GLsizei w = static_cast<GLsizei>(target->width * target->scale);
-    const GLsizei h = static_cast<GLsizei>(target->height * target->scale);
-    gl.BindFramebuffer(GL_FRAMEBUFFER, target->fbo);
+    Gpu& gpu = gpu_;
+    u32 before = CopyTarget(target);
+    const s32 w = static_cast<s32>(target->width * target->scale);
+    const s32 h = static_cast<s32>(target->height * target->scale);
+    gpu.BindFramebuffer(target->fbo);
     Pass(target->fbo, "wrap-add resolve");
-    gl.Viewport(0, 0, w, h);
-    gl.Disable(GL_SCISSOR_TEST);
-    gl.Disable(GL_DEPTH_TEST);
-    gl.Disable(GL_STENCIL_TEST);
-    gl.Disable(GL_BLEND);
-    gl.ColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
-    gl.UseProgram(resolveProgram_);
-    gl.ActiveTexture(GL_TEXTURE0);
-    gl.BindTexture(GL_TEXTURE_2D, before);
-    gl.ActiveTexture(GL_TEXTURE0 + 1);
-    gl.BindTexture(GL_TEXTURE_2D, target->accum);
-    gl.ActiveTexture(GL_TEXTURE0);
-    gl.Uniform1i(gl.GetUniformLocation(resolveProgram_, "before"), 0);
-    gl.Uniform1i(gl.GetUniformLocation(resolveProgram_, "sum"), 1);
-    gl.BindVertexArray(emptyArray_);
-    gl.DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    gl.ColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    gpu.Viewport(0, 0, w, h);
+    gpu.Disable(CapScissorTest);
+    gpu.Disable(CapDepthTest);
+    gpu.Disable(CapStencilTest);
+    gpu.Disable(CapBlend);
+    gpu.ColorMask(true, true, true, false);
+    gpu.UseProgram(resolveProgram_);
+    gpu.ActiveTexture(0);
+    gpu.BindTexture(before);
+    gpu.ActiveTexture(1);
+    gpu.BindTexture(target->accum);
+    gpu.ActiveTexture(0);
+    gpu.Uniform1i(gpu.UniformLocation(resolveProgram_, "before"), 0);
+    gpu.Uniform1i(gpu.UniformLocation(resolveProgram_, "sum"), 1);
+    gpu.BindVertexes(false);
+    gpu.DrawArrays(PrimitiveTriangleStrip, 0, 4);
+    gpu.ColorMask(true, true, true, true);
 }
 
-GLuint HwGs::CopyOf(Target* target)
+u32 HwGs::CopyOf(Target* target)
 {
     Flush();
     Resolve(target);
@@ -4051,25 +3853,24 @@ GLuint HwGs::CopyOf(Target* target)
 }
 
 // A copy of a colour target (the destination a batch's shader reads, the texture of a target drawn into)
-GLuint HwGs::CopyTarget(Target* target, const Rect* region)
+u32 HwGs::CopyTarget(Target* target, const Rect* region)
 {
     auto key = std::make_tuple(target->width * target->scale, target->height * target->scale);
     auto found = copies_.find(key);
-    GLuint texture = 0;
-    GLuint fbo = 0;
-    Gl& gl = GetGl();
+    u32 texture = 0;
+    u32 fbo = 0;
+    Gpu& gpu = gpu_;
     if (found == copies_.end())
     {
-        gl.GenTextures(1, &texture);
-        gl.BindTexture(GL_TEXTURE_2D, texture);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA8), static_cast<GLsizei>(target->width * target->scale),
-                      static_cast<GLsizei>(target->height * target->scale), 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-        gl.GenFramebuffers(1, &fbo);
-        gl.BindFramebuffer(GL_FRAMEBUFFER, fbo);
-        gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+        gpu.GenTextures(1, &texture);
+        gpu.BindTexture(texture);
+        gpu.TexParameter(ParamMaxLevel, 0);
+        gpu.TexParameter(ParamMinFilter, FilterNearest);
+        gpu.TexParameter(ParamMagFilter, FilterNearest);
+        gpu.TexImage(0, FormatRgba8, static_cast<s32>(target->width * target->scale), static_cast<s32>(target->height * target->scale), nullptr);
+        gpu.GenFramebuffers(1, &fbo);
+        gpu.BindFramebuffer(fbo);
+        gpu.AttachColour(texture);
         copies_[key] = {texture, fbo};
     }
     else
@@ -4078,23 +3879,23 @@ GLuint HwGs::CopyTarget(Target* target, const Rect* region)
         fbo = found->second.second;
     }
 
-    GLint w = static_cast<GLint>(target->width * target->scale);
-    GLint h = static_cast<GLint>(target->height * target->scale);
-    GLint x0 = 0;
-    GLint y0 = 0;
-    GLint x1 = w;
-    GLint y1 = h;
+    s32 w = static_cast<s32>(target->width * target->scale);
+    s32 h = static_cast<s32>(target->height * target->scale);
+    s32 x0 = 0;
+    s32 y0 = 0;
+    s32 x1 = w;
+    s32 y1 = h;
     if (region != nullptr)
     {
         // Only the part the batch reads (its primitives' rectangle, a pixel more each way)
-        const GLint n = static_cast<GLint>(target->scale);
+        const s32 n = static_cast<s32>(target->scale);
         x0 = std::clamp((region->left - 1) * n, 0, w);
         y0 = std::clamp((region->top - 1) * n, 0, h);
         x1 = std::clamp((region->right + 2) * n, 0, w);
         y1 = std::clamp((region->bottom + 2) * n, 0, h);
     }
 
-    gl.BindFramebuffer(GL_FRAMEBUFFER, fbo);
+    gpu.BindFramebuffer(fbo);
     Pass(fbo, "target copy");
     CopyRect(copyColourProgram_, target->texture, static_cast<f32>(w), static_cast<f32>(h), x0, y0, x1, y1);
     return texture;
@@ -4114,12 +3915,11 @@ Target* HwGs::ScratchStencil(Target* colour)
     made->scale = colour->scale;
     made->depth = true;
     made->complete = colour->complete;
-    Gl& gl = GetGl();
-    gl.GenTextures(1, &made->texture);
-    gl.BindTexture(GL_TEXTURE_2D, made->texture);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-    gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_DEPTH32F_STENCIL8), static_cast<GLsizei>(colour->width * colour->scale),
-                  static_cast<GLsizei>(colour->height * colour->scale), 0, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, nullptr);
+    Gpu& gpu = gpu_;
+    gpu.GenTextures(1, &made->texture);
+    gpu.BindTexture(made->texture);
+    gpu.TexParameter(ParamMaxLevel, 0);
+    gpu.TexImage(0, FormatDepth32fStencil8, static_cast<s32>(colour->width * colour->scale), static_cast<s32>(colour->height * colour->scale), nullptr);
     Target* raw = made.get();
     scratchStencils_[colour] = std::move(made);
     return raw;
@@ -4274,13 +4074,13 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
     // to 5 bits is then left to the reads), else the shader
     if (state.blend && !wrapAdd)
     {
-        GLenum factor = GL_SRC1_ALPHA;
-        GLenum inverse = GL_ONE_MINUS_SRC1_ALPHA;
+        u32 factor = FactorSrc1Alpha;
+        u32 inverse = FactorOneMinusSrc1Alpha;
         bool glCan = state.colclamp && !state.pabe && (!frame16 || stencilDate);
         if (state.blendC == 2 && state.blendFix <= 0x80)
         {
-            factor = GL_CONSTANT_ALPHA;
-            inverse = GL_ONE_MINUS_CONSTANT_ALPHA;
+            factor = FactorConstantAlpha;
+            inverse = FactorOneMinusConstantAlpha;
             key.blendFix = state.blendFix;
         }
         else if (state.blendC != 0)
@@ -4411,7 +4211,7 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
     // The texture
     u32 program = 0;
     bool textureFromScaled = false;
-    GLuint texture = 0;
+    u32 texture = 0;
     u32 texAlpha = 0;
     if (state.textured)
     {
@@ -4421,14 +4221,14 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
         key.gsTexHeight = static_cast<f32>(level.height);
         key.texWidth = key.gsTexWidth;
         key.texHeight = key.gsTexHeight;
-        key.wrapS = state.wms == Gs::WrapClamp ? GL_CLAMP_TO_EDGE : GL_REPEAT;
-        key.wrapT = state.wmt == Gs::WrapClamp ? GL_CLAMP_TO_EDGE : GL_REPEAT;
-        key.magFilter = state.magLinear ? GL_LINEAR : GL_NEAREST;
+        key.wrapS = state.wms == Gs::WrapClamp ? WrapClamp : WrapRepeat;
+        key.wrapT = state.wmt == Gs::WrapClamp ? WrapClamp : WrapRepeat;
+        key.magFilter = state.magLinear ? FilterLinear : FilterNearest;
         key.minFilter = key.magFilter;
         if (state.mipmapped)
         {
-            static constexpr GLenum Minified[] = {GL_NEAREST, GL_LINEAR, GL_NEAREST_MIPMAP_NEAREST, GL_NEAREST_MIPMAP_LINEAR,
-                                                  GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR_MIPMAP_LINEAR};
+            static constexpr u32 Minified[] = {FilterNearest, FilterLinear, FilterNearestMipNearest, FilterNearestMipLinear,
+                                                  FilterLinearMipNearest, FilterLinearMipLinear};
             key.minFilter = Minified[std::min<u32>(state.mmin, 5)];
             key.maxLevel = state.levelCount - 1;
             key.lodK = state.k;
@@ -4461,7 +4261,7 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
             // The region is the bilinear filter's (the texel before the first: -1 at 0); the nearest texels at UV coordinates,
             // which are never negative, start at 0 (bossarea's sky, a repeating texture laid with the nearest texels from 0, read
             // its whole height otherwise, and not from the buffer it was drawn into)
-            if (smallScenes_ && state.uv && key.magFilter == GL_NEAREST && key.minFilter == GL_NEAREST)
+            if (smallScenes_ && state.uv && key.magFilter == FilterNearest && key.minFilter == FilterNearest)
             {
                 l = std::max(l, 0);
                 t = std::max(t, 0);
@@ -4585,13 +4385,13 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
             key.texWidth = static_cast<f32>(source->width);
             key.texHeight = static_cast<f32>(source->height);
             static const bool noSnap = std::getenv("TWIN_HW_NO_SNAP") != nullptr;
-            if (!noSnap && source->scale > colour->scale && key.magFilter == GL_NEAREST && key.minFilter == GL_NEAREST)
+            if (!noSnap && source->scale > colour->scale && key.magFilter == FilterNearest && key.minFilter == FilterNearest)
             {
                 key.texSnap = source->scale;
             }
             // Its edge isn't the texture's: a filter reaching past the region stops at the target's edge
-            key.wrapS = GL_CLAMP_TO_EDGE;
-            key.wrapT = GL_CLAMP_TO_EDGE;
+            key.wrapS = WrapClamp;
+            key.wrapT = WrapClamp;
             if (level.psm == Gs::PSMCT24)
             {
                 texAlpha = 1;
@@ -4627,8 +4427,8 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
             repeatable = repeatable && sourceless && !textureFromScaled;
             if (g_FilterMode >= 1)
             {
-                key.magFilter = GL_LINEAR;
-                key.minFilter = state.mipmapped ? (g_FilterMode == 2 ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR_MIPMAP_NEAREST) : GL_LINEAR;
+                key.magFilter = FilterLinear;
+                key.minFilter = state.mipmapped ? (g_FilterMode == 2 ? FilterLinearMipLinear : FilterLinearMipNearest) : FilterLinear;
                 key.anisotropy = g_FilterMode == 2 && state.mipmapped ? 16 : 1;
             }
         }
@@ -4674,26 +4474,24 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
             }
 
             CachedTexture& cached = textures_[state.levels[0].cacheId];
-            Gl& gl = GetGl();
+            Gpu& gpu = gpu_;
             const u32 levels = state.levelCount;
             if (cached.id == 0 || cached.width != level.width || cached.height != level.height || cached.levels != levels)
             {
                 Flush();
                 if (cached.id == 0)
                 {
-                    gl.GenTextures(1, &cached.id);
+                    gpu.GenTextures(1, &cached.id);
                 }
 
-                gl.BindTexture(GL_TEXTURE_2D, cached.id);
+                gpu.BindTexture(cached.id);
                 for (u32 i = 0; i < levels; i++)
                 {
-                    gl.TexImage2D(GL_TEXTURE_2D, static_cast<GLint>(i), static_cast<GLint>(GL_RGBA8),
-                                  static_cast<GLsizei>(state.levels[i].width), static_cast<GLsizei>(state.levels[i].height), 0, GL_RGBA,
-                                  GL_UNSIGNED_BYTE, nullptr);
+                    gpu.TexImage(static_cast<s32>(i), FormatRgba8, static_cast<s32>(state.levels[i].width), static_cast<s32>(state.levels[i].height), nullptr);
                 }
 
-                gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-                gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, static_cast<GLint>(levels - 1));
+                gpu.TexParameter(ParamBaseLevel, 0);
+                gpu.TexParameter(ParamMaxLevel, static_cast<s32>(levels - 1));
                 cached.width = level.width;
                 cached.height = level.height;
                 cached.levels = levels;
@@ -4718,8 +4516,8 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
                         Flush();
                     }
 
-                    gl.BindTexture(GL_TEXTURE_2D, cached.id);
-                    gl.PixelStorei(GL_UNPACK_ALIGNMENT, 4);
+                    gpu.BindTexture(cached.id);
+                    gpu.PixelStore(StoreUnpackAlignment, 4);
                     prepared = true;
                 }
             };
@@ -4779,15 +4577,14 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
                 }
 
                 prepare();
-                gl.PixelStorei(GL_UNPACK_ROW_LENGTH, static_cast<GLint>(lv.stride));
+                gpu.PixelStore(StoreUnpackRowLength, static_cast<s32>(lv.stride));
                 const u32* from = lv.texels + static_cast<size_t>(want.top) * lv.stride + static_cast<size_t>(want.left);
-                gl.TexSubImage2D(GL_TEXTURE_2D, static_cast<GLint>(i), want.left, want.top, want.right - want.left + 1,
-                                 want.bottom - want.top + 1, GL_RGBA, GL_UNSIGNED_BYTE, from);
+                gpu.TexSubImage(static_cast<s32>(i), want.left, want.top, want.right - want.left + 1, want.bottom - want.top + 1, FormatRgba8, from);
                 cached.versions[i] = lv.version;
                 cached.tilesVersions[i] = lv.tilesVersion;
             }
 
-            gl.PixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+            gpu.PixelStore(StoreUnpackRowLength, 0);
             texture = cached.id;
 
             // A replacement of level 0 (PCSX2's packs), looked for when its texels change; and the dump of it in PCSX2's
@@ -4817,21 +4614,20 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
                     Flush();
                     if (cached.replacement == 0)
                     {
-                        gl.GenTextures(1, &cached.replacement);
+                        gpu.GenTextures(1, &cached.replacement);
                     }
 
-                    gl.BindTexture(GL_TEXTURE_2D, cached.replacement);
-                    gl.PixelStorei(GL_UNPACK_ALIGNMENT, 4);
-                    gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA8), static_cast<GLsizei>(image->width),
-                                  static_cast<GLsizei>(image->height), 0, GL_RGBA, GL_UNSIGNED_BYTE, image->pixels.data());
-                    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-                    gl.GenerateMipmap(GL_TEXTURE_2D);
+                    gpu.BindTexture(cached.replacement);
+                    gpu.PixelStore(StoreUnpackAlignment, 4);
+                    gpu.TexImage(0, FormatRgba8, static_cast<s32>(image->width), static_cast<s32>(image->height), image->pixels.data());
+                    gpu.TexParameter(ParamBaseLevel, 0);
+                    gpu.GenerateMipmap();
                     cached.replacementMipmaps = true;
                 }
                 else if (cached.replacement != 0)
                 {
                     Flush();
-                    gl.DeleteTextures(1, &cached.replacement);
+                    gpu.DeleteTextures(1, &cached.replacement);
                     cached.replacement = 0;
                 }
             }
@@ -4845,8 +4641,8 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
             // The filtering setting (the game's textures, not its buffers)
             if (g_FilterMode >= 1)
             {
-                key.magFilter = GL_LINEAR;
-                key.minFilter = state.mipmapped ? (g_FilterMode == 2 ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR_MIPMAP_NEAREST) : GL_LINEAR;
+                key.magFilter = FilterLinear;
+                key.minFilter = state.mipmapped ? (g_FilterMode == 2 ? FilterLinearMipLinear : FilterLinearMipNearest) : FilterLinear;
                 key.anisotropy = g_FilterMode == 2 && state.mipmapped ? 16 : 1;
             }
             if (textures_.size() > 4096)
@@ -4855,7 +4651,7 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
                 Flush();
                 for (auto& entry : textures_)
                 {
-                    gl.DeleteTextures(1, &entry.second.id);
+                    gpu.DeleteTextures(1, &entry.second.id);
                 }
 
                 textures_.clear();
@@ -4960,11 +4756,11 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
         key.zMaxU = state.zmax;
         if (depth->reversed)
         {
-            key.depthFunc = state.ztst == Gs::ZtstAlways ? GL_ALWAYS : state.ztst == Gs::ZtstGequal ? GL_LEQUAL : GL_LESS;
+            key.depthFunc = state.ztst == Gs::ZtstAlways ? CompareAlways : state.ztst == Gs::ZtstGequal ? CompareLessEqual : CompareLess;
         }
         else
         {
-            key.depthFunc = state.ztst == Gs::ZtstAlways ? GL_ALWAYS : state.ztst == Gs::ZtstGequal ? GL_GEQUAL : GL_GREATER;
+            key.depthFunc = state.ztst == Gs::ZtstAlways ? CompareAlways : state.ztst == Gs::ZtstGequal ? CompareGreaterEqual : CompareGreater;
         }
 
         // A texture at the PS2's resolution made from upscaled buffers (an effect's lookup of the depth, say) tested against
@@ -4975,7 +4771,7 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
             (state.ztst == Gs::ZtstGequal || state.ztst == Gs::ZtstGreater))
         {
             key.nativeDepthTest = state.ztst;
-            key.depthFunc = GL_ALWAYS;
+            key.depthFunc = CompareAlways;
             program |= BitNativeDepth;
         }
         key.depthWrite = state.zWritten ? 1 : 0;
@@ -5005,9 +4801,9 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
     key.colour = colour;
     key.depth = depth;
     key.program = program;
-    key.primitive = state.type == Gs::PrimPoint ? GL_POINTS
-                    : (state.type == Gs::PrimLine || state.type == Gs::PrimLineStrip) ? GL_LINES
-                                                                                       : GL_TRIANGLES;
+    key.primitive = state.type == Gs::PrimPoint ? PrimitivePoints
+                    : (state.type == Gs::PrimLine || state.type == Gs::PrimLineStrip) ? PrimitiveLines
+                                                                                       : PrimitiveTriangles;
     // The batch's key kept when it's the same (most primitives: a mesh's run): copied only when it changes
     const bool sameKey = batching_ && SameBatchKey(key, key_);
     if (batching_ && !sameKey)
@@ -5154,7 +4950,7 @@ void HwGs::AddPrimitive(const Gs::Gs::DrawState& state, const Gs::Vertex* vertex
     }
 
     // The vertexes
-    auto place = [&](const Gs::Vertex& v, HwVertex& out) {
+    auto place = [&](const Gs::Vertex& v, Vertex& out) {
         const f32 nudge = VertexNudge();
         out.x = static_cast<f32>(static_cast<s32>(v.x) - state.offsetX) / 16.0f * static_cast<f32>(n) + 0.5f + nudge;
         out.y = static_cast<f32>(static_cast<s32>(v.y) - state.offsetY) / 16.0f * static_cast<f32>(n) + 0.5f + nudge;
@@ -5186,7 +4982,7 @@ void HwGs::AddPrimitive(const Gs::Gs::DrawState& state, const Gs::Vertex* vertex
         // Two corners: the quad between them, its texture coordinates the corners', everything else the second vertex's
         const Gs::Vertex& a = vertexes[0];
         const Gs::Vertex& b = vertexes[1];
-        HwVertex corners[4];
+        Vertex corners[4];
         Gs::Vertex v = b;
         for (u32 i = 0; i < 4; i++)
         {
@@ -5218,22 +5014,22 @@ void HwGs::AddPrimitive(const Gs::Gs::DrawState& state, const Gs::Vertex* vertex
         static constexpr u32 Order[6] = {0, 1, 2, 1, 3, 2};
         for (u32 i : Order)
         {
-            vertexes_.push_back(corners[i]);
+            gpu_.list().vertexes.push_back(corners[i]);
         }
 
         break;
     }
     case Gs::PrimPoint:
     {
-        HwVertex out;
+        Vertex out;
         place(vertexes[0], out);
-        vertexes_.push_back(out);
+        gpu_.list().vertexes.push_back(out);
         break;
     }
     case Gs::PrimLine:
     case Gs::PrimLineStrip:
     {
-        HwVertex out[2];
+        Vertex out[2];
         place(vertexes[0], out[0]);
         place(vertexes[1], out[1]);
         if (!state.gouraud)
@@ -5244,13 +5040,13 @@ void HwGs::AddPrimitive(const Gs::Gs::DrawState& state, const Gs::Vertex* vertex
             out[0].a = out[1].a;
         }
 
-        vertexes_.push_back(out[0]);
-        vertexes_.push_back(out[1]);
+        gpu_.list().vertexes.push_back(out[0]);
+        gpu_.list().vertexes.push_back(out[1]);
         break;
     }
     default:
     {
-        HwVertex out[3];
+        Vertex out[3];
         for (u32 i = 0; i < 3; i++)
         {
             place(vertexes[i], out[i]);
@@ -5267,9 +5063,9 @@ void HwGs::AddPrimitive(const Gs::Gs::DrawState& state, const Gs::Vertex* vertex
             }
         }
 
-        for (const HwVertex& v : out)
+        for (const Vertex& v : out)
         {
-            vertexes_.push_back(v);
+            gpu_.list().vertexes.push_back(v);
         }
 
         break;
@@ -5320,10 +5116,11 @@ void HwGs::AddPrimitive(const Gs::Gs::DrawState& state, const Gs::Vertex* vertex
     static const char* tracePrim = std::getenv("TWIN_HW_TRACE_PRIM");
     if (tracePrim != nullptr && std::strtoull(tracePrim, nullptr, 10) == gs_.primitivesDrawn)
     {
-        for (size_t i = vertexes_.size() >= 3 ? vertexes_.size() - 3 : 0; i < vertexes_.size(); i++)
+        const std::vector<Vertex>& vertexes = gpu_.list().vertexes;
+        for (size_t i = vertexes.size() >= 3 ? vertexes.size() - 3 : 0; i < vertexes.size(); i++)
         {
-            std::fprintf(stderr, "hwprim:   vertex %.6f,%.6f z %x (of %zu in the batch; colour target %ux%u scale %u)\n", vertexes_[i].x,
-                         vertexes_[i].y, vertexes_[i].z, vertexes_.size(), colour->width, colour->height, colour->scale);
+            std::fprintf(stderr, "hwprim:   vertex %.6f,%.6f z %x (of %zu in the batch; colour target %ux%u scale %u)\n", vertexes[i].x,
+                         vertexes[i].y, vertexes[i].z, BatchVertexes(), colour->width, colour->height, colour->scale);
         }
     }
 
@@ -5332,10 +5129,10 @@ void HwGs::AddPrimitive(const Gs::Gs::DrawState& state, const Gs::Vertex* vertex
 
 void HwGs::Flush()
 {
-    if (!batching_ || vertexes_.empty())
+    if (!batching_ || BatchVertexes() == 0)
     {
         batching_ = false;
-        vertexes_.clear();
+        DropBatch();
         batchRects_.clear();
         return;
     }
@@ -5343,7 +5140,7 @@ void HwGs::Flush()
     MakeCurrent();
     stats.batches++;
     const BatchKey& k = key_;
-    Gl& gl = GetGl();
+    Gpu& gpu = gpu_;
     {
         static const char* batchLog = std::getenv("TWIN_HW_BATCH_LOG");
         if (batchLog != nullptr && g_BatchLogFrame == static_cast<u32>(std::atoi(batchLog)))
@@ -5371,16 +5168,16 @@ void HwGs::Flush()
                          "texture %u%s%x/%u cls %u scale %u, filters %x/%x, wrap %x/%x, tex %gx%g gs %gx%g, snap %u, native depth %u, blend %u %u%u%u%u fix %u, "
                          "depth func %x write %u, aref %u afail %u, mask %x\n",
                          (unsigned long long)stats.batches, k.colour->bp, k.colour->bw, k.colour->cls, k.colour->scale, k.colour->width,
-                         k.colour->height, k.depth ? k.depth->bp : 0, k.depth ? k.depth->bw : 0, k.primitive, vertexes_.size(), region.left,
+                         k.colour->height, k.depth ? k.depth->bp : 0, k.depth ? k.depth->bw : 0, k.primitive, BatchVertexes(), region.left,
                          region.top, region.right, region.bottom, k.program, k.texture, source ? " from target " : " ", source ? source->bp : 0,
                          source ? source->bw : 0, source ? source->cls : 0, source ? source->scale : 0, k.minFilter, k.magFilter, k.wrapS,
                          k.wrapT, k.texWidth, k.texHeight, k.gsTexWidth, k.gsTexHeight, k.texSnap, k.nativeDepthTest, k.blend, k.gsBlend[0],
                          k.gsBlend[1], k.gsBlend[2], k.gsBlend[3], k.gsFix, k.depthFunc, k.depthWrite, k.aref, k.afail, k.colourMask);
         }
     }
-    const GLsizei n = static_cast<GLsizei>(k.colour->scale);
-    const GLsizei width = static_cast<GLsizei>(k.colour->width) * n;
-    const GLsizei height = static_cast<GLsizei>(k.colour->height) * n;
+    const s32 n = static_cast<s32>(k.colour->scale);
+    const s32 width = static_cast<s32>(k.colour->width) * n;
+    const s32 height = static_cast<s32>(k.colour->height) * n;
     // The destination as it was before the batch, for the shader's blend and the destination alpha test
     // A batch other than a wrapping sum sees the sums added first
     if (!k.wrapAdd && k.colour->accumPending)
@@ -5397,7 +5194,7 @@ void HwGs::Flush()
     const bool stencilKept = k.stencilDate && depthStencil->stencilFor == k.colour && depthStencil->stencilDatm == k.datm &&
                              depthStencil->stencilAlphaVersion == k.colour->alphaVersion &&
                              std::memcmp(depthStencil->stencilScissor, k.scissor, sizeof(k.scissor)) == 0;
-    GLuint destination = 0;
+    u32 destination = 0;
     if ((k.program & BitShaderBlend) || (k.stencilDate && !stencilKept))
     {
         // The shader's blend reads the batch's rectangle; the stencil's pass the whole scissor
@@ -5420,7 +5217,7 @@ void HwGs::Flush()
             static u64 total = 0;
             char detail[160];
             std::snprintf(detail, sizeof(detail), "copy of %x/%u class %u: %s, %zu vertexes", k.colour->bp, k.colour->bw, k.colour->cls,
-                          (k.program & BitShaderBlend) ? "shader blend" : "stencil DATE", vertexes_.size());
+                          (k.program & BitShaderBlend) ? "shader blend" : "stencil DATE", BatchVertexes());
             counts[detail]++;
             if (++total % 400 == 0)
             {
@@ -5433,7 +5230,7 @@ void HwGs::Flush()
     }
 
     // The depth target as floats, for the shader's native depth test
-    GLuint depthCopy = 0;
+    u32 depthCopy = 0;
     if ((k.program & (BitNativeDepth | BitDepthIndex)) && k.depth != nullptr)
     {
         const u32 w = k.depth->width * k.depth->scale;
@@ -5441,18 +5238,18 @@ void HwGs::Flush()
         auto& copy = depthCopies_[{w, h}];
         if (copy.first == 0)
         {
-            gl.GenTextures(1, &copy.first);
-            gl.BindTexture(GL_TEXTURE_2D, copy.first);
-            gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-            gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_R32F), static_cast<GLsizei>(w), static_cast<GLsizei>(h), 0, GL_RED, GL_FLOAT, nullptr);
-            gl.GenFramebuffers(1, &copy.second);
-            gl.BindFramebuffer(GL_FRAMEBUFFER, copy.second);
-            gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, copy.first, 0);
+            gpu.GenTextures(1, &copy.first);
+            gpu.BindTexture(copy.first);
+            gpu.TexParameter(ParamMaxLevel, 0);
+            gpu.TexParameter(ParamMinFilter, FilterNearest);
+            gpu.TexParameter(ParamMagFilter, FilterNearest);
+            gpu.TexImage(0, FormatR32f, static_cast<s32>(w), static_cast<s32>(h), nullptr);
+            gpu.GenFramebuffers(1, &copy.second);
+            gpu.BindFramebuffer(copy.second);
+            gpu.AttachColour(copy.first);
         }
 
-        gl.BindFramebuffer(GL_FRAMEBUFFER, copy.second);
+        gpu.BindFramebuffer(copy.second);
         Pass(copy.second, "depth copy");
         CopyRect(copyColourProgram_, k.depth->texture, static_cast<f32>(w), static_cast<f32>(h), 0, 0, static_cast<s32>(w), static_cast<s32>(h));
         depthCopy = copy.first;
@@ -5461,27 +5258,27 @@ void HwGs::Flush()
     if (k.wrapAdd)
     {
         // Into the target's float buffer of sums (cleared when a run of them starts)
-        gl.BindFramebuffer(GL_FRAMEBUFFER, AccumFramebufferFor(k.colour, depthStencil));
+        gpu.BindFramebuffer(AccumFramebufferFor(k.colour, depthStencil));
         Pass(AccumFramebufferFor(k.colour, depthStencil), "draw (wrap-add sums)");
         if (!k.colour->accumPending)
         {
-            gl.Disable(GL_SCISSOR_TEST);
-            gl.ColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-            gl.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            gl.Clear(GL_COLOR_BUFFER_BIT);
+            gpu.Disable(CapScissorTest);
+            gpu.ColorMask(true, true, true, true);
+            gpu.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            gpu.Clear(ClearColour);
             k.colour->accumPending = true;
         }
     }
     else
     {
-        gl.BindFramebuffer(GL_FRAMEBUFFER, FramebufferFor(k.colour, depthStencil));
+        gpu.BindFramebuffer(FramebufferFor(k.colour, depthStencil));
         Pass(FramebufferFor(k.colour, depthStencil), "draw");
     }
 
-    gl.Viewport(0, 0, width, height);
-    gl.Enable(GL_SCISSOR_TEST);
-    gl.Scissor(k.scissor[0] * n, k.scissor[1] * n, (k.scissor[2] - k.scissor[0] + 1) * n, (k.scissor[3] - k.scissor[1] + 1) * n);
-    gl.Disable(GL_STENCIL_TEST);
+    gpu.Viewport(0, 0, width, height);
+    gpu.Enable(CapScissorTest);
+    gpu.Scissor(k.scissor[0] * n, k.scissor[1] * n, (k.scissor[2] - k.scissor[0] + 1) * n, (k.scissor[3] - k.scissor[1] + 1) * n);
+    gpu.Disable(CapStencilTest);
     // The stencil the destination alpha test made last time on this buffer is good while the target's alpha, DATM and the
     // scissor are the same: no copy, no prepass
     bool stencilReady = k.stencilDate && depthStencil->stencilFor == k.colour && depthStencil->stencilDatm == k.datm &&
@@ -5489,10 +5286,10 @@ void HwGs::Flush()
                         std::memcmp(depthStencil->stencilScissor, k.scissor, sizeof(k.scissor)) == 0;
     if (k.stencilDate && stencilReady)
     {
-        gl.Enable(GL_STENCIL_TEST);
-        gl.StencilFunc(GL_EQUAL, 1, 0xFF);
-        gl.StencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-        gl.StencilMask(0);
+        gpu.Enable(CapStencilTest);
+        gpu.StencilFunc(CompareEqual, 1, 0xFF);
+        gpu.StencilOp(StencilKeep, StencilKeep, StencilKeep);
+        gpu.StencilMask(0);
     }
     else if (k.stencilDate)
     {
@@ -5501,175 +5298,173 @@ void HwGs::Flush()
         depthStencil->stencilAlphaVersion = k.colour->alphaVersion;
         std::memcpy(depthStencil->stencilScissor, k.scissor, sizeof(k.scissor));
         // Stencil 1 where the destination's alpha bit is DATM, then the draw only there
-        gl.Disable(GL_DEPTH_TEST);
-        gl.Disable(GL_BLEND);
-        gl.ColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-        gl.DepthMask(GL_FALSE);
-        gl.Enable(GL_STENCIL_TEST);
-        gl.StencilMask(0xFF);
-        gl.ClearStencil(0);
-        gl.Clear(GL_STENCIL_BUFFER_BIT);
-        gl.StencilFunc(GL_ALWAYS, 1, 0xFF);
-        gl.StencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-        gl.UseProgram(dateProgram_);
-        gl.ActiveTexture(GL_TEXTURE0);
-        gl.BindTexture(GL_TEXTURE_2D, destination);
-        gl.Uniform1i(gl.GetUniformLocation(dateProgram_, "destination"), 0);
-        gl.Uniform1i(gl.GetUniformLocation(dateProgram_, "datm"), static_cast<GLint>(k.datm));
-        gl.BindVertexArray(emptyArray_);
-        gl.DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-        gl.StencilFunc(GL_EQUAL, 1, 0xFF);
-        gl.StencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-        gl.StencilMask(0);
+        gpu.Disable(CapDepthTest);
+        gpu.Disable(CapBlend);
+        gpu.ColorMask(false, false, false, false);
+        gpu.DepthMask(false);
+        gpu.Enable(CapStencilTest);
+        gpu.StencilMask(0xFF);
+        gpu.ClearStencil(0);
+        gpu.Clear(ClearStencil);
+        gpu.StencilFunc(CompareAlways, 1, 0xFF);
+        gpu.StencilOp(StencilKeep, StencilKeep, StencilReplace);
+        gpu.UseProgram(dateProgram_);
+        gpu.ActiveTexture(0);
+        gpu.BindTexture(destination);
+        gpu.Uniform1i(gpu.UniformLocation(dateProgram_, "destination"), 0);
+        gpu.Uniform1i(gpu.UniformLocation(dateProgram_, "datm"), static_cast<s32>(k.datm));
+        gpu.BindVertexes(false);
+        gpu.DrawArrays(PrimitiveTriangleStrip, 0, 4);
+        gpu.StencilFunc(CompareEqual, 1, 0xFF);
+        gpu.StencilOp(StencilKeep, StencilKeep, StencilKeep);
+        gpu.StencilMask(0);
     }
 
-    gl.Disable(GL_CULL_FACE);
-    gl.Enable(GL_PROGRAM_POINT_SIZE);
+    gpu.Disable(CapCullFace);
+    gpu.Enable(CapPointSize);
     if (k.depth != nullptr)
     {
-        gl.Enable(GL_DEPTH_TEST);
-        gl.DepthFunc(k.depthFunc);
+        gpu.Enable(CapDepthTest);
+        gpu.DepthFunc(k.depthFunc);
     }
     else
     {
-        gl.Disable(GL_DEPTH_TEST);
+        gpu.Disable(CapDepthTest);
     }
 
     if (k.wrapAdd)
     {
-        gl.Enable(GL_BLEND);
-        gl.BlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
-        gl.BlendFuncSeparate(GL_ONE, GL_ONE, GL_ZERO, GL_ONE);
+        gpu.Enable(CapBlend);
+        gpu.BlendEquationSeparate(BlendAdd, BlendAdd);
+        gpu.BlendFuncSeparate(FactorOne, FactorOne, FactorZero, FactorOne);
     }
     else if (k.blend)
     {
-        gl.Enable(GL_BLEND);
-        gl.BlendEquationSeparate(k.blendEquation, GL_FUNC_ADD);
-        gl.BlendFuncSeparate(k.blendSource, k.blendDestination, GL_ONE, GL_ZERO);
+        gpu.Enable(CapBlend);
+        gpu.BlendEquationSeparate(k.blendEquation, BlendAdd);
+        gpu.BlendFuncSeparate(k.blendSource, k.blendDestination, FactorOne, FactorZero);
         f32 fix = std::min(static_cast<f32>(k.blendFix) / 128.0f, 1.0f);
-        gl.BlendColor(0.0f, 0.0f, 0.0f, fix);
+        gpu.BlendColor(0.0f, 0.0f, 0.0f, fix);
     }
     else
     {
-        gl.Disable(GL_BLEND);
+        gpu.Disable(CapBlend);
     }
 
     if (k.texture != 0)
     {
-        gl.ActiveTexture(GL_TEXTURE0);
-        gl.BindTexture(GL_TEXTURE_2D, k.texture);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, static_cast<GLint>(k.minFilter));
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, static_cast<GLint>(k.magFilter));
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, static_cast<GLint>(k.wrapS));
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, static_cast<GLint>(k.wrapT));
-        gl.TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, static_cast<f32>(k.anisotropy != 0 ? k.anisotropy : 1));
+        gpu.ActiveTexture(0);
+        gpu.BindTexture(k.texture);
+        gpu.TexParameter(ParamMinFilter, static_cast<s32>(k.minFilter));
+        gpu.TexParameter(ParamMagFilter, static_cast<s32>(k.magFilter));
+        gpu.TexParameter(ParamWrapS, static_cast<s32>(k.wrapS));
+        gpu.TexParameter(ParamWrapT, static_cast<s32>(k.wrapT));
+        gpu.TexParameterf(ParamMaxAnisotropy, static_cast<f32>(k.anisotropy != 0 ? k.anisotropy : 1));
     }
 
-    gl.BindVertexArray(vertexArray_);
-    gl.BindBuffer(GL_ARRAY_BUFFER, vertexBuffer_);
-    gl.BufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertexes_.size() * sizeof(HwVertex)), vertexes_.data(), GL_STREAM_DRAW);
+    const s32 vertexCount = static_cast<s32>(BatchVertexes());
+    gpu.BindVertexes(true);
+    gpu.VertexData();
 
     const Gs::Gs& gs = gs_;
     (void)gs;
     auto draw = [&](bool failPass, bool colourOn, bool alphaOn, bool depthOn) {
         const Program& p = ProgramFor(k.program | (failPass ? BitFailPass : 0));
-        gl.UseProgram(p.id);
+        gpu.UseProgram(p.id);
         // A viewport far bigger than the target (the scissor keeps the drawing in it): primitives reaching past the target
         // aren't clipped, which would move their edges by the rasteriser's snapping of the new vertexes (a sixteenth of a
         // pixel, enough to lose a thin primitive's pixels); powers of two, so the positions stay exact
         static const bool smallViewport = std::getenv("TWIN_HW_SMALL_VIEWPORT") != nullptr;
         if (smallViewport)
         {
-            gl.Viewport(0, 0, width, height);
-            gl.Uniform2f(p.viewSize, static_cast<f32>(width), static_cast<f32>(height));
-            gl.Uniform2f(p.viewOrigin, 0.0f, 0.0f);
+            gpu.Viewport(0, 0, width, height);
+            gpu.Uniform2f(p.viewSize, static_cast<f32>(width), static_cast<f32>(height));
+            gpu.Uniform2f(p.viewOrigin, 0.0f, 0.0f);
         }
         else
         {
-            gl.Viewport(-BigViewOrigin, -BigViewOrigin, BigViewSize, BigViewSize);
-            gl.Uniform2f(p.viewSize, static_cast<f32>(BigViewSize), static_cast<f32>(BigViewSize));
-            gl.Uniform2f(p.viewOrigin, static_cast<f32>(BigViewOrigin), static_cast<f32>(BigViewOrigin));
+            gpu.Viewport(-BigViewOrigin, -BigViewOrigin, BigViewSize, BigViewSize);
+            gpu.Uniform2f(p.viewSize, static_cast<f32>(BigViewSize), static_cast<f32>(BigViewSize));
+            gpu.Uniform2f(p.viewOrigin, static_cast<f32>(BigViewOrigin), static_cast<f32>(BigViewOrigin));
         }
 
-        gl.Uniform1f(p.zMax, k.zMax);
-        gl.Uniform1ui(p.zMaxU, k.zMaxU);
-        gl.Uniform1i(p.depthReverse, static_cast<GLint>(k.depthReverse));
+        gpu.Uniform1f(p.zMax, k.zMax);
+        gpu.Uniform1ui(p.zMaxU, k.zMaxU);
+        gpu.Uniform1i(p.depthReverse, static_cast<s32>(k.depthReverse));
         if (k.program & BitNativeDepth)
         {
-            gl.ActiveTexture(GL_TEXTURE0 + 4);
-            gl.BindTexture(GL_TEXTURE_2D, depthCopy);
-            gl.ActiveTexture(GL_TEXTURE0);
-            gl.Uniform1i(p.depthCopy, 4);
-            gl.Uniform1i(p.nativeZtst, static_cast<GLint>(k.nativeDepthTest));
-            gl.Uniform1i(p.targetScale, static_cast<GLint>(n));
+            gpu.ActiveTexture(4);
+            gpu.BindTexture(depthCopy);
+            gpu.ActiveTexture(0);
+            gpu.Uniform1i(p.depthCopy, 4);
+            gpu.Uniform1i(p.nativeZtst, static_cast<s32>(k.nativeDepthTest));
+            gpu.Uniform1i(p.targetScale, static_cast<s32>(n));
         }
 
         if (k.program & BitDepthIndex)
         {
-            gl.ActiveTexture(GL_TEXTURE0 + 4);
-            gl.BindTexture(GL_TEXTURE_2D, depthCopy);
-            gl.ActiveTexture(GL_TEXTURE0 + 5);
-            gl.BindTexture(GL_TEXTURE_2D, k.clutTexture);
-            gl.ActiveTexture(GL_TEXTURE0);
-            gl.Uniform1i(p.depthCopy, 4);
-            gl.Uniform1i(p.clut, 5);
-            gl.Uniform1i(p.clutOffset, static_cast<GLint>(k.clutOffset));
+            gpu.ActiveTexture(4);
+            gpu.BindTexture(depthCopy);
+            gpu.ActiveTexture(5);
+            gpu.BindTexture(k.clutTexture);
+            gpu.ActiveTexture(0);
+            gpu.Uniform1i(p.depthCopy, 4);
+            gpu.Uniform1i(p.clut, 5);
+            gpu.Uniform1i(p.clutOffset, static_cast<s32>(k.clutOffset));
         }
-        gl.Uniform1f(p.pointSize, static_cast<f32>(n));
-        gl.Uniform1i(p.tex, 0);
-        gl.Uniform2f(p.texSize, k.gsTexWidth, k.gsTexHeight);
-        gl.Uniform2f(p.texActual, k.texWidth, k.texHeight);
-        gl.Uniform1f(p.texSnap, static_cast<f32>(k.texSnap));
-        gl.Uniform1f(p.aref, static_cast<f32>(k.aref));
-        gl.Uniform3f(p.fogColour, static_cast<f32>(k.fogColour & 0xFF), static_cast<f32>((k.fogColour >> 8) & 0xFF),
-                     static_cast<f32>((k.fogColour >> 16) & 0xFF));
-        gl.Uniform1f(p.ta0, static_cast<f32>(k.ta0));
-        gl.Uniform1f(p.ta1, static_cast<f32>(k.ta1));
-        gl.Uniform1i(p.aem, static_cast<GLint>(k.aem));
-        gl.Uniform1f(p.lodK, k.lodK);
-        gl.Uniform1f(p.lodL, std::exp2(static_cast<f32>(k.lodL)));
-        gl.Uniform1f(p.lodMax, static_cast<f32>(k.mxl));
-        gl.Uniform1f(p.lodBias, LodAtScale() ? std::log2(static_cast<f32>(n)) : 0.0f);
-        GLint dimx[16];
+        gpu.Uniform1f(p.pointSize, static_cast<f32>(n));
+        gpu.Uniform1i(p.tex, 0);
+        gpu.Uniform2f(p.texSize, k.gsTexWidth, k.gsTexHeight);
+        gpu.Uniform2f(p.texActual, k.texWidth, k.texHeight);
+        gpu.Uniform1f(p.texSnap, static_cast<f32>(k.texSnap));
+        gpu.Uniform1f(p.aref, static_cast<f32>(k.aref));
+        gpu.Uniform3f(p.fogColour, static_cast<f32>(k.fogColour & 0xFF), static_cast<f32>((k.fogColour >> 8) & 0xFF), static_cast<f32>((k.fogColour >> 16) & 0xFF));
+        gpu.Uniform1f(p.ta0, static_cast<f32>(k.ta0));
+        gpu.Uniform1f(p.ta1, static_cast<f32>(k.ta1));
+        gpu.Uniform1i(p.aem, static_cast<s32>(k.aem));
+        gpu.Uniform1f(p.lodK, k.lodK);
+        gpu.Uniform1f(p.lodL, std::exp2(static_cast<f32>(k.lodL)));
+        gpu.Uniform1f(p.lodMax, static_cast<f32>(k.mxl));
+        gpu.Uniform1f(p.lodBias, LodAtScale() ? std::log2(static_cast<f32>(n)) : 0.0f);
+        s32 dimx[16];
         for (u32 i = 0; i < 16; i++)
         {
             s32 value = static_cast<s32>((k.dimx >> (i * 4)) & 7);
             dimx[i] = value & 4 ? value - 8 : value;
         }
 
-        gl.Uniform1iv(p.dimx, 16, dimx);
-        gl.Uniform1f(p.scale, static_cast<f32>(k.ditherScale != 0 ? k.ditherScale : 1));
-        gl.Uniform1i(p.colclamp, static_cast<GLint>(k.colclamp));
+        gpu.Uniform1iv(p.dimx, 16, dimx);
+        gpu.Uniform1f(p.scale, static_cast<f32>(k.ditherScale != 0 ? k.ditherScale : 1));
+        gpu.Uniform1i(p.colclamp, static_cast<s32>(k.colclamp));
         if (k.program & BitWrapAdd)
         {
-            gl.Uniform1i(p.blendA, static_cast<GLint>(k.gsBlend[0]));
-            gl.Uniform1i(p.blendB, static_cast<GLint>(k.gsBlend[1]));
-            gl.Uniform1i(p.blendC, static_cast<GLint>(k.gsBlend[2]));
-            gl.Uniform1f(p.blendFix, static_cast<f32>(k.gsFix));
+            gpu.Uniform1i(p.blendA, static_cast<s32>(k.gsBlend[0]));
+            gpu.Uniform1i(p.blendB, static_cast<s32>(k.gsBlend[1]));
+            gpu.Uniform1i(p.blendC, static_cast<s32>(k.gsBlend[2]));
+            gpu.Uniform1f(p.blendFix, static_cast<f32>(k.gsFix));
         }
 
         if (k.program & BitShaderBlend)
         {
-            gl.ActiveTexture(GL_TEXTURE0 + 1);
-            gl.BindTexture(GL_TEXTURE_2D, destination);
-            gl.ActiveTexture(GL_TEXTURE0);
-            gl.Uniform1i(p.destination, 1);
+            gpu.ActiveTexture(1);
+            gpu.BindTexture(destination);
+            gpu.ActiveTexture(0);
+            gpu.Uniform1i(p.destination, 1);
             bool blending = k.gsBlend[0] != 0 || k.gsBlend[1] != 0 || k.gsBlend[2] != 0 || k.gsBlend[3] != 0 || k.gsFix != 0;
-            gl.Uniform1i(p.blendOn, blending ? 1 : 0);
-            gl.Uniform1i(p.blendA, static_cast<GLint>(k.gsBlend[0]));
-            gl.Uniform1i(p.blendB, static_cast<GLint>(k.gsBlend[1]));
-            gl.Uniform1i(p.blendC, static_cast<GLint>(k.gsBlend[2]));
-            gl.Uniform1i(p.blendD, static_cast<GLint>(k.gsBlend[3]));
-            gl.Uniform1f(p.blendFix, static_cast<f32>(k.gsFix));
-            gl.Uniform1i(p.pabe, static_cast<GLint>(k.pabe));
-            gl.Uniform1i(p.datm, static_cast<GLint>(k.datm));
-            gl.Uniform4ui(p.frameMask, k.frameMask[0], k.frameMask[1], k.frameMask[2], k.frameMask[3]);
+            gpu.Uniform1i(p.blendOn, blending ? 1 : 0);
+            gpu.Uniform1i(p.blendA, static_cast<s32>(k.gsBlend[0]));
+            gpu.Uniform1i(p.blendB, static_cast<s32>(k.gsBlend[1]));
+            gpu.Uniform1i(p.blendC, static_cast<s32>(k.gsBlend[2]));
+            gpu.Uniform1i(p.blendD, static_cast<s32>(k.gsBlend[3]));
+            gpu.Uniform1f(p.blendFix, static_cast<f32>(k.gsFix));
+            gpu.Uniform1i(p.pabe, static_cast<s32>(k.pabe));
+            gpu.Uniform1i(p.datm, static_cast<s32>(k.datm));
+            gpu.Uniform4ui(p.frameMask, k.frameMask[0], k.frameMask[1], k.frameMask[2], k.frameMask[3]);
         }
         u32 mask = k.colourMask;
-        gl.ColorMask(colourOn && (mask & 1) ? GL_TRUE : GL_FALSE, colourOn && (mask & 2) ? GL_TRUE : GL_FALSE,
-                     colourOn && (mask & 4) ? GL_TRUE : GL_FALSE, colourOn && alphaOn && (mask & 8) ? GL_TRUE : GL_FALSE);
-        gl.DepthMask(depthOn && k.depthWrite ? GL_TRUE : GL_FALSE);
-        gl.DrawArrays(k.primitive, 0, static_cast<GLsizei>(vertexes_.size()));
+        gpu.ColorMask(colourOn && (mask & 1) ? true : false, colourOn && (mask & 2) ? true : false, colourOn && (mask & 4) ? true : false, colourOn && alphaOn && (mask & 8) ? true : false);
+        gpu.DepthMask(depthOn && k.depthWrite ? true : false);
+        gpu.DrawArrays(k.primitive, 0, vertexCount);
     };
 
     // The pixels passing the alpha test with every write; then a failed test's AFAIL: the failing pixels with the frame only
@@ -5697,7 +5492,7 @@ void HwGs::Flush()
         }
     }
 
-    gl.Viewport(0, 0, width, height);
+    gpu.Viewport(0, 0, width, height);
     // Debugging: TWIN_HW_TRACK=BP,X,Y (hex BP, the target's own pixels): the pixel after each batch into it, when it changes
     static const char* track = std::getenv("TWIN_HW_TRACK");
     if (track != nullptr)
@@ -5708,8 +5503,8 @@ void HwGs::Flush()
         if (std::sscanf(track, "%x,%d,%d", &bp, &tx, &ty) == 3 && k.colour->bp == bp && !k.wrapAdd)
         {
             u8 c[4] = {};
-            gl.BindFramebuffer(GL_READ_FRAMEBUFFER, k.colour->fbo);
-            gl.ReadPixels(tx, ty, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, c);
+            gpu.BindReadFramebuffer(k.colour->fbo);
+            gpu.ReadPixels(tx, ty, 1, 1, FormatRgba8, c);
             u32 v = c[0] | c[1] << 8 | c[2] << 16 | static_cast<u32>(c[3]) << 24;
             if (v != last)
             {
@@ -5720,17 +5515,25 @@ void HwGs::Flush()
         }
     }
 
-    gl.ColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    gl.DepthMask(GL_TRUE);
-    gl.Disable(GL_STENCIL_TEST);
-    gl.StencilMask(0xFF);
+    gpu.ColorMask(true, true, true, true);
+    gpu.DepthMask(true);
+    gpu.Disable(CapStencilTest);
+    gpu.StencilMask(0xFF);
+    // The list played after each batch, or once it's $TWIN_HW_LIST_BYTES long. Measured (perf.py, two cores): played in bigger
+    // pieces the driver's calls cost more (OpenGL 1.0 ms a frame after each batch, 1.4 every 64 KB or 1 MB) and the window's
+    // present too; after each batch the frames a second are the program's before the list
+    static const size_t listBytes = std::getenv("TWIN_HW_LIST_BYTES") != nullptr ? std::strtoull(std::getenv("TWIN_HW_LIST_BYTES"), nullptr, 10)
+                                                                                 : 0;
+    if (gpu.list().size() + gpu.list().dataSize() >= listBytes)
+    {
+        gpu.Submit();
+    }
     // A batch that can write the colour target's alpha makes its stencils out of date
     if ((k.colourMask & 8) != 0 || (k.program & BitShaderBlend) != 0)
     {
         k.colour->alphaVersion++;
     }
 
-    vertexes_.clear();
     batchRects_.clear();
     batching_ = false;
 }
@@ -5753,22 +5556,22 @@ bool HwGs::DebugPixel(u32 psm, u32 bp, u32 bw, u32 x, u32 y, u32* value)
 
         Flush();
         Resolve(t.get());
-        Gl& gl = GetGl();
-        gl.BindFramebuffer(GL_READ_FRAMEBUFFER, t->fbo);
-        gl.PixelStorei(GL_PACK_ALIGNMENT, 4);
-        GLint sx = static_cast<GLint>(x * t->scale);
-        GLint sy = static_cast<GLint>(y * t->scale);
+        Gpu& gpu = gpu_;
+        gpu.BindReadFramebuffer(t->fbo);
+        gpu.PixelStore(StorePackAlignment, 4);
+        s32 sx = static_cast<s32>(x * t->scale);
+        s32 sy = static_cast<s32>(y * t->scale);
         if (t->depth)
         {
             f32 d = 0.0f;
-            gl.ReadPixels(sx, sy, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &d);
+            gpu.ReadPixels(sx, sy, 1, 1, FormatDepth32fStencil8, &d);
             *value = static_cast<u32>(std::min(std::floor(static_cast<double>(d) * 4294967296.0 + 0.5), 4294967295.0));
             *value = t->reversed ? 0xFFFFFFFFu - *value : *value;
         }
         else
         {
             u8 c[4];
-            gl.ReadPixels(sx, sy, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, c);
+            gpu.ReadPixels(sx, sy, 1, 1, FormatRgba8, c);
             *value = static_cast<u32>(c[0]) | static_cast<u32>(c[1]) << 8 | static_cast<u32>(c[2]) << 16 | static_cast<u32>(c[3]) << 24;
         }
 
@@ -5795,14 +5598,15 @@ void HwGs::SetScale(u32 scale)
         DestroyTarget(targets_.back().get());
     }
 
-    Gl& gl = GetGl();
+    Gpu& gpu = gpu_;
     for (auto& copy : copies_)
     {
-        gl.DeleteTextures(1, &copy.second.first);
-        gl.DeleteFramebuffers(1, &copy.second.second);
+        gpu.DeleteTextures(1, &copy.second.first);
+        gpu.DeleteFramebuffers(1, &copy.second.second);
     }
 
     copies_.clear();
+    gpu.Submit();
     scale_ = scale;
     std::fprintf(stderr, "graphics: hardware renderer: drawing at %ux the PS2's picture\n", scale);
 }
@@ -5843,12 +5647,11 @@ bool HwGs::DisplayTexture(NativeGraphics::DisplayTexture* display, Target** show
         {
             if (t->bp == bp && !t->depth)
             {
-                Gl& gl = GetGl();
+                Gpu& gpu = gpu_;
                 std::vector<u32> pixels(static_cast<size_t>(t->width * t->scale) * t->height * t->scale);
-                gl.BindFramebuffer(GL_READ_FRAMEBUFFER, t->fbo);
-                gl.PixelStorei(GL_PACK_ALIGNMENT, 4);
-                gl.ReadPixels(0, 0, static_cast<GLsizei>(t->width * t->scale), static_cast<GLsizei>(t->height * t->scale), GL_RGBA,
-                              GL_UNSIGNED_BYTE, pixels.data());
+                gpu.BindReadFramebuffer(t->fbo);
+                gpu.PixelStore(StorePackAlignment, 4);
+                gpu.ReadPixels(0, 0, static_cast<s32>(t->width * t->scale), static_cast<s32>(t->height * t->scale), FormatRgba8, pixels.data());
                 for (u32& p : pixels)
                 {
                     p |= 0xFF000000u;
@@ -5983,57 +5786,53 @@ bool HwGs::DisplayTexture(NativeGraphics::DisplayTexture* display, Target** show
     const u32 n = std::max(circuits[0].enabled ? circuits[0].target->scale : 1, circuits[1].enabled ? circuits[1].target->scale : 1);
     u32 width = static_cast<u32>(endX - originX) * n;
     u32 height = static_cast<u32>(endY - originY) * n;
-    Gl& gl = GetGl();
+    Gpu& gpu = gpu_;
     if (mergeTexture_ == 0 || mergeWidth_ != width || mergeHeight_ != height)
     {
         if (mergeTexture_ == 0)
         {
-            gl.GenTextures(1, &mergeTexture_);
-            gl.GenFramebuffers(1, &mergeFbo_);
+            gpu.GenTextures(1, &mergeTexture_);
+            gpu.GenFramebuffers(1, &mergeFbo_);
         }
 
-        gl.BindTexture(GL_TEXTURE_2D, mergeTexture_);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-        gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA8), static_cast<GLsizei>(width), static_cast<GLsizei>(height), 0,
-                      GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-        gl.BindFramebuffer(GL_FRAMEBUFFER, mergeFbo_);
-        gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mergeTexture_, 0);
+        gpu.BindTexture(mergeTexture_);
+        gpu.TexParameter(ParamMaxLevel, 0);
+        gpu.TexImage(0, FormatRgba8, static_cast<s32>(width), static_cast<s32>(height), nullptr);
+        gpu.BindFramebuffer(mergeFbo_);
+        gpu.AttachColour(mergeTexture_);
         mergeWidth_ = width;
         mergeHeight_ = height;
     }
 
-    gl.BindFramebuffer(GL_FRAMEBUFFER, mergeFbo_);
-    gl.Viewport(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
-    gl.Disable(GL_SCISSOR_TEST);
-    gl.Disable(GL_DEPTH_TEST);
-    gl.Disable(GL_STENCIL_TEST);
-    gl.Disable(GL_BLEND);
-    gl.ColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    gl.UseProgram(mergeProgram_);
-    auto uniform = [&](const char* name) { return gl.GetUniformLocation(mergeProgram_, name); };
+    gpu.BindFramebuffer(mergeFbo_);
+    gpu.Viewport(0, 0, static_cast<s32>(width), static_cast<s32>(height));
+    gpu.Disable(CapScissorTest);
+    gpu.Disable(CapDepthTest);
+    gpu.Disable(CapStencilTest);
+    gpu.Disable(CapBlend);
+    gpu.ColorMask(true, true, true, true);
+    gpu.UseProgram(mergeProgram_);
+    auto uniform = [&](const char* name) { return gpu.UniformLocation(mergeProgram_, name); };
     const char* names[2][6] = {{"circuit1", "enabled1", "place1", "corner1", "size1", ""}, {"circuit2", "enabled2", "place2", "corner2", "size2", ""}};
     for (u32 i = 0; i < 2; i++)
     {
         const Circuit& c = circuits[i];
-        gl.ActiveTexture(GL_TEXTURE0 + i);
-        gl.BindTexture(GL_TEXTURE_2D, c.enabled ? c.target->texture : circuits[i ^ 1].target->texture);
-        gl.Uniform1i(uniform(names[i][0]), static_cast<GLint>(i));
-        gl.Uniform1i(uniform(names[i][1]), c.enabled ? 1 : 0);
-        gl.Uniform4f(uniform(names[i][2]), static_cast<f32>((c.x - originX) * static_cast<s32>(n)),
-                     static_cast<f32>((c.y - originY) * static_cast<s32>(n)), static_cast<f32>(c.width * n), static_cast<f32>(c.height * n));
-        gl.Uniform2f(uniform(names[i][3]), static_cast<f32>(gs.dispfb[i].dbx * n), static_cast<f32>(gs.dispfb[i].dby * n));
-        gl.Uniform2f(uniform(names[i][4]), c.enabled ? static_cast<f32>(c.target->width * n) : 1.0f,
-                     c.enabled ? static_cast<f32>(c.target->height * n) : 1.0f);
+        gpu.ActiveTexture(i);
+        gpu.BindTexture(c.enabled ? c.target->texture : circuits[i ^ 1].target->texture);
+        gpu.Uniform1i(uniform(names[i][0]), static_cast<s32>(i));
+        gpu.Uniform1i(uniform(names[i][1]), c.enabled ? 1 : 0);
+        gpu.Uniform4f(uniform(names[i][2]), static_cast<f32>((c.x - originX) * static_cast<s32>(n)), static_cast<f32>((c.y - originY) * static_cast<s32>(n)), static_cast<f32>(c.width * n), static_cast<f32>(c.height * n));
+        gpu.Uniform2f(uniform(names[i][3]), static_cast<f32>(gs.dispfb[i].dbx * n), static_cast<f32>(gs.dispfb[i].dby * n));
+        gpu.Uniform2f(uniform(names[i][4]), c.enabled ? static_cast<f32>(c.target->width * n) : 1.0f, c.enabled ? static_cast<f32>(c.target->height * n) : 1.0f);
     }
 
-    gl.ActiveTexture(GL_TEXTURE0);
-    gl.Uniform1f(uniform("alp"), static_cast<f32>(gs.pmode.alp) / 255.0f);
-    gl.Uniform1i(uniform("ownAlpha"), gs.pmode.mmod != 0 ? 0 : 1);
+    gpu.ActiveTexture(0);
+    gpu.Uniform1f(uniform("alp"), static_cast<f32>(gs.pmode.alp) / 255.0f);
+    gpu.Uniform1i(uniform("ownAlpha"), gs.pmode.mmod != 0 ? 0 : 1);
     u32 bg = static_cast<u32>(gs.bgcolor & 0xFFFFFF);
-    gl.Uniform3f(uniform("background"), static_cast<f32>(bg & 0xFF) / 255.0f, static_cast<f32>((bg >> 8) & 0xFF) / 255.0f,
-                 static_cast<f32>((bg >> 16) & 0xFF) / 255.0f);
-    gl.BindVertexArray(emptyArray_);
-    gl.DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    gpu.Uniform3f(uniform("background"), static_cast<f32>(bg & 0xFF) / 255.0f, static_cast<f32>((bg >> 8) & 0xFF) / 255.0f, static_cast<f32>((bg >> 16) & 0xFF) / 255.0f);
+    gpu.BindVertexes(false);
+    gpu.DrawArrays(PrimitiveTriangleStrip, 0, 4);
     display->texture = mergeTexture_;
     display->u0 = 0.0f;
     display->v0 = 0.0f;
@@ -6060,15 +5859,14 @@ bool HwGs::ReadDisplay(Gs::DisplayImage& image)
         return false;
     }
 
-    Gl& gl = GetGl();
+    Gpu& gpu = gpu_;
     image.width = display.width;
     image.height = display.height;
     image.pixels.resize(static_cast<size_t>(image.width) * image.height);
-    gl.BindFramebuffer(GL_READ_FRAMEBUFFER, target != nullptr ? target->fbo : mergeFbo_);
-    gl.PixelStorei(GL_PACK_ALIGNMENT, 4);
-    gl.PixelStorei(GL_PACK_ROW_LENGTH, 0);
-    gl.ReadPixels(rect.left, rect.top, static_cast<GLsizei>(image.width), static_cast<GLsizei>(image.height), GL_RGBA,
-                  GL_UNSIGNED_BYTE, image.pixels.data());
+    gpu.BindReadFramebuffer(target != nullptr ? target->fbo : mergeFbo_);
+    gpu.PixelStore(StorePackAlignment, 4);
+    gpu.PixelStore(StorePackRowLength, 0);
+    gpu.ReadPixels(rect.left, rect.top, static_cast<s32>(image.width), static_cast<s32>(image.height), FormatRgba8, image.pixels.data());
     for (u32& pixel : image.pixels)
     {
         pixel |= 0xFF000000u;
@@ -6077,7 +5875,7 @@ bool HwGs::ReadDisplay(Gs::DisplayImage& image)
     return true;
 }
 
-bool HwGs::CopyDisplay(u32 slot, GLsync drawn, NativeGraphics::ShownTexture* shown)
+bool HwGs::CopyDisplay(u32 slot, void* drawn, NativeGraphics::ShownTexture* shown)
 {
     NativeGraphics::DisplayTexture display;
     Target* target = nullptr;
@@ -6087,13 +5885,20 @@ bool HwGs::CopyDisplay(u32 slot, GLsync drawn, NativeGraphics::ShownTexture* sho
         return false;
     }
 
+    // The frame's commands left played as the GS's work (they're its drawing: the log's split, $TWIN_GL_CALLS' counts), then the
+    // copy's
+    {
+        NativeGraphics::WorkSpan work(NativeGraphics::Work::Gs);
+        gpu_.Submit();
+    }
+
     // (The card's time of the copy below: gputime.h's labels)
-    NativeGraphics::GpuTimeLabel("picture copy");
-    Gl& gl = GetGl();
+    Gpu& gpu = gpu_;
+    gpu.Label("picture copy");
     if (drawn != nullptr)
     {
-        gl.WaitSync(drawn, 0, GL_TIMEOUT_IGNORED);
-        gl.DeleteSync(drawn);
+        gpu.WaitFence(drawn);
+        gpu.backend().DeleteFence(drawn);
     }
 
     ShownCopy& copy = shownCopies_[slot % 3];
@@ -6101,34 +5906,31 @@ bool HwGs::CopyDisplay(u32 slot, GLsync drawn, NativeGraphics::ShownTexture* sho
     {
         if (copy.texture == 0)
         {
-            gl.GenTextures(1, &copy.texture);
-            gl.GenFramebuffers(1, &copy.fbo);
+            gpu.GenTextures(1, &copy.texture);
+            gpu.GenFramebuffers(1, &copy.fbo);
         }
 
-        gl.BindTexture(GL_TEXTURE_2D, copy.texture);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, static_cast<GLint>(GL_CLAMP_TO_EDGE));
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, static_cast<GLint>(GL_CLAMP_TO_EDGE));
-        gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA8), static_cast<GLsizei>(display.width),
-                      static_cast<GLsizei>(display.height), 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-        gl.BindFramebuffer(GL_FRAMEBUFFER, copy.fbo);
-        gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, copy.texture, 0);
+        gpu.BindTexture(copy.texture);
+        gpu.TexParameter(ParamMaxLevel, 0);
+        gpu.TexParameter(ParamWrapS, static_cast<s32>(WrapClamp));
+        gpu.TexParameter(ParamWrapT, static_cast<s32>(WrapClamp));
+        gpu.TexImage(0, FormatRgba8, static_cast<s32>(display.width), static_cast<s32>(display.height), nullptr);
+        gpu.BindFramebuffer(copy.fbo);
+        gpu.AttachColour(copy.texture);
         copy.width = display.width;
         copy.height = display.height;
     }
 
     // The picture's rectangle of its target (or the circuits merged), rows as they are: the copy's first row is the top one
-    gl.BindFramebuffer(GL_READ_FRAMEBUFFER, target != nullptr ? target->fbo : mergeFbo_);
-    gl.BindFramebuffer(GL_DRAW_FRAMEBUFFER, copy.fbo);
-    gl.Disable(GL_SCISSOR_TEST);
-    gl.BlitFramebuffer(rect.left, rect.top, rect.left + static_cast<GLint>(display.width), rect.top + static_cast<GLint>(display.height),
-                       0, 0, static_cast<GLint>(display.width), static_cast<GLint>(display.height), GL_COLOR_BUFFER_BIT, GL_NEAREST);
-    gl.BindFramebuffer(GL_FRAMEBUFFER, 0);
+    gpu.BindReadFramebuffer(target != nullptr ? target->fbo : mergeFbo_);
+    gpu.BindDrawFramebuffer(copy.fbo);
+    gpu.Disable(CapScissorTest);
+    gpu.BlitFramebuffer(rect.left, rect.top, rect.left + static_cast<s32>(display.width), rect.top + static_cast<s32>(display.height), 0, 0, static_cast<s32>(display.width), static_cast<s32>(display.height), ClearColour, FilterNearest);
+    gpu.BindFramebuffer(0);
     shown->texture = copy.texture;
     shown->width = display.width;
     shown->height = display.height;
-    shown->fence = gl.FenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-    gl.Flush();
+    shown->fence = gpu.Fence();
     return true;
 }
 }
@@ -6217,7 +6019,14 @@ u32 HardwareScale()
 
 bool HardwareDisplayTexture(DisplayTexture* display)
 {
-    return g_Hw != nullptr && g_Hw->DisplayTexture(display, nullptr, nullptr);
+    if (g_Hw == nullptr || !g_Hw->DisplayTexture(display, nullptr, nullptr))
+    {
+        return false;
+    }
+
+    // (The window's code draws it: the frame's commands played first)
+    g_Hw->gpu().Submit();
+    return true;
 }
 
 bool HardwareReadDisplay(Gs::DisplayImage& image)
@@ -6227,7 +6036,7 @@ bool HardwareReadDisplay(Gs::DisplayImage& image)
 
 bool HardwareCopyDisplay(u32 slot, void* drawnFence, ShownTexture* shown)
 {
-    return g_Hw != nullptr && g_Hw->CopyDisplay(slot, static_cast<GLsync>(drawnFence), shown);
+    return g_Hw != nullptr && g_Hw->CopyDisplay(slot, drawnFence, shown);
 }
 
 void HardwareSetDither(int mode)

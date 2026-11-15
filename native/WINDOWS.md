@@ -213,6 +213,29 @@ frame. Three runs of 60 s each (the program with 68, then with this):
 The calls left are 13 a batch: the draw and its vertexes, the texture bound, and the viewport set twice (the far bigger one
 the draws use, then the target's again for the passes after: leaving that out would need each of them checked).
 
+The command list (THE LIST 70, the base for Vulkan): hwgs.cpp no longer calls OpenGL. It describes its work through
+hw/gpu.h's `Gpu` the way it called OpenGL (the bound targets and textures, the switches, the blending, the uniforms), in no
+API's terms, and `Gpu` records it as a list of commands, each whole by itself: a draw carries its framebuffer, its program,
+the texture on each unit and its state (blending, depth, stencil, masks, scissor, viewport: `RenderState`, what a pipeline
+is made from), a clear and a copy theirs, an upload its bytes (copied: GS memory changes before the list is played). A
+backend plays the list: hw/glreplay.cpp's with OpenGL, setting what each command's state changes from the last it set
+(gl.cpp's cache under it). Textures', framebuffers' and programs' names are the backend's, made at once (OpenGL's own). A
+uniform or a texture's sampling set again to the value it has isn't recorded. The list is played after each batch, when a
+result is wanted (a read back, a new target's check, a fence) and at the frame's end (as the GS's work in the log's split, so
+`$TWIN_GL_CALLS` counts it: played during the hand-over it was left out, 1,613 calls a frame instead of 2,279).
+`$TWIN_HW_LIST_BYTES=N` plays it only once it holds N bytes: in bigger pieces the driver's calls cost more here (two cores:
+OpenGL 1.0 ms a frame after each batch, 1.4 every 64 KB or 1 MB; 67.6, 66.3 and 65.3 fps), so after each batch is the
+default. The design follows Tenkaichi3Decomp's port/src/gs/gs_draw.c and gs_gpu.c at its MIT commit 06e4671 (a frame
+recorded, a back end replays it); the code is written anew. The pictures: the 25 as 1.2.0's, and windowed runs at a fixed
+time with one and with three threads (compare/tools/cmp_options.py, `EXEA=` the program before it) the same frame for frame.
+Three runs of 60 s each (the program before it, built from the same tree, then this, one after the other):
+
+| What | Before | After |
+| --- | --- | --- |
+| OpenGL's calls a frame | 2,940: state 923, binds 851, uniforms 535 | 2,278: state 308, binds 803, uniforms 535 |
+| The render thread | 12.0 ms: the GS 10.8, OpenGL 1.1 | 12.1 ms: the GS 10.9 (the list recorded and played), OpenGL 1.0 |
+| Frames a second | 67.3 | 68.0 |
+
 ### Hitches
 
 THE LIST 19 (#23: frames of 0.25-1.8 s as new areas load, GNRTX-3's i7-2600 and GT 730 on NVIDIA 472.12, his first 1.1.0
@@ -706,6 +729,8 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   1.3.0 ("Fewer passes" under "Speed").
 - `$TWIN_HW_STATE_CACHE=0`: every OpenGL call of the hardware renderer made, even one that changes nothing, as before 1.3.0
   ("Fewer calls" under "Speed"): to tell a drawing difference from the calls left out.
+- `$TWIN_HW_LIST_BYTES=N`: the hardware renderer's command list played once it holds N bytes (and when a result is wanted, and
+  at the frame's end) instead of after each batch ("The command list" under "Speed").
 - `$TWIN_HW_SOURCE_TRACE=1`: each kind of texture the hardware renderer samples straight from a target (a buffer it drew)
   rather than decoding it from memory, logged once ("graphics: a 256x256 texture at 2800/4 (psm 0) read from the target ...");
   `$TWIN_HW_NO_TARGET_TEXTURES=1`: none, every texture decoded from memory's copy (an effect's buffer then at the PS2's
