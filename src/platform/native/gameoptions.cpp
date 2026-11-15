@@ -27,6 +27,12 @@ u32 NativeGame::SlideJump()
     return static_cast<u32>(NativeUi::GetOption(NativeUi::OptionSlideJump));
 }
 
+// The double jump
+u32 NativeGame::DoubleJump()
+{
+    return static_cast<u32>(NativeUi::GetOption(NativeUi::OptionDoubleJump));
+}
+
 namespace
 {
 // The slide jump's late press and steering moment, this frame's

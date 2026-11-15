@@ -143,6 +143,8 @@ game could make.
 - **Stronger Aku Aku**: with one or two masks, TNT and Nitro take a mask instead of a life, as in the earlier Crash games.
 - **Slide jump**: the long jump from a slide at any moment of it. Or easier: also just after the slide, and steered in the
   air.
+- **Double jump**: later in a fall, or at any moment of it, and after a slide jump too. Later ones are weaker; at any moment
+  it's always full.
 - **Automatic camera**: the camera swings behind you by itself while you move, and the camera stick, the mouse and the camera
   keys turn nothing. Off is the original's free camera. A level's own fixed cameras still work as they did.
 - **Level select**: start any level from the main menu (Options > Enhancements > Level). What you save in such a game is

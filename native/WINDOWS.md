@@ -752,7 +752,8 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   `$TWIN_FIXED_TIME`'s frames). `jumps` (with `--quick`): from where play stands after 3 s, the player put back there before each,
   a standing jump, a running jump, a slide jump, a jump and spin and a double jump the same way in the world (the camera's way, or
   `$TWIN_PHYSICS_WAY=DEGREES` round from it; the check takes -90, the beach's flat way; `$TWIN_PHYSICS_MOVES=013` only those,
-  as for Crash and Cortex tied, who have no slide: tunnel01 with `$TWIN_PHYSICS_TIED`, way 0), each
+  as for Crash and Cortex tied, who have no slide: tunnel01 with `$TWIN_PHYSICS_TIED`, way 0; `56` the double jump option's two,
+  a double jump pressed in the fall and one after a slide jump, made only when named), each
   logged with its time in the air, its distance along the ground and its height. `watch`, or `step[:SECONDS]` (the stick pushed
   `$TWIN_PHYSICS_WAY`'s way first): every time the player leaves the ground, as it lands; with the level sweep to start a chunk
   (`$TWIN_SWEEP_LEVEL`, `$TWIN_SWEEP_IDLE`), `$TWIN_PHYSICS_ON=NAME` (the player put on an instance 2 s in: `cavern_lift17`),

@@ -350,6 +350,10 @@ enum NativeText : u32
     // Aku Aku's shadow (THE LIST 84, #51)
     TextMaskShadow,
     TextDescMaskShadow,
+    // The double jump (THE LIST 53, #47): the row, its description and its "later" (its "any moment" the slide jump's)
+    TextDoubleJump,
+    TextDescDoubleJump,
+    TextDoubleJumpLater,
     NativeTextEnd,
 };
 
@@ -522,6 +526,8 @@ enum Option : u32
     OptionMasterVolume,
     // Aku Aku's shadow (THE LIST 84, #51)
     OptionMaskShadow,
+    // The double jump (THE LIST 53, #47): original, later, any moment
+    OptionDoubleJump,
     OptionCount,
 };
 

@@ -317,6 +317,9 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x210 | outlined | avec contour | mit umriss | con contorno | con contorno |
 | 0x211 | aku aku's shadow | ombre d'aku aku | aku akus schatten | sombra de aku aku | ombra di aku aku |
 | 0x212 | aku aku's mask casts a round shadow while it follows you, as other things do. | une ombre ronde sous le masque d'aku aku quand il te suit, comme les autres objets. | ein runder schatten unter aku akus maske, während sie dir folgt, wie bei anderen dingen. | una sombra redonda bajo la máscara de aku aku mientras te sigue, como las demás cosas. | un'ombra rotonda sotto la maschera di aku aku mentre ti segue, come le altre cose. |
+| 0x213 | double jump | double saut | doppelsprung | doble salto | doppio salto |
+| 0x214 | also later in the fall (weaker the later) or at any moment of it, and after a slide jump. | aussi plus tard dans la chute (plus faible) ou à tout moment, et après un saut glissé. | auch später im fallen (schwächer) oder jederzeit, und nach einem rutschsprung. | también más tarde en la caída (más débil) o en cualquier momento, y tras un salto deslizante. | anche più tardi nella caduta (più debole) o in qualunque momento, e dopo un salto in scivolata. |
+| 0x215 | later | plus tard | später | más tarde | più tardi |
 
 ## English (29 lines)
 

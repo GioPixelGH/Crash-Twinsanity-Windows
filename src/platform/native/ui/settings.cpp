@@ -483,10 +483,12 @@ void Build()
     enhancements.push_back(Toggle(TextBugFixes, TextDescBugFixes, OptionRetailFixes));
     enhancements.push_back(Toggle(TextInfiniteLives, TextDescInfiniteLives, OptionInfiniteLives));
     enhancements.push_back(Toggle(TextStrongMask, TextDescStrongMask, OptionStrongMask));
-    // The slide jump (THE LIST 11, #11, #35): original, any moment, easier
+    // The slide jump (THE LIST 11, #11, #35): original, any moment, easier; the double jump (THE LIST 53, #47): original, later, any moment
     enhancements.push_back(Section(TextSectionMovement));
     enhancements.push_back(OptionChoice(TextSlideJump, TextDescSlideJump, OptionSlideJump,
                                         {TextDistanceOriginal, TextSlideJumpAnyMoment, TextSlideJumpEasier}));
+    enhancements.push_back(OptionChoice(TextDoubleJump, TextDescDoubleJump, OptionDoubleJump,
+                                        {TextDistanceOriginal, TextDoubleJumpLater, TextSlideJumpAnyMoment}));
     // The automatic camera (THE LIST 55, #42, PR #45): free (0) or behind the character by itself (1)
     enhancements.push_back(Section(TextSectionCamera));
     enhancements.push_back(Toggle(TextAutoCamera, TextDescAutoCamera, OptionAutoCamera));
@@ -1093,8 +1095,8 @@ void ResetTab(u32 tab)
                       OptionSpeedrunTimer, OptionUpdateCheck, OptionDetailedLog});
         break;
     case TabEnhancements:
-        ResetOptions({OptionRetailFixes, OptionInfiniteLives, OptionStrongMask, OptionSlideJump, OptionAutoCamera,
-                      OptionLevelSelect});
+        ResetOptions({OptionRetailFixes, OptionInfiniteLives, OptionStrongMask, OptionSlideJump, OptionDoubleJump,
+                      OptionAutoCamera, OptionLevelSelect});
         break;
     case TabControls:
         // The options, and the keys and buttons as the table's own two resets put them back

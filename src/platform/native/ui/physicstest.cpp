@@ -2,8 +2,8 @@
 // frame rates ($TWIN_FIXED_TIME's frames: "144,144,60" a 144 Hz screen's with a slow frame now and then) can be compared with 60 Hz's.
 //
 // jumps (with --quick, or $TWIN_START_CHUNK): once play has gone on 3 s, where the player stands and the way the camera looks are
-// kept ($TWIN_PHYSICS_WAY=DEGREES: that far round from it), and each of the moves below ($TWIN_PHYSICS_MOVES=013: those, by their
-// numbers from 0; tied characters have no slide) is made from there: the player put back at
+// kept ($TWIN_PHYSICS_WAY=DEGREES: that far round from it), and each of the first five moves below ($TWIN_PHYSICS_MOVES=013: those,
+// by their numbers from 0; tied characters have no slide; 5 and 6 only so) is made from there: the player put back at
 // that place, a second and a half standing still, then the move's input by the game clock's time, the stick pushed the kept way in
 // the world whatever the camera does (every run takes the same path). Each jump is measured from the last place on the ground to the
 // landing: "physics test: MOVE: S s in the air, D along the ground, H high, landed U up", then "physics test: done" and exit 0; a
@@ -56,19 +56,23 @@ struct Move
     // The stick pushed the kept way from 0 to this, and the move's input's length
     f32 forward;
     f32 seconds;
-    Press presses[2];
+    Press presses[3];
 };
 
 // The standing jump with cross held through it (the highest), the running jump, the knee slide's jump (circle while running, cross
-// in the slide), the jump and spin in quick succession and the double jump
+// in the slide), the jump and spin in quick succession and the double jump; then, only when asked, the double jump option's (THE
+// LIST 53): a double jump pressed in the fall (weaker the later but at its "any moment") and one after a slide jump (none at 0)
 constexpr Move Moves[] = {
     {"standing jump", 0.0f, 1.0f, {{PadBitCross, 0.0f, 0.9f}}},
     {"running jump", 1.6f, 1.6f, {{PadBitCross, 0.8f, 1.6f}}},
     {"slide jump", 1.3f, 1.3f, {{PadBitCircle, 0.4f, 0.5f}, {PadBitCross, 0.65f, 1.1f}}},
     {"jump and spin", 1.2f, 1.2f, {{PadBitCross, 0.6f, 1.2f}, {PadBitSquare, 0.7f, 0.8f}}},
     {"double jump", 1.2f, 1.4f, {{PadBitCross, 0.6f, 0.75f}, {PadBitCross, 0.95f, 1.4f}}},
+    {"falling double jump", 0.0f, 1.0f, {{PadBitCross, 0.0f, 0.45f}, {PadBitCross, 0.55f, 1.0f}}},
+    {"slide and double jump", 1.3f, 1.6f, {{PadBitCircle, 0.4f, 0.5f}, {PadBitCross, 0.65f, 1.1f}, {PadBitCross, 1.2f, 1.6f}}},
 };
 constexpr u32 MoveCount = sizeof(Moves) / sizeof(Moves[0]);
+constexpr u32 DefaultMoves = 5;
 // Play before the first move, standing still before each move's input, and the most a move may take past its input
 constexpr f32 PlaySeconds = 3.0f;
 constexpr f32 SettleSeconds = 1.5f;
@@ -92,8 +96,8 @@ Mode g_Mode = Mode::Off;
 // The settings: the way round from the camera's (radians), and watching the stick's push first, what the player is put on (none:
 // nullptr), Cortex tied and when the watch ends (0: never)
 f32 g_WayAngle = 0.0f;
-// The moves made, a bit each (all; $TWIN_PHYSICS_MOVES=013: their numbers, from 0)
-u32 g_MovesMade = (1u << MoveCount) - 1;
+// The moves made, a bit each (the first five; $TWIN_PHYSICS_MOVES=013: their numbers, from 0)
+u32 g_MovesMade = (1u << DefaultMoves) - 1;
 f32 g_StepSeconds = 0.0f;
 const char* g_On = nullptr;
 bool g_Tied = false;

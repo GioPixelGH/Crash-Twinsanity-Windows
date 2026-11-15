@@ -44,6 +44,18 @@ void SetSlideSteering(bool steering);
 bool SlideSteering();
 }
 
+// The double jump (double_jump, THE LIST 53, #47): 0 the original (any moment of the rise, and in the fall only for
+// LateDoubleSeconds, 0.4, weaker the later; none after a slide jump), 1 later (the fall's window DoubleJumpLaterSeconds, the
+// strength by the original's rule: half at the most lost), 2 any moment (the whole fall, at full strength); with 1 and 2 after a
+// slide jump too. Once a jump, as the original; not when walking off an edge, nor tied (charactermoves.cpp's JumpController)
+namespace NativeGame
+{
+constexpr u32 DoubleJumpLater = 1;
+constexpr u32 DoubleJumpAnyMoment = 2;
+constexpr f32 DoubleJumpLaterSeconds = 1.0f;
+u32 DoubleJump();
+}
+
 // The drop shadow (drop_shadow, #11, #35): a round shadow on the ground under the played character while it's off the ground,
 // as Crash 4's (shadows.cpp's CastDropShadow: drawn as the game's shadows are); 0 off, 1 on, 2 with a yellow ring around it on the
 // ground (THE LIST 52, #11: the shadow alone hardly shows on dark ground; renderer/shadows.cpp's OutlineDropShadow)

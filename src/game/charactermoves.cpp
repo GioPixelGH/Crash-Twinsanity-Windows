@@ -716,7 +716,12 @@ u32 JumpController::KindEvent(u32 kind, u32 maxed)
 {
     auto* part = static_cast<CharacterPart*>(agent->part);
     u32 attack = part->bits.attackKind;
-    if (attack == AttackSlide || attack == AttackSlideVariant)
+    bool slideEvent = attack == AttackSlide || attack == AttackSlideVariant;
+#ifdef TWIN_NATIVE
+    // The double jump option (THE LIST 53, #47): a double jump after a slide jump is the double jump's, not another slide jump
+    slideEvent = slideEvent && !(kind == KindDouble && NativeGame::DoubleJump() != 0);
+#endif
+    if (slideEvent)
     {
         return EventKneeSlideJump;
     }
@@ -897,6 +902,10 @@ s32 JumpController::Start(TimeClock* clock, u32 kind, u32 maxed, u32 midFall)
     {
         bool mayDouble = kind == KindJump || kind == KindLaunch;
         bool mayAttack = mayDouble || kind == KindDouble || kind == KindSlide;
+#ifdef TWIN_NATIVE
+        // The double jump option (THE LIST 53, #47): after a slide jump too, as in the earlier Crash games
+        mayDouble = mayDouble || (kind == KindSlide && NativeGame::DoubleJump() != 0);
+#endif
         bits.mayDoubleJump = mayDouble;
         bits.mayAttack = mayAttack;
     }
@@ -1142,9 +1151,25 @@ void JumpController::FallFrame(TimeClock* clock, u32 kind, s32* next)
 
     PropertyHolder* properties = agent->properties;
     u32 doublePhase = PressBefore;
+    f32 doubleSeconds = LateDoubleSeconds;
+    u32 doubleWeakens = 1;
+#ifdef TWIN_NATIVE
+    // The double jump option (THE LIST 53, #47): later (a longer window, weaker the later as the original's) or at any moment of
+    // the fall (a minute's window) at full strength
+    u32 doubleJump = NativeGame::DoubleJump();
+    if (doubleJump == NativeGame::DoubleJumpLater)
+    {
+        doubleSeconds = NativeGame::DoubleJumpLaterSeconds;
+    }
+    else if (doubleJump == NativeGame::DoubleJumpAnyMoment)
+    {
+        doubleSeconds = 60.0f;
+        doubleWeakens = 0;
+    }
+#endif
     if (bits.mayDoubleJump != 0)
     {
-        doublePhase = PressWithin(clock, crossTime, stateStart, TicksOf(LateDoubleSeconds));
+        doublePhase = PressWithin(clock, crossTime, stateStart, TicksOf(doubleSeconds));
     }
 
     u32 attackPhase = PressBefore;
@@ -1157,7 +1182,7 @@ void JumpController::FallFrame(TimeClock* clock, u32 kind, s32* next)
 
     if (doublePhase == PressWithinWindow)
     {
-        *next = Start(clock, KindDouble, 0, 1);
+        *next = Start(clock, KindDouble, 0, doubleWeakens);
     }
     else if (attackPhase == PressWithinWindow)
     {

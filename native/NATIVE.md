@@ -294,6 +294,14 @@ have made itself (`src/platform/native/gameoptions.h`):
   jump's turn rate (`JumpController::Start`)); its height and length the slide jump's own. The log says each slide jump the
   option allowed. Checked with the pad script: a cross 3 frames into the slide does nothing at 0 and jumps at 1 and 2; one 26
   frames in jumps at 2.
+- The double jump (`double_jump`, THE LIST 53, #47: ichagas7 asked for one later in the air and after a slide jump, as in the
+  earlier Crash games): original (0: any moment of the rise, and in the fall only for 0.4 s, weaker the later, half the speed
+  at the most lost; none after a slide jump), later (1: the fall's window a second, the strength by the original's rule) or any
+  moment (2: the whole fall, at full strength); with 1 and 2 after a slide jump too (`JumpController::Start`'s `mayDoubleJump`,
+  `FallFrame`'s window). Still once a jump; not when walking off an edge, nor tied. Checked with the physics test's two moves
+  made only when named (`$TWIN_PHYSICS_MOVES=56`), on the beach: a double jump pressed 0.2 s into the fall rises 2.14 at 0 and 1
+  (the jump's own top), 2.91 at 2; after a slide jump 0.77 s in the air and 1.21 high at 0 (no double jump), 1.12 s and 2.98 at
+  1, 1.13 s and 3.04 at 2.
 - The drop shadow (`drop_shadow`, #11, #35): while the played character is off the ground, a round shadow straight down under
   it (a cylinder's volume of 0.5, 20 down, as the game's own shadow circles: `CastDropShadow` in `shadows.cpp`), so the spot it
   lands on is marked whatever the lighting's slant; drawn as the game's shadows are, on the surfaces that take them. Checked:
