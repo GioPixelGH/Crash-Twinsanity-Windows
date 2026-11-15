@@ -1044,7 +1044,8 @@ void LogSceneInstance(InstanceContext* instance, void*)
 
 // $TWIN_CAMERA_TRACE=1 (THE LIST 59, #23's camera that stopped following Crash after the skunk's scene): every second of play or
 // of a scene the camera shown (the state word's: 0 the follow camera, 3 the game's rig, 4 the cutscenes'), where the view's camera
-// is (its instance's place), the player and how far apart they are
+// is (its instance's place), the player and how far apart they are, and how far round from the player's back the camera is seen
+// from above (0 right behind it, 180 in front: THE LIST 83's assisted camera)
 void CameraTraceFrame()
 {
     static const bool wanted = std::getenv("TWIN_CAMERA_TRACE") != nullptr;
@@ -1065,10 +1066,13 @@ void CameraTraceFrame()
     last = now;
     InstanceContext* player = ScenePlayer();
     Vector4 at = {};
+    Vector4 facing = {};
     if (player != nullptr && player->place != nullptr)
     {
         player->place->SyncPosition();
         at = player->place->position;
+        RotateAndTranslate(player->place);
+        facing = *RowOf(&player->place->matrix, 2);
     }
 
     Reference* shown = controller->view.cameraObject;
@@ -1082,9 +1086,13 @@ void CameraTraceFrame()
 
     f32 apart = std::sqrt((camera.x - at.x) * (camera.x - at.x) + (camera.y - at.y) * (camera.y - at.y) +
                           (camera.z - at.z) * (camera.z - at.z));
-    Native::Log("camera trace: state %u, camera %u at (%.1f, %.1f, %.1f), the player %s at (%.1f, %.1f, %.1f), %.1f units apart", state,
-                static_cast<u32>(controller->states.camera), camera.x, camera.y, camera.z,
-                player != nullptr ? OwnNameOf(player).c_str() : "none", at.x, at.y, at.z, apart);
+    // The way from the camera to the player against the player's facing, on the ground's plane
+    f32 lookX = at.x - camera.x;
+    f32 lookZ = at.z - camera.z;
+    f32 off = std::atan2(lookX * facing.z - lookZ * facing.x, lookX * facing.x + lookZ * facing.z) * 180.0f / 3.14159265f;
+    Native::Log("camera trace: state %u, camera %u at (%.1f, %.1f, %.1f), the player %s at (%.1f, %.1f, %.1f), %.1f units apart, "
+                "%.0f degrees off its back", state, static_cast<u32>(controller->states.camera), camera.x, camera.y, camera.z,
+                player != nullptr ? OwnNameOf(player).c_str() : "none", at.x, at.y, at.z, apart, std::fabs(off));
 }
 
 // $TWIN_SCENE_SCRIPTS=SECONDS:NAME[:NAME...]: SECONDS into each cutscene watched (game frames, 60 a second), the behaviour scripts

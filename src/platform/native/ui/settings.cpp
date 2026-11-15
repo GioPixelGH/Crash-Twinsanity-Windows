@@ -491,9 +491,9 @@ void Build()
                                         {TextDistanceOriginal, TextSlideJumpAnyMoment, TextSlideJumpEasier}));
     enhancements.push_back(OptionChoice(TextDoubleJump, TextDescDoubleJump, OptionDoubleJump,
                                         {TextDistanceOriginal, TextDoubleJumpLater, TextSlideJumpAnyMoment}));
-    // The automatic camera (THE LIST 55, #42, PR #45): free (0) or behind the character by itself (1)
+    // The automatic camera (THE LIST 55, #42, PR #45): free (0), behind the character by itself (1) or assisted (2, THE LIST 83)
     enhancements.push_back(Section(TextSectionCamera));
-    enhancements.push_back(Toggle(TextAutoCamera, TextDescAutoCamera, OptionAutoCamera));
+    enhancements.push_back(OptionChoice(TextAutoCamera, TextDescAutoCamera, OptionAutoCamera, {0, 1, TextCameraAssisted}));
     // The level select (THE LIST 12, levelselect.cpp): the option, then (on) the level chosen and its start from the main menu, or
     // a line saying the main menu is where it starts from
     enhancements.push_back(Section(TextSectionLevels));

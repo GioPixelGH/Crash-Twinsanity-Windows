@@ -297,6 +297,15 @@ have made itself (`src/platform/native/gameoptions.h`):
   on merging (THE LIST 55): the stick, the mouse and the camera keys all reach the game as the pad's right stick, which only the
   follow camera reads (the character's head still looks along it, `characterframe.cpp`), so no other camera takes them; with
   it on, `$TWIN_LOOK_TEST`'s mouse turned the camera 0 degrees a second and the 15 scenarios of `check_windows.py` passed.
+  Its third choice, assisted (`auto_camera=2`, THE LIST 83, #42, #45: jeff1-cpu tried one and left it to us): the look
+  controls still turn the camera, and while the character moves the same quick swing behind it runs once they've been let go
+  the yaw's own hold time (a second since they last turned it: the blender's `holdStart` and `holdTicks`, which retail's slow
+  return waits for too), so a look round while running isn't undone at once. The saved 0 and 1 stay off and automatic.
+  Checked: `$TWIN_LOOK_TEST` turns the camera 118.7, 711.9 and 237.3 degrees a second at 0 and at 2 (0 at 1); Crash run across
+  the beach's view for 4 s by the physics test's step (`$TWIN_CAMERA_TRACE` now says how far round from the player's back the
+  camera is): at 0 the camera stays 85 to 101 degrees off his back, at 1 and 2 it comes round to 30. At 2x, the camera
+  turning or not, the slow frames (over 25 ms) are alike, the render thread's GS (jeff1-cpu saw stutter at 2x on an Intel HD
+  630 with his camera: here the camera choice made no difference).
 - The slide jump (`slide_jump`, #11, #35): original (0: the long jump only once the slide's steering is over,
   `CrouchController::Slide`'s `mayJump`), any moment (1: from its first moment too) or easier (2: any moment, the jump pressed
   within a quarter second of getting up from the slide still the slide's (`JumpController::Grounded`), steered in the air at a

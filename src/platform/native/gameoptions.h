@@ -21,11 +21,15 @@ namespace NativeGame
 bool StrongMask();
 }
 
-// The automatic camera (auto_camera): the look stick and the mouse don't turn the follow camera, which swings behind the character
-// by itself while it moves (followrig.cpp's FollowCameraRig::Frame)
+// The automatic camera (auto_camera): 1 the look stick and the mouse don't turn the follow camera, which swings behind the character
+// by itself while it moves; 2 assisted (THE LIST 83, #42, #45): they still turn it, and it swings behind the moving character once
+// they've been let go the yaw's own hold time, a second (followrig.cpp's FollowCameraRig::Frame)
 namespace NativeGame
 {
+constexpr u32 CameraAutomatic = 1;
+constexpr u32 CameraAssisted = 2;
 bool AutoCamera();
+bool AssistedCamera();
 }
 
 // The slide jump (slide_jump, #11, #35): 0 the original (the long jump only after the slide's first steering moment), 1 from any

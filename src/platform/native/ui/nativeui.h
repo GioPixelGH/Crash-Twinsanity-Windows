@@ -357,6 +357,8 @@ enum NativeText : u32
     // Three masks' touch (THE LIST 54, #18)
     TextMaskTouch,
     TextDescMaskTouch,
+    // The automatic camera's third choice (THE LIST 83, #42, #45)
+    TextCameraAssisted,
     NativeTextEnd,
 };
 

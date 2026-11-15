@@ -326,6 +326,13 @@ void FollowCameraRig::Frame(TimeClock* clock, CharacterAgent* character)
         // The automatic camera: while the character moves the shoulders' swing behind it, as if they were held
         positioner.yaw.rateScale = 1.0f;
     }
+    else if (NativeGame::AssistedCamera() && still &&
+             static_cast<s32>(clock->time - positioner.yaw.holdStart) >= positioner.yaw.holdTicks)
+    {
+        // The assisted camera (THE LIST 83, #42, #45): the same swing once the look controls have been let go the yaw's hold time
+        // (a second since they last turned it), so a look round while moving isn't undone at once
+        positioner.yaw.rateScale = 1.0f;
+    }
 #endif
 
     positioner.distance.rateScale = pressures[PressureDistance];

@@ -148,7 +148,8 @@ game could make.
 - **Double jump**: later in a fall, or at any moment of it, and after a slide jump too. Later ones are weaker; at any moment
   it's always full.
 - **Automatic camera**: the camera swings behind you by itself while you move, and the camera stick, the mouse and the camera
-  keys turn nothing. Off is the original's free camera. A level's own fixed cameras still work as they did.
+  keys turn nothing. Pick **assisted** to keep turning it yourself: it swings behind you a second after you let go. Off is
+  the original's free camera. A level's own fixed cameras still work as they did.
 - **Level select**: start any level from the main menu (Options > Enhancements > Level). What you save in such a game is
   kept apart from your own saves, which come back once you're at the title again.
 

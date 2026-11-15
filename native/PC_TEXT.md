@@ -270,7 +270,7 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x1E1 | stronger aku aku | aku aku plus fort | stärkerer aku aku | aku aku más fuerte | aku aku più forte |
 | 0x1E2 | aku aku's masks also take tnt and nitro blasts, as in the earlier crash games. | les masques d'aku aku encaissent aussi tnt et nitro, comme dans les anciens crash. | aku akus masken halten auch tnt und nitro aus, wie in den früheren crash-spielen. | las máscaras de aku aku aguantan también tnt y nitro, como en los crash anteriores. | le maschere di aku aku reggono anche tnt e nitro, come nei crash precedenti. |
 | 0x1E3 | automatic camera | caméra automatique | automatische kamera | cámara automática | telecamera automatica |
-| 0x1E4 | the camera follows behind the character and ignores the look controls. | la caméra suit le personnage et ignore les commandes de caméra. | die kamera folgt der figur und ignoriert die kamerasteuerung. | la cámara sigue al personaje e ignora los controles de cámara. | la telecamera segue il personaggio e ignora i comandi della telecamera. |
+| 0x1E4 | the camera follows behind you: ignoring the look controls, or (assisted) still turned by them. | la caméra te suit de dos : sans les commandes de caméra, ou (assistée) encore tournée par elles. | die kamera folgt dir von hinten: ohne kamerasteuerung oder (unterstützt) noch von ihr gedreht. | la cámara te sigue por detrás: sin los controles de cámara, o (asistida) aún girada por ellos. | la telecamera ti segue da dietro: ignora i comandi, o (assistita) si gira ancora con essi. |
 | 0x1E5 | slide jump | saut glissé | rutschsprung | salto deslizante | salto in scivolata |
 | 0x1E6 | the long jump from a slide: at any moment of it, or easier (a later press, steered in the air). | le saut long depuis une glissade : à tout moment, ou plus facile (plus tard, dirigé en l'air). | der weitsprung aus dem rutschen: jederzeit oder leichter (später drücken, in der luft lenken). | el salto largo al deslizarte: en cualquier momento, o más fácil (más tarde, dirigido en el aire). | il salto lungo dalla scivolata: in qualunque momento, o più facile (più tardi, guidato in aria). |
 | 0x1E7 | any moment | à tout moment | jederzeit | en cualquier momento | in qualunque momento |
@@ -322,6 +322,7 @@ The graphic options' resolution setting (NATIVE.md) adds texts of its own after 
 | 0x215 | later | plus tard | später | más tarde | più tardi |
 | 0x216 | three masks' touch | toucher à trois masques | berührung mit drei masken | toque con tres máscaras | tocco con tre maschere |
 | 0x217 | with three masks, what you touch is hit as by a spin: crates break, enemies are beaten. | avec trois masques, ce que tu touches est frappé comme par la toupie : caisses, ennemis. | mit drei masken trifft jede berührung wie drehen: kisten brechen, gegner fallen. | con tres máscaras, lo que tocas recibe un giro: las cajas se rompen, los enemigos caen. | con tre maschere, ciò che tocchi è colpito come girando: casse rotte, nemici battuti. |
+| 0x218 | assisted | assistée | unterstützt | asistida | assistita |
 
 ## English (29 lines)
 

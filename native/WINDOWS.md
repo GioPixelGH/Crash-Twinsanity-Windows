@@ -735,7 +735,8 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   index, position, switch and group): check_windows.py's #41 scenario.
 - `$TWIN_CAMERA_TRACE=1` (the sweep): every second of play or of a scene, the camera shown (the game controller's state word:
   0 the player's follow camera, 3 the game's rig, 4 the cutscenes'), where its instance is, the player and how far apart they
-  are (check_windows.py's #23 scenario: the follow camera back after the high path's skunk scene, 7 units from Crash).
+  are (check_windows.py's #23 scenario: the follow camera back after the high path's skunk scene, 7 units from Crash), and how
+  many degrees round from the player's back the camera is, seen from above (THE LIST 83's assisted camera).
 - `$TWIN_MOUSE_TRACE`: each click a menu takes, logged with how many lines and hints the frame before drew and how many are
   under it (mouse.cpp; a click after a frame that drew none of the menu waits up to half a second for one that does).
 - `$TWIN_FPS_TEST=1` or `=FOLDER` (with `--quick` and a window, ui/fpstest.cpp): the beach played a few seconds, then the status

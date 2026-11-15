@@ -10,10 +10,15 @@ bool NativeGame::InfiniteLives()
     return NativeUi::IsOn(NativeUi::OptionInfiniteLives);
 }
 
-// The automatic camera
+// The automatic camera, and the assisted one
 bool NativeGame::AutoCamera()
 {
-    return NativeUi::IsOn(NativeUi::OptionAutoCamera);
+    return NativeUi::GetOption(NativeUi::OptionAutoCamera) == static_cast<s32>(CameraAutomatic);
+}
+
+bool NativeGame::AssistedCamera()
+{
+    return NativeUi::GetOption(NativeUi::OptionAutoCamera) == static_cast<s32>(CameraAssisted);
 }
 
 // The stronger Aku Aku mask
