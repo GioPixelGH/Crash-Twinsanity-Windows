@@ -1270,6 +1270,12 @@ void MakeShown(u64 frame)
     shown.primitives = h.gs->primitivesDrawn;
     shown.boxPixels = h.gs->boxPixels;
     shown.number = g_ShownCount;
+    // ($TWIN_HW_BATCH_HASH: each picture's GS primitive count, its numbers the dumped frames', for the ranges asked)
+    static const bool hashing = std::getenv("TWIN_HW_BATCH_HASH") != nullptr;
+    if (hashing)
+    {
+        std::fprintf(stderr, "shown %u primitives %llu\n", g_ShownCount, static_cast<unsigned long long>(shown.primitives));
+    }
     // (its GS work ends here: $TWIN_GS_DUMP's frames)
     GsDumpShown(g_ShownCount);
     DumpPicture(shown.picture, g_ShownCount++);

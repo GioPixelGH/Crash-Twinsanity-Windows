@@ -236,6 +236,34 @@ Three runs of 60 s each (the program before it, built from the same tree, then t
 | The render thread | 12.0 ms: the GS 10.8, OpenGL 1.1 | 12.1 ms: the GS 10.9 (the list recorded and played), OpenGL 1.0 |
 | Frames a second | 67.3 | 68.0 |
 
+The Vulkan backend (THE LIST 71) is hw/sdlgpu.cpp. It plays the same lists with SDL's GPU API on its "vulkan" driver, SPIR-V
+only, for now behind `$TWIN_GPU_API=vulkan` (73 makes it a setting). The renderer's GLSL 3.30 programs become SPIR-V while the
+game runs, made by glslang 16.6.0 as a static library (native/tools/build_windows.py builds it from its release, checked by
+SHA-256, and without it the build has OpenGL only). The translation gathers each stage's loose uniforms into a std140 block,
+binds the float samplers in order, reads the integer textures (R32UI, R16UI, which SDL doesn't sample) as storage textures
+with texelFetch and matches the varyings by name. What OpenGL does and SDL GPU doesn't is made in the backend:
+- a pipeline for each state a draw has, made when first drawn with and kept;
+- clears and copies as draws, and depth read back through a float copy;
+- the vertex colour's bytes as OpenGL's 0-255 floats, and new textures zeroed;
+- dual-source blending (the GS's alpha as the blend factor while the alpha is written too) as two passes, the colour then
+  the alpha;
+- each vertex shader's y negated, since SDL's viewport is flipped, so a texture's first row is OpenGL's in both.
+
+The picture shown is still read back into memory for the window's OpenGL (72 moves the window onto the backend). The 25
+pictures are the same as 1.2.0's OpenGL ones, byte for byte. Validation (the Vulkan SDK's layers, `$TWIN_VULKAN_DEBUG`)
+reports only VUID-vkCmdDraw-None-09600, which comes from SDL's own memory defragmentation (sdlgpu.cpp's top says why).
+Measured with perf.py (the same program, OpenGL then Vulkan, one after the other):
+
+| What | OpenGL | Vulkan |
+| --- | --- | --- |
+| Frames a second | 64.1 | 63.6 |
+| The render thread | 12.9 ms: the GS 11.6, OpenGL's calls 1.1, the picture handed over 0.2 | 15.5 ms: the GS 12.6 (Vulkan's calls in it), the picture handed over 2.9 (read back for the window until 72) |
+| The game's thread | 9.3 ms (the window's present 2.3) | 5.4 ms (the window's present 0.4) |
+
+The list played costs the same in both (the GS and the API's calls 12.7 and 12.6 ms); the picture read back for the window is
+what Vulkan costs more until 72. The card's own time isn't measured with Vulkan (SDL's GPU API 3.4.18 has no timer
+queries).
+
 ### Hitches
 
 THE LIST 19 (#23: frames of 0.25-1.8 s as new areas load, GNRTX-3's i7-2600 and GT 730 on NVIDIA 472.12, his first 1.1.0
@@ -731,6 +759,21 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   ("Fewer calls" under "Speed"): to tell a drawing difference from the calls left out.
 - `$TWIN_HW_LIST_BYTES=N`: the hardware renderer's command list played once it holds N bytes (and when a result is wanted, and
   at the frame's end) instead of after each batch ("The command list" under "Speed").
+- `$TWIN_GPU_API=vulkan`: the hardware renderer's lists played by the Vulkan backend (hw/sdlgpu.cpp, "The Vulkan backend" under
+  "Speed"); OpenGL when it can't start (the log says why). `$TWIN_VULKAN_DEBUG=1`: SDL GPU's debug mode with Vulkan's validation
+  layers (the Vulkan SDK installed), their messages in the log, the textures named ("texture 141 64x64 format 0 levels 7"); run
+  it with `SDL_ASSERT=always_ignore`, or SDL's assert dialogs open on the screen. In debug mode SDL refuses a viewport past the
+  target, so the draws' far bigger viewport makes those runs draw differently. `$TWIN_VULKAN_LIST_BYTES=N`: Vulkan's list played
+  in pieces of N bytes (4 MB).
+- `$TWIN_HW_BATCH_HASH=FIRST:LAST`: two backends compared batch by batch. Each batch flushed while the GS's primitive count is in
+  that range is read back after it and its target's colour and depth hashed (`batchhash 166576 p35910: into 800 program 4009 ...
+  colour 57c15f8b21f33875 depth 0 2048x2048`); each picture logs its count (`shown 300 primitives 35948`: picture 300's
+  primitives end there, its number the dumped frames'). The primitive count is the GS's, the same whichever backend draws
+  (the batch count and `$TWIN_HW_BATCH_LOG`'s picture count aren't). `$TWIN_HW_BATCH_DUMP=FOLDER` writes each read back raw
+  (`PRIMITIVES_BP_colour_WxH.raw`, depth as floats), `$TWIN_HW_BATCH_LOG=range` logs those batches' keys too.
+  compare/tools/batch_hashes.py lists the first batches that differ between two runs' logs, with the dumps how many pixels and
+  by how much. It found 71's two drawing differences in minutes (a target filled from GS memory left black, because an array's
+  elements were set by name, and a blend a unit off, the shader's blend instead of OpenGL's).
 - `$TWIN_HW_SOURCE_TRACE=1`: each kind of texture the hardware renderer samples straight from a target (a buffer it drew)
   rather than decoding it from memory, logged once ("graphics: a 256x256 texture at 2800/4 (psm 0) read from the target ...");
   `$TWIN_HW_NO_TARGET_TEXTURES=1`: none, every texture decoded from memory's copy (an effect's buffer then at the PS2's

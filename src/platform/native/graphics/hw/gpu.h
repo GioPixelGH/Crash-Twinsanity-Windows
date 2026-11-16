@@ -419,11 +419,18 @@ public:
     virtual void DeleteFence(void* fence) = 0;
     // The card's driver compiling programs on threads of its own, where it can
     virtual void ParallelCompiles() = 0;
+    // Whether the textures are OpenGL's, the window's context's to draw (else the shown picture is read back for it)
+    virtual bool SharesGlTextures() const { return true; }
+    // The list played once it's this many bytes long (0: after each batch, OpenGL's best; $TWIN_HW_LIST_BYTES says otherwise)
+    virtual size_t ListBytes() const { return 0; }
 };
 
 // The GL backend (glreplay.cpp): the window's or the render thread's context (WINDOW and CONTEXT: SDL's), or one of its own made in
 // a hidden window when both are null; SHARED: the context is the window's code's too (one thread). Null when OpenGL 3.3 isn't there
 Backend* StartGlBackend(void* window, void* context, bool shared);
+// The SDL GPU backend on Vulkan (sdlgpu.cpp, THE LIST 71): a device of its own, no window. Null when Vulkan isn't there, or the build
+// has no glslang
+Backend* StartVulkanBackend();
 
 // What hwgs.cpp calls: the state as GL's calls set it, the commands recorded with it
 class Gpu

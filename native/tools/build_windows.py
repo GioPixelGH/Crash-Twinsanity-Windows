@@ -26,6 +26,11 @@ SDL_URL = f"https://github.com/libsdl-org/SDL/releases/download/release-{SDL_VER
 FFMPEG_NAME = "ffmpeg-n9.0-latest-win64-lgpl-shared-9.0"
 FFMPEG_URL = f"https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/{FFMPEG_NAME}.zip"
 MSYS2_REPO = "https://repo.msys2.org/msys/x86_64/"
+# glslang (BSD 3-Clause and others, its LICENSE.txt): the Vulkan backend makes the renderer's GLSL SPIR-V with it while the game
+# runs (THE LIST 71). A static library built here once, the release's source checked by its SHA-256
+GLSLANG_VERSION = "16.6.0"
+GLSLANG_URL = f"https://github.com/KhronosGroup/glslang/archive/refs/tags/{GLSLANG_VERSION}.tar.gz"
+GLSLANG_SHA256 = "9c09b901149c729df745057dafa815278aaa101b84d2b6e14f16a42de52f97f2"
 
 
 def find_llvm_mingw():
@@ -41,14 +46,19 @@ def find_llvm_mingw():
     return None
 
 
-def configured_compiler():
-    """The C++ compiler the build was configured with ("" before it was)"""
+def configured(name):
+    """A variable of the build's CMake cache ("" before it was configured)"""
     cache = BUILD / "CMakeCache.txt"
     if cache.exists():
         for line in cache.read_text(errors="replace").splitlines():
-            if line.startswith("CMAKE_CXX_COMPILER:"):
+            if line.startswith(name + ":"):
                 return line.split("=", 1)[1]
     return ""
+
+
+def configured_compiler():
+    """The C++ compiler the build was configured with ("" before it was)"""
+    return configured("CMAKE_CXX_COMPILER")
 
 
 def find_tool(name, winget_id):
@@ -128,6 +138,41 @@ def own_ffmpeg(llvm):
     return prefix if result.returncode == 0 else None
 
 
+def own_glslang(llvm, cmake, ninja):
+    """glslang built as static libraries (build/native/glslang/windows-x86_64, CMake's package there): None if it can't be"""
+    import hashlib
+    prefix = HERE / "build" / "native" / "glslang" / "windows-x86_64"
+    if (prefix / "lib" / "cmake" / "glslang" / "glslang-config.cmake").exists():
+        return prefix
+    archive = DEPS / f"glslang-{GLSLANG_VERSION}.tar.gz"
+    try:
+        download(GLSLANG_URL, archive)
+    except Exception as error:  # noqa: BLE001 (no network: built without Vulkan)
+        print(f"no glslang ({error}): built without Vulkan")
+        return None
+    if hashlib.sha256(archive.read_bytes()).hexdigest() != GLSLANG_SHA256:
+        print(f"{archive} isn't glslang {GLSLANG_VERSION}'s release: built without Vulkan")
+        return None
+    source = DEPS / f"glslang-{GLSLANG_VERSION}"
+    if not source.exists():
+        with tarfile.open(archive) as tar:
+            tar.extractall(DEPS, filter="data")
+    build = DEPS / f"glslang-{GLSLANG_VERSION}-build"
+    env = dict(os.environ)
+    env["PATH"] = os.pathsep.join([str(llvm), str(Path(ninja).parent), env.get("PATH", "")])
+    print(f"building glslang {GLSLANG_VERSION}")
+    configure = [cmake, "-S", str(source), "-B", str(build), "-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={Path(ninja).as_posix()}",
+                 f"-DCMAKE_C_COMPILER={(llvm / 'clang.exe').as_posix()}", f"-DCMAKE_CXX_COMPILER={(llvm / 'clang++.exe').as_posix()}",
+                 "-DCMAKE_BUILD_TYPE=Release", f"-DCMAKE_INSTALL_PREFIX={prefix.as_posix()}", "-DBUILD_SHARED_LIBS=OFF",
+                 "-DENABLE_OPT=OFF", "-DENABLE_HLSL=OFF", "-DENABLE_GLSLANG_BINARIES=OFF", "-DGLSLANG_TESTS=OFF",
+                 "-DBUILD_EXTERNAL=OFF", "-DENABLE_SPVREMAPPER=OFF", "-DGLSLANG_ENABLE_INSTALL=ON",
+                 f"-DPython3_EXECUTABLE={Path(sys.executable).as_posix()}"]
+    if subprocess.run(configure, env=env).returncode != 0 or             subprocess.run([cmake, "--build", str(build), "--target", "install"], env=env).returncode != 0:
+        print("glslang didn't build: built without Vulkan")
+        return None
+    return prefix
+
+
 def fetch_dependencies(llvm):
     sdl = DEPS / f"SDL3-{SDL_VERSION}" / "x86_64-w64-mingw32"
     if not sdl.exists():
@@ -166,6 +211,7 @@ def main():
     cmake = find_tool("cmake", "Kitware.CMake")
     ninja = find_tool("ninja", "Ninja-build.Ninja")
     sdl, ffmpeg = fetch_dependencies(llvm)
+    glslang = own_glslang(llvm, cmake, ninja)
     sdl = Path(args.sdl) if args.sdl else sdl
     ffmpeg = Path(args.ffmpeg) if args.ffmpeg else ffmpeg
 
@@ -177,11 +223,14 @@ def main():
     # A build configured with another LLVM-MinGW is configured from scratch: its cache keeps that one's tools (the resource
     # compiler, the archiver), and winget's upgrades delete the version before
     fresh = configured_compiler() not in ("", compiler)
-    if args.configure or fresh or not (BUILD / "build.ninja").exists():
+    # (A build configured before glslang was there, 1.2.0's, configured again to have the Vulkan backend)
+    without_glslang = glslang is not None and glslang.as_posix() not in configured("CMAKE_PREFIX_PATH")
+    if args.configure or fresh or without_glslang or not (BUILD / "build.ninja").exists():
         subprocess.run([cmake] + (["--fresh"] if fresh else []) + ["-S", str(HERE / "native"), "-B", str(BUILD), "-G", "Ninja",
                         f"-DCMAKE_MAKE_PROGRAM={Path(ninja).as_posix()}",
                         f"-DCMAKE_CXX_COMPILER={compiler}",
-                        f"-DCMAKE_PREFIX_PATH={sdl.as_posix()}", f"-DTWIN_FFMPEG_DIR={ffmpeg.as_posix()}",
+                        f"-DCMAKE_PREFIX_PATH={sdl.as_posix()}" + (f";{glslang.as_posix()}" if glslang else ""),
+                        f"-DTWIN_FFMPEG_DIR={ffmpeg.as_posix()}",
                         f"-DPython3_EXECUTABLE={Path(sys.executable).as_posix()}"], check=True, env=env)
     result = subprocess.run([cmake, "--build", str(BUILD), "--"] + args.ninja, env=env)
     if result.returncode == 0:

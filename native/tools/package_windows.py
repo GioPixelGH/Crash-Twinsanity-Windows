@@ -73,6 +73,12 @@ def main():
         shutil.copy2(found[-1], licenses / "SDL3-LICENSE.txt")
     else:
         print(f"warning: no SDL3-*/LICENSE.txt in {deps}", file=sys.stderr)
+    # glslang's (the Vulkan backend's GLSL to SPIR-V, in the program: build_windows.py builds it from its release)
+    found = sorted(deps.glob("glslang-*/LICENSE.txt"))
+    if found:
+        shutil.copy2(found[-1], licenses / "glslang-LICENSE.txt")
+    else:
+        print(f"warning: no glslang-*/LICENSE.txt in {deps}", file=sys.stderr)
     # FFmpeg's licence and how to replace its DLLs (the LGPL's relinking clause): native/third_party/ffmpeg's, for our own
     # build (build_ffmpeg.sh); a prebuilt one's own licence when that's what was linked
     ffmpeg = licenses / "ffmpeg"

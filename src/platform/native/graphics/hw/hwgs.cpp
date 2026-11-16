@@ -78,6 +78,18 @@ using namespace Hw;
 // TWIN_HW_BATCH_LOG=N: the batches drawn for picture N (its count of DisplayTexture calls), one line each
 u32 g_BatchLogFrame = 0;
 
+// TWIN_HW_BATCH_HASH=FIRST:LAST: each batch flushed while the GS's primitive count is in that range hashed after it, its target's
+// colour and depth ("batchhash" lines; TWIN_HW_BATCH_DUMP=FOLDER also writes them raw, TWIN_HW_BATCH_LOG=range logs those batches
+// too). Two backends compared batch by batch (THE LIST 71): the primitive count is the GS's, the same whichever draws; the batch
+// count isn't (DisplayTexture's calls aren't either). Each picture's count is logged with it ("shown N primitives P")
+bool InBatchHashRange(u64 primitives)
+{
+    static const char* range = std::getenv("TWIN_HW_BATCH_HASH");
+    static const u64 first = range != nullptr ? std::strtoull(range, nullptr, 10) : 0;
+    static const u64 last = range != nullptr && std::strchr(range, ':') != nullptr ? std::strtoull(std::strchr(range, ':') + 1, nullptr, 10) : ~0ull;
+    return range != nullptr && primitives >= first && primitives <= last;
+}
+
 // The game's colour filter drawn at the scale (BitDepthIndex); $TWIN_HW_DEPTH_INDEX=0 draws it at the PS2's pixels as before
 // (read back from memory, tested at each block's first sample)
 // Primitives thinner than a PS2 pixel drawn at a higher scale (HwGs::Draw's rectangle); $TWIN_HW_THIN_PRIMITIVES=0 leaves out,
@@ -1535,7 +1547,22 @@ bool HwGs::Init()
     SDL_GLContext context = nullptr;
     const bool rendering = RenderContext(&window, &context);
     const bool shared = !rendering && PresenterContext(&window, &context);
-    backend_.reset(Hw::StartGlBackend(rendering || shared ? window : nullptr, rendering || shared ? context : nullptr, shared));
+    // ($TWIN_GPU_API=vulkan: SDL GPU's Vulkan, THE LIST 71; OpenGL when it can't start)
+    static const char* api = std::getenv("TWIN_GPU_API");
+    if (api != nullptr && std::strcmp(api, "vulkan") == 0)
+    {
+        backend_.reset(Hw::StartVulkanBackend());
+        if (backend_ == nullptr)
+        {
+            std::fprintf(stderr, "graphics: no Vulkan: OpenGL draws\n");
+        }
+    }
+
+    if (backend_ == nullptr)
+    {
+        backend_.reset(Hw::StartGlBackend(rendering || shared ? window : nullptr, rendering || shared ? context : nullptr, shared));
+    }
+
     if (backend_ == nullptr)
     {
         return false;
@@ -5143,7 +5170,8 @@ void HwGs::Flush()
     Gpu& gpu = gpu_;
     {
         static const char* batchLog = std::getenv("TWIN_HW_BATCH_LOG");
-        if (batchLog != nullptr && g_BatchLogFrame == static_cast<u32>(std::atoi(batchLog)))
+        const bool inRange = batchLog != nullptr && std::strcmp(batchLog, "range") == 0 && InBatchHashRange(gs_.primitivesDrawn);
+        if (inRange || (batchLog != nullptr && g_BatchLogFrame == static_cast<u32>(std::atoi(batchLog))))
         {
             const Target* source = nullptr;
             for (auto& known : targets_)
@@ -5515,6 +5543,44 @@ void HwGs::Flush()
         }
     }
 
+    // TWIN_HW_BATCH_HASH (InBatchHashRange): the target after the batch, hashed (and written raw as PRIMITIVES_BP_KIND_WxH.raw)
+    if (InBatchHashRange(gs_.primitivesDrawn))
+    {
+        std::vector<u8> pixels(static_cast<size_t>(width) * height * 4);
+        gpu.PixelStore(StorePackAlignment, 4);
+        gpu.PixelStore(StorePackRowLength, 0);
+        gpu.BindReadFramebuffer(k.colour->fbo);
+        gpu.ReadPixels(0, 0, width, height, FormatRgba8, pixels.data());
+        const unsigned long long colourHash = XXH3_64bits(pixels.data(), pixels.size());
+        static const char* dumpTo = std::getenv("TWIN_HW_BATCH_DUMP");
+        auto save = [&](const char* kind) {
+            if (dumpTo != nullptr)
+            {
+                char path[512];
+                std::snprintf(path, sizeof(path), "%s/%llu_%x_%s_%dx%d.raw", dumpTo, static_cast<unsigned long long>(gs_.primitivesDrawn), k.colour->bp,
+                              kind, width, height);
+                if (FILE* f = std::fopen(path, "wb"))
+                {
+                    std::fwrite(pixels.data(), 1, pixels.size(), f);
+                    std::fclose(f);
+                }
+            }
+        };
+        save("colour");
+        unsigned long long depthHash = 0;
+        if (k.depth != nullptr)
+        {
+            gpu.BindReadFramebuffer(FramebufferFor(k.colour, k.depth));
+            gpu.ReadPixels(0, 0, width, height, FormatDepth32fStencil8, pixels.data());
+            depthHash = XXH3_64bits(pixels.data(), pixels.size());
+            save("depth");
+        }
+
+        std::fprintf(stderr, "batchhash %llu p%llu: into %x program %x wrap %u date %u prim %u, colour %016llx depth %016llx %dx%d\n",
+                     static_cast<unsigned long long>(stats.batches), static_cast<unsigned long long>(gs_.primitivesDrawn), k.colour->bp, k.program,
+                     k.wrapAdd, k.stencilDate, k.primitive, colourHash, depthHash, width, height);
+    }
+
     gpu.ColorMask(true, true, true, true);
     gpu.DepthMask(true);
     gpu.Disable(CapStencilTest);
@@ -5523,7 +5589,7 @@ void HwGs::Flush()
     // pieces the driver's calls cost more (OpenGL 1.0 ms a frame after each batch, 1.4 every 64 KB or 1 MB) and the window's
     // present too; after each batch the frames a second are the program's before the list
     static const size_t listBytes = std::getenv("TWIN_HW_LIST_BYTES") != nullptr ? std::strtoull(std::getenv("TWIN_HW_LIST_BYTES"), nullptr, 10)
-                                                                                 : 0;
+                                                                                 : backend_->ListBytes();
     if (gpu.list().size() + gpu.list().dataSize() >= listBytes)
     {
         gpu.Submit();
@@ -6019,7 +6085,8 @@ u32 HardwareScale()
 
 bool HardwareDisplayTexture(DisplayTexture* display)
 {
-    if (g_Hw == nullptr || !g_Hw->DisplayTexture(display, nullptr, nullptr))
+    // (A backend whose textures aren't OpenGL's: the window's code reads the picture back, HardwareReadDisplay)
+    if (g_Hw == nullptr || !g_Hw->gpu().backend().SharesGlTextures() || !g_Hw->DisplayTexture(display, nullptr, nullptr))
     {
         return false;
     }
@@ -6036,7 +6103,7 @@ bool HardwareReadDisplay(Gs::DisplayImage& image)
 
 bool HardwareCopyDisplay(u32 slot, void* drawnFence, ShownTexture* shown)
 {
-    return g_Hw != nullptr && g_Hw->CopyDisplay(slot, drawnFence, shown);
+    return g_Hw != nullptr && g_Hw->gpu().backend().SharesGlTextures() && g_Hw->CopyDisplay(slot, drawnFence, shown);
 }
 
 void HardwareSetDither(int mode)

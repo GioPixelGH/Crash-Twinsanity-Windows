@@ -9,6 +9,7 @@ them are thanked in the README's [Credits](README.md#credits).
 | What | Licence | Its text |
 | --- | --- | --- |
 | [SDL 3](https://github.com/libsdl-org/SDL) (windows, input, sound) | zlib | `licenses/SDL3-LICENSE.txt` in the release (SDL isn't in this repository: the build takes it from SDL's own release) |
+| [glslang 16.6.0](https://github.com/KhronosGroup/glslang) by the Khronos Group (the Vulkan renderer's shaders made from the OpenGL renderer's while the game runs) | 3-Clause BSD, and for some parts 2-Clause BSD, MIT and Apache 2.0 | `licenses/glslang-LICENSE.txt` in the release (glslang isn't in this repository: the build takes it from its own release) |
 | [FFmpeg 9.0.2](https://ffmpeg.org/) (libavcodec and libavutil, built with only the MPEG-2 video decoder, for the game's movies) | LGPL 2.1 or later | [native/third_party/ffmpeg](native/third_party/ffmpeg) (how it's built, and the source it's built from) |
 | [SMAA](https://github.com/iryoku/smaa) by Jorge Jimenez, Jose I. Echevarria, Belen Masia, Fernando Navarro and Diego Gutierrez (the SMAA anti-aliasing) | MIT | [native/third_party/smaa/LICENSE.txt](native/third_party/smaa/LICENSE.txt) |
 | [stb_truetype](https://github.com/nothings/stb) by Sean Barrett (the options screen's text; one fix of ours, marked in the file) | public domain or MIT | [native/third_party/stb/LICENSE.txt](native/third_party/stb/LICENSE.txt) |

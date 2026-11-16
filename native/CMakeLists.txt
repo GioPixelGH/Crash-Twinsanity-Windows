@@ -263,6 +263,18 @@ if(WIN32)
     target_compile_options(${target} PRIVATE -march=x86-64-v2)
 endif()
 endforeach()
+# THE LIST 71: the hardware renderer's Vulkan backend (src/platform/native/graphics/hw/sdlgpu.cpp, SDL's GPU API) makes its GLSL
+# SPIR-V with glslang, a static library (native/tools/build_windows.py builds it). Without it the build has OpenGL only
+find_package(glslang CONFIG QUIET)
+if(glslang_FOUND)
+    message(STATUS "glslang ${glslang_VERSION}: the Vulkan backend built")
+    foreach(target game twinsanity)
+        target_compile_definitions(${target} PRIVATE TWIN_VULKAN=1)
+        target_link_libraries(${target} PRIVATE glslang::glslang glslang::SPIRV glslang::glslang-default-resource-limits)
+    endforeach()
+else()
+    message(STATUS "no glslang: OpenGL only (no Vulkan backend)")
+endif()
 if(WIN32)
     # The executable below 2 GB at a fixed place: the low memory's emulation moves an instruction's displacement by
     # g_NativeLowMemory's address, which has to fit 32 bits (src/platform/native/lowmemory_win32.cpp). The C++ runtime is
