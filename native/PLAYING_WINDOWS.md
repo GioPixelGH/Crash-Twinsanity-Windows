@@ -240,6 +240,10 @@ PowerShell or the Command Prompt), it writes there instead.
 Please include the log with any bug report, and say where in the game it happened. The log also names your graphics card
 and its driver's version.
 
+On a laptop with two graphics cards, the game asks for the faster one. If the log still names the built-in card
+(Intel, or AMD Radeon Graphics), choose **High performance** for `CrashTwinsanity.exe` in Windows' **Settings > System >
+Display > Graphics**.
+
 What the log has:
 
 - always: the time of each line, and the game's states as they change (loading, playing, a cutscene, paused, a death, game

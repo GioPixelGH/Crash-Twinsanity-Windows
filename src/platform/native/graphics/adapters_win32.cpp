@@ -11,6 +11,16 @@
 
 #include <cstdio>
 
+// Laptops with two graphics cards (THE LIST 87; #23: an Intel HD active beside a GTX 1050 Ti): NVIDIA's Optimus and AMD's
+// switchable graphics run a program that exports these, set to 1, on the dedicated card (their drivers read them as it starts).
+// Windows' own choice for the program (Settings > Display > Graphics) still comes first; with one card nothing changes. The log's
+// "graphics:" line names the card that draws
+extern "C"
+{
+__declspec(dllexport) DWORD NvOptimusEnablement = 1;
+__declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
+
 namespace NativeGraphics
 {
 void LogAdapters()

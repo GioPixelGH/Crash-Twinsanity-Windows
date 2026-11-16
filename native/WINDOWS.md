@@ -747,7 +747,11 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   version's. Once the window is there it names the graphics card and its driver:
   OpenGL's renderer, vendor and version (the driver's own number in it: NVIDIA's "3.3.0 NVIDIA 617.14", AMD's "... Core Profile
   Context 24.10.1...", Intel's "... Build 31.0.101..."), then each adapter Windows has (graphics/adapters_win32.cpp, DXGI's: its
-  name, PCI vendor and device, its driver's version as Device Manager shows it and its video memory). The game's trail (ui/trail.cpp) is always in it: the game controller's
+  name, PCI vendor and device, its driver's version as Device Manager shows it and its video memory). On a laptop with two cards
+  the first line says which one draws. Since THE LIST 87 the program exports NvOptimusEnablement and
+  AmdPowerXpressRequestHighPerformance, both 1 (adapters_win32.cpp), which NVIDIA's Optimus and AMD's switchable graphics read
+  as it starts to put it on the dedicated card (#23's log had an Intel HD beside a GTX 1050 Ti). Windows' own choice for the
+  program (Settings > System > Display > Graphics) still comes first. `llvm-objdump -p` lists the two in its export table. The game's trail (ui/trail.cpp) is always in it: the game controller's
   states by name with the player's place (read without changing the game's), the player's chunk as it changes, the chunk a level
   loads at, the memory card's writes and the movies opened. The detailed log (Options > Game, `detailed_log` in
   options.txt, or `$TWIN_DETAILED_LOG`) adds the player's place every 5 s of play, every sound played (game/sound.cpp, as
