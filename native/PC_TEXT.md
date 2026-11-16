@@ -334,6 +334,8 @@ English slot); an empty cell shows the English. To translate: fill that column i
 | 0x21E | return to title? | retour au titre ? | zurück zum titel? | ¿volver al título? | tornare al titolo? |  |
 | 0x21F | play this level? | jouer ce niveau ? | dieses level spielen? | ¿jugar este nivel? | giocare il livello? |  |
 | 0x220 | a restart checkpoint row in the pause menu (the ps2's pause menu has none). | une ligne recommencer dans le menu pause (celui de la ps2 n'en a pas). | eine zeile neu starten im pausenmenü (das der ps2 hat keine). | una fila reiniciar en el menú de pausa (el de la ps2 no la tiene). | una riga ricomincia nel menu di pausa (quello della ps2 non ce l'ha). |  |
+| 0x221 | monitor | écran | bildschirm | monitor | monitor |  |
+| 0x222 | the monitor the game shows on. auto is the main one. | l'écran où s'affiche le jeu. auto est l'écran principal. | der bildschirm für das spiel. auto ist der hauptbildschirm. | el monitor donde se ve el juego. auto es el principal. | il monitor dove si vede il gioco. auto è il principale. |  |
 
 ## English (29 lines)
 

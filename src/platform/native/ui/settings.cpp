@@ -10,6 +10,7 @@
 #include "ui/overlay.h"
 
 #include "native.h"
+#include "graphics/resolution.h"
 #include "mods.h"
 #include "renderdistance.h"
 #include "updatecheck.h"
@@ -215,6 +216,9 @@ void OpenDialog(PortableDialog dialog);
 void Close();
 // The level select's level (its row's choice, kept while the program runs)
 s32 g_LevelSelectChoice = 0;
+
+// The screen's row (THE LIST 88): its name cut to this many characters
+constexpr size_t ScreenNameLength = 24;
 
 // The display mode (window or fullscreen) and the window's size: the windows' sizes are the display choices but the last
 s32 WindowSizeChoice()
@@ -525,6 +529,24 @@ void Build()
     // The display (THE LIST 64): the window, then the picture
     std::vector<Row>& display = g_Rows[TabDisplay];
     display.push_back(Section(TextSectionWindow));
+    // The screen (THE LIST 88): automatic (the main one) or a connected screen, its number and name; shown with two screens or
+    // more, or one chosen (it may not be connected: automatic then, kept for when it is)
+    Row screen = Choice(
+        TextScreen, TextDescScreen, [] { return ScreenChoice(CurrentResolution()); },
+        [](s32 value) { SetResolution(WithScreenChoice(CurrentResolution(), value)); }, 1, [](s32 value) {
+            if (value <= 0)
+            {
+                return Text(TextAutomatic);
+            }
+
+            std::string name = OverlayWords(NativeGraphicsScreenName(value - 1));
+            name = name.size() > ScreenNameLength ? name.substr(0, ScreenNameLength - 3) + "..." : name;
+            return std::to_string(value) + "  \xB7  " + name;
+        });
+    screen.maximumNow = [] { return ScreenCount(); };
+    screen.asksToKeep = true;
+    screen.shown = [] { return ScreenCount() >= 2 || !CurrentResolution().screen.empty(); };
+    display.push_back(screen);
     Row mode = Choice(
         TextDisplayMode, TextDescDisplayMode, [] { return CurrentResolution().fullscreen ? 1 : 0; },
         [](s32 value) {
@@ -1161,7 +1183,8 @@ void Step(Row& row, s32 by)
     if (row.kind == RowChoice)
     {
         // Choices wrap round
-        next = next > row.maximum ? row.minimum : next < row.minimum ? row.maximum : next;
+        const s32 maximum = row.maximumNow ? row.maximumNow() : row.maximum;
+        next = next > maximum ? row.minimum : next < row.minimum ? maximum : next;
     }
     else
     {

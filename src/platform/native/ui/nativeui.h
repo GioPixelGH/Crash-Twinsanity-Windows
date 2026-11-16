@@ -373,6 +373,9 @@ enum NativeText : u32
     TextPlayLevel,
     // The pause menu's restart checkpoint row as a game option (THE LIST 85): its description (its name the row's own text)
     TextDescRestartCheckpoint,
+    // The screen the game is shown on (THE LIST 88): the row and its description
+    TextScreen,
+    TextDescScreen,
     NativeTextEnd,
 };
 
@@ -411,6 +414,10 @@ struct Resolution
     s32 windowWidth;
     s32 windowHeight;
     bool fullscreen;
+    // The screen chosen (THE LIST 88): its name (SDL_GetDisplayName's) and which of the screens of that name it is (1 the first),
+    // saved by name since a screen's number can change from one session to the next; no name: automatic, the main screen
+    std::string screen;
+    s32 screenOrder = 1;
 };
 
 // The resolution in use: the saved one once read, else the graphics' own
@@ -422,6 +429,15 @@ s32 DisplayChoice(const Resolution& resolution);
 Resolution FromChoices(s32 scaleChoice, s32 displayChoice);
 // Applies a resolution through the graphics and saves it in the app's settings (resolution.txt)
 void SetResolution(const Resolution& resolution);
+// The screens (THE LIST 88): how many are connected (0 without a window: a test's run, or the self-test), a resolution's screen
+// as their number (0 the first; -1 automatic, or its screen not connected), the settings row's choice of it (0 automatic, else
+// the screen's number from 1), a resolution with a choice's screen, and the start's screen (resolution.txt's, the log told when
+// it isn't connected), which the window is made on
+s32 ScreenCount();
+s32 ScreenIndex(const Resolution& resolution);
+s32 ScreenChoice(const Resolution& resolution);
+Resolution WithScreenChoice(const Resolution& resolution, s32 choice);
+s32 StartScreen();
 // Whether the resolution goes to the graphics (the self-test turns it off: no window, the graphics not started)
 extern bool g_ResolutionToGraphics;
 // The options page's choices as shown, and whether the player changed them since (then they're noted): a window resized by hand
@@ -729,6 +745,8 @@ void SettingsActForTest(u32 action);
 // A key pressed while the settings screen is open, as the keyboard's (a binding waiting for one takes it)
 void SettingsKeyForTest(s32 scancode);
 void SettingsShotsFrame();
+// $TWIN_SCREEN_TEST=1, a window's run (THE LIST 88): the screen's choice changed while the game runs (resolution.cpp)
+void ScreenTestFrame();
 void SettingsMouseForTest(f32 x, f32 y, bool click);
 void SettingsCursorForTest(f32 x, f32 y);
 // Whether the mouse is over a line of the game's menus or one of their hints drawn last frame (the cursor's hover)

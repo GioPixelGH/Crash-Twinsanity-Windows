@@ -162,6 +162,7 @@ game could make.
 
 | Option | What it does |
 | --- | --- |
+| Monitor | Shown with two monitors or more. Auto (the default) opens the game on your main monitor. Or pick one by its number and name. Fullscreen fills the one you pick. If it isn't connected, the game opens on the main one. |
 | Window size, fullscreen | How the game's window is shown. |
 | Resolution | 1x to 8x the PS2's. It's applied when you stop on a choice, not at each step. |
 | Widescreen | 4:3, 16:10, 16:9, 21:9 or 32:9. 16:10 fits the Steam Deck's screen. At 32:9 the menus and the HUD stay in the middle 16:9. |

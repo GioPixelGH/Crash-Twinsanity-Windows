@@ -455,6 +455,7 @@ void Frame()
     LookTestFrame();
     PhysicsTestFrame();
     SettingsShotsFrame();
+    ScreenTestFrame();
     PortableTestFrame();
     LevelSelectFrame();
     ImprovedMenusFrame();

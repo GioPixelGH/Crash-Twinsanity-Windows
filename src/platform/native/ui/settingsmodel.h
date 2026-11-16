@@ -46,6 +46,8 @@ struct Row
     // Windows-1252, instead of label's and description's texts
     std::function<std::string()> labelText;
     std::function<std::string()> descriptionText;
+    // A choice whose last value changes while the screen is open (the screens connected: THE LIST 88), instead of maximum
+    std::function<s32()> maximumNow;
 };
 
 // The tabs (the research's categories, native/research/MODERN_CRASH_UI.md 3.2; the design's, native/design/options/SPEC.md),

@@ -1626,3 +1626,93 @@ void NativeGraphicsLogDisplay()
                 static_cast<double>(mode->refresh_rate), static_cast<double>(SDL_GetDisplayContentScale(display) * 100.0f),
                 hdr ? "on" : "off");
 }
+
+namespace
+{
+// The connected screens in SDL_GetDisplays' order (THE LIST 88); none without SDL's video (a test's run)
+std::vector<SDL_DisplayID> Screens()
+{
+    std::vector<SDL_DisplayID> screens;
+    if (SDL_WasInit(SDL_INIT_VIDEO) == 0)
+    {
+        return screens;
+    }
+
+    int count = 0;
+    SDL_DisplayID* displays = SDL_GetDisplays(&count);
+    for (int i = 0; displays != nullptr && i < count; i++)
+    {
+        screens.push_back(displays[i]);
+    }
+
+    SDL_free(displays);
+    return screens;
+}
+}
+
+int NativeGraphicsScreenCount()
+{
+    return static_cast<int>(Screens().size());
+}
+
+std::string NativeGraphicsScreenName(int screen)
+{
+    const std::vector<SDL_DisplayID> screens = Screens();
+    if (screen < 0 || screen >= static_cast<int>(screens.size()))
+    {
+        return "";
+    }
+
+    const char* name = SDL_GetDisplayName(screens[screen]);
+    return name != nullptr ? name : "";
+}
+
+void NativeGraphicsMoveToScreen(int screen, bool centre)
+{
+    SDL_Window* window = g_Presenter.window;
+    if (window == nullptr)
+    {
+        return;
+    }
+
+    const std::vector<SDL_DisplayID> screens = Screens();
+    const SDL_DisplayID target = screen >= 0 && screen < static_cast<int>(screens.size()) ? screens[screen] : SDL_GetPrimaryDisplay();
+    if (target == 0 || (!centre && SDL_GetDisplayForWindow(window) == target))
+    {
+        return;
+    }
+
+    // (A fullscreen window, the desktop's, fills the screen its place is on: SDL_SetWindowPosition's own words)
+    SDL_SetWindowPosition(window, static_cast<int>(SDL_WINDOWPOS_CENTERED_DISPLAY(target)),
+                          static_cast<int>(SDL_WINDOWPOS_CENTERED_DISPLAY(target)));
+}
+
+std::string NativeGraphicsWindowPlace()
+{
+    SDL_Window* window = g_Presenter.window;
+    if (window == nullptr)
+    {
+        return "no window";
+    }
+
+    const std::vector<SDL_DisplayID> screens = Screens();
+    const SDL_DisplayID display = SDL_GetDisplayForWindow(window);
+    int number = 0;
+    for (size_t i = 0; i < screens.size(); i++)
+    {
+        number = screens[i] == display ? static_cast<int>(i) + 1 : number;
+    }
+
+    int x = 0;
+    int y = 0;
+    int width = 0;
+    int height = 0;
+    SDL_GetWindowPosition(window, &x, &y);
+    SDL_GetWindowSize(window, &width, &height);
+    const char* name = SDL_GetDisplayName(display);
+    char place[256];
+    std::snprintf(place, sizeof(place), "screen %d of %d (%s), at %d,%d, %dx%d, %s", number, static_cast<int>(screens.size()),
+                  name != nullptr ? name : "?", x, y, width, height,
+                  (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0 ? "fullscreen" : "windowed");
+    return place;
+}

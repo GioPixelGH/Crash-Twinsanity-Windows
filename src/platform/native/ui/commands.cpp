@@ -656,6 +656,30 @@ void TestResolution()
           "4x window 1920x1080 in use");
     ApplySavedResolution();
     Check(CurrentResolution().scale == 4 && CurrentResolution().windowWidth == 1920, "4x window 1920x1080 read back");
+    // The screen chosen (THE LIST 88): kept by its name and its place among the screens of that name, automatic while it isn't
+    // connected (the self-test has no screens) and kept for when it is; automatic chosen again leaves no screen in the file
+    Resolution named = CurrentResolution();
+    named.screen = "A Screen That Isn't There";
+    named.screenOrder = 2;
+    SetResolution(named);
+    std::ifstream screenFile(Native::SettingsFolder() + "/resolution.txt");
+    std::string screenSaved((std::istreambuf_iterator<char>(screenFile)), std::istreambuf_iterator<char>());
+    screenFile.close();
+    Check(screenSaved.find("screen=A Screen That Isn't There\n") != std::string::npos &&
+              screenSaved.find("screen_order=2\n") != std::string::npos,
+          "resolution.txt's screen: %s", screenSaved.c_str());
+    ApplySavedResolution();
+    Check(CurrentResolution().screen == "A Screen That Isn't There" && CurrentResolution().screenOrder == 2 &&
+              CurrentResolution().scale == 4 && ScreenChoice(CurrentResolution()) == 0 && ScreenIndex(CurrentResolution()) == -1,
+          "a screen not connected: read back, shown as automatic");
+    Check(StartScreen() == -1, "a screen not connected: the window made where SDL puts it");
+    SetResolution(WithScreenChoice(CurrentResolution(), 0));
+    ApplySavedResolution();
+    std::ifstream autoFile(Native::SettingsFolder() + "/resolution.txt");
+    std::string autoSaved((std::istreambuf_iterator<char>(autoFile)), std::istreambuf_iterator<char>());
+    autoFile.close();
+    Check(CurrentResolution().screen.empty() && CurrentResolution().scale == 4 && autoSaved.find("\nscreen") == std::string::npos,
+          "automatic again: no screen in resolution.txt");
     Native::SetEnvironment("HOME", home.c_str());
     Native::SetEnvironment("XDG_CONFIG_HOME", xdg.empty() ? nullptr : xdg.c_str());
     Native::SetEnvironment("APPDATA", appData.empty() ? nullptr : appData.c_str());

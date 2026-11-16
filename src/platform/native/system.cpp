@@ -483,8 +483,31 @@ void Platform::System::Initialise()
         }
 
         const NativeUi::Resolution defaults = NativeUi::DefaultResolution();
-        SDL_Window* window = SDL_CreateWindow("Crash Twinsanity", defaults.windowWidth, defaults.windowHeight,
-                                              SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+        // On the screen chosen in the settings (THE LIST 88: resolution.txt's), centred; automatic, or that screen not connected
+        // (the log says so), where SDL puts it, the main screen, as before
+        int place = SDL_WINDOWPOS_UNDEFINED;
+        if (const s32 screen = NativeUi::StartScreen(); screen >= 0)
+        {
+            int count = 0;
+            SDL_DisplayID* displays = SDL_GetDisplays(&count);
+            if (displays != nullptr && screen < count)
+            {
+                place = static_cast<int>(SDL_WINDOWPOS_CENTERED_DISPLAY(displays[screen]));
+            }
+
+            SDL_free(displays);
+        }
+
+        SDL_PropertiesID properties = SDL_CreateProperties();
+        SDL_SetStringProperty(properties, SDL_PROP_WINDOW_CREATE_TITLE_STRING, "Crash Twinsanity");
+        SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_X_NUMBER, place);
+        SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_Y_NUMBER, place);
+        SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, defaults.windowWidth);
+        SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, defaults.windowHeight);
+        SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER,
+                              SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+        SDL_Window* window = SDL_CreateWindowWithProperties(properties);
+        SDL_DestroyProperties(properties);
         if (window == nullptr)
         {
             Native::Fatal("the window couldn't be made: %s", SDL_GetError());

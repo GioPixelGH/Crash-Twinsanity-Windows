@@ -743,6 +743,12 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   main menu through the log check's changes, then the program ends (settingsshots.cpp, beside `$TWIN_UI_SETTINGS_SHOTS`).
   `$TWIN_SETTINGS_PLAY_TEST=1` (with a level, a check_windows scenario): after 3 s of play F1 opens the settings over the game's
   pause and their back resumes play ("settings play test: pass").
+- `$TWIN_SCREEN_TEST=1` (a window's run on a PC with two screens or more, THE LIST 88): every 120 frames the Monitor row's change
+  made as the settings make it (the last screen, fullscreen, the first screen, the last again, windowed, automatic), each logged
+  as the settings' closing logs it ("options: screen ..." and "display: screen N of M"), 60 frames later where the window is
+  ("screen test: step N settled, the window on screen 2 of 2 (NAME), at X,Y, WxH, fullscreen"), then "screen test: done". A
+  monitor saved in resolution.txt (`screen=NAME`, `screen_order=N`) that isn't connected: "display: the screen chosen (...) isn't
+  connected, so the main screen instead".
 - The log (what a report needs is under "The log", above): each line `[native] [SECONDS]` from the start, the first the
   version's. Once the window is there it names the graphics card and its driver:
   OpenGL's renderer, vendor and version (the driver's own number in it: NVIDIA's "3.3.0 NVIDIA 617.14", AMD's "... Core Profile
