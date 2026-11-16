@@ -574,6 +574,9 @@ s32 FpsCounterValue();
 void TrailFrame();
 const char* TrailChunk();
 std::string TrailNow();
+// The camera shown and the player's follow camera, three lines in the log starting with WHY (sweep.cpp: $TWIN_CAMERA_TRACE's
+// lines, and the detailed log's when the view stands still while the player moves)
+void LogCamera(const char* why);
 // The log's start (sessionlog.cpp): every option as options.txt names it, and whether they're options.txt's or the defaults (a
 // first start), in two lines (options.cpp); the saved resolution or the defaults (resolution.cpp)
 void LogOptions();

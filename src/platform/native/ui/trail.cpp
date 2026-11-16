@@ -1,7 +1,7 @@
 // The game's trail in the log, for bug reports: always the game's states as they change (by name, with where the player is), the
 // chunk the player is in, the chunk a level loads at and how long the loading took; with the detailed log (Options > Gameplay, or
-// $TWIN_DETAILED_LOG) also where the player is every 5 s of play, every sound played (game/sound.cpp) and every file looked up on
-// the disc (disc.cpp)
+// $TWIN_DETAILED_LOG) also where the player is every 5 s of play, the camera when its view stands still while the player moves,
+// every sound played (game/sound.cpp) and every file looked up on the disc (disc.cpp)
 #include "ui/bindings.h"
 #include "ui/nativeui.h"
 
@@ -16,6 +16,7 @@
 #include "game/sound.h"
 
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -70,6 +71,70 @@ std::string Where(InstanceContext* player)
 
 // The chunk the player was last seen in (the game's thread's)
 std::string g_LastChunk;
+
+// The detailed log: the follow camera's view standing still (not moved nor turned) for 3 s of play while the player moved 2 units
+// or more, logged once until the view moves again (NativeUi::LogCamera; 20 times a session at most): #52's camera that stopped
+// following Crash after a scene, never seen here, told apart in a player's log (a trigger's camera that holds still says so too)
+void CameraStillFrame(GameController* controller, InstanceContext* player, u32 state, Clock::time_point now)
+{
+    constexpr f32 Moved = 2.0f;
+    constexpr u32 MostTimes = 20;
+    static Matrix4x4 view{};
+    static Vector4 from{};
+    static Clock::time_point since{};
+    static bool told = false;
+    static u32 times = 0;
+    Reference* shown = controller->view.cameraObject;
+    auto* camera = shown != nullptr ? static_cast<InstanceContext*>(shown->object) : nullptr;
+    if (state != GameController::StatePlaying || controller->states.camera != GameController::CameraFollow || player == nullptr ||
+        camera == nullptr || camera->place == nullptr || times >= MostTimes)
+    {
+        since = {};
+        return;
+    }
+
+    const ObjectPlace* place = player->place;
+    Vector4 at = place->position;
+    if ((place->bits.value & PlaceBits::MatrixMoved) != 0)
+    {
+        at = {place->matrix.m[3][0], place->matrix.m[3][1], place->matrix.m[3][2], 1.0f};
+    }
+
+    // Moved or turned: its place by a hundredth of a unit, its way ahead by a thousandth (a still view's matrix is made again each
+    // frame, its last digits not always the same)
+    const Matrix4x4& matrix = camera->place->matrix;
+    bool changed = false;
+    for (u32 row = 2; row < 4; row++)
+    {
+        for (u32 column = 0; column < 3; column++)
+        {
+            changed = changed || std::fabs(matrix.m[row][column] - view.m[row][column]) > (row == 3 ? 0.01f : 0.001f);
+        }
+    }
+
+    if (since == Clock::time_point{} || changed)
+    {
+        view = matrix;
+        from = at;
+        since = now;
+        told = false;
+        return;
+    }
+
+    f32 x = at.x - from.x;
+    f32 y = at.y - from.y;
+    f32 z = at.z - from.z;
+    if (told || now - since < std::chrono::seconds(3) || x * x + y * y + z * z < Moved * Moved)
+    {
+        return;
+    }
+
+    told = true;
+    times++;
+    Native::Log("camera: the view hasn't moved or turned for %.0f s of play while the player moved %.1f units",
+                std::chrono::duration<double>(now - since).count(), std::sqrt(x * x + y * y + z * z));
+    NativeUi::LogCamera("camera");
+}
 }
 
 bool Native::DetailedLog()
@@ -164,6 +229,11 @@ void NativeUi::TrailFrame()
     {
         lastPlace = now;
         Native::Log("game: the player%s in %s", Where(player).c_str(), name != nullptr ? name : "?");
+    }
+
+    if (Native::DetailedLog())
+    {
+        CameraStillFrame(controller, player, state, now);
     }
 }
 

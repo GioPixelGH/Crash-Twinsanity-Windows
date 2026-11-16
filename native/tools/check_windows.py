@@ -167,6 +167,20 @@ SCENARIOS = [
                   r"hop: the player put at \(-18\.1[\s\S]*camera trace: state 12, camera 0 at [^\n]*the player \S+ at \(-1[6-9]\.\d, "
                   r"[^\n]* \d\.\d units apart"],
           forbid=[r"camera trace: state 12, camera [1-9]", r"camera trace: state 12, .* (?:1[2-9]|[2-9]\d|\d{3,})\.\d units apart"])),
+    # Issue #52 (THE LIST 59 again): the scene #52's video shows is the high path's training scene (duck and crawl, the swinging
+    # log), not the angry skunk's. Reached as that player came (from HubA through HubB: HubA's Crash and Coco and HubB's log in it),
+    # the follow camera shown after it on its rig, the view moving with Crash in the scripted play after it (the detailed log's
+    # "camera:" lines say when it stands still while the player moves); then "unfollow" stops the camera as the video's looks and
+    # those lines come (frame-identical runs: the game clock's steps)
+    ("The high path's training scene reached from HubA, the camera follows Crash after it (#52)", "Levels\\Earth\\Hub\\huba", 70,
+     "idle,fly:-49.6:3.2:197,highpath,idle,fly:0.8:-3.5:52.8:5,fly:2.4:-3.5:17.5:8,fly:2.4:-3.5:17.5:8,input,wait15,unfollow,wait5",
+     dict(options="retail_fixes=1\n", env={"TWIN_CAMERA_TRACE": "1", "TWIN_FIXED_TIME": "1", "TWIN_SWEEP_GAME_TIME": "1"},
+          expect=[r"cutscene skip: watched, \d+ agents: \|Highpath\|act_TRAINING_CUTSCENE_DIRECTOR_HIGHPATH \|HubA\|act_CRASH2 "
+                  r"\|HubA\|HubACutscenes\|act_COCO_CREATURE3 \|HubB\|HubB_Actors\|act_TRAINING_SWINGING_LOG11",
+                  r"act_TRAINING_CUTSCENE_DIRECTOR_HIGHPATH (?:(?!camera: the view)[\s\S])*camera trace:   the follow camera's "
+                  r"instance shown, in levels\\earth\\hub\\highpath \(the player in levels\\earth\\hub\\highpath\), its lens on the "
+                  r"follow rig(?:(?!camera: the view)[\s\S])*hop: the player's follow camera stopped",
+                  r"hop: the player's follow camera stopped[\s\S]*camera: the view hasn't moved or turned"])),
     # Issue #49 (THE LIST 58): the movie after the Twins' backstory scene crashed in FFmpeg's parser, which reads up to 64 bytes
     # past each piece of the stream (its padding, there since); $TWIN_MOVIE_GUARD puts a page that can't be read right after each
     # piece, so a read past it crashes every time. The movie played whole (the hop's wait comes once play is back)

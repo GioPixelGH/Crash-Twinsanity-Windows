@@ -751,7 +751,11 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   states by name with the player's place (read without changing the game's), the player's chunk as it changes, the chunk a level
   loads at, the memory card's writes and the movies opened. The detailed log (Options > Game, `detailed_log` in
   options.txt, or `$TWIN_DETAILED_LOG`) adds the player's place every 5 s of play, every sound played (game/sound.cpp, as
-  `$TWIN_SOUND_CHECK` logs them) and every file looked up on the disc. A crash's or a hang's stack names each function of the
+  `$TWIN_SOUND_CHECK` logs them), every file looked up on the disc, and the camera when the follow camera's view stands still
+  (not moved nor turned) for 3 s of play while the player moves 2 units or more: a "camera:" line, then `$TWIN_CAMERA_TRACE`'s
+  three (below), once until the view moves again, 20 times a session at most (#52's camera that stopped following Crash after
+  the high path's training scene, never seen here: its causes told apart, the follow rig not stepped, the lens on another rig,
+  the camera's instance in another chunk, a trigger's camera holding still). A crash's or a hang's stack names each function of the
   executable (its COFF symbol table, read from its file when the report needs it; C++'s names mangled, `llvm-cxxfilt` reads
   them) after its module and offset.
 - The hang watch (lowmemory_win32.cpp): a thread of its own counts the game thread's frames (its waits for the vertical blank,
@@ -852,7 +856,15 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
 - `$TWIN_CAMERA_TRACE=1` (the sweep): every second of play or of a scene, the camera shown (the game controller's state word:
   0 the player's follow camera, 3 the game's rig, 4 the cutscenes'), where its instance is, the player and how far apart they
   are (check_windows.py's #23 scenario: the follow camera back after the high path's skunk scene, 7 units from Crash), and how
-  many degrees round from the player's back the camera is, seen from above (THE LIST 83's assisted camera).
+  many degrees round from the player's back the camera is, seen from above (THE LIST 83's assisted camera); then the player's
+  follow camera (sweep.cpp's LogCameraLines, read without changing the game's): whether its instance is the one shown, the
+  chunks it and the player are in, the rig its lens shows (the follow rig, the game's, the cutscenes', another), the character
+  the progress plays (FollowNode::Update stops following when it's another instance), where the rig is and the point it looks
+  at, and the positioner's bits that hold it (keyed, holding still, looking only, the target still at the trigger's rate 0:
+  after a `goto` the view stays put until Crash moves by himself, the retail rule, not a bug). The hop's `unfollow` step stops
+  the follow camera as FollowNode::Update does for another character's instance: the view stands as #52's video shows and the
+  detailed log's "camera:" lines come (check_windows.py's #52 scenario: the high path's training scene reached from HubA as
+  that player came, the camera following Crash after it, then `unfollow`).
 - `$TWIN_MOUSE_TRACE`: each click a menu takes, logged with how many lines and hints the frame before drew and how many are
   under it (mouse.cpp; a click after a frame that drew none of the menu waits up to half a second for one that does).
 - `$TWIN_FPS_TEST=1` or `=FOLDER` (with `--quick` and a window, ui/fpstest.cpp): the beach played a few seconds, then the status

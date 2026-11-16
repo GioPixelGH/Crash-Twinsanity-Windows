@@ -252,7 +252,8 @@ What the log has:
 - when the game closes: a summary of the session's frame rate, and how it closed.
 
 To report a bug you can repeat, turn on **Options > Game > Detailed log** first. It also writes where Crash is every 5
-seconds, every sound played and every file read from the disc image.
+seconds, every sound played, every file read from the disc image, and what the camera was doing if it stops following
+Crash.
 
 **The log is made to be shared.** It writes your user folder as `%USERPROFILE%`, and the game's settings folder as
 `%APPDATA%\Crash Twinsanity`, so your user name isn't in its paths. A device named after someone ("Ann's AirPods") loses the

@@ -17,6 +17,7 @@
 #include "game/clock.h"
 #include "game/commands.h"
 #include "game/events.h"
+#include "game/followcamera.h"
 #include "game/memory.h"
 #include "game/gamecontroller.h"
 #include "game/instances.h"
@@ -858,6 +859,23 @@ void HopFrame()
         return;
     }
 
+    // "unfollow": the player's follow camera stopped as FollowNode::Update stops it for another character's instance (its node
+    // out of the chunk's updates, its camera asleep): the view stands still while the player moves, as #52's video shows, for
+    // the detailed log's "camera:" lines (trail.cpp's CameraStillFrame)
+    if (targets[next] == "unfollow")
+    {
+        auto* follow = static_cast<FollowNode*>(GetGameNode(&player->nodes, NodeFollow));
+        if (follow != nullptr)
+        {
+            follow->StopFollowing();
+            Native::Log("hop: the player's follow camera stopped in %s", name.c_str());
+        }
+
+        next++;
+        lastHop = now - std::chrono::seconds(2);
+        return;
+    }
+
     // "credits": the end credits rolled as the game's end asks for them (PlayCredits), the chunk after them loaded and played
     // (THE LIST 44: #20's game that closed instead)
     if (targets[next] == "credits")
@@ -1040,12 +1058,105 @@ void LogSceneInstance(InstanceContext* instance, void*)
         Native::Log("scene state: %s runs a scene:%s", OwnNameOf(instance).c_str(), runners.c_str());
     }
 }
+// A place's point without changing anything of the game's: its matrix's when that's newer than its position (trail.cpp's Where)
+Vector4 PlacePoint(const ObjectPlace* place)
+{
+    if ((place->bits.value & PlaceBits::MatrixMoved) != 0)
+    {
+        return {place->matrix.m[3][0], place->matrix.m[3][1], place->matrix.m[3][2], 1.0f};
+    }
+
+    return place->position;
 }
 
-// $TWIN_CAMERA_TRACE=1 (THE LIST 59, #23's camera that stopped following Crash after the skunk's scene): every second of play or
-// of a scene the camera shown (the state word's: 0 the follow camera, 3 the game's rig, 4 the cutscenes'), where the view's camera
-// is (its instance's place), the player and how far apart they are, and how far round from the player's back the camera is seen
-// from above (0 right behind it, 180 in front: THE LIST 83's assisted camera)
+std::string ChunkOf(const InstanceContext* instance)
+{
+    if (instance == nullptr)
+    {
+        return "none";
+    }
+
+    return instance->chunk == nullptr || instance->chunk->name.string == nullptr ? "no chunk" : instance->chunk->name.string;
+}
+}
+
+// The camera in the log (THE LIST 59, #23's and #52's camera that stopped following Crash after a scene), changing nothing of the
+// game's: the camera shown (the state word's: 0 the follow camera, 3 the game's rig, 4 the cutscenes'), where the view's camera is
+// (its instance's place), the player and how far apart they are, how far round from the player's back the camera is seen from above
+// (0 right behind it, 180 in front: THE LIST 83's assisted camera); then the player's follow camera: the chunks its instance and the
+// player are in (a lens node in a chunk whose instances aren't updated leaves the view where it was) and the rig its lens shows; the
+// character the progress plays (FollowNode::Update stops following another's), the rig's place, what its target follows and looks
+// at, and the positioner's bits that hold it still
+void LogCameraLines(const char* why)
+{
+    GameController* controller = G_GameController;
+    if (controller == nullptr)
+    {
+        return;
+    }
+
+    InstanceContext* player = ScenePlayer();
+    Vector4 at = {};
+    const Vector4* facing = nullptr;
+    if (player != nullptr && player->place != nullptr)
+    {
+        at = PlacePoint(player->place);
+        facing = RowOf(&player->place->matrix, 2);
+    }
+
+    Reference* shown = controller->view.cameraObject;
+    auto* shownInstance = shown != nullptr ? static_cast<InstanceContext*>(shown->object) : nullptr;
+    Vector4 camera = {};
+    if (shownInstance != nullptr && shownInstance->place != nullptr)
+    {
+        camera = PlacePoint(shownInstance->place);
+    }
+
+    f32 apart = std::sqrt((camera.x - at.x) * (camera.x - at.x) + (camera.y - at.y) * (camera.y - at.y) +
+                          (camera.z - at.z) * (camera.z - at.z));
+    // The way from the camera to the player against the player's facing, on the ground's plane
+    f32 lookX = at.x - camera.x;
+    f32 lookZ = at.z - camera.z;
+    f32 off = facing == nullptr ? 0.0f
+                                : std::atan2(lookX * facing->z - lookZ * facing->x, lookX * facing->x + lookZ * facing->z) * 180.0f /
+                                      3.14159265f;
+    Native::Log("%s: state %u, camera %u at (%.1f, %.1f, %.1f), the player %s at (%.1f, %.1f, %.1f), %.1f units apart, "
+                "%.0f degrees off its back", why, controller->State(), static_cast<u32>(controller->states.camera), camera.x, camera.y,
+                camera.z, player != nullptr ? OwnNameOf(player).c_str() : "none", at.x, at.y, at.z, apart, std::fabs(off));
+    auto* follow = player != nullptr ? static_cast<FollowNode*>(GetGameNode(&player->nodes, NodeFollow)) : nullptr;
+    if (follow == nullptr)
+    {
+        return;
+    }
+
+    InstanceContext* played = controller->progress.Instance(controller->progress.play.character);
+    FollowCameraRig& rig = follow->camera.rig;
+    FollowCameraPositioner& positioner = rig.ownPositioner;
+    auto* followed = rig.ownTarget.followed != nullptr ? static_cast<InstanceContext*>(rig.ownTarget.followed->object) : nullptr;
+    auto* own = follow->cameraInstance != nullptr ? static_cast<InstanceContext*>(follow->cameraInstance->object) : nullptr;
+    auto* lens = own != nullptr ? static_cast<CameraLensNode*>(GetGameNode(&own->nodes, NodeCameraLens)) : nullptr;
+    const char* lensRig = lens == nullptr                                                   ? "nothing"
+                          : lens->rig == &rig && follow->camera.lensRig == &rig             ? "the follow rig"
+                          : lens->rig == static_cast<CameraRig*>(&controller->camera)       ? "the game's rig"
+                          : lens->rig == static_cast<CameraRig*>(&controller->cutsceneCamera) ? "the cutscenes' rig"
+                                                                                            : "another rig";
+    Native::Log("%s:   the follow camera's instance %s, in %s (the player in %s), its lens on %s%s", why,
+                own == nullptr ? "none" : own == shownInstance ? "shown" : "not shown", ChunkOf(own).c_str(), ChunkOf(player).c_str(),
+                lensRig, lens != nullptr && lens->next != nullptr ? " blending to another" : "");
+    Native::Log("%s:   the character played %s, the rig following %s, at (%.1f, %.1f, %.1f) looking at (%.1f, %.1f, %.1f); keyed %u, "
+                "holding still %u, looking only %u, the target still %u, at the trigger's rate %u (%.2f), pushed off the collision "
+                "%u; a trigger's camera %s; the last update with the clock stopped %u", why,
+                played == player ? "the player" : played != nullptr ? OwnNameOf(played).c_str() : "none",
+                followed == player ? "the player" : followed != nullptr ? OwnNameOf(followed).c_str() : "nothing", positioner.position.x,
+                positioner.position.y, positioner.position.z, rig.ownTarget.point.x, rig.ownTarget.point.y, rig.ownTarget.point.z,
+                static_cast<u32>(positioner.keyed), static_cast<u32>(positioner.bits.holdsStill),
+                static_cast<u32>(positioner.bits.onlyLooksAtTarget), static_cast<u32>(positioner.bits.targetStill),
+                static_cast<u32>(positioner.bits.atTriggerRate), positioner.triggerRate,
+                static_cast<u32>(positioner.bits.pushedOffCollision), follow->camera.current != nullptr ? "on" : "none",
+                static_cast<u32>(follow->bits.unused0));
+}
+
+// $TWIN_CAMERA_TRACE=1 (the sweep): the camera (LogCameraLines) every second of play or of a scene
 void CameraTraceFrame()
 {
     static const bool wanted = std::getenv("TWIN_CAMERA_TRACE") != nullptr;
@@ -1064,35 +1175,7 @@ void CameraTraceFrame()
     }
 
     last = now;
-    InstanceContext* player = ScenePlayer();
-    Vector4 at = {};
-    Vector4 facing = {};
-    if (player != nullptr && player->place != nullptr)
-    {
-        player->place->SyncPosition();
-        at = player->place->position;
-        RotateAndTranslate(player->place);
-        facing = *RowOf(&player->place->matrix, 2);
-    }
-
-    Reference* shown = controller->view.cameraObject;
-    auto* shownInstance = shown != nullptr ? static_cast<InstanceContext*>(shown->object) : nullptr;
-    Vector4 camera = {};
-    if (shownInstance != nullptr && shownInstance->place != nullptr)
-    {
-        shownInstance->place->SyncPosition();
-        camera = shownInstance->place->position;
-    }
-
-    f32 apart = std::sqrt((camera.x - at.x) * (camera.x - at.x) + (camera.y - at.y) * (camera.y - at.y) +
-                          (camera.z - at.z) * (camera.z - at.z));
-    // The way from the camera to the player against the player's facing, on the ground's plane
-    f32 lookX = at.x - camera.x;
-    f32 lookZ = at.z - camera.z;
-    f32 off = std::atan2(lookX * facing.z - lookZ * facing.x, lookX * facing.x + lookZ * facing.z) * 180.0f / 3.14159265f;
-    Native::Log("camera trace: state %u, camera %u at (%.1f, %.1f, %.1f), the player %s at (%.1f, %.1f, %.1f), %.1f units apart, "
-                "%.0f degrees off its back", state, static_cast<u32>(controller->states.camera), camera.x, camera.y, camera.z,
-                player != nullptr ? OwnNameOf(player).c_str() : "none", at.x, at.y, at.z, apart, std::fabs(off));
+    LogCameraLines("camera trace");
 }
 
 // $TWIN_SCENE_SCRIPTS=SECONDS:NAME[:NAME...]: SECONDS into each cutscene watched (game frames, 60 a second), the behaviour scripts
@@ -1396,6 +1479,11 @@ void TriggerPlanFrame()
     std::fflush(stderr);
     std::_Exit(status);
 }
+}
+
+void LogCamera(const char* why)
+{
+    LogCameraLines(why);
 }
 
 bool SweepActive()
