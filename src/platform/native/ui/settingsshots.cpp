@@ -5,6 +5,7 @@
 // to 60, the resolution from 2x to 3x, back and to 3x again, a key bound (F8); then the program ends. $TWIN_SETTINGS_PLAY_TEST=1:
 // the settings opened from play by F1 and closed back to it (SettingsPlayTestFrame)
 #include "ui/bindings.h"
+#include "ui/nativeui.h"
 #include "ui/overlay.h"
 
 #include "graphics/display.h"
@@ -15,6 +16,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <iterator>
 #include <string>
@@ -140,9 +142,11 @@ constexpr Step Script[] = {
 // $TWIN_SETTINGS_LOG_TEST's (options.txt's refresh_60hz=3 given by the check)
 constexpr Step LogScript[] = {
     {30, Open, 0, 0, 0, nullptr},
-    // The display tab (the third) and its refresh rate (its fifth row, under the window's title): 144 Hz to 120, 60, 50 and 60
+    // The display tab (the third) and its refresh rate (its fifth row, under the window's title): 144 Hz to 120, 60, 50 and 60.
+    // With two screens the Monitor row (THE LIST 88) comes first: a step down past it
     {40, Key, TabNext, 0, 0, nullptr},
     {42, Key, TabNext, 0, 0, nullptr},
+    {43, Key, Down, 0, 0, "screen"},
     {44, Key, Down, 0, 0, nullptr},
     {46, Key, Down, 0, 0, nullptr},
     {48, Key, Down, 0, 0, nullptr},
@@ -334,8 +338,16 @@ void SettingsShotsFrame()
             OpenSettings();
             break;
         case Key:
-            // (A Key step named "import" only when there's something to import: never the mods folder opened instead)
-            if (step.name != nullptr && Native::Mods::Importables().empty())
+            // (A Key step named "import" only when there's something to import: never the mods folder opened instead; one named
+            // "screen" only when the Monitor row is shown)
+            if (step.name != nullptr && std::strcmp(step.name, "screen") == 0)
+            {
+                if (ScreenCount() < 2 && CurrentResolution().screen.empty())
+                {
+                    break;
+                }
+            }
+            else if (step.name != nullptr && Native::Mods::Importables().empty())
             {
                 break;
             }
