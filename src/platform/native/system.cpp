@@ -504,16 +504,43 @@ void Platform::System::Initialise()
         SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_Y_NUMBER, place);
         SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, defaults.windowWidth);
         SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, defaults.windowHeight);
-        SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER,
-                              SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
-        SDL_Window* window = SDL_CreateWindowWithProperties(properties);
-        SDL_DestroyProperties(properties);
-        if (window == nullptr)
+        // Made for the graphics API its pictures are drawn with (THE LIST 72): Vulkan's when it's asked for, else OpenGL's; one that
+        // can't be drawn in with Vulkan made again for OpenGL
+        SDL_Window* window = nullptr;
+        for (const bool vulkan : {true, false})
         {
-            Native::Fatal("the window couldn't be made: %s", SDL_GetError());
+            if (vulkan && !NativeGraphicsVulkanWanted())
+            {
+                continue;
+            }
+
+            SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER,
+                                  (vulkan ? SDL_WINDOW_VULKAN : SDL_WINDOW_OPENGL) | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+            window = SDL_CreateWindowWithProperties(properties);
+            if (window == nullptr && !vulkan)
+            {
+                Native::Fatal("the window couldn't be made: %s", SDL_GetError());
+            }
+
+            if (window != nullptr && NativeGraphicsAttachWindow(window))
+            {
+                break;
+            }
+
+            if (!vulkan)
+            {
+                Native::Fatal("the window can't show the game: OpenGL 3.3 isn't there (%s)", SDL_GetError());
+            }
+
+            Native::Log("graphics: Vulkan can't show the game here (%s): OpenGL instead", SDL_GetError());
+            if (window != nullptr)
+            {
+                SDL_DestroyWindow(window);
+                window = nullptr;
+            }
         }
 
-        NativeGraphicsAttachWindow(window);
+        SDL_DestroyProperties(properties);
         // Portable mode's first start: its progress dialog goes once the window is there
         Native::EndPortableStart();
     }

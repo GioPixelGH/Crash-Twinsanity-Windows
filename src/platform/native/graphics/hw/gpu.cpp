@@ -76,7 +76,11 @@ size_t PixelBytes(Format format, s32 width, s32 height, s32 rowLength, s32 align
         texel = 8;
         break;
     case FormatR16ui:
+    case FormatRg8:
         texel = 2;
+        break;
+    case FormatR8:
+        texel = 1;
         break;
     default:
         break;

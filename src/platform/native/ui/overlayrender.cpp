@@ -1,12 +1,14 @@
-// The overlay's drawing (OpenGL 3.3 core, on the presenter's thread through graphics/presenter.h's hook, or offscreen for the
-// shots): the frame's commands in the 1280 x 720 reference space scaled to the window. One program: rounded boxes as a signed
-// distance (a vertical gradient, a border, a soft edge for shadows), glyphs from atlases baked per font and pixel size
-// (stb_truetype), the options' backdrop worked out per pixel (its gradient, the ring target, the Twinsanity spiral of
-// native/design/options/spiral_grey.svg: two Archimedean arms r = 10 + 35.45 theta over 2.2 turns), images
+// The overlay's drawing (through a graphics backend, hw/gpu.h: the window's on the presenter's thread through graphics/presenter.h's
+// hook, or one of its own offscreen for the shots; OpenGL's or Vulkan's, THE LIST 72): the frame's commands in the 1280 x 720
+// reference space scaled to the window. One program: rounded boxes as a signed distance (a vertical gradient, a border, a soft
+// edge for shadows), glyphs from atlases baked per font and pixel size (stb_truetype), the options' backdrop worked out per pixel
+// (its gradient, the ring target, the Twinsanity spiral of native/design/options/spiral_grey.svg: two Archimedean arms
+// r = 10 + 35.45 theta over 2.2 turns), images
 #include "ui/overlayinternal.h"
 #include "ui/nativeui.h"
 
-#include "graphics/gputime.h"
+#include "graphics/display.h"
+#include "graphics/hw/gpu.h"
 #include "graphics/presenter.h"
 #include "native.h"
 
@@ -17,6 +19,7 @@
 #include <cstddef>
 #include <cstring>
 #include <map>
+#include <memory>
 #include <tuple>
 
 #include "../../../../native/third_party/stb/stb_truetype.h"
@@ -25,163 +28,17 @@ namespace NativeUi
 {
 namespace
 {
-using GLenum = unsigned int;
-using GLuint = unsigned int;
-using GLint = int;
-using GLsizei = int;
-using GLboolean = unsigned char;
-using GLchar = char;
-using GLbitfield = unsigned int;
-using GLfloat = float;
-// The pointer's width (long is 32 bits on Windows)
-using GLsizeiptr = std::ptrdiff_t;
-
-constexpr GLenum GL_TRIANGLES = 0x0004;
-constexpr GLenum GL_BLEND = 0x0BE2;
-constexpr GLenum GL_SRC_ALPHA = 0x0302;
-constexpr GLenum GL_ONE_MINUS_SRC_ALPHA = 0x0303;
-constexpr GLenum GL_ONE = 1;
-constexpr GLenum GL_SCISSOR_TEST = 0x0C11;
-constexpr GLenum GL_TEXTURE_2D = 0x0DE1;
-constexpr GLenum GL_TEXTURE0 = 0x84C0;
-constexpr GLenum GL_TEXTURE_MIN_FILTER = 0x2801;
-constexpr GLenum GL_TEXTURE_MAG_FILTER = 0x2800;
-constexpr GLenum GL_TEXTURE_WRAP_S = 0x2802;
-constexpr GLenum GL_TEXTURE_WRAP_T = 0x2803;
-constexpr GLenum GL_CLAMP_TO_EDGE = 0x812F;
-constexpr GLenum GL_LINEAR = 0x2601;
-constexpr GLenum GL_RED = 0x1903;
-constexpr GLenum GL_R8 = 0x8229;
-constexpr GLenum GL_RGBA = 0x1908;
-constexpr GLenum GL_RGBA8 = 0x8058;
-constexpr GLenum GL_UNSIGNED_BYTE = 0x1401;
-constexpr GLenum GL_FLOAT = 0x1406;
-constexpr GLenum GL_ARRAY_BUFFER = 0x8892;
-constexpr GLenum GL_STREAM_DRAW = 0x88E0;
-constexpr GLenum GL_VERTEX_SHADER = 0x8B31;
-constexpr GLenum GL_FRAGMENT_SHADER = 0x8B30;
-constexpr GLenum GL_COMPILE_STATUS = 0x8B81;
-constexpr GLenum GL_LINK_STATUS = 0x8B82;
-constexpr GLenum GL_UNPACK_ALIGNMENT = 0x0CF5;
-constexpr GLenum GL_FRAMEBUFFER = 0x8D40;
-constexpr GLenum GL_COLOR_ATTACHMENT0 = 0x8CE0;
-constexpr GLenum GL_COLOR_BUFFER_BIT = 0x4000;
-constexpr GLenum GL_PACK_ALIGNMENT = 0x0D05;
-
-struct Gl
-{
-    void (*Enable)(GLenum);
-    void (*Disable)(GLenum);
-    void (*BlendFuncSeparate)(GLenum, GLenum, GLenum, GLenum);
-    void (*Scissor)(GLint, GLint, GLsizei, GLsizei);
-    void (*Viewport)(GLint, GLint, GLsizei, GLsizei);
-    void (*GenTextures)(GLsizei, GLuint*);
-    void (*BindTexture)(GLenum, GLuint);
-    void (*ActiveTexture)(GLenum);
-    void (*TexParameteri)(GLenum, GLenum, GLint);
-    void (*TexImage2D)(GLenum, GLint, GLint, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*);
-    void (*PixelStorei)(GLenum, GLint);
-    void (*GenBuffers)(GLsizei, GLuint*);
-    void (*BindBuffer)(GLenum, GLuint);
-    void (*BufferData)(GLenum, GLsizeiptr, const void*, GLenum);
-    void (*GenVertexArrays)(GLsizei, GLuint*);
-    void (*BindVertexArray)(GLuint);
-    void (*EnableVertexAttribArray)(GLuint);
-    void (*VertexAttribPointer)(GLuint, GLint, GLenum, GLboolean, GLsizei, const void*);
-    GLuint (*CreateShader)(GLenum);
-    void (*ShaderSource)(GLuint, GLsizei, const GLchar* const*, const GLint*);
-    void (*CompileShader)(GLuint);
-    void (*GetShaderiv)(GLuint, GLenum, GLint*);
-    void (*GetShaderInfoLog)(GLuint, GLsizei, GLsizei*, GLchar*);
-    GLuint (*CreateProgram)();
-    void (*AttachShader)(GLuint, GLuint);
-    void (*BindAttribLocation)(GLuint, GLuint, const GLchar*);
-    void (*LinkProgram)(GLuint);
-    void (*GetProgramiv)(GLuint, GLenum, GLint*);
-    void (*GetProgramInfoLog)(GLuint, GLsizei, GLsizei*, GLchar*);
-    void (*UseProgram)(GLuint);
-    GLint (*GetUniformLocation)(GLuint, const GLchar*);
-    void (*Uniform1i)(GLint, GLint);
-    void (*Uniform1f)(GLint, GLfloat);
-    void (*Uniform2f)(GLint, GLfloat, GLfloat);
-    void (*Uniform4f)(GLint, GLfloat, GLfloat, GLfloat, GLfloat);
-    void (*DrawArrays)(GLenum, GLint, GLsizei);
-    void (*GenFramebuffers)(GLsizei, GLuint*);
-    void (*BindFramebuffer)(GLenum, GLuint);
-    void (*FramebufferTexture2D)(GLenum, GLenum, GLenum, GLuint, GLint);
-    void (*ClearColor)(GLfloat, GLfloat, GLfloat, GLfloat);
-    void (*Clear)(GLbitfield);
-    void (*ReadPixels)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*);
-    void (*DeleteTextures)(GLsizei, const GLuint*);
-    void (*DeleteFramebuffers)(GLsizei, const GLuint*);
-};
-
-template <typename T> void Load(T& function, const char* name)
-{
-    // The work given the card timed (gputime.h)
-    void* timed = NativeGraphics::TimedEntryPoint(name);
-    function = timed != nullptr ? reinterpret_cast<T>(timed) : reinterpret_cast<T>(SDL_GL_GetProcAddress(name));
-}
-
-bool LoadGl(Gl& gl)
-{
-    Load(gl.Enable, "glEnable");
-    Load(gl.Disable, "glDisable");
-    Load(gl.BlendFuncSeparate, "glBlendFuncSeparate");
-    Load(gl.Scissor, "glScissor");
-    Load(gl.Viewport, "glViewport");
-    Load(gl.GenTextures, "glGenTextures");
-    Load(gl.BindTexture, "glBindTexture");
-    Load(gl.ActiveTexture, "glActiveTexture");
-    Load(gl.TexParameteri, "glTexParameteri");
-    Load(gl.TexImage2D, "glTexImage2D");
-    Load(gl.PixelStorei, "glPixelStorei");
-    Load(gl.GenBuffers, "glGenBuffers");
-    Load(gl.BindBuffer, "glBindBuffer");
-    Load(gl.BufferData, "glBufferData");
-    Load(gl.GenVertexArrays, "glGenVertexArrays");
-    Load(gl.BindVertexArray, "glBindVertexArray");
-    Load(gl.EnableVertexAttribArray, "glEnableVertexAttribArray");
-    Load(gl.VertexAttribPointer, "glVertexAttribPointer");
-    Load(gl.CreateShader, "glCreateShader");
-    Load(gl.ShaderSource, "glShaderSource");
-    Load(gl.CompileShader, "glCompileShader");
-    Load(gl.GetShaderiv, "glGetShaderiv");
-    Load(gl.GetShaderInfoLog, "glGetShaderInfoLog");
-    Load(gl.CreateProgram, "glCreateProgram");
-    Load(gl.AttachShader, "glAttachShader");
-    Load(gl.BindAttribLocation, "glBindAttribLocation");
-    Load(gl.LinkProgram, "glLinkProgram");
-    Load(gl.GetProgramiv, "glGetProgramiv");
-    Load(gl.GetProgramInfoLog, "glGetProgramInfoLog");
-    Load(gl.UseProgram, "glUseProgram");
-    Load(gl.GetUniformLocation, "glGetUniformLocation");
-    Load(gl.Uniform1i, "glUniform1i");
-    Load(gl.Uniform1f, "glUniform1f");
-    Load(gl.Uniform2f, "glUniform2f");
-    Load(gl.Uniform4f, "glUniform4f");
-    Load(gl.DrawArrays, "glDrawArrays");
-    Load(gl.GenFramebuffers, "glGenFramebuffers");
-    Load(gl.BindFramebuffer, "glBindFramebuffer");
-    Load(gl.FramebufferTexture2D, "glFramebufferTexture2D");
-    Load(gl.ClearColor, "glClearColor");
-    Load(gl.Clear, "glClear");
-    Load(gl.ReadPixels, "glReadPixels");
-    Load(gl.DeleteTextures, "glDeleteTextures");
-    Load(gl.DeleteFramebuffers, "glDeleteFramebuffers");
-    return gl.Enable != nullptr && gl.CreateProgram != nullptr && gl.DrawArrays != nullptr && gl.GenVertexArrays != nullptr;
-}
-
+// (The backend's vertexes: the place at location 0, the texture's coordinates at 3)
 constexpr const char* VertexSource = R"(#version 330 core
-in vec2 position;
-in vec2 uv;
+layout(location = 0) in vec2 position;
+layout(location = 3) in vec3 uv;
 uniform vec2 viewport;
 out vec2 pixel;
 out vec2 texel;
 void main()
 {
     pixel = position;
-    texel = uv;
+    texel = uv.xy;
     gl_Position = vec4(position.x / viewport.x * 2.0 - 1.0, 1.0 - position.y / viewport.y * 2.0, 0.0, 1.0);
 }
 )";
@@ -370,7 +227,7 @@ struct Vertex
 
 struct Atlas
 {
-    GLuint texture = 0;
+    u32 texture = 0;
     s32 size = 0;
     std::vector<stbtt_packedchar> latin;
     std::vector<stbtt_packedchar> punctuation;
@@ -386,20 +243,18 @@ constexpr int PunctuationCount = 0x203B - 0x2018;
 int ExtraCodepoints[] = {0x0152, 0x0153, 0x0160, 0x0161, 0x0178, 0x017D, 0x017E, 0x0192, 0x02C6, 0x02DC, 0x20AC, 0x2122};
 constexpr int ExtraCount = static_cast<int>(sizeof(ExtraCodepoints) / sizeof(ExtraCodepoints[0]));
 
+// What's made for a backend's recording (the window's, or the shots' own)
 struct Renderer
 {
-    SDL_GLContext context = nullptr;
+    Hw::Gpu* gpu = nullptr;
     bool ready = false;
     bool failed = false;
-    Gl gl{};
-    GLuint program = 0;
-    GLuint vertexArray = 0;
-    GLuint buffer = 0;
+    u32 program = 0;
     // The images' textures (made the first time each is drawn; 0 none: drawn instead)
-    GLuint images[static_cast<u32>(OverlayImage::Count)] = {};
+    u32 images[static_cast<u32>(OverlayImage::Count)] = {};
     bool imagesTried[static_cast<u32>(OverlayImage::Count)] = {};
     std::map<std::pair<u32, s32>, Atlas> atlases;
-    std::map<std::string, GLint> uniforms;
+    std::map<std::string, s32> uniforms;
     f32 width = 0.0f;
     f32 height = 0.0f;
     f32 scale = 1.0f;
@@ -407,9 +262,11 @@ struct Renderer
     f32 offsetY = 0.0f;
 };
 
-Renderer g_Renderer;
+// The window's, and the offscreen shots'
+Renderer g_Window;
+Renderer g_Shots;
 
-GLint Uniform(Renderer& r, const char* name)
+s32 Uniform(Renderer& r, const char* name)
 {
     auto found = r.uniforms.find(name);
     if (found != r.uniforms.end())
@@ -417,85 +274,29 @@ GLint Uniform(Renderer& r, const char* name)
         return found->second;
     }
 
-    GLint location = r.gl.GetUniformLocation(r.program, name);
+    s32 location = r.gpu->UniformLocation(r.program, name);
     r.uniforms[name] = location;
     return location;
 }
 
-GLuint Compile(Gl& gl, GLenum kind, const char* source)
+bool Prepare(Renderer& r, Hw::Gpu& gpu)
 {
-    GLuint shader = gl.CreateShader(kind);
-    gl.ShaderSource(shader, 1, &source, nullptr);
-    gl.CompileShader(shader);
-    GLint ok = 0;
-    gl.GetShaderiv(shader, GL_COMPILE_STATUS, &ok);
-    if (!ok)
+    if (r.gpu == &gpu)
     {
-        char log[2048] = {};
-        gl.GetShaderInfoLog(shader, sizeof(log), nullptr, log);
-        Native::Log("overlay: a shader didn't compile: %s", log);
-        return 0;
+        return r.ready;
     }
 
-    return shader;
-}
-
-bool Prepare(Renderer& r)
-{
-    SDL_GLContext context = SDL_GL_GetCurrentContext();
-    if (r.ready && r.context == context)
-    {
-        return true;
-    }
-
-    if (r.failed && r.context == context)
-    {
-        return false;
-    }
-
-    // A context of its own (the presenter's, or the shots'): everything made again
+    // A recording of its own (the window's, or the shots'): everything made there
     r = Renderer();
-    r.context = context;
-    if (!LoadGl(r.gl))
+    r.gpu = &gpu;
+    r.program = gpu.StartProgram(VertexSource, FragmentSource, false);
+    if (!gpu.FinishProgram(r.program))
     {
+        Native::Log("overlay: the program wasn't made (the error output says why)");
         r.failed = true;
         return false;
     }
 
-    Gl& gl = r.gl;
-    GLuint vertex = Compile(gl, GL_VERTEX_SHADER, VertexSource);
-    GLuint fragment = Compile(gl, GL_FRAGMENT_SHADER, FragmentSource);
-    if (vertex == 0 || fragment == 0)
-    {
-        r.failed = true;
-        return false;
-    }
-
-    r.program = gl.CreateProgram();
-    gl.AttachShader(r.program, vertex);
-    gl.AttachShader(r.program, fragment);
-    gl.BindAttribLocation(r.program, 0, "position");
-    gl.BindAttribLocation(r.program, 1, "uv");
-    gl.LinkProgram(r.program);
-    GLint linked = 0;
-    gl.GetProgramiv(r.program, GL_LINK_STATUS, &linked);
-    if (!linked)
-    {
-        char log[2048] = {};
-        gl.GetProgramInfoLog(r.program, sizeof(log), nullptr, log);
-        Native::Log("overlay: the program didn't link: %s", log);
-        r.failed = true;
-        return false;
-    }
-
-    gl.GenVertexArrays(1, &r.vertexArray);
-    gl.BindVertexArray(r.vertexArray);
-    gl.GenBuffers(1, &r.buffer);
-    gl.BindBuffer(GL_ARRAY_BUFFER, r.buffer);
-    gl.EnableVertexAttribArray(0);
-    gl.EnableVertexAttribArray(1);
-    gl.VertexAttribPointer(0, 2, GL_FLOAT, 0, sizeof(Vertex), reinterpret_cast<const void*>(0));
-    gl.VertexAttribPointer(1, 2, GL_FLOAT, 0, sizeof(Vertex), reinterpret_cast<const void*>(8));
     r.ready = true;
     return true;
 }
@@ -507,9 +308,23 @@ void DrawQuads(Renderer& r, const std::vector<Vertex>& vertexes)
         return;
     }
 
-    r.gl.BindBuffer(GL_ARRAY_BUFFER, r.buffer);
-    r.gl.BufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertexes.size() * sizeof(Vertex)), vertexes.data(), GL_STREAM_DRAW);
-    r.gl.DrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertexes.size()));
+    // As the backend's vertexes: the place, the texture's coordinates (s, t; q 1)
+    Hw::Gpu& gpu = *r.gpu;
+    std::vector<Hw::Vertex>& list = gpu.list().vertexes;
+    for (const Vertex& v : vertexes)
+    {
+        Hw::Vertex made = {};
+        made.x = v.x;
+        made.y = v.y;
+        made.s = v.u;
+        made.t = v.v;
+        made.q = 1.0f;
+        list.push_back(made);
+    }
+
+    gpu.VertexData();
+    gpu.BindVertexes(true);
+    gpu.DrawArrays(Hw::PrimitiveTriangles, 0, static_cast<s32>(vertexes.size()));
 }
 
 void AddQuad(std::vector<Vertex>& vertexes, f32 x0, f32 y0, f32 x1, f32 y1, f32 u0 = 0, f32 v0 = 0, f32 u1 = 1, f32 v1 = 1)
@@ -524,26 +339,43 @@ void AddQuad(std::vector<Vertex>& vertexes, f32 x0, f32 y0, f32 x1, f32 y1, f32 
 
 void SetColour(Renderer& r, const char* name, const Rgba32& c)
 {
-    r.gl.Uniform4f(Uniform(r, name), c.r, c.g, c.b, c.a);
+    r.gpu->Uniform4f(Uniform(r, name), c.r, c.g, c.b, c.a);
 }
 
 // A rounded box in pixels
 void DrawBox(Renderer& r, f32 x, f32 y, f32 w, f32 h, f32 radius, const Rgba32& top, const Rgba32& bottom, f32 border,
              const Rgba32& borderColour, f32 blur)
 {
-    Gl& gl = r.gl;
-    gl.Uniform1i(Uniform(r, "mode"), 0);
-    gl.Uniform4f(Uniform(r, "rect"), x, y, w, h);
-    gl.Uniform1f(Uniform(r, "radius"), std::min(radius, std::min(w, h) * 0.5f));
+    Hw::Gpu& gpu = *r.gpu;
+    gpu.Uniform1i(Uniform(r, "mode"), 0);
+    gpu.Uniform4f(Uniform(r, "rect"), x, y, w, h);
+    gpu.Uniform1f(Uniform(r, "radius"), std::min(radius, std::min(w, h) * 0.5f));
     SetColour(r, "fillTop", top);
     SetColour(r, "fillBottom", bottom);
-    gl.Uniform1f(Uniform(r, "border"), border);
+    gpu.Uniform1f(Uniform(r, "border"), border);
     SetColour(r, "borderColour", borderColour);
-    gl.Uniform1f(Uniform(r, "blur"), blur);
+    gpu.Uniform1f(Uniform(r, "blur"), blur);
     f32 grow = blur * 2.0f + 1.0f;
     std::vector<Vertex> quad;
     AddQuad(quad, x - grow, y - grow, x + w + grow, y + h + grow);
     DrawQuads(r, quad);
+}
+
+// A texture of the bound unit's made from rows of FORMAT (one level, linear, its edges clamped)
+u32 MakeTexture(Hw::Gpu& gpu, Hw::Format format, s32 width, s32 height, const void* pixels, s32 alignment)
+{
+    u32 texture = 0;
+    gpu.GenTextures(1, &texture);
+    gpu.BindTexture(texture);
+    gpu.PixelStore(Hw::StoreUnpackAlignment, alignment);
+    gpu.PixelStore(Hw::StoreUnpackRowLength, 0);
+    gpu.TexParameter(Hw::ParamMaxLevel, 0);
+    gpu.TexImage(0, format, width, height, pixels);
+    gpu.TexParameter(Hw::ParamMinFilter, static_cast<s32>(Hw::FilterLinear));
+    gpu.TexParameter(Hw::ParamMagFilter, static_cast<s32>(Hw::FilterLinear));
+    gpu.TexParameter(Hw::ParamWrapS, static_cast<s32>(Hw::WrapClamp));
+    gpu.TexParameter(Hw::ParamWrapT, static_cast<s32>(Hw::WrapClamp));
+    return texture;
 }
 
 Atlas& AtlasFor(Renderer& r, OverlayFont face, s32 pixelSize)
@@ -592,15 +424,7 @@ Atlas& AtlasFor(Renderer& r, OverlayFont face, s32 pixelSize)
             continue;
         }
 
-        Gl& gl = r.gl;
-        gl.GenTextures(1, &atlas.texture);
-        gl.BindTexture(GL_TEXTURE_2D, atlas.texture);
-        gl.PixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        gl.TexImage2D(GL_TEXTURE_2D, 0, GL_R8, size, size, 0, GL_RED, GL_UNSIGNED_BYTE, pixels.data());
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        atlas.texture = MakeTexture(*r.gpu, Hw::FormatR8, size, size, pixels.data(), 1);
         atlas.size = size;
         break;
     }
@@ -651,12 +475,12 @@ void DrawGlyphs(Renderer& r, const std::u32string& text, Atlas& atlas, f32 left,
         x += letterSpacing;
     }
 
-    Gl& gl = r.gl;
-    gl.Uniform1i(Uniform(r, "mode"), 1);
+    Hw::Gpu& gpu = *r.gpu;
+    gpu.Uniform1i(Uniform(r, "mode"), 1);
     SetColour(r, "tint", colour);
-    gl.ActiveTexture(GL_TEXTURE0);
-    gl.BindTexture(GL_TEXTURE_2D, atlas.texture);
-    gl.Uniform1i(Uniform(r, "atlas"), 0);
+    gpu.ActiveTexture(0);
+    gpu.BindTexture(atlas.texture);
+    gpu.Uniform1i(Uniform(r, "atlas"), 0);
     DrawQuads(r, vertexes);
 }
 
@@ -721,7 +545,7 @@ void DrawBoxCommand(Renderer& r, const OverlayFrame::Command& command)
     DrawBox(r, x, y, w, h, radius, s.fill, s.fillBottom, s.border * r.scale, s.borderColour, 0.0f);
 }
 
-GLuint ImageTexture(Renderer& r, OverlayImage image)
+u32 ImageTexture(Renderer& r, OverlayImage image)
 {
     u32 index = static_cast<u32>(image);
     if (r.imagesTried[index])
@@ -738,22 +562,14 @@ GLuint ImageTexture(Renderer& r, OverlayImage image)
         return 0;
     }
 
-    Gl& gl = r.gl;
-    gl.GenTextures(1, &r.images[index]);
-    gl.BindTexture(GL_TEXTURE_2D, r.images[index]);
-    gl.PixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    gl.TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    r.images[index] = MakeTexture(*r.gpu, Hw::FormatRgba8, width, height, pixels.data(), 4);
     return r.images[index];
 }
 
 void DrawImage(Renderer& r, const OverlayFrame::Command& command)
 {
-    Gl& gl = r.gl;
-    GLuint texture = ImageTexture(r, command.image);
+    Hw::Gpu& gpu = *r.gpu;
+    u32 texture = ImageTexture(r, command.image);
     f32 x = r.offsetX + command.x * r.scale;
     f32 y = r.offsetY + command.y * r.scale;
     std::vector<Vertex> quad;
@@ -764,47 +580,45 @@ void DrawImage(Renderer& r, const OverlayFrame::Command& command)
         // Drawn: the fruit, or a PlayStation button's shape (5 + its shape)
         u32 shape = static_cast<u32>(command.image) - static_cast<u32>(OverlayImage::PlayStationCross);
         mode = command.image == OverlayImage::Cursor ? 4 : shape < 4 ? 5 : 4;
-        gl.Uniform1f(Uniform(r, "radius"), static_cast<f32>(shape));
+        gpu.Uniform1f(Uniform(r, "radius"), static_cast<f32>(shape));
     }
 
-    gl.Uniform1i(Uniform(r, "mode"), mode);
+    gpu.Uniform1i(Uniform(r, "mode"), mode);
     SetColour(r, "tint", {1, 1, 1, command.alpha});
-    gl.ActiveTexture(GL_TEXTURE0);
-    gl.BindTexture(GL_TEXTURE_2D, texture);
-    gl.Uniform1i(Uniform(r, "atlas"), 0);
+    gpu.ActiveTexture(0);
+    gpu.BindTexture(texture);
+    gpu.Uniform1i(Uniform(r, "atlas"), 0);
     DrawQuads(r, quad);
 }
 
-// A frame's commands drawn on the current context's framebuffer of a size
-void DrawFrame(const std::vector<OverlayFrame::Command>& commands, int pixelWidth, int pixelHeight)
+// A frame's commands drawn by a backend's recording on its bound framebuffer, of a size
+void DrawFrame(Renderer& r, Hw::Gpu& gpu, const std::vector<OverlayFrame::Command>& commands, int pixelWidth, int pixelHeight)
 {
-    Renderer& r = g_Renderer;
-    if (commands.empty() || !Prepare(r))
+    if (commands.empty() || !Prepare(r, gpu))
     {
         return;
     }
 
-    Gl& gl = r.gl;
     r.width = static_cast<f32>(pixelWidth);
     r.height = static_cast<f32>(pixelHeight);
     ReferenceMapping(r.width, r.height, &r.scale, &r.offsetX, &r.offsetY);
-    gl.Viewport(0, 0, pixelWidth, pixelHeight);
-    gl.Enable(GL_BLEND);
-    gl.BlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-    gl.Disable(GL_SCISSOR_TEST);
-    gl.UseProgram(r.program);
-    gl.BindVertexArray(r.vertexArray);
-    gl.Uniform2f(Uniform(r, "viewport"), r.width, r.height);
+    gpu.Viewport(0, 0, pixelWidth, pixelHeight);
+    gpu.Enable(Hw::CapBlend);
+    gpu.BlendFuncSeparate(Hw::FactorSrcAlpha, Hw::FactorOneMinusSrcAlpha, Hw::FactorOne, Hw::FactorOneMinusSrcAlpha);
+    gpu.BlendEquationSeparate(Hw::BlendAdd, Hw::BlendAdd);
+    gpu.Disable(Hw::CapScissorTest);
+    gpu.UseProgram(r.program);
+    gpu.Uniform2f(Uniform(r, "viewport"), r.width, r.height);
     for (const OverlayFrame::Command& command : commands)
     {
         switch (command.kind)
         {
         case CommandKind::Backdrop:
         {
-            gl.Uniform1i(Uniform(r, "mode"), 2);
-            gl.Uniform1f(Uniform(r, "scale"), r.scale);
-            gl.Uniform2f(Uniform(r, "offset"), r.offsetX, r.offsetY);
-            gl.Uniform1f(Uniform(r, "time"), command.seconds);
+            gpu.Uniform1i(Uniform(r, "mode"), 2);
+            gpu.Uniform1f(Uniform(r, "scale"), r.scale);
+            gpu.Uniform2f(Uniform(r, "offset"), r.offsetX, r.offsetY);
+            gpu.Uniform1f(Uniform(r, "time"), command.seconds);
             std::vector<Vertex> quad;
             AddQuad(quad, 0.0f, 0.0f, r.width, r.height);
             DrawQuads(r, quad);
@@ -825,17 +639,18 @@ void DrawFrame(const std::vector<OverlayFrame::Command>& commands, int pixelWidt
             f32 y = r.offsetY + command.y * r.scale;
             f32 w = command.width * r.scale;
             f32 h = command.height * r.scale;
-            gl.Enable(GL_SCISSOR_TEST);
-            gl.Scissor(static_cast<GLint>(x), static_cast<GLint>(r.height - y - h), static_cast<GLsizei>(w), static_cast<GLsizei>(h));
+            gpu.Enable(Hw::CapScissorTest);
+            gpu.Scissor(static_cast<s32>(x), static_cast<s32>(r.height - y - h), static_cast<s32>(w), static_cast<s32>(h));
             break;
         }
         case CommandKind::NoClip:
-            gl.Disable(GL_SCISSOR_TEST);
+            gpu.Disable(Hw::CapScissorTest);
             break;
         }
     }
 
-    gl.Disable(GL_SCISSOR_TEST);
+    gpu.Disable(Hw::CapScissorTest);
+    gpu.Disable(Hw::CapBlend);
 }
 
 // The presenter's hook: the last frame handed over, over the game's picture, and the FPS counter (the picture counted)
@@ -845,7 +660,7 @@ void OverlayHook(int pixelWidth, int pixelHeight, float pixelScale)
     CountShownFrame(std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count());
     std::vector<OverlayFrame::Command> commands = SubmittedFrame();
     AddFpsCounter(&commands, pixelWidth, pixelHeight);
-    DrawFrame(commands, pixelWidth, pixelHeight);
+    DrawFrame(g_Window, NativeGraphicsWindowGpu(), commands, pixelWidth, pixelHeight);
 }
 }
 
@@ -856,59 +671,75 @@ void StartOverlay()
 
 bool RenderFrameOffscreen(u32 width, u32 height, std::vector<u32>* pixels)
 {
-    // A hidden window's context and a framebuffer of the size (the window is never shown)
-    static SDL_Window* window = nullptr;
-    static SDL_GLContext context = nullptr;
-    if (window == nullptr)
+    // A backend of its own (the renderer's API: a Vulkan device of its own, or OpenGL in a hidden window that's never shown) and a
+    // framebuffer of the size
+    // (Kept to the end: the exit quits SDL before static objects go)
+    static Hw::Backend* backend = nullptr;
+    static Hw::Gpu gpu;
+    static bool tried = false;
+    if (!tried)
     {
+        tried = true;
         if (!SDL_InitSubSystem(SDL_INIT_VIDEO))
         {
             return false;
         }
 
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-        window = SDL_CreateWindow("overlay", 64, 64, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
-        if (window == nullptr)
+        backend = NativeGraphics::RendererOnVulkan() ? Hw::StartVulkanBackend(true) : nullptr;
+        if (backend == nullptr)
         {
-            Native::Log("overlay: no hidden window for the shots: %s", SDL_GetError());
+            backend = Hw::StartGlWindowBackend(nullptr, nullptr);
+        }
+
+        if (backend == nullptr)
+        {
+            Native::Log("overlay: no graphics for the shots: %s", SDL_GetError());
             return false;
         }
 
-        context = SDL_GL_CreateContext(window);
-        if (context == nullptr)
-        {
-            Native::Log("overlay: no GL context for the shots: %s", SDL_GetError());
-            return false;
-        }
+        gpu.Start(backend);
     }
 
-    SDL_GL_MakeCurrent(window, context);
-    if (!Prepare(g_Renderer))
+    if (backend == nullptr)
     {
         return false;
     }
 
-    Gl& gl = g_Renderer.gl;
-    GLuint texture = 0;
-    GLuint framebuffer = 0;
-    gl.GenTextures(1, &texture);
-    gl.BindTexture(GL_TEXTURE_2D, texture);
-    gl.TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, static_cast<GLsizei>(width), static_cast<GLsizei>(height), 0, GL_RGBA, GL_UNSIGNED_BYTE,
-                  nullptr);
-    gl.GenFramebuffers(1, &framebuffer);
-    gl.BindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-    gl.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
-    gl.Viewport(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
-    gl.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    gl.Clear(GL_COLOR_BUFFER_BIT);
+    backend->MakeCurrent();
+    if (!Prepare(g_Shots, gpu))
+    {
+        return false;
+    }
+
+    // (A target for each size, kept: the shots come at two)
+    static std::map<std::pair<u32, u32>, std::pair<u32, u32>> targets;
+    auto& [texture, framebuffer] = targets[{width, height}];
+    if (texture == 0)
+    {
+        gpu.GenTextures(1, &texture);
+        gpu.BindTexture(texture);
+        gpu.TexParameter(Hw::ParamMaxLevel, 0);
+        gpu.TexImage(0, Hw::FormatRgba8, static_cast<s32>(width), static_cast<s32>(height), nullptr);
+        gpu.GenFramebuffers(1, &framebuffer);
+        gpu.BindFramebuffer(framebuffer);
+        gpu.AttachColour(texture);
+    }
+
+    gpu.BindFramebuffer(framebuffer);
+    gpu.Disable(Hw::CapBlend);
+    gpu.Disable(Hw::CapScissorTest);
+    gpu.ColorMask(true, true, true, true);
+    gpu.Viewport(0, 0, static_cast<s32>(width), static_cast<s32>(height));
+    gpu.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    gpu.Clear(Hw::ClearColour);
     // The frame recorded last (the game's thread is this one in headless runs)
     NoteWindow(static_cast<int>(width), static_cast<int>(height), 1.0f);
-    DrawFrame(RecordingFrame().Commands(), static_cast<int>(width), static_cast<int>(height));
+    DrawFrame(g_Shots, gpu, RecordingFrame().Commands(), static_cast<int>(width), static_cast<int>(height));
     std::vector<u32> rows(static_cast<size_t>(width) * height);
-    gl.PixelStorei(GL_PACK_ALIGNMENT, 4);
-    gl.ReadPixels(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height), GL_RGBA, GL_UNSIGNED_BYTE, rows.data());
+    gpu.BindReadFramebuffer(framebuffer);
+    gpu.PixelStore(Hw::StorePackAlignment, 4);
+    gpu.PixelStore(Hw::StorePackRowLength, 0);
+    gpu.ReadPixels(0, 0, static_cast<s32>(width), static_cast<s32>(height), Hw::FormatRgba8, rows.data());
     pixels->resize(rows.size());
     for (u32 y = 0; y < height; y++)
     {
@@ -920,9 +751,8 @@ bool RenderFrameOffscreen(u32 width, u32 height, std::vector<u32>* pixels)
         pixel |= 0xFF000000u;
     }
 
-    gl.BindFramebuffer(GL_FRAMEBUFFER, 0);
-    gl.DeleteFramebuffers(1, &framebuffer);
-    gl.DeleteTextures(1, &texture);
+    gpu.BindFramebuffer(0);
+    gpu.Submit();
     return true;
 }
 }

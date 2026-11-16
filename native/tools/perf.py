@@ -11,8 +11,8 @@ its lines' average, the summary the runs' median with their range. The numbers:
     fps            frames a second
     game           the game's thread's own work a frame (ms), waiting: its waits for the others, present: the window's
     vu1            VU1's thread
-    render         the render thread, split into gs (the GS emulated on the processor), opengl (inside OpenGL's calls),
-                   cardwait (pictures read back) and picture (the picture handed to the window)
+    render         the render thread, split into gs (the GS emulated on the processor), opengl (inside the graphics API's
+                   calls: OpenGL's, or Vulkan's), cardwait (pictures read back) and picture (the picture handed to the window)
     card           the graphics card's own time a frame (timer queries)
     card ...       the card's time a frame by kind of call (ms): the render thread's draws, clears, copies, uploads, and the
                    window's thread's (the picture shown, the UI)
@@ -59,7 +59,7 @@ FIELDS = {
     "vu1": r", VU1 " + NUMBER + " ms",
     "render": r"the render thread(?: with VU1)? " + NUMBER + " ms",
     "gs": r"\(the GS(?: and VU1)? " + NUMBER,
-    "opengl": r", OpenGL " + NUMBER,
+    "opengl": r", (?:OpenGL|Vulkan) " + NUMBER,
     "cardwait": r"waiting for the card " + NUMBER,
     "picture": r"the picture handed over " + NUMBER,
     "card": r"the graphics card " + NUMBER + " ms",

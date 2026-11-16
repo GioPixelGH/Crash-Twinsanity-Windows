@@ -253,6 +253,14 @@ u64 g_MinuteProgramNanoseconds = 0;
 std::atomic<bool> g_Ended{false};
 bool g_LogToFile = false;
 
+// The hardware renderer's graphics API, its calls' time named so in the render thread's split (THE LIST 72: OpenGL's or Vulkan's;
+// OpenGL's name without the renderer)
+const char* RendererApi()
+{
+    const char* name = NativeGraphics::HardwareBackendName();
+    return name != nullptr && name[0] != '\0' ? name : "OpenGL";
+}
+
 // A frame's work, each thread's (as the threads are now), and the graphics card's: its own time drawing, apart from the threads'.
 // The render thread's split by kind (renderwork.h): the GS emulated on the processor (with VU1 when it runs there), OpenGL's
 // calls (the driver), waiting for the card (pictures read back) and the picture handed to the window; the game's thread's present
@@ -271,9 +279,9 @@ void FormatWork(const Span& span, char* out, size_t size)
     double picture = perFrame(span.pictureNanoseconds);
     double gs = std::max(render - openGl - cardWait - picture, 0.0);
     char split[160] = "";
-    std::snprintf(split, sizeof(split), " (the GS%s %.1f, OpenGL %.1f, waiting for the card %.1f, the picture handed over %.1f)",
-                  NativeGraphics::ThreadsNow() == NativeGraphics::Threads::TwoVuOnRender ? " and VU1" : "", gs, openGl, cardWait,
-                  picture);
+    std::snprintf(split, sizeof(split), " (the GS%s %.1f, %s %.1f, waiting for the card %.1f, the picture handed over %.1f)",
+                  NativeGraphics::ThreadsNow() == NativeGraphics::Threads::TwoVuOnRender ? " and VU1" : "", gs, RendererApi(), openGl,
+                  cardWait, picture);
     char threads[384] = "";
     switch (NativeGraphics::ThreadsNow())
     {
@@ -511,9 +519,9 @@ void LogSlowFrame(double seconds, u64 game, u64 waited, u64 present, u64 backgro
     const char* where = NativeUi::TrailChunk();
     Native::Log("slow frame: %.0f ms in %s; the game %.1f ms (its loading %.1f ms, of it the chunks' %.1f ms, their longest step %.1f "
                 "ms; reading the disc %.1f ms) and %.1f ms waiting, the window's present %.1f ms; the render thread %.1f ms (the GS %.1f, "
-                "OpenGL %.1f with %llu shader program%s made in %.1f ms, waiting for the card %.1f, the picture handed over %.1f)%s%s",
+                "%s %.1f with %llu shader program%s made in %.1f ms, waiting for the card %.1f, the picture handed over %.1f)%s%s",
                 seconds * 1000.0, where != nullptr ? where : "?", ms(gameOwn), ms(background), ms(chunk), ms(longest), ms(reading), ms(waited),
-                ms(present), ms(render), ms(gs), ms(openGl), static_cast<unsigned long long>(programs), programs == 1 ? "" : "s",
+                ms(present), ms(render), ms(gs), RendererApi(), ms(openGl), static_cast<unsigned long long>(programs), programs == 1 ? "" : "s",
                 ms(programNanoseconds), ms(cardWait), ms(picture), vuText, unlogged);
 }
 

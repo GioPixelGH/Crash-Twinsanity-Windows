@@ -249,8 +249,8 @@ with texelFetch and matches the varyings by name. What OpenGL does and SDL GPU d
   the alpha;
 - each vertex shader's y negated, since SDL's viewport is flipped, so a texture's first row is OpenGL's in both.
 
-The picture shown is still read back into memory for the window's OpenGL (72 moves the window onto the backend). The 25
-pictures are the same as 1.2.0's OpenGL ones, byte for byte. Validation (the Vulkan SDK's layers, `$TWIN_VULKAN_DEBUG`)
+In 71 the picture shown was still read back into memory for the window's OpenGL (72 moved the window onto the backend: "The
+window on the backend", below). The 25 pictures are the same as 1.2.0's OpenGL ones, byte for byte. Validation (the Vulkan SDK's layers, `$TWIN_VULKAN_DEBUG`)
 reports only VUID-vkCmdDraw-None-09600, which comes from SDL's own memory defragmentation (sdlgpu.cpp's top says why).
 Measured with perf.py (the same program, OpenGL then Vulkan, one after the other):
 
@@ -263,6 +263,42 @@ Measured with perf.py (the same program, OpenGL then Vulkan, one after the other
 The list played costs the same in both (the GS and the API's calls 12.7 and 12.6 ms); the picture read back for the window is
 what Vulkan costs more until 72. The card's own time isn't measured with Vulkan (SDL's GPU API 3.4.18 has no timer
 queries).
+
+The window on the backend (THE LIST 72): everything that draws into the window records through gpu.h's Gpu as the renderer
+does: the picture's presenter (display.cpp: the picture at the TV's shape, FXAA, the downsampling, the CRT filter), SMAA
+(smaa.cpp), the overlay's menus and texts (ui/overlayrender.cpp) and the window shots ($TWIN_WINDOW_SHOTS). Framebuffer 0 is
+the window. With OpenGL the window's backend is a GlBackend on the window's context calling OpenGL's entry points as they are
+(gl.h's LoadDirectGl: the call cache of 69 is the render thread's), and the window's pictures came out the same as before byte
+for byte (compare/tools/window_ab.py: the beach at a fixed time with anti-aliasing off, SMAA, FXAA, the CRT filter, 8x made the
+window's size). With Vulkan the window is made with SDL_WINDOW_VULKAN and claimed by SDL GPU on the device the renderer
+shares; framebuffer 0 is a texture of the window's size, copied into the swapchain's picture when shown (the swapchain's own
+can't be read, and the window shots read it), and the render thread's copy of each picture is handed over as SDL GPU's
+texture (gpu.h's NativeTexture and TakeTexture), so nothing is read back. A window Vulkan can't show in is made again for
+OpenGL. The same shots with Vulkan: anti-aliasing off and SMAA the same as OpenGL's byte for byte, FXAA, the CRT filter and 8x
+a few hundred pixels 1 apart (of 255).
+
+SDL defragments its memory at the submit that presents the window, moving a fragmented allocation's textures into new images
+at the end of that command buffer; it doesn't spare a texture another thread's command buffer is still recording with, whose
+earlier draws then land in the old image (sdlgpu.cpp's g_DeviceLock comment; SDL_gpu_vulkan.c 3.4.18's VULKAN_Submit and
+VULKAN_INTERNAL_DefragmentMemory). So while a window is claimed the renderer's backend records only under g_RecordingLock,
+from a command buffer's start to its submit (each playing of the list ends with one), and the presenting submit takes it too.
+The overlay's offscreen shots ($TWIN_UI_SETTINGS_SHOTS) draw on a device of their own, with a target kept for each size: on
+the shared device the settings screen's first 2560x1440 shot lost its backdrop to such a move, and making and deleting the
+target each shot lost another. Validation reports nothing then.
+
+Measured with perf.py (the beach at 1x on two cores, three runs of 60 s; the same program, OpenGL then Vulkan, one after the
+other; compare/perf_f/gl_72.json and vulkan_72.json against 71's):
+
+| What | OpenGL (71 / 72) | Vulkan (71 / 72) |
+| --- | --- | --- |
+| Frames a second | 64.1 / 62.6 | 63.6 / 68.7 |
+| The render thread | 12.9 / 13.2 ms (the GS 11.8, OpenGL 1.2, the picture handed over 0.2) | 15.5 / 14.4 ms (the GS 12.8, Vulkan 1.5, the picture handed over 0.1) |
+| The window's present | 2.3 / 2.5 ms | 0.4 / 0.2 ms |
+
+OpenGL's numbers moved within a run's spread (VU1, which 72 doesn't touch, 3.8% slower in the same runs). With Vulkan the
+picture's read back is gone (2.9 ms to 0.1) and the window's present is SDL GPU's (0.2 ms against OpenGL's 2.5 here), so the
+game runs faster than with OpenGL on this PC, though its render thread is 1.2 ms longer (the GS's work 1.0, the API's calls
+0.3). The card's own time isn't known with Vulkan.
 
 ### Hitches
 
@@ -632,7 +668,10 @@ nanoseconds against the steady clock over the render thread's first 2 s. The win
 is the game's thread's: the window's context drawing the picture and the UI over it and its swap (with vsync, the swap waits
 for the screen's refresh); since 1.2.0 it's taken out of the game's own time (1.1.0's "the game" had it in). A PC whose present
 takes long (a picture crossing from one graphics card to another, two screens on two adapters) shows it there; one whose driver
-is slow, in OpenGL; one whose processor is slow, in the GS.
+is slow, in OpenGL; one whose processor is slow, in the GS. With Vulkan (1.3.0) the split names it `Vulkan`: the time inside the
+Vulkan backend's playing of the lists (SDL GPU's calls and the backend's own work making them), a read back's wait as waiting
+for the card; the window's present is SDL GPU's (the picture and the UI drawn, the swapchain's picture waited for and shown), and
+the card's own time is unknown (`the graphics card unknown`: SDL's GPU API has no timer queries).
 
 Since 1.2.0 a frame of play over 50 ms gets a line of its own (at most 10 a minute of play, the rest counted in the next):
 `slow frame: 180 ms in levels\earth\hub\huba; the game 150.2 ms (its loading 140.0 ms, of it the chunks' 138.5 ms, their
@@ -759,8 +798,11 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   ("Fewer calls" under "Speed"): to tell a drawing difference from the calls left out.
 - `$TWIN_HW_LIST_BYTES=N`: the hardware renderer's command list played once it holds N bytes (and when a result is wanted, and
   at the frame's end) instead of after each batch ("The command list" under "Speed").
-- `$TWIN_GPU_API=vulkan`: the hardware renderer's lists played by the Vulkan backend (hw/sdlgpu.cpp, "The Vulkan backend" under
-  "Speed"); OpenGL when it can't start (the log says why). `$TWIN_VULKAN_DEBUG=1`: SDL GPU's debug mode with Vulkan's validation
+- `$TWIN_GPU_API=vulkan`: the window made for Vulkan and shown through SDL GPU, and the hardware renderer's lists played by the
+  Vulkan backend (hw/sdlgpu.cpp, "The Vulkan backend" and "The window on the backend" under "Speed"); without a window (headless)
+  the renderer's alone. OpenGL when Vulkan can't start, the window made again for it (the log says why). The overlay's offscreen
+  shots ($TWIN_UI_SETTINGS_SHOTS) draw with the renderer's API too, Vulkan on a device of their own. `$TWIN_VULKAN_DEBUG=1`: SDL
+  GPU's debug mode with Vulkan's validation
   layers (the Vulkan SDK installed), their messages in the log, the textures named ("texture 141 64x64 format 0 levels 7"); run
   it with `SDL_ASSERT=always_ignore`, or SDL's assert dialogs open on the screen. In debug mode SDL refuses a viewport past the
   target, so the draws' far bigger viewport makes those runs draw differently. `$TWIN_VULKAN_LIST_BYTES=N`: Vulkan's list played

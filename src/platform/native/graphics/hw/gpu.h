@@ -15,6 +15,7 @@
 #include "common.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <string>
@@ -39,7 +40,7 @@ struct Vertex
 };
 
 // Textures' formats (an upload's bytes and a read back's are in the texture's own: RGBA8 4 bytes, the integer and float ones one
-// value a texel; a depth-stencil buffer read back as its depth's floats)
+// value a texel, R8 and RG8 a byte a channel; a depth-stencil buffer read back as its depth's floats)
 enum Format : u32
 {
     FormatRgba8,
@@ -48,6 +49,9 @@ enum Format : u32
     FormatR32ui,
     FormatR16ui,
     FormatDepth32fStencil8,
+    // The window's code's (SMAA's tables and targets, the overlay's glyphs)
+    FormatR8,
+    FormatRg8,
 };
 
 enum Filter : u32
@@ -396,6 +400,8 @@ class Backend
 public:
     virtual ~Backend() = default;
     virtual const char* Name() const = 0;
+    // The card and its driver, for the log
+    virtual std::string Describe() const { return Name(); }
     // Its context or device current on the calling thread (with OpenGL, the context; made current when it isn't)
     virtual void MakeCurrent() = 0;
     virtual void Play(const CommandList& list) = 0;
@@ -419,18 +425,51 @@ public:
     virtual void DeleteFence(void* fence) = 0;
     // The card's driver compiling programs on threads of its own, where it can
     virtual void ParallelCompiles() = 0;
-    // Whether the textures are OpenGL's, the window's context's to draw (else the shown picture is read back for it)
-    virtual bool SharesGlTextures() const { return true; }
     // The list played once it's this many bytes long (0: after each batch, OpenGL's best; $TWIN_HW_LIST_BYTES says otherwise)
     virtual size_t ListBytes() const { return 0; }
+    // What's played so far sent to the card (another backend's work after it uses its results: THE LIST 72's window)
+    virtual void Flush() {}
+
+    // THE LIST 72, the window's backend (the presenter's, display.cpp) and the renderer's of the same API: a texture handed from
+    // one to the other (its API's own object: OpenGL's name, SDL GPU's texture), and taken as a name of the other's, valid until it's
+    // handed over again (an RGBA8 texture of this size; its sampling set by the taker)
+    virtual void* NativeTexture(u32 texture) { return reinterpret_cast<void*>(static_cast<uintptr_t>(texture)); }
+    virtual u32 TakeTexture(void* native, s32 width, s32 height)
+    {
+        (void)width;
+        (void)height;
+        return static_cast<u32>(reinterpret_cast<uintptr_t>(native));
+    }
+    // The window's frame: framebuffer 0 is the window's pixels, WIDTH x HEIGHT (rows as OpenGL's: the first the bottom one), shown by
+    // ShowWindow once drawn (OpenGL: the window's own framebuffer, swapped; Vulkan: a texture of the window's size, copied into
+    // the swapchain's). False when the window can't be drawn now (minimised)
+    virtual bool WindowFrame(s32 width, s32 height)
+    {
+        (void)width;
+        (void)height;
+        return true;
+    }
+    virtual void ShowWindow() {}
+    // The window's frames shown at the screen's refresh (V-sync) or as soon as they're drawn
+    virtual void SetVSync(bool on) { (void)on; }
 };
 
 // The GL backend (glreplay.cpp): the window's or the render thread's context (WINDOW and CONTEXT: SDL's), or one of its own made in
 // a hidden window when both are null; SHARED: the context is the window's code's too (one thread). Null when OpenGL 3.3 isn't there
 Backend* StartGlBackend(void* window, void* context, bool shared);
-// The SDL GPU backend on Vulkan (sdlgpu.cpp, THE LIST 71): a device of its own, no window. Null when Vulkan isn't there, or the build
-// has no glslang
-Backend* StartVulkanBackend();
+// The window's GL backend (THE LIST 72: display.cpp's presenter, the overlay's): the window's context, or one of its own in a hidden
+// window when both are null (the overlay's shots). OpenGL's entry points called as they are: not counted nor left out (gl.h's
+// cache is the renderer's, on its own thread); the state it sets forgotten at each playing (one thread: the renderer's too)
+Backend* StartGlWindowBackend(void* window, void* context);
+// The SDL GPU backend on Vulkan (sdlgpu.cpp, THE LIST 71): the device the window's backend made (made here when there's none: no
+// window), or one of its own (OWN: the overlay's shots, which share nothing). Null when Vulkan isn't there, or the build has no
+// glslang
+Backend* StartVulkanBackend(bool own = false);
+// The window's Vulkan backend (THE LIST 72): the device made and the window claimed for it (from the window's thread). Null when
+// Vulkan isn't there (or can't show in this window), or the build has no glslang
+Backend* StartVulkanWindowBackend(void* window);
+// Whether the build has the Vulkan backend
+bool VulkanBuilt();
 
 // What hwgs.cpp calls: the state as GL's calls set it, the commands recorded with it
 class Gpu
@@ -477,6 +516,14 @@ public:
     void ClearColor(f32 r, f32 g, f32 b, f32 a);
     void ClearStencil(s32 value) { clearStencil_ = value; }
     void PixelStore(u32 store, s32 value) { store_[store] = value; }
+    // A texture's sampling not known here (THE LIST 72: one taken from another backend, set there too): set again when asked
+    void ForgetSampling(u32 texture)
+    {
+        if (texture < sampling_.size())
+        {
+            sampling_[texture] = {};
+        }
+    }
 
     // The commands. The bound texture's: its sampling, a level's storage or a rectangle of it (the bytes copied into the list),
     // its smaller levels made from level 0

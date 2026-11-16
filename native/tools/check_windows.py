@@ -263,7 +263,7 @@ LOG_START = [
     r"\] graphics: a timer query's result not there \d+ frames after it was begun \(the (?:render|window's) thread's\): left out",
     r"\] game: Levels\\Earth\\Hub\\beach loaded in [\d.]+ s",
     r"\] performance: [\d.]+ fps over \d+ s of play, the slowest frame \d+ ms; a frame's work: the game [\d.]+ ms .*"
-    r"the window's present [\d.]+ ms, VU1 [\d.]+ ms, the render thread [\d.]+ ms \(the GS [\d.]+, OpenGL [\d.]+, waiting for "
+    r"the window's present [\d.]+ ms, VU1 [\d.]+ ms, the render thread [\d.]+ ms \(the GS [\d.]+, (?:OpenGL|Vulkan) [\d.]+, waiting for "
     r"the card [\d.]+, the picture handed over [\d.]+\), the graphics card [\d.]+ ms; the player in levels\\earth\\hub\\beach",
     rf"\] session: {DURATION}, {DURATION} of it played at [\d.]+ fps on average, \d+% of it below 57 fps .*"
     r"the slowest frame \d+ ms; a frame's work: .*, the graphics card [\d.]+ ms\n",

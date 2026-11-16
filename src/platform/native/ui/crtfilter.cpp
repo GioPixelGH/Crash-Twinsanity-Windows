@@ -45,7 +45,3 @@ void main()
 }
 )";
 }
-
-void NativeUiCrtShaderUniforms(unsigned int, void* (*)(const char*))
-{
-}

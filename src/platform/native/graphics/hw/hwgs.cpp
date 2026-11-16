@@ -67,6 +67,8 @@ namespace NativeGraphics
 // The presenter's window and context (display.cpp), shared when there is one; the render thread's own (on it)
 bool PresenterContext(SDL_Window** window, SDL_GLContext* context);
 bool RenderContext(SDL_Window** window, SDL_GLContext* context);
+// The renderer's graphics API (display.cpp, THE LIST 72): the window's, or $TWIN_GPU_API's without one
+bool RendererOnVulkan();
 }
 
 namespace NativeGraphics
@@ -1547,9 +1549,9 @@ bool HwGs::Init()
     SDL_GLContext context = nullptr;
     const bool rendering = RenderContext(&window, &context);
     const bool shared = !rendering && PresenterContext(&window, &context);
-    // ($TWIN_GPU_API=vulkan: SDL GPU's Vulkan, THE LIST 71; OpenGL when it can't start)
-    static const char* api = std::getenv("TWIN_GPU_API");
-    if (api != nullptr && std::strcmp(api, "vulkan") == 0)
+    // (SDL GPU's Vulkan, THE LIST 71, where the window's is, or $TWIN_GPU_API=vulkan without a window; OpenGL when it can't start:
+    // the window's code then shows the picture read back)
+    if (RendererOnVulkan())
     {
         backend_.reset(Hw::StartVulkanBackend());
         if (backend_ == nullptr)
@@ -5997,6 +5999,8 @@ bool HwGs::CopyDisplay(u32 slot, void* drawn, NativeGraphics::ShownTexture* show
     shown->width = display.width;
     shown->height = display.height;
     shown->fence = gpu.Fence();
+    // (Its API's object once the list is played: made by then)
+    shown->native = gpu.backend().NativeTexture(copy.texture);
     return true;
 }
 }
@@ -6085,14 +6089,15 @@ u32 HardwareScale()
 
 bool HardwareDisplayTexture(DisplayTexture* display)
 {
-    // (A backend whose textures aren't OpenGL's: the window's code reads the picture back, HardwareReadDisplay)
-    if (g_Hw == nullptr || !g_Hw->gpu().backend().SharesGlTextures() || !g_Hw->DisplayTexture(display, nullptr, nullptr))
+    if (g_Hw == nullptr || !g_Hw->DisplayTexture(display, nullptr, nullptr))
     {
         return false;
     }
 
-    // (The window's code draws it: the frame's commands played first)
+    // (The window's code draws it: the frame's commands played and sent to the card first)
     g_Hw->gpu().Submit();
+    g_Hw->gpu().backend().Flush();
+    display->native = g_Hw->gpu().backend().NativeTexture(display->texture);
     return true;
 }
 
@@ -6103,7 +6108,12 @@ bool HardwareReadDisplay(Gs::DisplayImage& image)
 
 bool HardwareCopyDisplay(u32 slot, void* drawnFence, ShownTexture* shown)
 {
-    return g_Hw != nullptr && g_Hw->gpu().backend().SharesGlTextures() && g_Hw->CopyDisplay(slot, drawnFence, shown);
+    return g_Hw != nullptr && g_Hw->CopyDisplay(slot, drawnFence, shown);
+}
+
+const char* HardwareBackendName()
+{
+    return g_Hw != nullptr ? g_Hw->gpu().backend().Name() : "";
 }
 
 void HardwareSetDither(int mode)

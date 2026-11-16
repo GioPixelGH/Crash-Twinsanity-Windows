@@ -34,11 +34,13 @@ u32 HardwareWarmPrograms(const std::vector<u32>& bits);
 void HardwareSetScale(u32 scale);
 u32 HardwareScale();
 
-// The shown picture as a texture of the GPU (the presenter draws it): the texture, its picture's rectangle (0-1, top row first)
-// and the picture's size in pixels. False when the shown buffer isn't a render target (the picture is read from local memory)
+// The shown picture as a texture of the GPU (the presenter draws it): the texture (the renderer's backend's name, and its API's
+// object for the window's backend: gpu.h's NativeTexture), its picture's rectangle (0-1, top row first) and the picture's size in
+// pixels. False when the shown buffer isn't a render target (the picture is read from local memory)
 struct DisplayTexture
 {
     u32 texture;
+    void* native;
     float u0;
     float v0;
     float u1;
@@ -56,11 +58,14 @@ bool HardwareReadDisplay(Gs::DisplayImage& image);
 struct ShownTexture
 {
     u32 texture;
+    void* native;
     u32 width;
     u32 height;
     void* fence;
 };
 bool HardwareCopyDisplay(u32 slot, void* drawnFence, ShownTexture* shown);
+// The renderer's backend ("OpenGL", "Vulkan"; empty when none): its textures are the window's backend's to draw when it's the same
+const char* HardwareBackendName();
 
 // The settings (settings.h): 16 bit frames' dithering (0 none, 1 at the PS2's pixels, 2 at the screen's) and the textures'
 // filtering (0 the game's, 1 bilinear, 2 trilinear and anisotropic)

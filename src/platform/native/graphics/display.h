@@ -23,6 +23,9 @@ void ApplyGraphicsSettings();
 // Windows: every graphics adapter written to the log with its driver's version and its memory, once the window is there
 // (adapters_win32.cpp)
 void LogAdapters();
+// Whether the hardware renderer draws with Vulkan (THE LIST 71-72): as the window's backend does, or as $TWIN_GPU_API asks without
+// a window
+bool RendererOnVulkan();
 
 // The last picture shown: RGBA bytes, a row after another
 struct Picture

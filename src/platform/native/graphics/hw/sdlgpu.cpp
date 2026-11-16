@@ -20,13 +20,18 @@
 // - new textures zeroed (OpenGL's drivers do, the renderer relies on it), their levels down to the short side's 1 (SDL sizes a
 //   level without OpenGL's least of 1).
 // Commands go into a command buffer submitted when a read back or fence wants them done, or after enough work (at most two in
-// flight). With $TWIN_VULKAN_DEBUG the validation layers' VUID-vkCmdDraw-None-09600 comes from SDL: its memory defragmentation at a
-// submit leaves the moved textures' old images in TRANSFER_SRC after the draws that sampled them (SDL_gpu_vulkan.c 3.4.18,
-// VULKAN_INTERNAL_DefragmentMemory), and the layers check a submit's sampled images against their last layouts.
+// flight; with a window claimed, at the end of each playing: g_DeviceLock's comment). With $TWIN_VULKAN_DEBUG the validation
+// layers' VUID-vkCmdDraw-None-09600 comes from SDL: its memory defragmentation at a submit leaves the moved textures' old images in
+// TRANSFER_SRC after the draws that sampled them (SDL_gpu_vulkan.c 3.4.18, VULKAN_INTERNAL_DefragmentMemory), and the layers
+// check a submit's sampled images against their last layouts.
+// THE LIST 72: the window's backend is one of these too, on the same device (StartVulkanWindowBackend: the window claimed,
+// framebuffer 0 a texture of its size copied into the swapchain's when shown, the renderer's picture taken as its own texture).
 
 #if TWIN_VULKAN
 
 #include <SDL3/SDL.h>
+
+#include "graphics/renderwork.h"
 
 #include <glslang/Public/ResourceLimits.h>
 #include <glslang/Public/ShaderLang.h>
@@ -50,9 +55,10 @@ namespace
 constexpr SDL_GPUTextureFormat Formats[] = {
     SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT, SDL_GPU_TEXTUREFORMAT_R32_FLOAT,
     SDL_GPU_TEXTUREFORMAT_R32_UINT,       SDL_GPU_TEXTUREFORMAT_R16_UINT,           SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT,
+    SDL_GPU_TEXTUREFORMAT_R8_UNORM,       SDL_GPU_TEXTUREFORMAT_R8G8_UNORM,
 };
-constexpr u32 TexelBytes[] = {4, 8, 4, 4, 2, 8};
-constexpr bool IntegerFormat[] = {false, false, false, true, true, false};
+constexpr u32 TexelBytes[] = {4, 8, 4, 4, 2, 8, 1, 2};
+constexpr bool IntegerFormat[] = {false, false, false, true, true, false, false, false};
 constexpr SDL_GPUCompareOp Compares[] = {SDL_GPU_COMPAREOP_NEVER,   SDL_GPU_COMPAREOP_LESS,      SDL_GPU_COMPAREOP_EQUAL,
                                          SDL_GPU_COMPAREOP_LESS_OR_EQUAL, SDL_GPU_COMPAREOP_GREATER, SDL_GPU_COMPAREOP_NOT_EQUAL,
                                          SDL_GPU_COMPAREOP_GREATER_OR_EQUAL, SDL_GPU_COMPAREOP_ALWAYS};
@@ -68,6 +74,36 @@ constexpr SDL_GPUBlendOp BlendOps[] = {SDL_GPU_BLENDOP_ADD, SDL_GPU_BLENDOP_SUBT
 constexpr SDL_GPUStencilOp StencilOps[] = {SDL_GPU_STENCILOP_KEEP, SDL_GPU_STENCILOP_ZERO, SDL_GPU_STENCILOP_REPLACE};
 constexpr SDL_GPUPrimitiveType Primitives[] = {SDL_GPU_PRIMITIVETYPE_POINTLIST, SDL_GPU_PRIMITIVETYPE_LINELIST,
                                                SDL_GPU_PRIMITIVETYPE_TRIANGLELIST, SDL_GPU_PRIMITIVETYPE_TRIANGLESTRIP};
+
+// The time in SDL GPU's calls counted as the API's while the GS is emulated (renderwork.h: OpenGL's calls for the GL backend; the
+// log's split names the API), a read back's wait as the card's
+class ApiSpan
+{
+public:
+    explicit ApiSpan(NativeGraphics::Work kind)
+    {
+        if (NativeGraphics::t_Work == NativeGraphics::Work::Gs)
+        {
+            before_ = NativeGraphics::SwitchWork(kind);
+            on_ = true;
+        }
+    }
+
+    ~ApiSpan()
+    {
+        if (on_)
+        {
+            NativeGraphics::SwitchWork(before_);
+        }
+    }
+
+    ApiSpan(const ApiSpan&) = delete;
+    ApiSpan& operator=(const ApiSpan&) = delete;
+
+private:
+    NativeGraphics::Work before_ = NativeGraphics::Work::None;
+    bool on_ = false;
+};
 
 bool UsesFactor(u8 factor)
 {
@@ -332,7 +368,11 @@ bool Translate(const std::string& source, bool vertex, bool factor, std::unorder
                     auto found = varyings.find(name);
                     if (found == varyings.end())
                     {
-                        location = static_cast<u32>(varyings.size());
+                        // (The next free location kept under a name no variable has: an array takes a location an element)
+                        u32& next = varyings[" next"];
+                        location = next;
+                        const size_t bracket = name.find('[');
+                        next += bracket == std::string::npos ? 1 : std::max<u32>(static_cast<u32>(std::strtoul(name.c_str() + bracket + 1, nullptr, 10)), 1);
                         varyings[name] = location;
                     }
                     else
@@ -438,9 +478,9 @@ bool CompileSpirv(bool vertex, const std::string& text, std::vector<u32>& spirv,
 class Compilers
 {
 public:
-    void Start()
+    void Start(u32 most)
     {
-        const u32 count = std::clamp<u32>(std::thread::hardware_concurrency(), 2, 9) - 1;
+        const u32 count = std::min(std::clamp<u32>(std::thread::hardware_concurrency(), 2, 9) - 1, most);
         for (u32 i = 0; i < count; i++)
         {
             threads_.emplace_back([this] { Run(); });
@@ -537,6 +577,8 @@ struct Texture
     s32 maxLevel = 1000;
     f32 anisotropy = 1.0f;
     SDL_GPUSampler* sampler = nullptr;
+    // Another backend's (THE LIST 72: the renderer's picture, taken by the window's backend): never released here
+    bool taken = false;
 };
 
 struct Framebuffer
@@ -693,12 +735,132 @@ void main()
 }
 )";
 
+// THE LIST 72: one device for the window's backend (the main thread's) and the renderer's (the render thread's), made by the first
+// to start (the window's, at the window's making: the window is claimed for it there) and destroyed with the last (the overlay's
+// shots, which share nothing, have one of their own); glslang's process started with the first device and ended with the last.
+// SDL GPU's calls are safe from both threads (each records command buffers of its own; resources made and released anywhere); the
+// queue runs the command buffers in their submitting's order, so a picture the renderer submitted is there for the window's command
+// buffer submitted after it. One thing isn't: SDL defragments its memory at a submit (SDL_gpu_vulkan.c 3.4.18's VULKAN_Submit, with a
+// window claimed only at the submit that presents it), moving the textures of a fragmented allocation into new images after a copy
+// of them; it spares an allocation with transfers pending, not a texture drawn into or sampled by a command buffer still being
+// recorded on another thread, whose draws before the move then land in the old image, after the copy: lost (the settings' shots
+// headless, the renderer drawing beside them, lost a backdrop that way). So while a window is claimed the renderer's backend
+// records only under g_RecordingLock (from a command buffer's start to its submit, which ends each call of it), and the window's
+// presenting submit takes it too
+std::mutex g_DeviceLock;
+SDL_GPUDevice* g_Device = nullptr;
+u32 g_DeviceUsers = 0;
+u32 g_Devices = 0;
+std::mutex g_RecordingLock;
+std::atomic<bool> g_WindowClaimed{false};
+
+// A device of SDL GPU's Vulkan (null when there's none: the reason printed)
+SDL_GPUDevice* MakeDevice()
+{
+    if (!SDL_WasInit(SDL_INIT_VIDEO) && !SDL_InitSubSystem(SDL_INIT_VIDEO))
+    {
+        std::fprintf(stderr, "graphics: Vulkan: no video: %s\n", SDL_GetError());
+        return nullptr;
+    }
+
+    // Vulkan's device with large points (the GS's points drawn as squares of the scale's size), else without
+    SDL_GPUDevice* device = nullptr;
+    for (int attempt = 0; attempt < 2 && device == nullptr; attempt++)
+    {
+        SDL_PropertiesID props = SDL_CreateProperties();
+        SDL_SetStringProperty(props, SDL_PROP_GPU_DEVICE_CREATE_NAME_STRING, "vulkan");
+        SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_SPIRV_BOOLEAN, true);
+        SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_DEBUGMODE_BOOLEAN, std::getenv("TWIN_VULKAN_DEBUG") != nullptr);
+        SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_PREFERLOWPOWER_BOOLEAN, false);
+        // VkPhysicalDeviceFeatures' largePoints (the 17th of its 55 booleans)
+        u32 features[55] = {};
+        features[16] = 1;
+        SDL_GPUVulkanOptions options = {};
+        options.vulkan_api_version = (1u << 22);
+        options.vulkan_10_physical_device_features = features;
+        if (attempt == 0)
+        {
+            SDL_SetPointerProperty(props, SDL_PROP_GPU_DEVICE_CREATE_VULKAN_OPTIONS_POINTER, &options);
+        }
+
+        device = SDL_CreateGPUDeviceWithProperties(props);
+        SDL_DestroyProperties(props);
+        if (device == nullptr && attempt == 0)
+        {
+            std::fprintf(stderr, "graphics: Vulkan: no device with large points (%s): trying without\n", SDL_GetError());
+        }
+    }
+
+    if (device == nullptr)
+    {
+        std::fprintf(stderr, "graphics: Vulkan: no device: %s\n", SDL_GetError());
+        return nullptr;
+    }
+
+    SDL_PropertiesID info = SDL_GetGPUDeviceProperties(device);
+    std::fprintf(stderr, "graphics: Vulkan: %s, driver %s %s\n", SDL_GetStringProperty(info, SDL_PROP_GPU_DEVICE_NAME_STRING, "?"),
+                 SDL_GetStringProperty(info, SDL_PROP_GPU_DEVICE_DRIVER_NAME_STRING, "?"),
+                 SDL_GetStringProperty(info, SDL_PROP_GPU_DEVICE_DRIVER_VERSION_STRING, "?"));
+    return device;
+}
+
+// The shared device (made the first time), or one of the caller's own (OWN)
+SDL_GPUDevice* TakeDevice(bool own)
+{
+    std::lock_guard<std::mutex> lock(g_DeviceLock);
+    SDL_GPUDevice* device = nullptr;
+    if (own)
+    {
+        device = MakeDevice();
+    }
+    else
+    {
+        g_Device = g_Device != nullptr ? g_Device : MakeDevice();
+        g_DeviceUsers += g_Device != nullptr ? 1 : 0;
+        device = g_Device;
+    }
+
+    if (device != nullptr && g_Devices++ == 0)
+    {
+        glslang::InitializeProcess();
+    }
+
+    return device;
+}
+
+void LetGoOfDevice(SDL_GPUDevice* device)
+{
+    std::lock_guard<std::mutex> lock(g_DeviceLock);
+    if (device != g_Device)
+    {
+        SDL_DestroyGPUDevice(device);
+    }
+    else if (--g_DeviceUsers == 0)
+    {
+        SDL_DestroyGPUDevice(g_Device);
+        g_Device = nullptr;
+    }
+
+    if (--g_Devices == 0)
+    {
+        glslang::FinalizeProcess();
+    }
+}
+
 class VulkanBackend final : public Backend
 {
 public:
-    bool Start();
+    // A device of its own (OWN: the overlay's shots), or the shared one, with the window claimed for it (WINDOW)
+    bool Start(SDL_Window* window, bool own);
     ~VulkanBackend() override;
     const char* Name() const override { return "Vulkan"; }
+    std::string Describe() const override
+    {
+        SDL_PropertiesID info = SDL_GetGPUDeviceProperties(device_);
+        return std::string("Vulkan: ") + SDL_GetStringProperty(info, SDL_PROP_GPU_DEVICE_NAME_STRING, "?") + ", driver " +
+               SDL_GetStringProperty(info, SDL_PROP_GPU_DEVICE_DRIVER_NAME_STRING, "?") + " " +
+               SDL_GetStringProperty(info, SDL_PROP_GPU_DEVICE_DRIVER_VERSION_STRING, "?");
+    }
     void MakeCurrent() override {}
     void Play(const CommandList& list) override;
     void NewTextures(s32 count, u32* names) override;
@@ -727,8 +889,17 @@ public:
         }
     }
     void ParallelCompiles() override {}
-    bool SharesGlTextures() const override { return false; }
     size_t ListBytes() const override { return listBytes_; }
+    void Flush() override { SubmitWork(false); }
+    void* NativeTexture(u32 texture) override
+    {
+        Texture* t = TextureOf(texture);
+        return t != nullptr ? t->texture : nullptr;
+    }
+    u32 TakeTexture(void* native, s32 width, s32 height) override;
+    bool WindowFrame(s32 width, s32 height) override;
+    void ShowWindow() override;
+    void SetVSync(bool on) override;
 
 private:
     Texture* TextureOf(u32 name) { return name != 0 && name < textures_.size() && textures_[name].live ? &textures_[name] : nullptr; }
@@ -737,7 +908,8 @@ private:
     void EndPasses();
     SDL_GPUCopyPass* CopyPass();
     bool BeginRender(u32 framebuffer);
-    void SubmitWork(bool wait);
+    // (PRESENTING: the window's presenting submit, under g_RecordingLock)
+    void SubmitWork(bool wait, bool presenting = false);
     bool MakeTexture(Texture& t, u32 format, s32 width, s32 height, u32 levels);
     void EnsureLevels(Texture& t, u32 levels);
     SDL_GPUSampler* SamplerFor(Texture& t);
@@ -757,7 +929,13 @@ private:
 
     SDL_GPUDevice* device_ = nullptr;
     Compilers compilers_;
-    bool glslangStarted_ = false;
+    // The window's backend's: the window claimed, its frame's texture (framebuffer 0's colour), the textures taken by their SDL
+    // texture
+    SDL_Window* window_ = nullptr;
+    u32 windowTexture_ = 0;
+    std::unordered_map<void*, u32> taken_;
+    // The renderer's: g_RecordingLock held while its command buffer is open (a window claimed on the shared device)
+    bool recordingLocked_ = false;
     std::vector<Texture> textures_;
     std::vector<u32> freeTextures_;
     std::vector<Framebuffer> framebuffers_;
@@ -823,9 +1001,20 @@ VulkanBackend::~VulkanBackend()
             EndPasses();
             SDL_SubmitGPUCommandBuffer(commands_);
             commands_ = nullptr;
+            if (recordingLocked_)
+            {
+                recordingLocked_ = false;
+                g_RecordingLock.unlock();
+            }
         }
 
         SDL_WaitForGPUIdle(device_);
+        if (window_ != nullptr)
+        {
+            SDL_ReleaseWindowFromGPUDevice(device_, window_);
+            g_WindowClaimed = false;
+        }
+
         for (SDL_GPUFence* f : inFlight_)
         {
             SDL_ReleaseGPUFence(device_, f);
@@ -843,7 +1032,7 @@ VulkanBackend::~VulkanBackend()
 
         for (Texture& t : textures_)
         {
-            if (t.texture != nullptr)
+            if (t.texture != nullptr && !t.taken)
             {
                 SDL_ReleaseGPUTexture(device_, t.texture);
             }
@@ -885,64 +1074,26 @@ VulkanBackend::~VulkanBackend()
             }
         }
 
-        SDL_DestroyGPUDevice(device_);
-    }
-
-    if (glslangStarted_)
-    {
-        glslang::FinalizeProcess();
+        LetGoOfDevice(device_);
     }
 }
 
-bool VulkanBackend::Start()
+bool VulkanBackend::Start(SDL_Window* window, bool own)
 {
-    if (!SDL_WasInit(SDL_INIT_VIDEO) && !SDL_InitSubSystem(SDL_INIT_VIDEO))
-    {
-        std::fprintf(stderr, "graphics: Vulkan: no video: %s\n", SDL_GetError());
-        return false;
-    }
-
-    // Vulkan's device with large points (the GS's points drawn as squares of the scale's size), else without
-    for (int attempt = 0; attempt < 2 && device_ == nullptr; attempt++)
-    {
-        SDL_PropertiesID props = SDL_CreateProperties();
-        SDL_SetStringProperty(props, SDL_PROP_GPU_DEVICE_CREATE_NAME_STRING, "vulkan");
-        SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_SPIRV_BOOLEAN, true);
-        SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_DEBUGMODE_BOOLEAN, std::getenv("TWIN_VULKAN_DEBUG") != nullptr);
-        SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_PREFERLOWPOWER_BOOLEAN, false);
-        // VkPhysicalDeviceFeatures' largePoints (the 17th of its 55 booleans)
-        u32 features[55] = {};
-        features[16] = 1;
-        SDL_GPUVulkanOptions options = {};
-        options.vulkan_api_version = (1u << 22);
-        options.vulkan_10_physical_device_features = features;
-        if (attempt == 0)
-        {
-            SDL_SetPointerProperty(props, SDL_PROP_GPU_DEVICE_CREATE_VULKAN_OPTIONS_POINTER, &options);
-        }
-
-        device_ = SDL_CreateGPUDeviceWithProperties(props);
-        SDL_DestroyProperties(props);
-        if (device_ == nullptr && attempt == 0)
-        {
-            std::fprintf(stderr, "graphics: Vulkan: no device with large points (%s): trying without\n", SDL_GetError());
-        }
-    }
-
+    device_ = TakeDevice(own);
     if (device_ == nullptr)
     {
-        std::fprintf(stderr, "graphics: Vulkan: no device: %s\n", SDL_GetError());
         return false;
     }
 
-    SDL_PropertiesID info = SDL_GetGPUDeviceProperties(device_);
-    std::fprintf(stderr, "graphics: Vulkan: %s, driver %s %s\n", SDL_GetStringProperty(info, SDL_PROP_GPU_DEVICE_NAME_STRING, "?"),
-                 SDL_GetStringProperty(info, SDL_PROP_GPU_DEVICE_DRIVER_NAME_STRING, "?"),
-                 SDL_GetStringProperty(info, SDL_PROP_GPU_DEVICE_DRIVER_VERSION_STRING, "?"));
-
-    // The formats the renderer draws and samples
-    for (u32 f = 0; f < 5; f++)
+    // The formats drawn and sampled (the renderer's, the window's code's)
+    for (u32 f = 0; f < 8; f++)
     {
+        if (f == FormatDepth32fStencil8)
+        {
+            continue;
+        }
+
         const SDL_GPUTextureUsageFlags colour = (IntegerFormat[f] ? SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ : SDL_GPU_TEXTUREUSAGE_SAMPLER) |
                                                 SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
         if (!SDL_GPUTextureSupportsFormat(device_, Formats[f], SDL_GPU_TEXTURETYPE_2D, colour))
@@ -959,12 +1110,26 @@ bool VulkanBackend::Start()
         return false;
     }
 
-    glslang::InitializeProcess();
-    glslangStarted_ = true;
-    compilers_.Start();
+    // (The window's code makes a few programs: a thread for them)
+    compilers_.Start(window != nullptr ? 1 : 8);
     textures_.resize(1);
     framebuffers_.resize(1);
     programs_.resize(1);
+    if (window != nullptr)
+    {
+        // The window claimed (its swapchain made): framebuffer 0 is its frame's texture, copied into the swapchain's when shown
+        if (!SDL_ClaimWindowForGPUDevice(device_, window))
+        {
+            std::fprintf(stderr, "graphics: Vulkan: the window can't show its pictures: %s\n", SDL_GetError());
+            return false;
+        }
+
+        window_ = window;
+        g_WindowClaimed = true;
+        NewTextures(1, &windowTexture_);
+        framebuffers_[0].colour = windowTexture_;
+        framebuffers_[0].live = true;
+    }
 
     // The lists played in pieces of this many bytes (OpenGL's after each batch: here each piece's vertexes are one upload and its
     // draws into one target one render pass)
@@ -993,10 +1158,13 @@ bool VulkanBackend::Start()
     f.magFilter = u.magFilter = FilterNearest;
     if (!MakeTexture(f, FormatRgba8, 1, 1, 1) || !MakeTexture(u, FormatR32ui, 1, 1, 1))
     {
+        SubmitWork(false);
         return false;
     }
 
-    std::fprintf(stderr, "graphics: Vulkan: drawing\n");
+    SubmitWork(false);
+
+    std::fprintf(stderr, "graphics: Vulkan: %s\n", window != nullptr ? "the window's pictures shown" : "drawing");
     return true;
 }
 
@@ -1266,6 +1434,12 @@ SDL_GPUCommandBuffer* VulkanBackend::Commands()
 {
     if (commands_ == nullptr)
     {
+        if (window_ == nullptr && device_ == g_Device && g_WindowClaimed)
+        {
+            g_RecordingLock.lock();
+            recordingLocked_ = true;
+        }
+
         commands_ = SDL_AcquireGPUCommandBuffer(device_);
         pushedVertex_ = 0;
         pushedFragment_ = 0;
@@ -1313,7 +1487,7 @@ bool VulkanBackend::BeginRender(u32 framebuffer)
         return true;
     }
 
-    if (framebuffer == 0 || framebuffer >= framebuffers_.size() || !framebuffers_[framebuffer].live)
+    if (framebuffer >= framebuffers_.size() || !framebuffers_[framebuffer].live)
     {
         return false;
     }
@@ -1375,7 +1549,7 @@ bool VulkanBackend::BeginRender(u32 framebuffer)
     return render_ != nullptr;
 }
 
-void VulkanBackend::SubmitWork(bool wait)
+void VulkanBackend::SubmitWork(bool wait, bool presenting)
 {
     if (commands_ == nullptr)
     {
@@ -1383,10 +1557,27 @@ void VulkanBackend::SubmitWork(bool wait)
     }
 
     EndPasses();
-    SDL_GPUFence* fence = SDL_SubmitGPUCommandBufferAndAcquireFence(commands_);
+    SDL_GPUFence* fence = nullptr;
+    if (presenting)
+    {
+        // (Where SDL may move textures: no other command buffer of the device open meanwhile, g_DeviceLock's comment)
+        std::lock_guard<std::mutex> lock(g_RecordingLock);
+        fence = SDL_SubmitGPUCommandBufferAndAcquireFence(commands_);
+    }
+    else
+    {
+        fence = SDL_SubmitGPUCommandBufferAndAcquireFence(commands_);
+    }
+
     commands_ = nullptr;
     draws_ = 0;
     uploaded_ = 0;
+    if (recordingLocked_)
+    {
+        recordingLocked_ = false;
+        g_RecordingLock.unlock();
+    }
+
     if (fence == nullptr)
     {
         return;
@@ -1416,11 +1607,13 @@ void VulkanBackend::SubmitWork(bool wait)
 
 bool VulkanBackend::MakeTexture(Texture& t, u32 format, s32 width, s32 height, u32 levels)
 {
-    if (t.texture != nullptr)
+    if (t.texture != nullptr && !t.taken)
     {
         SDL_ReleaseGPUTexture(device_, t.texture);
-        t.texture = nullptr;
     }
+
+    t.texture = nullptr;
+    t.taken = false;
 
     SDL_GPUTextureCreateInfo info = {};
     info.type = SDL_GPU_TEXTURETYPE_2D;
@@ -1996,7 +2189,7 @@ void VulkanBackend::Clear(const ClearCommand& c)
 
 void VulkanBackend::Blit(const BlitCommand& c)
 {
-    if (c.readFramebuffer == 0 || c.readFramebuffer >= framebuffers_.size())
+    if (c.readFramebuffer >= framebuffers_.size() || !framebuffers_[c.readFramebuffer].live)
     {
         return;
     }
@@ -2026,6 +2219,7 @@ void VulkanBackend::Blit(const BlitCommand& c)
 
 void VulkanBackend::Play(const CommandList& list)
 {
+    ApiSpan span(NativeGraphics::Work::OpenGl);
     // The bytes the list uploads (its vertexes, then its textures' rows, tightly), into the upload buffer at once
     uploadOffsets_.clear();
     size_t total = 0;
@@ -2463,9 +2657,14 @@ void VulkanBackend::Play(const CommandList& list)
                     }
                 }
 
-                if (t->texture != nullptr)
+                if (t->texture != nullptr && !t->taken)
                 {
                     SDL_ReleaseGPUTexture(device_, t->texture);
+                }
+
+                if (t->taken)
+                {
+                    taken_.erase(t->texture);
                 }
 
                 *t = Texture{};
@@ -2501,9 +2700,10 @@ void VulkanBackend::Play(const CommandList& list)
         }
     }
 
-    // (Each playing's passes end with it: the next starts with its vertexes' upload)
+    // (Each playing's passes end with it: the next starts with its vertexes' upload; its command buffer submitted when it's under the
+    // recording lock, or after enough work)
     EndPasses();
-    if (draws_ >= 8192 || uploaded_ >= (64u << 20))
+    if (recordingLocked_ || draws_ >= 8192 || uploaded_ >= (64u << 20))
     {
         SubmitWork(false);
     }
@@ -2511,7 +2711,8 @@ void VulkanBackend::Play(const CommandList& list)
 
 void VulkanBackend::Read(u32 framebuffer, s32 x, s32 y, s32 width, s32 height, Format format, s32 rowLength, s32 alignment, void* out)
 {
-    if (framebuffer == 0 || framebuffer >= framebuffers_.size() || width <= 0 || height <= 0)
+    ApiSpan span(NativeGraphics::Work::CardWait);
+    if (framebuffer >= framebuffers_.size() || !framebuffers_[framebuffer].live || width <= 0 || height <= 0)
     {
         return;
     }
@@ -2605,7 +2806,7 @@ void VulkanBackend::Read(u32 framebuffer, s32 x, s32 y, s32 width, s32 height, F
 
 bool VulkanBackend::FramebufferComplete(u32 framebuffer)
 {
-    if (framebuffer == 0 || framebuffer >= framebuffers_.size())
+    if (framebuffer >= framebuffers_.size() || !framebuffers_[framebuffer].live)
     {
         return false;
     }
@@ -2618,9 +2819,11 @@ bool VulkanBackend::FramebufferComplete(u32 framebuffer)
 
 void* VulkanBackend::Fence()
 {
+    ApiSpan span(NativeGraphics::Work::OpenGl);
+    // (Nothing recorded since the last submit: no fence needed, the queue keeps the order)
     if (commands_ == nullptr)
     {
-        Commands();
+        return nullptr;
     }
 
     EndPasses();
@@ -2628,14 +2831,142 @@ void* VulkanBackend::Fence()
     commands_ = nullptr;
     draws_ = 0;
     uploaded_ = 0;
+    if (recordingLocked_)
+    {
+        recordingLocked_ = false;
+        g_RecordingLock.unlock();
+    }
+
     return fence;
 }
 }
 
-Backend* StartVulkanBackend()
+u32 VulkanBackend::TakeTexture(void* native, s32 width, s32 height)
+{
+    if (native == nullptr)
+    {
+        return 0;
+    }
+
+    u32 name = 0;
+    auto found = taken_.find(native);
+    if (found != taken_.end())
+    {
+        name = found->second;
+    }
+    else
+    {
+        NewTextures(1, &name);
+        taken_[native] = name;
+    }
+
+    // (The renderer's picture: RGBA8, one level, clamped at its edges as the renderer's copy of it is)
+    Texture& t = textures_[name];
+    if (!t.taken)
+    {
+        t.wrapS = WrapClamp;
+        t.wrapT = WrapClamp;
+    }
+
+    t.texture = static_cast<SDL_GPUTexture*>(native);
+    t.taken = true;
+    t.format = FormatRgba8;
+    t.width = width;
+    t.height = height;
+    t.levels = 1;
+    t.maxLevel = 0;
+    return name;
+}
+
+bool VulkanBackend::WindowFrame(s32 width, s32 height)
+{
+    if (window_ == nullptr || width <= 0 || height <= 0)
+    {
+        return false;
+    }
+
+    Texture& t = textures_[windowTexture_];
+    if (t.texture == nullptr || t.width != width || t.height != height)
+    {
+        t.maxLevel = 0;
+        EndPasses();
+        if (!MakeTexture(t, FormatRgba8, width, height, 1))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void VulkanBackend::ShowWindow()
+{
+    if (window_ == nullptr)
+    {
+        return;
+    }
+
+    // The frame's texture copied into the swapchain's (rows turned over: the texture's are OpenGL's, the first the bottom one),
+    // which is shown when the command buffer is submitted. None while the window is minimised: nothing to show
+    SDL_GPUCommandBuffer* commands = Commands();
+    EndPasses();
+    const Texture* t = TextureOf(windowTexture_);
+    SDL_GPUTexture* swapchain = nullptr;
+    Uint32 width = 0;
+    Uint32 height = 0;
+    if (!SDL_WaitAndAcquireGPUSwapchainTexture(commands, window_, &swapchain, &width, &height))
+    {
+        if (told_++ < 3)
+        {
+            std::fprintf(stderr, "graphics: Vulkan: no swapchain picture: %s\n", SDL_GetError());
+        }
+    }
+    else if (swapchain != nullptr && t != nullptr && t->texture != nullptr)
+    {
+        SDL_GPUBlitInfo blit = {};
+        blit.source.texture = t->texture;
+        blit.source.w = static_cast<Uint32>(t->width);
+        blit.source.h = static_cast<Uint32>(t->height);
+        blit.destination.texture = swapchain;
+        blit.destination.w = width;
+        blit.destination.h = height;
+        blit.load_op = SDL_GPU_LOADOP_DONT_CARE;
+        blit.flip_mode = SDL_FLIP_VERTICAL;
+        blit.filter = SDL_GPU_FILTER_NEAREST;
+        SDL_BlitGPUTexture(commands, &blit);
+    }
+
+    SubmitWork(false, true);
+}
+
+void VulkanBackend::SetVSync(bool on)
+{
+    if (window_ == nullptr)
+    {
+        return;
+    }
+
+    // Off: as soon as drawn (tearing, as OpenGL's swap interval 0), else the next blank without tearing, else at the blank
+    SDL_GPUPresentMode mode = SDL_GPU_PRESENTMODE_VSYNC;
+    if (!on && SDL_WindowSupportsGPUPresentMode(device_, window_, SDL_GPU_PRESENTMODE_IMMEDIATE))
+    {
+        mode = SDL_GPU_PRESENTMODE_IMMEDIATE;
+    }
+    else if (!on && SDL_WindowSupportsGPUPresentMode(device_, window_, SDL_GPU_PRESENTMODE_MAILBOX))
+    {
+        mode = SDL_GPU_PRESENTMODE_MAILBOX;
+    }
+
+    if (!SDL_SetGPUSwapchainParameters(device_, window_, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, mode))
+    {
+        std::fprintf(stderr, "graphics: Vulkan: the window's presenting not changed: %s\n", SDL_GetError());
+    }
+}
+
+Backend* StartVulkanBackend(bool own)
 {
     auto* backend = new VulkanBackend;
-    if (!backend->Start())
+    if (!backend->Start(nullptr, own))
     {
         delete backend;
         return nullptr;
@@ -2643,15 +2974,42 @@ Backend* StartVulkanBackend()
 
     return backend;
 }
+
+Backend* StartVulkanWindowBackend(void* window)
+{
+    auto* backend = new VulkanBackend;
+    if (!backend->Start(static_cast<SDL_Window*>(window), false))
+    {
+        delete backend;
+        return nullptr;
+    }
+
+    return backend;
+}
+
+bool VulkanBuilt()
+{
+    return true;
+}
 }
 
 #else
 
 namespace Hw
 {
-Backend* StartVulkanBackend()
+Backend* StartVulkanBackend(bool)
 {
     return nullptr;
+}
+
+Backend* StartVulkanWindowBackend(void*)
+{
+    return nullptr;
+}
+
+bool VulkanBuilt()
+{
+    return false;
 }
 }
 

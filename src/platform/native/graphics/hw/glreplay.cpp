@@ -24,6 +24,8 @@ constexpr GLenum Formats[][3] = {
     {GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT},
     {GL_R16UI, GL_RED_INTEGER, GL_UNSIGNED_SHORT},
     {GL_DEPTH32F_STENCIL8, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV},
+    {GL_R8, GL_RED, GL_UNSIGNED_BYTE},
+    {GL_RG8, GL_RG, GL_UNSIGNED_BYTE},
 };
 constexpr GLenum Filters[] = {GL_NEAREST, GL_LINEAR, GL_NEAREST_MIPMAP_NEAREST, GL_LINEAR_MIPMAP_NEAREST, GL_NEAREST_MIPMAP_LINEAR,
                               GL_LINEAR_MIPMAP_LINEAR};
@@ -47,16 +49,16 @@ GLbitfield GlBits(u32 bits)
 class GlBackend final : public Backend
 {
 public:
-    bool Start(SDL_Window* window, SDL_GLContext context, bool shared);
+    bool Start(SDL_Window* window, SDL_GLContext context, bool shared, bool direct);
     ~GlBackend() override;
     const char* Name() const override { return "OpenGL"; }
     void MakeCurrent() override;
     void Play(const CommandList& list) override;
-    void NewTextures(s32 count, u32* names) override { GetGl().GenTextures(count, names); }
-    void NewFramebuffers(s32 count, u32* names) override { GetGl().GenFramebuffers(count, names); }
+    void NewTextures(s32 count, u32* names) override { G().GenTextures(count, names); }
+    void NewFramebuffers(s32 count, u32* names) override { G().GenFramebuffers(count, names); }
     u32 StartProgram(const char* vertex, const std::string& fragment, bool dualSource) override;
     bool FinishProgram(u32 program) override;
-    s32 UniformLocation(u32 program, const char* name) override { return GetGl().GetUniformLocation(program, name); }
+    s32 UniformLocation(u32 program, const char* name) override { return G().GetUniformLocation(program, name); }
     void Read(u32 framebuffer, s32 x, s32 y, s32 width, s32 height, Format format, s32 rowLength, s32 alignment, void* out) override;
     bool FramebufferComplete(u32 framebuffer) override;
     bool OutOfMemory() override;
@@ -64,17 +66,34 @@ public:
     s32 MaxAnisotropy() override;
     void* Fence() override;
     void WaitFence(void* fence) override;
-    void DeleteFence(void* fence) override { GetGl().DeleteSync(static_cast<GLsync>(fence)); }
+    void DeleteFence(void* fence) override { G().DeleteSync(static_cast<GLsync>(fence)); }
     void ParallelCompiles() override
     {
         // As many of the driver's threads as it likes (0xFFFFFFFF), where it has them
-        if (GetGl().MaxShaderCompilerThreads != nullptr)
+        if (G().MaxShaderCompilerThreads != nullptr)
         {
-            GetGl().MaxShaderCompilerThreads(0xFFFFFFFFu);
+            G().MaxShaderCompilerThreads(0xFFFFFFFFu);
         }
     }
 
+    // The window's (THE LIST 72): its own framebuffer, swapped
+    void ShowWindow() override
+    {
+        if (ownWindow_ == nullptr)
+        {
+            SDL_GL_SwapWindow(window_);
+        }
+    }
+
+    void SetVSync(bool on) override
+    {
+        MakeCurrent();
+        SDL_GL_SetSwapInterval(on ? 1 : 0);
+    }
+
 private:
+    // The entry points: gl.h's (the renderer's, counted and cached), or the window's own as they are
+    Gl& G() { return *gl_; }
     void ApplyState(const RenderState& s);
     void BindDraw(u32 framebuffer);
     void BindRead(u32 framebuffer);
@@ -86,6 +105,8 @@ private:
     SDL_Window* window_ = nullptr;
     SDL_GLContext context_ = nullptr;
     bool ownContext_ = false;
+    Gl* gl_ = nullptr;
+    Gl direct_ = {};
     // The context the window's code draws in too (one thread): what this playing set is forgotten at each
     bool shared_ = false;
     // Made current again: its state unknown
@@ -137,7 +158,7 @@ GlBackend::~GlBackend()
     }
 }
 
-bool GlBackend::Start(SDL_Window* window, SDL_GLContext context, bool shared)
+bool GlBackend::Start(SDL_Window* window, SDL_GLContext context, bool shared, bool direct)
 {
     shared_ = shared;
     window_ = window;
@@ -174,14 +195,28 @@ bool GlBackend::Start(SDL_Window* window, SDL_GLContext context, bool shared)
     }
 
     MakeCurrent();
-    if (!LoadGl())
+    if (direct)
     {
-        return false;
+        if (!LoadDirectGl(direct_))
+        {
+            return false;
+        }
+
+        gl_ = &direct_;
+    }
+    else
+    {
+        if (!LoadGl())
+        {
+            return false;
+        }
+
+        // The calls that would change nothing left out (THE LIST 69): the context's state only where the context is ours alone
+        CacheGlState(!shared);
+        gl_ = &GetGl();
     }
 
-    // The calls that would change nothing left out (THE LIST 69): the context's state only where the context is ours alone
-    CacheGlState(!shared);
-    Gl& gl = GetGl();
+    Gl& gl = G();
     gl.GenVertexArrays(1, &vertexArray_);
     gl.GenBuffers(1, &vertexBuffer_);
     gl.BindVertexArray(vertexArray_);
@@ -216,7 +251,7 @@ void GlBackend::BindDraw(u32 framebuffer)
 {
     if (applied_.draw != framebuffer)
     {
-        GetGl().BindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
+        G().BindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
         applied_.draw = framebuffer;
     }
 }
@@ -225,7 +260,7 @@ void GlBackend::BindRead(u32 framebuffer)
 {
     if (applied_.read != framebuffer)
     {
-        GetGl().BindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
+        G().BindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
         applied_.read = framebuffer;
     }
 }
@@ -233,7 +268,7 @@ void GlBackend::BindRead(u32 framebuffer)
 void GlBackend::BindForChange(u32 texture)
 {
     // On the unit made active last (as the renderer's calls did)
-    Gl& gl = GetGl();
+    Gl& gl = G();
     if (applied_.unit == ~0u)
     {
         gl.ActiveTexture(GL_TEXTURE0);
@@ -249,7 +284,7 @@ void GlBackend::BindForChange(u32 texture)
 
 void GlBackend::UnpackStore(s32 rowLength, s32 alignment)
 {
-    Gl& gl = GetGl();
+    Gl& gl = G();
     if (applied_.unpackRowLength != rowLength)
     {
         gl.PixelStorei(GL_UNPACK_ROW_LENGTH, rowLength);
@@ -267,14 +302,14 @@ void GlBackend::UnbindUnpackBuffer()
 {
     if (applied_.unpackBuffer)
     {
-        GetGl().BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+        G().BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
         applied_.unpackBuffer = false;
     }
 }
 
 void GlBackend::ApplyState(const RenderState& s)
 {
-    Gl& gl = GetGl();
+    Gl& gl = G();
     RenderState& a = applied_.renderState;
     const bool all = !applied_.state;
     auto cap = [&](GLenum name, u8 on, u8 was) {
@@ -359,7 +394,7 @@ void GlBackend::Play(const CommandList& list)
         forget_ = false;
     }
 
-    Gl& gl = GetGl();
+    Gl& gl = G();
     const u8* at = list.commands();
     const u8* end = at + list.size();
     while (at < end)
@@ -619,7 +654,7 @@ void GlBackend::Play(const CommandList& list)
 
 u32 GlBackend::StartProgram(const char* vertex, const std::string& fragment, bool dualSource)
 {
-    Gl& gl = GetGl();
+    Gl& gl = G();
     GLuint v = gl.CreateShader(GL_VERTEX_SHADER);
     gl.ShaderSource(v, 1, &vertex, nullptr);
     gl.CompileShader(v);
@@ -643,7 +678,7 @@ u32 GlBackend::StartProgram(const char* vertex, const std::string& fragment, boo
 
 bool GlBackend::FinishProgram(u32 program)
 {
-    Gl& gl = GetGl();
+    Gl& gl = G();
     auto found = shaders_.find(program);
     GLint linked = 0;
     gl.GetProgramiv(program, GL_LINK_STATUS, &linked);
@@ -682,7 +717,7 @@ bool GlBackend::FinishProgram(u32 program)
 void GlBackend::Read(u32 framebuffer, s32 x, s32 y, s32 width, s32 height, Format format, s32 rowLength, s32 alignment, void* out)
 {
     MakeCurrent();
-    Gl& gl = GetGl();
+    Gl& gl = G();
     gl.BindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
     applied_.read = framebuffer;
     gl.PixelStorei(GL_PACK_ALIGNMENT, alignment);
@@ -700,7 +735,7 @@ void GlBackend::Read(u32 framebuffer, s32 x, s32 y, s32 width, s32 height, Forma
 bool GlBackend::FramebufferComplete(u32 framebuffer)
 {
     MakeCurrent();
-    Gl& gl = GetGl();
+    Gl& gl = G();
     gl.BindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
     applied_.draw = framebuffer;
     return gl.CheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
@@ -709,7 +744,7 @@ bool GlBackend::FramebufferComplete(u32 framebuffer)
 bool GlBackend::OutOfMemory()
 {
     MakeCurrent();
-    Gl& gl = GetGl();
+    Gl& gl = G();
     bool failed = false;
     while (gl.GetError() != GL_NO_ERROR)
     {
@@ -722,7 +757,7 @@ bool GlBackend::OutOfMemory()
 s32 GlBackend::MaxTextureSize()
 {
     GLint biggest = 0;
-    GetGl().GetIntegerv(GL_MAX_TEXTURE_SIZE, &biggest);
+    G().GetIntegerv(GL_MAX_TEXTURE_SIZE, &biggest);
     return biggest;
 }
 
@@ -731,7 +766,7 @@ s32 GlBackend::MaxAnisotropy()
     // GL_MAX_TEXTURE_MAX_ANISOTROPY, core since 4.6 and EXT_texture_filter_anisotropic's before; 1 when it has none
     GLfloat value = 0.0f;
     auto getFloat = reinterpret_cast<void (*)(GLenum, GLfloat*)>(SDL_GL_GetProcAddress("glGetFloatv"));
-    Gl& gl = GetGl();
+    Gl& gl = G();
     while (gl.GetError() != GL_NO_ERROR)
     {
     }
@@ -746,7 +781,7 @@ s32 GlBackend::MaxAnisotropy()
 
 void* GlBackend::Fence()
 {
-    Gl& gl = GetGl();
+    Gl& gl = G();
     GLsync fence = gl.FenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
     gl.Flush();
     return fence;
@@ -754,14 +789,26 @@ void* GlBackend::Fence()
 
 void GlBackend::WaitFence(void* fence)
 {
-    GetGl().WaitSync(static_cast<GLsync>(fence), 0, GL_TIMEOUT_IGNORED);
+    G().WaitSync(static_cast<GLsync>(fence), 0, GL_TIMEOUT_IGNORED);
 }
 }
 
 Backend* StartGlBackend(void* window, void* context, bool shared)
 {
     auto* backend = new GlBackend;
-    if (!backend->Start(static_cast<SDL_Window*>(window), static_cast<SDL_GLContext>(context), shared))
+    if (!backend->Start(static_cast<SDL_Window*>(window), static_cast<SDL_GLContext>(context), shared, false))
+    {
+        delete backend;
+        return nullptr;
+    }
+
+    return backend;
+}
+
+Backend* StartGlWindowBackend(void* window, void* context)
+{
+    auto* backend = new GlBackend;
+    if (!backend->Start(static_cast<SDL_Window*>(window), static_cast<SDL_GLContext>(context), true, true))
     {
         delete backend;
         return nullptr;

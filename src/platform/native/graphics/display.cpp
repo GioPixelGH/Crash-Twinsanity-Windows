@@ -12,6 +12,7 @@
 #include "presenter.h"
 #include "settings.h"
 #include "smaa.h"
+#include "hw/gpu.h"
 #include "hw/hwgs.h"
 #include "hw/replace.h"
 #include "resolution.h"
@@ -33,109 +34,43 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
 
-// The window's OpenGL 3.3 core presenter: the PCRTC's picture is a texture drawn over the window at the TV's shape (4:3, or 16:9
-// when the game's screen setting says the TV is wide), letterboxed. Its scaling is linear (the TV's analogue picture has no
-// pixels of its own) unless TWIN_DISPLAY_FILTER=nearest. The GL entry points are loaded through SDL, so nothing here is
-// macOS's or Linux's own
+// The window's presenter: the PCRTC's picture is a texture drawn over the window at the TV's shape (4:3, or 16:9 when the game's
+// screen setting says the TV is wide), letterboxed. Its scaling is linear (the TV's analogue picture has no pixels of its own)
+// unless TWIN_DISPLAY_FILTER=nearest. It draws through the window's backend (hw/gpu.h, THE LIST 72): OpenGL 3.3 core on the window's
+// context, or SDL GPU's Vulkan with the window claimed for it (the window's pictures drawn into a texture of its size, copied into
+// the swapchain's). The hardware renderer's picture is handed over as its API's own texture, so neither reads it back
 
 namespace
 {
-using GLenum = unsigned int;
-using GLuint = unsigned int;
-using GLint = int;
-using GLsizei = int;
-using GLboolean = unsigned char;
-using GLchar = char;
-using GLbitfield = unsigned int;
-using GLfloat = float;
-using GLsync = void*;
-
-constexpr GLenum GL_TEXTURE_2D = 0x0DE1;
-constexpr GLenum GL_TEXTURE_MIN_FILTER = 0x2801;
-constexpr GLenum GL_TEXTURE_MAG_FILTER = 0x2800;
-constexpr GLenum GL_TEXTURE_WRAP_S = 0x2802;
-constexpr GLenum GL_TEXTURE_WRAP_T = 0x2803;
-constexpr GLenum GL_CLAMP_TO_EDGE = 0x812F;
-constexpr GLenum GL_LINEAR = 0x2601;
-constexpr GLenum GL_NEAREST = 0x2600;
-constexpr GLenum GL_RGBA = 0x1908;
-constexpr GLenum GL_RGBA8 = 0x8058;
-constexpr GLenum GL_UNSIGNED_BYTE = 0x1401;
-constexpr GLenum GL_COLOR_BUFFER_BIT = 0x4000;
-constexpr GLenum GL_TRIANGLE_STRIP = 0x0005;
-constexpr GLenum GL_VERTEX_SHADER = 0x8B31;
-constexpr GLenum GL_FRAGMENT_SHADER = 0x8B30;
-constexpr GLenum GL_COMPILE_STATUS = 0x8B81;
-constexpr GLenum GL_LINK_STATUS = 0x8B82;
-constexpr GLenum GL_TEXTURE0 = 0x84C0;
-
-struct Gl
-{
-    void (*GenTextures)(GLsizei, GLuint*);
-    void (*BindTexture)(GLenum, GLuint);
-    void (*TexParameteri)(GLenum, GLenum, GLint);
-    void (*TexImage2D)(GLenum, GLint, GLint, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*);
-    void (*Viewport)(GLint, GLint, GLsizei, GLsizei);
-    void (*ClearColor)(GLfloat, GLfloat, GLfloat, GLfloat);
-    void (*Clear)(GLbitfield);
-    void (*DrawArrays)(GLenum, GLint, GLsizei);
-    GLuint (*CreateShader)(GLenum);
-    void (*ShaderSource)(GLuint, GLsizei, const GLchar* const*, const GLint*);
-    void (*CompileShader)(GLuint);
-    void (*GetShaderiv)(GLuint, GLenum, GLint*);
-    void (*GetShaderInfoLog)(GLuint, GLsizei, GLsizei*, GLchar*);
-    GLuint (*CreateProgram)();
-    void (*AttachShader)(GLuint, GLuint);
-    void (*LinkProgram)(GLuint);
-    void (*GetProgramiv)(GLuint, GLenum, GLint*);
-    void (*UseProgram)(GLuint);
-    GLint (*GetUniformLocation)(GLuint, const GLchar*);
-    void (*Uniform1i)(GLint, GLint);
-    void (*GenVertexArrays)(GLsizei, GLuint*);
-    void (*BindVertexArray)(GLuint);
-    void (*ActiveTexture)(GLenum);
-    void (*Uniform2f)(GLint, GLfloat, GLfloat);
-    void (*Uniform1f)(GLint, GLfloat);
-    void (*DeleteProgram)(GLuint);
-    void (*DeleteShader)(GLuint);
-    void (*BindFramebuffer)(GLenum, GLuint);
-    void (*Enable)(GLenum);
-    void (*Disable)(GLenum);
-    void (*ColorMask)(GLboolean, GLboolean, GLboolean, GLboolean);
-    void (*Uniform4f)(GLint, GLfloat, GLfloat, GLfloat, GLfloat);
-    // The render thread's pictures: their fences
-    void (*Flush)();
-    GLsync (*FenceSync)(GLenum, GLbitfield);
-    void (*WaitSync)(GLsync, GLbitfield, unsigned long long);
-    void (*DeleteSync)(GLsync);
-    // The window's shots (NativeGraphicsShootWindow)
-    void (*PixelStorei)(GLenum, GLint);
-    void (*ReadPixels)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*);
-};
-
 struct Presenter
 {
     SDL_Window* window = nullptr;
+    // OpenGL's: the window's context
     SDL_GLContext context = nullptr;
-    Gl gl = {};
-    GLuint texture = 0;
-    GLuint program = 0;
-    GLuint vertexArray = 0;
+    // (Kept to the end: the exit quits SDL before static objects go, and the system takes it back)
+    Hw::Backend* backend = nullptr;
+    Hw::Gpu gpu;
+    bool vulkan = false;
+    // The picture read out (the software GS's, or the renderer's on another API) uploaded into this texture
+    u32 texture = 0;
+    u32 program = 0;
     bool linear = true;
-    bool filterChanged = false;
-    // The post filter asked for and the one made (0 none), its program
+    // The post filter asked for and the one made (0 none), its program (kept once made)
     int postFilter = 0;
     int madePostFilter = 0;
-    GLuint postProgram = 0;
+    u32 postProgram = 0;
+    u32 crtProgram = 0;
+    bool crtTried = false;
     // FXAA's and supersampling's programs (made when they're first wanted), anti-aliasing (0 off, 1 FXAA, 2 and 3 SSAA 2x and
     // 4x), V-sync
-    GLuint fxaaProgram = 0;
-    GLuint downsampleProgram = 0;
+    u32 fxaaProgram = 0;
+    u32 downsampleProgram = 0;
     int antiAliasing = 0;
     bool vsync = false;
     bool vsyncSet = false;
@@ -159,45 +94,17 @@ bool g_BlankStarted = false;
 // The frame rate option's (0: the video mode's, -1: as fast as they come)
 s32 g_FrameRate = 0;
 
-template <typename T>
-void Load(T& function, const char* name)
+// A program of the window's backend (0 when it doesn't compile: the backend printed why)
+u32 MakeProgram(Hw::Gpu& gpu, const char* vertex, const char* fragment, const char* what)
 {
-    function = reinterpret_cast<T>(SDL_GL_GetProcAddress(name));
-    if (function == nullptr)
+    const u32 program = gpu.StartProgram(vertex, fragment, false);
+    if (!gpu.FinishProgram(program))
     {
-        std::fprintf(stderr, "graphics: OpenGL has no %s\n", name);
-        std::abort();
-    }
-
-    // The work given the card timed (gputime.h)
-    if (void* timed = NativeGraphics::TimedEntryPoint(name))
-    {
-        function = reinterpret_cast<T>(timed);
-    }
-}
-
-GLuint Compile(Gl& gl, GLenum kind, const char* source, bool required = true)
-{
-    GLuint shader = gl.CreateShader(kind);
-    gl.ShaderSource(shader, 1, &source, nullptr);
-    gl.CompileShader(shader);
-    GLint ok = 0;
-    gl.GetShaderiv(shader, GL_COMPILE_STATUS, &ok);
-    if (!ok)
-    {
-        char log[1024];
-        gl.GetShaderInfoLog(shader, sizeof(log), nullptr, log);
-        std::fprintf(stderr, "graphics: shader: %s\n", log);
-        if (required)
-        {
-            std::abort();
-        }
-
-        gl.DeleteShader(shader);
+        Native::Log("graphics: the window's %s program wasn't made (the error output says why)", what);
         return 0;
     }
 
-    return shader;
+    return program;
 }
 
 // A quad over the viewport from the vertex number alone, the picture's rows top to bottom
@@ -240,47 +147,24 @@ void ViewRect(s32 width, s32 height, s32* x, s32* y, s32* viewWidth, s32* viewHe
     *y = (height - *viewHeight) / 2;
 }
 
-// The post filter's program made when it's asked for (or dropped)
+// The post filter's program: made the first time it's asked for and kept (none: the plain one draws)
 void MakePostFilter(Presenter& p)
 {
-    Gl& gl = p.gl;
-    if (p.postProgram != 0)
-    {
-        gl.DeleteProgram(p.postProgram);
-        p.postProgram = 0;
-    }
-
     p.madePostFilter = p.postFilter;
+    p.postProgram = 0;
     const char* source = p.postFilter == 1 ? NativeUiCrtShaderSource() : nullptr;
     if (source == nullptr)
     {
         return;
     }
 
-    GLuint vertex = Compile(gl, GL_VERTEX_SHADER, VertexSource);
-    GLuint fragment = Compile(gl, GL_FRAGMENT_SHADER, source, false);
-    if (fragment == 0)
+    if (!p.crtTried)
     {
-        gl.DeleteShader(vertex);
-        return;
+        p.crtTried = true;
+        p.crtProgram = MakeProgram(p.gpu, VertexSource, source, "post filter's");
     }
 
-    GLuint program = gl.CreateProgram();
-    gl.AttachShader(program, vertex);
-    gl.AttachShader(program, fragment);
-    gl.LinkProgram(program);
-    gl.DeleteShader(vertex);
-    gl.DeleteShader(fragment);
-    GLint linked = 0;
-    gl.GetProgramiv(program, GL_LINK_STATUS, &linked);
-    if (!linked)
-    {
-        std::fprintf(stderr, "graphics: the post filter's program doesn't link\n");
-        gl.DeleteProgram(program);
-        return;
-    }
-
-    p.postProgram = program;
+    p.postProgram = p.crtProgram;
 }
 
 // FXAA (a short version of Timothy Lottes' FXAA 3 console algorithm): edges found by luma contrast with their neighbours and
@@ -355,11 +239,12 @@ void WriteWindowShot(s32 width, s32 height)
         return;
     }
 
-    Gl& gl = g_Presenter.gl;
+    Hw::Gpu& gpu = g_Presenter.gpu;
     std::vector<u32> rows(static_cast<size_t>(width) * static_cast<size_t>(height));
-    gl.BindFramebuffer(0x8D40, 0);
-    gl.PixelStorei(0x0D05, 4);
-    gl.ReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, rows.data());
+    gpu.BindReadFramebuffer(0);
+    gpu.PixelStore(Hw::StorePackAlignment, 4);
+    gpu.PixelStore(Hw::StorePackRowLength, 0);
+    gpu.ReadPixels(0, 0, width, height, Hw::FormatRgba8, rows.data());
     std::vector<u32> pixels(rows.size());
     for (s32 y = 0; y < height; y++)
     {
@@ -374,19 +259,35 @@ void WriteWindowShot(s32 width, s32 height)
     Native::Log("window shot: %s (%dx%d)%s", path.c_str(), width, height, written ? "" : ", not written");
 }
 
-// The picture drawn over the window: a texture's rectangle (0-1, top row first) of a picture of these pixels, at the TV's shape
-void PresentTexture(GLuint texture, f32 u0, f32 v0, f32 u1, f32 v1, u32 pictureWidth, u32 pictureHeight, u32 texelsPerPixel)
+// The picture drawn over the window: a texture of the window's backend, its rectangle (0-1, top row first) of a picture of these
+// pixels, at the TV's shape; then the overlay over it, and the window shown
+void PresentTexture(u32 texture, f32 u0, f32 v0, f32 u1, f32 v1, u32 pictureWidth, u32 pictureHeight, u32 texelsPerPixel)
 {
     Presenter& p = g_Presenter;
-    Gl& gl = p.gl;
+    Hw::Gpu& gpu = p.gpu;
     s32 width = 0;
     s32 height = 0;
     SDL_GetWindowSizeInPixels(p.window, &width, &height);
+    if (!p.vsyncSet)
+    {
+        p.backend->SetVSync(p.vsync);
+        p.vsyncSet = true;
+    }
+
+    if (!p.backend->WindowFrame(width, height))
+    {
+        return;
+    }
+
+    // (The card's time of what follows: the window's, gputime.h)
+    gpu.Label(nullptr);
+    // (A texture taken from the renderer: its sampling set here, whatever it was)
+    gpu.ForgetSampling(texture);
     // SMAA (the anti-aliasing option's 4): the picture anti-aliased at its own size first (smaa.cpp), then drawn in its place as
     // the picture is (made smaller when it's larger than the window)
     if (p.antiAliasing == 4)
     {
-        if (GLuint smoothed = NativeGraphics::SmaaPicture(texture, u0, v0, u1, v1, pictureWidth, pictureHeight); smoothed != 0)
+        if (u32 smoothed = NativeGraphics::SmaaPicture(gpu, texture, u0, v0, u1, v1, pictureWidth, pictureHeight); smoothed != 0)
         {
             texture = smoothed;
             u0 = 0.0f;
@@ -396,24 +297,23 @@ void PresentTexture(GLuint texture, f32 u0, f32 v0, f32 u1, f32 v1, u32 pictureW
         }
     }
 
-    // The hardware renderer shares the context: its state isn't the presenter's
-    gl.BindFramebuffer(0x8D40, 0);
-    gl.Disable(0x0BE2);
-    gl.Disable(0x0B71);
-    gl.Disable(0x0C11);
-    gl.Disable(0x0B90);
-    gl.ColorMask(1, 1, 1, 1);
-    gl.Viewport(0, 0, width, height);
-    gl.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    gl.Clear(GL_COLOR_BUFFER_BIT);
+    gpu.BindFramebuffer(0);
+    gpu.Disable(Hw::CapBlend);
+    gpu.Disable(Hw::CapDepthTest);
+    gpu.Disable(Hw::CapScissorTest);
+    gpu.Disable(Hw::CapStencilTest);
+    gpu.ColorMask(true, true, true, true);
+    gpu.Viewport(0, 0, width, height);
+    gpu.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    gpu.Clear(Hw::ClearColour);
 
     ViewRect(width, height, &p.viewX, &p.viewY, &p.viewWidth, &p.viewHeight);
-    gl.Viewport(p.viewX, p.viewY, p.viewWidth, p.viewHeight);
-    gl.ActiveTexture(GL_TEXTURE0);
-    gl.BindTexture(GL_TEXTURE_2D, texture);
-    GLint scaling = static_cast<GLint>(p.linear ? GL_LINEAR : GL_NEAREST);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, scaling);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, scaling);
+    gpu.Viewport(p.viewX, p.viewY, p.viewWidth, p.viewHeight);
+    gpu.ActiveTexture(0);
+    gpu.BindTexture(texture);
+    const s32 scaling = static_cast<s32>(p.linear ? Hw::FilterLinear : Hw::FilterNearest);
+    gpu.TexParameter(Hw::ParamMinFilter, scaling);
+    gpu.TexParameter(Hw::ParamMagFilter, scaling);
     if (p.postFilter != p.madePostFilter)
     {
         MakePostFilter(p);
@@ -421,12 +321,7 @@ void PresentTexture(GLuint texture, f32 u0, f32 v0, f32 u1, f32 v1, u32 pictureW
 
     if (p.antiAliasing == 1 && p.fxaaProgram == 0)
     {
-        GLuint vertex = Compile(gl, GL_VERTEX_SHADER, VertexSource);
-        GLuint fragment = Compile(gl, GL_FRAGMENT_SHADER, FxaaSource);
-        p.fxaaProgram = gl.CreateProgram();
-        gl.AttachShader(p.fxaaProgram, vertex);
-        gl.AttachShader(p.fxaaProgram, fragment);
-        gl.LinkProgram(p.fxaaProgram);
+        p.fxaaProgram = MakeProgram(gpu, VertexSource, FxaaSource, "FXAA");
     }
 
     // A picture larger than the window (supersampling's, or a resolution past the screen's: 8x's 4096 rows on a 1440 one): the
@@ -438,75 +333,59 @@ void PresentTexture(GLuint texture, f32 u0, f32 v0, f32 u1, f32 v1, u32 pictureW
     const bool downsampled = covered > 1.25f;
     if (downsampled && p.downsampleProgram == 0)
     {
-        GLuint vertex = Compile(gl, GL_VERTEX_SHADER, VertexSource);
-        GLuint fragment = Compile(gl, GL_FRAGMENT_SHADER, DownsampleSource);
-        p.downsampleProgram = gl.CreateProgram();
-        gl.AttachShader(p.downsampleProgram, vertex);
-        gl.AttachShader(p.downsampleProgram, fragment);
-        gl.LinkProgram(p.downsampleProgram);
-    }
-
-    if (!p.vsyncSet)
-    {
-        SDL_GL_SetSwapInterval(p.vsync ? 1 : 0);
-        p.vsyncSet = true;
+        p.downsampleProgram = MakeProgram(gpu, VertexSource, DownsampleSource, "downsampling");
     }
 
     // (FXAA looks at the picture's own texels: on a picture made smaller the mean of them does its work)
-    GLuint program = p.postProgram != 0                            ? p.postProgram
-                     : downsampled                                 ? p.downsampleProgram
-                     : (p.antiAliasing == 1 && p.fxaaProgram != 0) ? p.fxaaProgram
-                                                                   : p.program;
-    gl.UseProgram(program);
-    gl.Uniform4f(gl.GetUniformLocation(program, "uvRect"), u0, v0, u1, v1);
+    const u32 program = p.postProgram != 0                            ? p.postProgram
+                        : (downsampled && p.downsampleProgram != 0)     ? p.downsampleProgram
+                        : (p.antiAliasing == 1 && p.fxaaProgram != 0)   ? p.fxaaProgram
+                                                                        : p.program;
+    auto uniform = [&](const char* name) { return gpu.UniformLocation(program, name); };
+    gpu.UseProgram(program);
+    gpu.Uniform4f(uniform("uvRect"), u0, v0, u1, v1);
+    gpu.Uniform1i(uniform("picture"), 0);
     if (program == p.downsampleProgram)
     {
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, static_cast<GLint>(GL_LINEAR));
-        gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, static_cast<GLint>(GL_LINEAR));
-        gl.Uniform1i(gl.GetUniformLocation(program, "picture"), 0);
-        gl.Uniform2f(gl.GetUniformLocation(program, "footprint"), (u1 - u0) / static_cast<f32>(std::max(p.viewWidth, 1)),
-                     (v1 - v0) / static_cast<f32>(std::max(p.viewHeight, 1)));
-        gl.Uniform1i(gl.GetUniformLocation(program, "taps"), std::clamp(static_cast<s32>(std::ceil(covered / 2.0f)), 1, 4));
+        gpu.TexParameter(Hw::ParamMinFilter, static_cast<s32>(Hw::FilterLinear));
+        gpu.TexParameter(Hw::ParamMagFilter, static_cast<s32>(Hw::FilterLinear));
+        gpu.Uniform2f(uniform("footprint"), (u1 - u0) / static_cast<f32>(std::max(p.viewWidth, 1)),
+                      (v1 - v0) / static_cast<f32>(std::max(p.viewHeight, 1)));
+        gpu.Uniform1i(uniform("taps"), std::clamp(static_cast<s32>(std::ceil(covered / 2.0f)), 1, 4));
     }
+
     if (program == p.fxaaProgram)
     {
-        gl.Uniform1i(gl.GetUniformLocation(program, "picture"), 0);
-        gl.Uniform2f(gl.GetUniformLocation(program, "texel"), (u1 - u0) / static_cast<f32>(pictureWidth),
-                     (v1 - v0) / static_cast<f32>(pictureHeight));
+        gpu.Uniform2f(uniform("texel"), (u1 - u0) / static_cast<f32>(pictureWidth), (v1 - v0) / static_cast<f32>(pictureHeight));
     }
-    if (p.postProgram != 0)
+
+    if (program == p.postProgram)
     {
         static const auto started = std::chrono::steady_clock::now();
-        gl.Uniform1i(gl.GetUniformLocation(p.postProgram, "picture"), 0);
         // The picture's size in the PS2's pixels (its texture may hold several texels a pixel), over the whole texture: the
         // filter's scanlines are the PS2's lines
         f32 spanU = u1 - u0;
         f32 spanV = v1 - v0;
-        gl.Uniform2f(gl.GetUniformLocation(p.postProgram, "pictureSize"),
-                     static_cast<f32>(pictureWidth) / static_cast<f32>(texelsPerPixel) / spanU,
-                     static_cast<f32>(pictureHeight) / static_cast<f32>(texelsPerPixel) / spanV);
-        gl.Uniform2f(gl.GetUniformLocation(p.postProgram, "viewSize"), static_cast<f32>(p.viewWidth),
-                     static_cast<f32>(p.viewHeight));
-        gl.Uniform1f(gl.GetUniformLocation(p.postProgram, "time"),
-                     std::chrono::duration<f32>(std::chrono::steady_clock::now() - started).count());
-        NativeUiCrtShaderUniforms(p.postProgram, [](const char* name) {
-            return reinterpret_cast<void*>(SDL_GL_GetProcAddress(name));
-        });
+        gpu.Uniform2f(uniform("pictureSize"), static_cast<f32>(pictureWidth) / static_cast<f32>(texelsPerPixel) / spanU,
+                      static_cast<f32>(pictureHeight) / static_cast<f32>(texelsPerPixel) / spanV);
+        gpu.Uniform2f(uniform("viewSize"), static_cast<f32>(p.viewWidth), static_cast<f32>(p.viewHeight));
+        gpu.Uniform1f(uniform("time"), std::chrono::duration<f32>(std::chrono::steady_clock::now() - started).count());
     }
 
-    gl.BindVertexArray(p.vertexArray);
-    gl.DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    gpu.BindVertexes(false);
+    gpu.DrawArrays(Hw::PrimitiveTriangleStrip, 0, 4);
     if (g_Overlay != nullptr)
     {
         s32 points = 0;
         s32 pointsHigh = 0;
         SDL_GetWindowSize(p.window, &points, &pointsHigh);
-        gl.Viewport(0, 0, width, height);
+        gpu.Viewport(0, 0, width, height);
         g_Overlay(width, height, points > 0 ? static_cast<f32>(width) / static_cast<f32>(points) : 1.0f);
     }
 
     WriteWindowShot(width, height);
-    SDL_GL_SwapWindow(p.window);
+    gpu.Submit();
+    p.backend->ShowWindow();
 }
 
 void Present(const NativeGraphics::Picture& picture)
@@ -517,12 +396,19 @@ void Present(const NativeGraphics::Picture& picture)
         return;
     }
 
-    Gl& gl = p.gl;
-    gl.ActiveTexture(GL_TEXTURE0);
-    gl.BindTexture(GL_TEXTURE_2D, p.texture);
-    gl.TexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(GL_RGBA8), static_cast<GLsizei>(picture.width),
-                  static_cast<GLsizei>(picture.height), 0, GL_RGBA, GL_UNSIGNED_BYTE, picture.pixels.data());
+    Hw::Gpu& gpu = p.gpu;
+    gpu.ActiveTexture(0);
+    gpu.BindTexture(p.texture);
+    gpu.PixelStore(Hw::StoreUnpackAlignment, 4);
+    gpu.PixelStore(Hw::StoreUnpackRowLength, 0);
+    gpu.TexImage(0, Hw::FormatRgba8, static_cast<s32>(picture.width), static_cast<s32>(picture.height), picture.pixels.data());
     PresentTexture(p.texture, 0.0f, 0.0f, 1.0f, 1.0f, picture.width, picture.height, 1);
+}
+
+// Whether the renderer's textures are the window's backend's to draw (the same API); else its picture is read back
+bool RendererSharesWindow()
+{
+    return g_Presenter.backend != nullptr && std::strcmp(NativeGraphics::HardwareBackendName(), g_Presenter.backend->Name()) == 0;
 }
 }
 
@@ -540,6 +426,23 @@ bool PresenterContext(SDL_Window** window, SDL_GLContext* context)
     return true;
 }
 
+// The graphics API asked for (window.h)
+bool VulkanWanted()
+{
+    // ($TWIN_GPU_API=vulkan, THE LIST 71; THE LIST 73 makes it a setting)
+    static const bool wanted = [] {
+        const char* api = std::getenv("TWIN_GPU_API");
+        return api != nullptr && std::strcmp(api, "vulkan") == 0 && Hw::VulkanBuilt();
+    }();
+    return wanted;
+}
+
+// The renderer's: the window's backend's, or the one asked for without a window
+bool RendererOnVulkan()
+{
+    return g_Presenter.backend != nullptr ? g_Presenter.vulkan : VulkanWanted();
+}
+
 namespace
 {
 // The render thread's context (renderthread.h): made on the main thread, sharing the window's context's objects (the shown
@@ -550,7 +453,8 @@ SDL_GLContext g_RenderContext = nullptr;
 
 bool MakeRenderContext()
 {
-    if (g_RenderContext != nullptr)
+    // (Vulkan's renderer has no context: SDL GPU's device is the thread's to use)
+    if (g_RenderContext != nullptr || RendererOnVulkan())
     {
         return true;
     }
@@ -606,12 +510,18 @@ bool MakeRenderContext()
 
 void UseRenderContext()
 {
-    SDL_GL_MakeCurrent(g_RenderWindow, g_RenderContext);
+    if (g_RenderContext != nullptr)
+    {
+        SDL_GL_MakeCurrent(g_RenderWindow, g_RenderContext);
+    }
 }
 
 void ReleaseRenderContext()
 {
-    SDL_GL_MakeCurrent(g_RenderWindow, nullptr);
+    if (g_RenderContext != nullptr)
+    {
+        SDL_GL_MakeCurrent(g_RenderWindow, nullptr);
+    }
 }
 
 bool RenderContext(SDL_Window** window, SDL_GLContext* context)
@@ -627,13 +537,19 @@ bool RenderContext(SDL_Window** window, SDL_GLContext* context)
 }
 }
 
+bool NativeGraphicsVulkanWanted()
+{
+    return NativeGraphics::VulkanWanted();
+}
+
+Hw::Gpu& NativeGraphicsWindowGpu()
+{
+    return g_Presenter.gpu;
+}
+
 __attribute__((weak)) const char* NativeUiCrtShaderSource()
 {
     return nullptr;
-}
-
-__attribute__((weak)) void NativeUiCrtShaderUniforms(unsigned int, void* (*)(const char*))
-{
 }
 
 void NativeGraphicsPictureRect(float* x, float* y, float* w, float* h)
@@ -672,7 +588,6 @@ void NativeGraphicsPictureRect(float* x, float* y, float* w, float* h)
 void NativeGraphicsSetPresentFilter(bool linear)
 {
     g_Presenter.linear = linear;
-    g_Presenter.filterChanged = true;
 }
 
 void NativeGraphicsSetPostFilter(int which)
@@ -953,108 +868,93 @@ int NativeGraphicsPostFilterInUse()
     return g_Presenter.postProgram != 0 ? g_Presenter.madePostFilter : 0;
 }
 
-void NativeGraphicsAttachWindow(SDL_Window* window)
+bool NativeGraphicsAttachWindow(SDL_Window* window)
 {
     Presenter& p = g_Presenter;
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-    p.context = SDL_GL_CreateContext(window);
-    if (p.context == nullptr)
+    // The window's backend: Vulkan's when the window was made for it (system.cpp: NativeGraphicsVulkanWanted), else OpenGL 3.3 core
+    // on a context of the window's
+    p.vulkan = (SDL_GetWindowFlags(window) & SDL_WINDOW_VULKAN) != 0;
+    if (p.vulkan)
     {
-        std::fprintf(stderr, "graphics: no OpenGL 3.3 context: %s\n", SDL_GetError());
-        return;
+        p.backend = Hw::StartVulkanWindowBackend(window);
+        if (p.backend == nullptr)
+        {
+            return false;
+        }
+
+        // The graphics card and its driver in the log, for the bug reports: SDL GPU's device (its name, the driver's name and
+        // version), then Windows' adapters and their drivers' versions
+        Native::Log("graphics: %s", p.backend->Describe().c_str());
+        Native::Log("graphics: the card's time unknown with Vulkan (SDL's GPU API has no timer queries)");
+    }
+    else
+    {
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+        p.context = SDL_GL_CreateContext(window);
+        if (p.context == nullptr)
+        {
+            std::fprintf(stderr, "graphics: no OpenGL 3.3 context: %s\n", SDL_GetError());
+            return false;
+        }
+
+        SDL_GL_MakeCurrent(window, p.context);
+        // The frames are paced by the vertical blank's own wait
+        SDL_GL_SetSwapInterval(0);
+        // The graphics card and its driver in the log, for the bug reports: OpenGL's renderer, vendor and version (the driver's own
+        // number in it: NVIDIA's "3.3.0 NVIDIA 617.14", AMD's "... Core Profile Context 24.10.1...", Intel's "... Build 31.0.101...",
+        // Mesa's), then Windows' adapters and their drivers' versions
+        auto getString = reinterpret_cast<const unsigned char* (*)(unsigned int)>(SDL_GL_GetProcAddress("glGetString"));
+        if (getString != nullptr)
+        {
+            auto text = [getString](unsigned int name) {
+                const unsigned char* value = getString(name);
+                return value != nullptr ? reinterpret_cast<const char*>(value) : "?";
+            };
+            Native::Log("graphics: %s (%s), OpenGL %s", text(0x1F01), text(0x1F00), text(0x1F02));
+        }
+
+        p.backend = Hw::StartGlWindowBackend(window, p.context);
+        if (p.backend == nullptr)
+        {
+            std::fprintf(stderr, "graphics: OpenGL 3.3's entry points missing\n");
+            return false;
+        }
     }
 
-    SDL_GL_MakeCurrent(window, p.context);
-    // The frames are paced by the vertical blank's own wait
-    SDL_GL_SetSwapInterval(0);
-    // The graphics card and its driver in the log, for the bug reports: OpenGL's renderer, vendor and version (the driver's own
-    // number in it: NVIDIA's "3.3.0 NVIDIA 617.14", AMD's "... Core Profile Context 24.10.1...", Intel's "... Build 31.0.101...",
-    // Mesa's), then Windows' adapters and their drivers' versions
-    auto getString = reinterpret_cast<const unsigned char* (*)(GLenum)>(SDL_GL_GetProcAddress("glGetString"));
-    if (getString != nullptr)
-    {
-        auto text = [getString](GLenum name) {
-            const unsigned char* value = getString(name);
-            return value != nullptr ? reinterpret_cast<const char*>(value) : "?";
-        };
-        Native::Log("graphics: %s (%s), OpenGL %s", text(0x1F01), text(0x1F00), text(0x1F02));
-    }
 #if defined(_WIN32)
     NativeGraphics::LogAdapters();
 #endif
-    Gl& gl = p.gl;
-    Load(gl.GenTextures, "glGenTextures");
-    Load(gl.BindTexture, "glBindTexture");
-    Load(gl.TexParameteri, "glTexParameteri");
-    Load(gl.TexImage2D, "glTexImage2D");
-    Load(gl.Viewport, "glViewport");
-    Load(gl.ClearColor, "glClearColor");
-    Load(gl.Clear, "glClear");
-    Load(gl.DrawArrays, "glDrawArrays");
-    Load(gl.CreateShader, "glCreateShader");
-    Load(gl.ShaderSource, "glShaderSource");
-    Load(gl.CompileShader, "glCompileShader");
-    Load(gl.GetShaderiv, "glGetShaderiv");
-    Load(gl.GetShaderInfoLog, "glGetShaderInfoLog");
-    Load(gl.CreateProgram, "glCreateProgram");
-    Load(gl.AttachShader, "glAttachShader");
-    Load(gl.LinkProgram, "glLinkProgram");
-    Load(gl.GetProgramiv, "glGetProgramiv");
-    Load(gl.UseProgram, "glUseProgram");
-    Load(gl.GetUniformLocation, "glGetUniformLocation");
-    Load(gl.Uniform1i, "glUniform1i");
-    Load(gl.GenVertexArrays, "glGenVertexArrays");
-    Load(gl.BindVertexArray, "glBindVertexArray");
-    Load(gl.ActiveTexture, "glActiveTexture");
-    Load(gl.Uniform2f, "glUniform2f");
-    Load(gl.Uniform1f, "glUniform1f");
-    Load(gl.DeleteProgram, "glDeleteProgram");
-    Load(gl.DeleteShader, "glDeleteShader");
-    Load(gl.BindFramebuffer, "glBindFramebuffer");
-    Load(gl.Enable, "glEnable");
-    Load(gl.Disable, "glDisable");
-    Load(gl.ColorMask, "glColorMask");
-    Load(gl.Uniform4f, "glUniform4f");
-    Load(gl.Flush, "glFlush");
-    Load(gl.FenceSync, "glFenceSync");
-    Load(gl.WaitSync, "glWaitSync");
-    Load(gl.DeleteSync, "glDeleteSync");
-    Load(gl.PixelStorei, "glPixelStorei");
-    Load(gl.ReadPixels, "glReadPixels");
-
+    Hw::Gpu& gpu = p.gpu;
+    gpu.Start(p.backend);
     const char* filter = std::getenv("TWIN_DISPLAY_FILTER");
     if (filter != nullptr)
     {
         p.linear = std::strcmp(filter, "nearest") != 0;
     }
-    gl.GenTextures(1, &p.texture);
-    gl.BindTexture(GL_TEXTURE_2D, p.texture);
-    GLint scaling = static_cast<GLint>(p.linear ? GL_LINEAR : GL_NEAREST);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, scaling);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, scaling);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, static_cast<GLint>(GL_CLAMP_TO_EDGE));
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, static_cast<GLint>(GL_CLAMP_TO_EDGE));
-    GLuint vertex = Compile(gl, GL_VERTEX_SHADER, VertexSource);
-    GLuint fragment = Compile(gl, GL_FRAGMENT_SHADER, FragmentSource);
-    p.program = gl.CreateProgram();
-    gl.AttachShader(p.program, vertex);
-    gl.AttachShader(p.program, fragment);
-    gl.LinkProgram(p.program);
-    GLint linked = 0;
-    gl.GetProgramiv(p.program, GL_LINK_STATUS, &linked);
-    if (!linked)
+
+    gpu.GenTextures(1, &p.texture);
+    gpu.BindTexture(p.texture);
+    const s32 scaling = static_cast<s32>(p.linear ? Hw::FilterLinear : Hw::FilterNearest);
+    gpu.TexParameter(Hw::ParamMaxLevel, 0);
+    gpu.TexParameter(Hw::ParamMinFilter, scaling);
+    gpu.TexParameter(Hw::ParamMagFilter, scaling);
+    gpu.TexParameter(Hw::ParamWrapS, static_cast<s32>(Hw::WrapClamp));
+    gpu.TexParameter(Hw::ParamWrapT, static_cast<s32>(Hw::WrapClamp));
+    p.program = MakeProgram(gpu, VertexSource, FragmentSource, "picture's");
+    if (p.program == 0)
     {
-        std::fprintf(stderr, "graphics: the presenter's program doesn't link\n");
-        std::abort();
+        gpu.Submit();
+        delete p.backend;
+        p.backend = nullptr;
+        return false;
     }
 
-    gl.UseProgram(p.program);
-    gl.Uniform1i(gl.GetUniformLocation(p.program, "picture"), 0);
-    gl.GenVertexArrays(1, &p.vertexArray);
+    gpu.Submit();
     p.window = window;
+    return true;
 }
 
 namespace NativeGraphics
@@ -1254,7 +1154,7 @@ void MakeShown(u64 frame)
     Shown& shown = g_Shown[frame % 3];
     g_PictureStale = true;
     shown.gpu = false;
-    if (HardwareRendererActive() && HardwareCopyDisplay(static_cast<u32>(frame % 3), shown.drawn, &shown.texture))
+    if (HardwareRendererActive() && RendererSharesWindow() && HardwareCopyDisplay(static_cast<u32>(frame % 3), shown.drawn, &shown.texture))
     {
         shown.drawn = nullptr;
         shown.gpu = true;
@@ -1300,22 +1200,23 @@ void PresentShown(Shown& shown)
         return;
     }
 
-    Gl& gl = p.gl;
+    // The render thread's copy waited for (OpenGL: by the card, the contexts' work isn't ordered; Vulkan's queue is), taken as the
+    // window's backend's, drawn, and a fence for the render thread's next copy into it
     if (shown.texture.fence != nullptr)
     {
-        gl.WaitSync(shown.texture.fence, 0, ~0ull);
-        gl.DeleteSync(shown.texture.fence);
+        p.gpu.WaitFence(shown.texture.fence);
+        p.backend->DeleteFence(shown.texture.fence);
         shown.texture.fence = nullptr;
     }
 
-    PresentTexture(shown.texture.texture, 0.0f, 0.0f, 1.0f, 1.0f, shown.texture.width, shown.texture.height, shown.scale);
+    const u32 texture = p.backend->TakeTexture(shown.texture.native, static_cast<s32>(shown.texture.width), static_cast<s32>(shown.texture.height));
+    PresentTexture(texture, 0.0f, 0.0f, 1.0f, 1.0f, shown.texture.width, shown.texture.height, shown.scale);
     if (shown.drawn != nullptr)
     {
-        gl.DeleteSync(shown.drawn);
+        p.backend->DeleteFence(shown.drawn);
     }
 
-    shown.drawn = gl.FenceSync(0x9117, 0);
-    gl.Flush();
+    shown.drawn = p.gpu.Fence();
 }
 
 // TWIN_FRAME_STATS with the render thread: the time between pictures shown, VU1's and VU0's work on the game's thread for the
@@ -1439,11 +1340,13 @@ void ShowFrameHere()
                 std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - from).count());
         }
     } presented{presenting};
-    if (HardwareRendererActive() && HardwareDisplayTexture(&gpu))
+    if (HardwareRendererActive() && (g_Presenter.window == nullptr || RendererSharesWindow()) && HardwareDisplayTexture(&gpu))
     {
         if (g_Presenter.window != nullptr)
         {
-            PresentTexture(gpu.texture, gpu.u0, gpu.v0, gpu.u1, gpu.v1, gpu.width, gpu.height, HardwareScale());
+            Presenter& p = g_Presenter;
+            const u32 texture = p.backend->TakeTexture(gpu.native, static_cast<s32>(gpu.width), static_cast<s32>(gpu.height));
+            PresentTexture(texture, gpu.u0, gpu.v0, gpu.u1, gpu.v1, gpu.width, gpu.height, HardwareScale());
         }
 
         if (dumping)
