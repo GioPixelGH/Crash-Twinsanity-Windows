@@ -595,11 +595,15 @@ void MaskController::Frame(TimeClock*)
     }
 
 #ifdef TWIN_NATIVE
-    // Aku Aku's shadow (THE LIST 84, #51): while it comes down to, follows or leaves the character and is drawn (not while it's on
-    // the character's face, nor hidden while the game is watched)
+    // Aku Aku's shadow (THE LIST 84, #51): while it comes down to, follows or leaves the character and is drawn (not hidden while
+    // the game is watched); on the character's face (three masks' invincibility, THE LIST 86) from the character's feet down
     if (!flags.hidden && (state == StateArriving || state == StateGotMask || state == StateGotBoostedMask || state == StateLeaving))
     {
         CastMaskShadow(node->owner);
+    }
+    else if (!flags.hidden && state == StateInvincible && character != nullptr)
+    {
+        CastMaskShadow(node->owner, character);
     }
 
     // Three masks' touch (THE LIST 54, #18): the played character invincible with it, as its touches are told (characterstate.cpp)

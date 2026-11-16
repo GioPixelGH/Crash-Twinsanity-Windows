@@ -224,6 +224,7 @@ extern "C"
 }
 
 #ifdef TWIN_NATIVE
-// Aku Aku's shadow (mask_shadow, THE LIST 84, #51): a round shadow straight down under a mask's instance into its chunk's shadows
-void CastMaskShadow(InstanceContext* mask);
+// Aku Aku's shadow (mask_shadow, THE LIST 84, #51): a round shadow straight down under a mask's instance into its chunk's shadows;
+// on a character's face (THE LIST 86) from the character's feet down
+void CastMaskShadow(InstanceContext* mask, InstanceContext* face = nullptr);
 #endif

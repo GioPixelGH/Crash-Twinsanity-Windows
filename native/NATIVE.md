@@ -332,11 +332,17 @@ have made itself (`src/platform/native/gameoptions.h`):
   the frame: the pictures after it changed), left out when it's all off the screen. Checked: the physics test's jumps on the
   beach show it under Crash (a yellow ring, the pictures otherwise the same and the jumps' measures alike).
 - Aku Aku's shadow (`mask_shadow`, THE LIST 84, #51: NormanTheFox noticed the masks were the only things without one): a round
-  shadow straight down under the mask while it comes down to, follows or leaves the played character (not on its face during
-  the invincibility, nor while the game is watched): a cylinder's volume of 0.3, 20 down, from half a unit under the mask's middle
-  (from the middle, the mask's lower half took its own shadow), cast by `MaskController::Frame` through `CastMaskShadow` in
-  `shadows.cpp`, drawn as the game's shadows are. Checked: two masks given on the beach at fixed time, mask_shadow 0 and 1: the
-  pictures differ only by a darker disc on the sand under the mask.
+  shadow straight down under the mask while it comes down to, follows or leaves the played character, and since THE LIST 86
+  (NormanTheFox's follow-up on #51) while it's on its face during three masks' invincibility (not while the game is watched): a
+  cylinder's volume of 0.3, 20 down, from half a unit under the mask's middle (from the middle, the mask's lower half took its
+  own shadow), on the face from a fifth of a unit above the character's feet instead (from the mask, the character's body under
+  it would be in it), cast by `MaskController::Frame` through `CastMaskShadow` in `shadows.cpp`, drawn as the game's shadows
+  are. Checked: two masks given on the beach at fixed time, mask_shadow 0 and 1: the pictures differ only by a darker disc on
+  the sand under the mask. On the face (86), four masks were given on the beach at fixed time, and the program before 86 was
+  compared with the one after, both with mask_shadow 1. Only the 7.5 s of the invincibility differ, every changed pixel darker,
+  on the sand between Crash's feet; his body and his own shadow (which the light casts aside) are untouched. In his jumps with
+  the drop shadow on too, the two discs aren't darkened twice where they overlap (but for a seam of some 200 pixels at 4x), and
+  the mask's shows in front of the drop shadow's, under the mask.
 - Shadows on crates (`shadows_on_crates`, THE LIST 38; TwinsanityEvolved 0.9.3's idea): the crates' opaque materials made
   shadow receivers (the community mod's change, also in the bug fixes: `MaterialRead`), from a level's next loading. Checked:
   the beach's 47 crate shaders change (`TWIN_FIXES_TRACE` names them).

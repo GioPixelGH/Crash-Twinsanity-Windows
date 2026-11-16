@@ -14,6 +14,7 @@
 #include "retail/libc.h"
 
 #ifdef TWIN_NATIVE
+#include <algorithm>
 #include <bit>
 #include <cstdlib>
 
@@ -109,11 +110,14 @@ void CastDropShadow(InstanceContext* instance)
 // Aku Aku's shadow (mask_shadow, THE LIST 84, #51: the masks were the only things that cast none): a round shadow straight down
 // under the mask, as the drop shadow is (a smaller cylinder), while it's drawn; MaskController::Frame asks for it while the mask
 // comes down to, follows or leaves the character. The cylinder starts under the mask (from its middle, the mask's lower half took
-// its own shadow)
-void CastMaskShadow(InstanceContext* mask)
+// its own shadow). On the character's face (THE LIST 86, #51: three masks' invincibility) it starts at the character's feet, so
+// the character's body under the mask isn't in it: the round shadow on the ground under the mask, as the drop shadow's
+void CastMaskShadow(InstanceContext* mask, InstanceContext* face)
 {
     constexpr f32 MaskRadius = 0.3f;
     constexpr f32 BelowMask = 0.5f;
+    // On the face: a little above the feet, so the ground it stands on is inside the cylinder (not at its top's edge)
+    constexpr f32 AboveFeet = 0.2f;
     if (!NativeGame::MaskShadow() || mask == nullptr || mask->chunk == nullptr || mask->chunk->shadows == nullptr ||
         !mask->flags.visible)
     {
@@ -130,6 +134,11 @@ void CastMaskShadow(InstanceContext* mask)
         InitIdentityMatrix(&entry->frame);
         *RowOf(&entry->frame, 3) = *RowOf(&place->matrix, 3);
         RowOf(&entry->frame, 3)->y = RowOf(&entry->frame, 3)->y - BelowMask;
+        if (face != nullptr && face->place != nullptr)
+        {
+            RotateAndTranslate(face->place);
+            RowOf(&entry->frame, 3)->y = std::min(RowOf(&entry->frame, 3)->y, RowOf(&face->place->matrix, 3)->y + AboveFeet);
+        }
     }
 }
 #endif
