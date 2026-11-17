@@ -199,7 +199,7 @@ controller, saves, cutscene skipping and community fixes), this port adds:
   [Tenkaichi3Decomp's](https://github.com/z3xox/Tenkaichi3Decomp) renderer. A start that never shows its pictures leaves a
   note, so the next start takes the other API.
 - **Screens and graphics cards:** the window opens on the monitor you pick, remembered by its name. On a laptop with two
-  graphics cards, the game asks Windows for the faster one.
+  graphics cards, the game asks the graphics driver for the faster one.
 - **Resolution:** 6x and 8x added. A buffer the graphics card can't hold at the chosen scale is drawn by the software
   renderer instead of failing.
 - **Anti-aliasing:** SMAA is [iryoku's](https://github.com/iryoku/smaa). Supersampling draws the picture 2 or 4 times
@@ -224,8 +224,8 @@ controller, saves, cutscene skipping and community fixes), this port adds:
   - The story movies' rare crash ([#49]), from the movie decoder reading a little past each piece of the movie.
   - Under the Bug fixes option: the masks' invincibility particles lost in the next area, two masks' stars lost after a
     cutscene, three masks' particles stuck after a hurt, two masks' particles left in the final boss's arena ([#18]),
-    Rockslide Rumble's purple smoke where its explosions went off ([#41]), and Bandicoot Pursuit's Evil Crash standing
-    still.
+    Rockslide Rumble's endless explosions where its purple smoke belongs ([#41]), and Bandicoot Pursuit's Evil Crash
+    standing still.
 - **Controllers:** a modern controller's round stick is mapped to the PS2 stick's square, so Crash runs on diagonals too.
 - **The game's data from your disc:** the program carries none of it. It reads the data from your disc image's executable
   when it starts, checks that it's the PAL release, and says so clearly when the disc image is wrong. The log says what the
@@ -377,8 +377,8 @@ the other Crash games (a mod, since it needs those games' discs).
 - [x] Laptops with two graphics cards asked to use the faster one.
 - [x] The story movies' rare crash fixed ([#49]).
 - [x] Seven more cutscenes skippable, the Mecha-Bandicoot fight's start among them ([#28]).
-- [x] Under the bug fixes option: Rockslide Rumble's purple smoke ([#41]), and the masks' particles left after a hurt or
-  at the final boss ([#18]).
+- [x] Under the bug fixes option: Rockslide Rumble's purple smoke back where explosions went off ([#41]), and the masks'
+  particles left after a hurt or at the final boss ([#18]).
 - [x] A double jump later in a fall ([#47]), three masks' touch ([#18]) and an assisted camera ([#42]), as game options.
 - [x] A yellow ring around the drop shadow ([#11]), and Aku Aku's shadow ([#51]).
 - [x] Improved menus, and the level select from the gems' pages ([#48]). Restart Checkpoint in the pause menu as an
