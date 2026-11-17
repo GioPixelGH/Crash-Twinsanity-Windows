@@ -212,51 +212,43 @@ Bugs go in the [issues](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/i
 <details>
 <summary><b>What changed under the hood</b> (for the curious)</summary>
 
-On top of HAB3X's port (its GPU renderer, widescreen and 21:9, HD texture packs, remappable keyboard, mouse and
-controller, saves, cutscene skipping and community fixes), this port adds:
+On top of HAB3X's port (its GPU renderer, widescreen and 21:9, HD texture packs, remappable keyboard, mouse and controller, saves, cutscene skipping and community fixes), this port adds:
 
-- **Windows support:** Windows' calling convention, which passes float arguments differently from the PS2's; the retail
-  code's reads of address 0, emulated on Windows; frame pacing and file access; a crash report with a backtrace and the
-  area the player was in.
-- **Speed:** the game, the PS2's vector unit (VU1) and the graphics run on three threads, and the renderer's hot paths are
-  faster. The graphics' shader programs are made when the game starts. Since 1.3.0 the renderer makes about a sixth of the
-  OpenGL calls it made, and decodes a quarter of the texels it did for the shadows and the colour filter.
+- **Windows support:** Windows' calling convention, which passes float arguments differently from the PS2's; the retail code's reads of address 0, emulated on Windows; frame pacing and file access; a crash report with a backtrace and the area the player was in.
+- **Speed:** the game, the PS2's vector unit (VU1) and the graphics run on three threads, and the renderer's hot paths are faster.
+  The graphics' shader programs are made when the game starts.
+  Since 1.3.0 the renderer makes about a sixth of the OpenGL calls it made, and decodes a quarter of the texels it did for the shadows and the colour filter.
 - **OpenGL and Vulkan:** since 1.3.0 the renderer records each frame as a list of commands, and OpenGL or Vulkan draws it.
-  Vulkan goes through SDL's GPU API, its shaders made from the OpenGL ones by glslang. The design follows
-  [Tenkaichi3Decomp's](https://github.com/z3xox/Tenkaichi3Decomp) renderer. A start that never shows its pictures leaves a
-  note, so the next start takes the other API.
-- **Screens and graphics cards:** the window opens on the monitor you pick, remembered by its name. On a laptop with two
-  graphics cards, the game asks the graphics driver for the faster one.
-- **Resolution:** 6x and 8x added. A buffer the graphics card can't hold at the chosen scale is drawn by the software
-  renderer instead of failing.
-- **Anti-aliasing:** SMAA is [iryoku's](https://github.com/iryoku/smaa). Supersampling draws the picture 2 or 4 times
-  larger, up to 8x the PS2's, and shrinks it to the window.
+  Vulkan goes through SDL's GPU API, its shaders made from the OpenGL ones by glslang.
+  The design follows [Tenkaichi3Decomp's](https://github.com/z3xox/Tenkaichi3Decomp) renderer.
+  A start that never shows its pictures leaves a note, so the next start takes the other API.
+- **Screens and graphics cards:** the window opens on the monitor you pick, remembered by its name.
+  On a laptop with two graphics cards, the game asks the graphics driver for the faster one.
+- **Resolution:** 6x and 8x added.
+  A buffer the graphics card can't hold at the chosen scale is drawn by the software renderer instead of failing.
+- **Anti-aliasing:** SMAA is [iryoku's](https://github.com/iryoku/smaa).
+  Supersampling draws the picture 2 or 4 times larger, up to 8x the PS2's, and shrinks it to the window.
 - **Draw distance** comes from HAB3X's Mac port: short, original (the default), medium, long or unlimited.
 - **Languages:** a translated disc's texts are recognised by their language ([#25]).
-- **Cutscene skip:** besides the developers' own skips, the others end the scene's waits in order (TwinsanityEvolved's
-  skip, with its author's permission). Each one was checked to end as when watched.
+- **Cutscene skip:** besides the developers' own skips, the others end the scene's waits in order (TwinsanityEvolved's skip, with its author's permission).
+  Each one was checked to end as when watched.
 - **Level select** comes from HAB3X's Mac port, on a memory card of its own.
 - **Quit to desktop, a Credits page, and the update check** (Windows only) are in Options > Game.
-- **Mods:** each mod is a folder in `%APPDATA%\Crash Twinsanity\mods`, a Mod Crate as it comes or files laid out as the
-  disc's. Files put straight in the mods folder replace the disc's, as before.
+- **Mods:** each mod is a folder in `%APPDATA%\Crash Twinsanity\mods`, a Mod Crate as it comes or files laid out as the disc's.
+  Files put straight in the mods folder replace the disc's, as before.
 - **Fixes:**
   - The crash entering the first boss's area (a level title picture read wrongly).
   - The crash during the Mecha-Bandicoot fight (a float argument on Windows).
   - Crashes in the caverns (a reference to an object already freed, an animation of zero length).
   - VU1 programs that ran away (two copies of the same data declared with different sizes).
-  - The characters at high resolutions: the game's distance haze and the first boss's sky at the chosen resolution (no
-    more stepped outlines), the colours VU1 writes after sending its vertices (no more patches on the bodies), triangles
-    thinner than a PS2 pixel (no more thin black lines), and textures' detail for the chosen resolution.
+  - The characters at high resolutions: the game's distance haze and the first boss's sky at the chosen resolution (no more stepped outlines), the colours VU1 writes after sending its vertices (no more patches on the bodies), triangles thinner than a PS2 pixel (no more thin black lines), and textures' detail for the chosen resolution.
   - Ant Agony's metal doors, walls and floors, which were read from an old buffer of the first boss's area ([#32]).
   - The story movies' rare crash ([#49]), from the movie decoder reading a little past each piece of the movie.
-  - Under the Bug fixes option: the masks' invincibility particles lost in the next area, two masks' stars lost after a
-    cutscene, three masks' particles stuck after a hurt, two masks' particles left in the final boss's arena ([#18]),
-    Rockslide Rumble's endless explosions where its purple smoke belongs ([#41]), and Bandicoot Pursuit's Evil Crash
-    standing still.
+  - Under the Bug fixes option: the masks' invincibility particles lost in the next area, two masks' stars lost after a cutscene, three masks' particles stuck after a hurt, two masks' particles left in the final boss's arena ([#18]), Rockslide Rumble's endless explosions where its purple smoke belongs ([#41]), and Bandicoot Pursuit's Evil Crash standing still.
 - **Controllers:** a modern controller's round stick is mapped to the PS2 stick's square, so Crash runs on diagonals too.
-- **The game's data from your disc:** the program carries none of it. It reads the data from your disc image's executable
-  when it starts, checks that it's the PAL release, and says so clearly when the disc image is wrong. The log says what the
-  image is (the retail disc, a modified copy or an unknown image), by redump.org's dumps.
+- **The game's data from your disc:** the program carries none of it.
+  It reads the data from your disc image's executable when it starts, checks that it's the PAL release, and says so clearly when the disc image is wrong.
+  The log says what the image is (the retail disc, a modified copy or an unknown image), by redump.org's dumps.
 
 [native/WINDOWS.md](native/WINDOWS.md) explains each change, why it was needed and how it was tested.
 
@@ -368,12 +360,11 @@ Maybe later: fast-forwarding cutscenes as well as skipping them ([#9]); two-play
 <details>
 <summary><b>Done so far</b></summary>
 
-- [x] The characters drawn as on the PS2 at high resolutions ([#15], [#19], [#24]): no more stepped outlines, patches on
-  the bodies or thin black lines.
-- [x] 6x and 8x the PS2's resolution ([#19]), and a safe fallback when the graphics card refuses one of the renderer's
-  buffers.
-- [x] A Dithering option ([#24]). The PS2 shows its picture in 16-bit colour with a fine pattern to hide the steps. The
-  port reproduces it, and turned off the picture keeps its full colour.
+- [x] The characters drawn as on the PS2 at high resolutions ([#15], [#19], [#24]): no more stepped outlines, patches on the bodies or thin black lines.
+- [x] 6x and 8x the PS2's resolution ([#19]), and a safe fallback when the graphics card refuses one of the renderer's buffers.
+- [x] A Dithering option ([#24]).
+  The PS2 shows its picture in 16-bit colour with a fine pattern to hide the steps.
+  The port reproduces it, and turned off the picture keeps its full colour.
 - [x] Draw distance as an option (from HAB3X's Mac port).
 - [x] Anti-aliasing by supersampling (2x, 4x).
 - [x] A Credits page in the options.
@@ -381,28 +372,25 @@ Maybe later: fast-forwarding cutscenes as well as skipping them ([#9]); two-play
 - [x] The text language and the voice language as two options, with translated disc images recognised ([#25]).
 - [x] SMAA anti-aliasing, anisotropic filtering, and a 32:9 shape with the menus in the middle.
 - [x] The resolution applied when you stop on it, not at each step through the choices ([#39]).
-- [x] An update check, off unless you turn it on. It only tells you a newer version is out.
+- [x] An update check, off unless you turn it on.
+  It only tells you a newer version is out.
 - [x] Infinite lives, a stronger Aku Aku ([#30]) and a speedrun timer, as game options.
 - [x] The slide's long jump at any moment, or easier, as a game option ([#11], [#35]).
 - [x] A drop shadow under you in the air, and your shadow on crates, as game options ([#11], [#35]).
 - [x] Level select, as a game option, with its saves kept apart from yours.
-- [x] Mods as the community ships them ([#36]): a mod's sound effects right, Mod Crates used as they come (new levels
-  too), zips and modded disc images imported, a Mods page, and their saves kept apart from yours.
+- [x] Mods as the community ships them ([#36]): a mod's sound effects right, Mod Crates used as they come (new levels too), zips and modded disc images imported, a Mods page, and their saves kept apart from yours.
 - [x] A modding guide ([native/MODDING.md](native/MODDING.md)).
-- [x] The two cutscenes that ended a little differently when skipped ([#9]): Classroom Chaos' start and the bear's now end
-  as when played.
-- [x] A skip for many cutscenes that had none ([#28]), like one of Cavern Catastrophe's, the Tiki Mon's, the party before
-  the first fight with Cortex and Henchmania's fight. Each was checked to end as when played.
+- [x] The two cutscenes that ended a little differently when skipped ([#9]): Classroom Chaos' start and the bear's now end as when played.
+- [x] A skip for many cutscenes that had none ([#28]), like one of Cavern Catastrophe's, the Tiki Mon's, the party before the first fight with Cortex and Henchmania's fight.
+  Each was checked to end as when played.
 - [x] The masks' invincibility particles kept when you move into the next area, under the bug fixes option ([#18]).
 - [x] With two masks, Aku Aku's stars back after a cutscene, under the bug fixes option ([#18]).
-- [x] Bandicoot Pursuit's Evil Crash following his route instead of standing still, under the bug fixes option (found by
-  TwinsanityEvolved).
+- [x] Bandicoot Pursuit's Evil Crash following his route instead of standing still, under the bug fixes option (found by TwinsanityEvolved).
 - [x] Ant Agony's metal doors, walls and floors no longer streaked or blocky ([#32]).
 - [x] Fewer pauses when you reach a new area ([#23]).
 - [x] A log that says what your disc image is, where the renderer's time goes, and what a slow frame was waiting for.
 - [x] A Linux download ([#34]), with the Steam Deck's defaults and the steps to add it as a non-Steam game.
-- [x] The settings in seven tabs, opened while you play (F1, or Select+Start), with the game shown behind the Display and
-  Accessibility tabs.
+- [x] The settings in seven tabs, opened while you play (F1, or Select+Start), with the game shown behind the Display and Accessibility tabs.
 - [x] A master volume, and a choice of the monitor the game opens on.
 - [x] A 16:10 shape for the Steam Deck's screen, its default there.
 - [x] Vulkan as a choice beside OpenGL ([#37]), and the other one used when a start fails with one.
@@ -410,12 +398,11 @@ Maybe later: fast-forwarding cutscenes as well as skipping them ([#9]); two-play
 - [x] Laptops with two graphics cards asked to use the faster one.
 - [x] The story movies' rare crash fixed ([#49]).
 - [x] Seven more cutscenes skippable, the Mecha-Bandicoot fight's start among them ([#28]).
-- [x] Under the bug fixes option: Rockslide Rumble's purple smoke back where explosions went off ([#41]), and the masks'
-  particles left after a hurt or at the final boss ([#18]).
+- [x] Under the bug fixes option: Rockslide Rumble's purple smoke back where explosions went off ([#41]), and the masks' particles left after a hurt or at the final boss ([#18]).
 - [x] A double jump later in a fall ([#47]), three masks' touch ([#18]) and an assisted camera ([#42]), as game options.
 - [x] A yellow ring around the drop shadow ([#11]), and Aku Aku's shadow ([#51]).
-- [x] Improved menus, and the level select from the gems' pages ([#48]). Restart Checkpoint in the pause menu as an
-  option, off by default.
+- [x] Improved menus, and the level select from the gems' pages ([#48]).
+  Restart Checkpoint in the pause menu as an option, off by default.
 - [x] The end credits checked to lead back into the Iceberg Lab ([#20]).
 
 </details>
