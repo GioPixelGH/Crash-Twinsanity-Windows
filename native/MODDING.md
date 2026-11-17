@@ -153,19 +153,24 @@ These are other people's projects, each under its own licence; the port uses non
 ## ReShade
 
 [ReShade](https://reshade.me/) adds effects over the picture, such as sharpening or colour changes. It works with the port
-on Windows: tried with ReShade 6.8.0, it loads, and its effects are drawn over the game.
+on Windows, with both graphics APIs (**Display > Renderer > Graphics API**). Tried with ReShade 6.8.0 on version 1.3.0: it
+loads, its effects are drawn over the game, and the game draws the same as without it.
 
 1. Download ReShade from [reshade.me](https://reshade.me/) and start its setup.
 2. Pick `CrashTwinsanity.exe` in the port's folder.
-3. Choose **OpenGL** as the rendering API.
+3. Choose the rendering API the game uses: **OpenGL** (the default), or **Vulkan** if you picked Vulkan in the game.
 4. Pick the effects you want, and finish.
 5. Start the game. Press **Home** to open ReShade's menu.
 
-To remove it, delete what it added beside the program: `opengl32.dll`, `ReShade.ini`, `ReShadePreset.ini`, `ReShade.log`
-and the `reshade-shaders` folder.
+With OpenGL, ReShade's setup puts an `opengl32.dll` beside the program. With Vulkan it installs ReShade's Vulkan layer for
+the whole PC instead. Only the layer itself was tried here, loaded for one test run. The setup's own Vulkan install wasn't
+tried. If you change the game's graphics API, run ReShade's setup again for the other one.
 
-Effects that need the scene's depth, such as ambient occlusion or depth of field, weren't tried. They may not find it: the
-port draws the game as the PS2 does, in buffers of its own. ReShade isn't part of the port, so for help with ReShade itself
+To remove it with OpenGL, delete what it added beside the program. That's `opengl32.dll`, `ReShade.ini`,
+`ReShadePreset.ini`, `ReShade.log` and the `reshade-shaders` folder. With Vulkan, remove it through ReShade's setup.
+
+Effects that need the scene's depth, such as ambient occlusion or depth of field, weren't tried. They may not find it, since
+the port draws the game as the PS2 does, in buffers of its own. ReShade isn't part of the port, so for help with ReShade itself
 ask on its own forum.
 
 ## Sharing a mod
