@@ -7,7 +7,7 @@ https://github.com/GioPixelGH/Crash-Twinsanity-Windows. On Linux, see LINUX.md t
 ## What you need
 
 - 64-bit Windows 10 or 11.
-- A graphics card with OpenGL 3.3. Any card from the last ten years has it.
+- A graphics card with OpenGL 3.3 or Vulkan. Any card from the last ten years has them.
 - A disc image of **your own** PAL copy of Crash Twinsanity (Europe/Australia, SLES-52568), as an `.iso`, `.bin` or `.img`.
   Other versions (USA, Japan) don't work.
 
@@ -184,7 +184,8 @@ voices keep their own volumes under it.
 - **Camera shake**: on as in the original. Turn it off if the shaking bothers you.
 - **Drop shadow**: a round shadow under you while you're in the air, so you see where you'll land. Off by default.
   Pick **outlined** to add a yellow ring around it. It shows on dark ground too.
-- **Aku Aku's shadow**: the mask casts a round shadow while it follows you. Off by default.
+- **Aku Aku's shadow**: the mask casts a round shadow while it follows you. While you wear it, with three masks, the
+  shadow falls under your feet. Off by default.
 - **Shadows on crates**: your shadow falls on crates too, from the next level loaded. Off by default.
 
 ## Mods
@@ -242,8 +243,13 @@ PowerShell or the Command Prompt), it writes there instead.
 Please include the log with any bug report, and say where in the game it happened. The log also names your graphics card
 and its driver's version.
 
-If the screen stays black when the game starts, close the game. Use the Task Manager if it doesn't respond. Then start
-it again. The next start uses the other graphics API, Vulkan or OpenGL, and **Display > Renderer > Graphics API** keeps it.
+If the screen stays black when the game starts:
+
+1. If the game doesn't respond, end it in the Task Manager, then start it again. The next start uses the other graphics
+   API, Vulkan or OpenGL, and **Display > Renderer > Graphics API** keeps it.
+2. If the game still responds but shows nothing, close it. Open `options.txt` in the settings folder, change
+   `graphics_api=0` to `graphics_api=1` (Vulkan), or `1` back to `0` (OpenGL), and save it. Then start the game again.
+3. If it's still black, update your graphics card's driver, and attach `log.txt` to issue #16 on GitHub.
 
 On a laptop with two graphics cards, the game asks for the faster one. If the log still names the built-in card
 (Intel, or AMD Radeon Graphics), choose **High performance** for `CrashTwinsanity.exe` in Windows' **Settings > System >
