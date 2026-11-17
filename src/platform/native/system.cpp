@@ -504,40 +504,48 @@ void Platform::System::Initialise()
         SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_Y_NUMBER, place);
         SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, defaults.windowWidth);
         SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, defaults.windowHeight);
-        // Made for the graphics API its pictures are drawn with (THE LIST 72): Vulkan's when it's asked for, else OpenGL's; one that
-        // can't be drawn in with Vulkan made again for OpenGL
+        // Made for the graphics API its pictures are drawn with (THE LIST 72): the setting's (THE LIST 73, graphicsapi.cpp); one
+        // that can't be drawn in with it made again for the other API, the setting changed to it (no driver, no OpenGL 3.3, no Vulkan)
         SDL_Window* window = nullptr;
-        for (const bool vulkan : {true, false})
+        const bool wanted = NativeGraphicsVulkanWanted();
+        std::string failed;
+        for (const bool vulkan : {wanted, !wanted})
         {
-            if (vulkan && !NativeGraphicsVulkanWanted())
+            if (vulkan && !NativeGraphicsVulkanBuilt())
             {
                 continue;
             }
 
+            if (vulkan != wanted)
+            {
+                Native::Log("graphics: %s can't show the game here (%s): %s instead", wanted ? "Vulkan" : "OpenGL", failed.c_str(),
+                            vulkan ? "Vulkan" : "OpenGL");
+                NativeGraphicsStartFellBack(vulkan);
+            }
+
+            NativeGraphicsStartingWith(vulkan);
             SDL_SetNumberProperty(properties, SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER,
                                   (vulkan ? SDL_WINDOW_VULKAN : SDL_WINDOW_OPENGL) | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
             window = SDL_CreateWindowWithProperties(properties);
-            if (window == nullptr && !vulkan)
-            {
-                Native::Fatal("the window couldn't be made: %s", SDL_GetError());
-            }
-
             if (window != nullptr && NativeGraphicsAttachWindow(window))
             {
                 break;
             }
 
-            if (!vulkan)
-            {
-                Native::Fatal("the window can't show the game: OpenGL 3.3 isn't there (%s)", SDL_GetError());
-            }
-
-            Native::Log("graphics: Vulkan can't show the game here (%s): OpenGL instead", SDL_GetError());
+            failed = window == nullptr ? std::string("the window couldn't be made: ") + SDL_GetError() : std::string(SDL_GetError());
             if (window != nullptr)
             {
                 SDL_DestroyWindow(window);
                 window = nullptr;
             }
+        }
+
+        if (window == nullptr)
+        {
+            // (An end in order: graphics_start.txt goes, nothing to take at the next start that this one didn't try)
+            Native::Fatal("the window can't show the game: %s (%s)",
+                          NativeGraphicsVulkanBuilt() ? "neither OpenGL 3.3 nor Vulkan is there" : "OpenGL 3.3 isn't there",
+                          failed.c_str());
         }
 
         SDL_DestroyProperties(properties);

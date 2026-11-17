@@ -15,6 +15,7 @@
 #include "graphics/hw/hwgs.h"
 #include "graphics/renderthread.h"
 #include "graphics/renderwork.h"
+#include "graphics/window.h"
 #include "ui/nativeui.h"
 
 #include "game/gamecontroller.h"
@@ -1209,6 +1210,8 @@ void Native::EndSession(const char* format, ...)
     va_start(arguments, format);
     std::vsnprintf(how, sizeof(how), format, arguments);
     va_end(arguments);
+    // An end in order: the graphics API's start no longer in question (graphicsapi.cpp, THE LIST 73)
+    NativeGraphicsStartEnded();
     // A setting changed just before (the window closed with the settings screen open)
     NativeUi::LogSettingChanges();
     char summary[1024];
@@ -1228,6 +1231,8 @@ void Native::EndSessionSummary()
         return;
     }
 
+    // (A fatal error's: its message shown, an end in order, graphicsapi.cpp)
+    NativeGraphicsStartEnded();
     char summary[1024];
     FormatSummary(summary, sizeof(summary));
     Log("%s", summary);

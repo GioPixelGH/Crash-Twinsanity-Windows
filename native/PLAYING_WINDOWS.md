@@ -174,6 +174,7 @@ game could make.
 | Dithering | As on the PS2 (the default): its 16-bit picture with a fine pattern. Or off, for full colour. |
 | Draw distance | Short, original (the default, the PS2's), medium, long or unlimited. Farther settings draw the grass and small things before you get close, and the detailed models of trees and statues from farther away. They also draw more: unlimited draws about twice as much on the beach, which is slower on an older PC. Short draws less. |
 | Texture packs, scanlines | As their names say. |
+| Graphics API | Under **Renderer**. OpenGL (the default) or Vulkan (new in 1.3.0). A change is used from the next start. If one doesn't start on your PC, the game uses the other one and changes this setting. |
 
 The volumes are in **Audio**. **Master volume**, its first row, turns all the sound up or down together. Music, effects and
 voices keep their own volumes under it.
@@ -240,6 +241,9 @@ PowerShell or the Command Prompt), it writes there instead.
 
 Please include the log with any bug report, and say where in the game it happened. The log also names your graphics card
 and its driver's version.
+
+If the screen stays black when the game starts, close the game. Use the Task Manager if it doesn't respond. Then start
+it again. The next start uses the other graphics API, Vulkan or OpenGL, and **Display > Renderer > Graphics API** keeps it.
 
 On a laptop with two graphics cards, the game asks for the faster one. If the log still names the built-in card
 (Intel, or AMD Radeon Graphics), choose **High performance** for `CrashTwinsanity.exe` in Windows' **Settings > System >

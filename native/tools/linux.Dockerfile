@@ -40,6 +40,8 @@ RUN curl -fsSL https://github.com/ps2dev/ps2dev/releases/download/latest/ps2dev-
 ENV PS2DEV=/usr/local/ps2dev
 
 # libmpc3 for ps2dev's EE compiler (its cc1plus loads it, with MPFR and GMP, from the system); for the AppImage's checks
-# (native/tools/check_linux.py), a screen with no monitor (Xvfb) and Mesa's OpenGL on the processor
+# (native/tools/check_linux.py), a screen with no monitor (Xvfb), Mesa's OpenGL on the processor, and Vulkan's loader with Mesa's
+# Vulkan on the processor (lavapipe) for the Vulkan start (THE LIST 73)
 RUN apt-get update && apt-get install -y --no-install-recommends libmpc3 xvfb xauth libgl1-mesa-dri libglx-mesa0 libegl-mesa0 \
+       libvulkan1 mesa-vulkan-drivers \
     && rm -rf /var/lib/apt/lists/*

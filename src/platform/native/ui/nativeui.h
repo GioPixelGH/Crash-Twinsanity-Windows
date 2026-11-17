@@ -376,6 +376,10 @@ enum NativeText : u32
     // The screen the game is shown on (THE LIST 88): the row and its description
     TextScreen,
     TextDescScreen,
+    // The graphics API (THE LIST 73): Display's renderer section, the row and its description
+    TextSectionRenderer,
+    TextGraphicsApi,
+    TextDescGraphicsApi,
     NativeTextEnd,
 };
 
@@ -572,6 +576,9 @@ enum Option : u32
     OptionImprovedMenus,
     // The pause menu's restart checkpoint row (THE LIST 85: HAB3X's row, the PS2's pause menu has none; improvedmenus.cpp shows it)
     OptionRestartCheckpoint,
+    // The graphics API (THE LIST 73: graphics/graphicsapi.cpp): OpenGL 0 (the default), Vulkan 1, from the next start; the other
+    // one taken at a start where this one can't show the game or didn't at the last start
+    OptionGraphicsApi,
     OptionCount,
 };
 

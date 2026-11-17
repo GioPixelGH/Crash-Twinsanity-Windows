@@ -11,7 +11,9 @@ release_windows.py check runs them (build_linux_docker.py --check). A line a che
 - licences: the licences it carries (LICENCES), the MIT code's in the program among them;
 - start: the AppImage run as a player runs it (extracting itself, FUSE isn't there in a container) with a settings folder of its
   own in FOLDER, headless on Xvfb with Mesa's software OpenGL, the disc image given: the beach played for 20 seconds, no fatal
-  error, the log saying it runs from the AppImage.
+  error, the log saying it runs from the AppImage;
+- vulkan: the same start drawn with Vulkan ($TWIN_GPU_API=vulkan, THE LIST 73) on Mesa's Vulkan on the processor (lavapipe):
+  the beach played, the log naming the Vulkan device.
 --program-out copies the program out (release_windows.py looks for the game's bytes in it).
 """
 import argparse
@@ -32,13 +34,38 @@ BUNDLED = re.compile(r"^(libSDL3\.so\.0|libavcodec\.so\.\d+|libavutil\.so\.\d+)$
 LICENCES = ("Crash-Twinsanity-Windows-LICENSE.txt", "SDL3-LICENSE.txt", "ffmpeg", "stb-LICENSE.txt",
             "fonts-LICENSE-LuckiestGuy.txt", "fonts-OFL-Fredoka.txt", "SMAA-LICENSE.txt",
             "twinsanityevolved-LICENSE-TwinsanityEvolved.txt", "twinsanityevolved-LICENSE-NativeEE.txt",
-            "THIRD_PARTY_NOTICES.md")
+            "THIRD_PARTY_NOTICES.md", "glslang-LICENSE.txt")
 # The beach (its chunk as the sweep names it) played for this long, drawn at 1x (Mesa on the processor); the run's own limit
 # (the sweep's) and the process's
 LEVEL = "Levels\\Earth\\Hub\\Beach"
 SECONDS = 20
 TIMEOUT = 300
 DISPLAY = ":77"
+
+
+def start(appimage, iso, work, name, extra):
+    """The AppImage started as a player starts it (headless on Xvfb, Mesa on the processor), a settings folder of its own in
+    WORK/NAME, the beach played SECONDS: its exit status ("timeout"), its output and the output's file"""
+    home = work / name / "home"
+    (home / ".config").mkdir(parents=True)
+    env = dict(os.environ, HOME=str(home), XDG_CONFIG_HOME=str(home / ".config"), DISPLAY=DISPLAY, TWINSANITY_AUDIO="off",
+               APPIMAGE_EXTRACT_AND_RUN="1", TWIN_SWEEP_LEVEL=LEVEL, TWIN_SWEEP_SECONDS=str(SECONDS), TWIN_SCALE="1",
+               TWIN_SWEEP_TIMEOUT="180", LIBGL_ALWAYS_SOFTWARE="1", **extra)
+    env.pop("TWIN_STEAM_DECK", None)
+    log = work / f"{name}.txt"
+    try:
+        with open(log, "w") as out:
+            status = subprocess.run([str(appimage), "--headless", "--quiet-stubs", "--iso", iso], env=env, stdout=out,
+                                    stderr=subprocess.STDOUT, cwd=work, timeout=TIMEOUT).returncode
+    except subprocess.TimeoutExpired:
+        status = "timeout"
+    return status, log.read_text(errors="replace"), log
+
+
+def played_and_fatal(text):
+    """The sweep's line of the beach played (its seconds and frames) and the fatal errors' lines"""
+    played = re.search(re.escape(f"sweep: {LEVEL}: ran (") + r"([\d.]+) s played, (\d+) frames", text)
+    return played, [line for line in text.splitlines() if line.startswith("[native] fatal")]
 
 
 def main():
@@ -81,44 +108,42 @@ def main():
           f"{': FAILED, missing ' + ', '.join(missing) if missing else ''}")
     failed |= bool(missing)
 
-    # A player's start: the settings folder a new one, the disc image given, the beach played headless
-    home = work / "home"
-    (home / ".config").mkdir(parents=True)
+    # A player's start: the settings folder a new one, the disc image given, the beach played headless; then the same with Vulkan
     xvfb = subprocess.Popen(["Xvfb", DISPLAY, "-screen", "0", "1280x800x24", "-nolisten", "tcp"], stdout=subprocess.DEVNULL,
                             stderr=subprocess.DEVNULL)
     time.sleep(2)
-    env = dict(os.environ, HOME=str(home), XDG_CONFIG_HOME=str(home / ".config"), DISPLAY=DISPLAY, TWINSANITY_AUDIO="off",
-               APPIMAGE_EXTRACT_AND_RUN="1", TWIN_SWEEP_LEVEL=LEVEL, TWIN_SWEEP_SECONDS=str(SECONDS), TWIN_SCALE="1",
-               TWIN_SWEEP_TIMEOUT="180", LIBGL_ALWAYS_SOFTWARE="1")
-    env.pop("TWIN_STEAM_DECK", None)
-    log = work / "start.txt"
     try:
-        with open(log, "w") as out:
-            status = subprocess.run([str(appimage), "--headless", "--quiet-stubs", "--iso", arguments.iso], env=env, stdout=out,
-                                    stderr=subprocess.STDOUT, cwd=work, timeout=TIMEOUT).returncode
-    except subprocess.TimeoutExpired:
-        status = "timeout"
+        status, text, log = start(appimage, arguments.iso, work, "start", {})
+        own = re.search(r"Crash Twinsanity (\d+\.\d+\.\d+)", text)
+        own = own.group(1) if own else "none"
+        wanted = arguments.version or own
+        print(f"{'version':15} {own} (the desktop entry's {declared})"
+              f"{'' if own == wanted and declared == wanted else ': FAILED, it should be ' + wanted}")
+        failed |= own != wanted or declared != wanted
+        played, fatal = played_and_fatal(text)
+        system = re.search(r"system: (.*)", text)
+        appimaged = system is not None and "from the AppImage" in system.group(1)
+        ok = status == 0 and played is not None and not fatal and appimaged
+        if ok:
+            print(f"{'start':15} the beach played {played.group(1)} s ({played.group(2)} frames) from the AppImage "
+                  f"({system.group(1)})")
+        else:
+            print(f"{'start':15} FAILED: exit {status}, {fatal[0] if fatal else 'played' if played else 'not played'}"
+                  f"{'' if appimaged else ', no from the AppImage in the system line'}: see {log}")
+        failed |= not ok
+
+        status, text, log = start(appimage, arguments.iso, work, "vulkan", {"TWIN_GPU_API": "vulkan"})
+        played, fatal = played_and_fatal(text)
+        device = re.search(r"\] graphics: (Vulkan: .*)", text)
+        ok = status == 0 and played is not None and not fatal and device is not None
+        if ok:
+            print(f"{'vulkan':15} the beach played {played.group(1)} s ({played.group(2)} frames) with {device.group(1)}")
+        else:
+            print(f"{'vulkan':15} FAILED: exit {status}, {fatal[0] if fatal else 'played' if played else 'not played'}"
+                  f"{'' if device else ', no Vulkan device in the log'}: see {log}")
+        failed |= not ok
     finally:
         xvfb.terminate()
-    text = log.read_text(errors="replace")
-    own = re.search(r"Crash Twinsanity (\d+\.\d+\.\d+)", text)
-    own = own.group(1) if own else "none"
-    wanted = arguments.version or own
-    print(f"{'version':15} {own} (the desktop entry's {declared})"
-          f"{'' if own == wanted and declared == wanted else ': FAILED, it should be ' + wanted}")
-    failed |= own != wanted or declared != wanted
-    played = re.search(re.escape(f"sweep: {LEVEL}: ran (") + r"([\d.]+) s played, (\d+) frames", text)
-    fatal = [line for line in text.splitlines() if line.startswith("[native] fatal")]
-    system = re.search(r"system: (.*)", text)
-    appimaged = system is not None and "from the AppImage" in system.group(1)
-    ok = status == 0 and played is not None and not fatal and appimaged
-    if ok:
-        print(f"{'start':15} the beach played {played.group(1)} s ({played.group(2)} frames) from the AppImage "
-              f"({system.group(1)})")
-    else:
-        print(f"{'start':15} FAILED: exit {status}, {fatal[0] if fatal else 'played' if played else 'not played'}"
-              f"{'' if appimaged else ', no from the AppImage in the system line'}: see {log}")
-    failed |= not ok
 
     if arguments.program_out:
         shutil.copy2(program, arguments.program_out)

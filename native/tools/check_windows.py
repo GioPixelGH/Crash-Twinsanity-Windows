@@ -269,6 +269,27 @@ LOG_START = [
     r"the slowest frame \d+ ms; a frame's work: .*, the graphics card [\d.]+ ms\n",
     rf"\] exit: the level sweep's run ended \(status 0\) after {DURATION}; the game's state ",
 ]
+# With Vulkan (--api vulkan, THE LIST 73): no timer queries, so the card named and its time said unknown as the renderer starts
+# (before the shader programs' line), and the performance and session lines with "the graphics card unknown"
+LOG_TIMER_QUERY = LOG_START[[i for i, p in enumerate(LOG_START) if "timer query" in p][0]]
+LOG_SHADERS = LOG_START[[i for i, p in enumerate(LOG_START) if "shader programs made" in p][0]]
+LOG_VULKAN_CARD = [r"\] graphics: Vulkan: .+, driver ",
+                   r"\] graphics: the card's time unknown with Vulkan \(SDL's GPU API has no timer queries\)"]
+
+
+def log_start():
+    """LOG_START for the API the runs draw with ($TWIN_GPU_API)"""
+    if os.environ.get("TWIN_GPU_API") != "vulkan":
+        return LOG_START
+    patterns = []
+    for pattern in LOG_START:
+        if pattern == LOG_SHADERS:
+            patterns += LOG_VULKAN_CARD
+        if pattern != LOG_TIMER_QUERY:
+            patterns.append(pattern.replace(r"the graphics card [\d.]+ ms", "the graphics card unknown"))
+    return patterns
+
+
 LOG_ERROR = [
     rf"\] the last session \(log\.previous\.txt\): \d+\.\d+\.\d+ for {DURATION}, ended: "
     r"\"exit: the level sweep's run ended \(status 0\)",
@@ -414,6 +435,50 @@ def update_check(exe, work):
     what = (f"a newer release {'offered' if newer else 'NOT offered'}, an older one {'not' if older else 'WRONGLY'} offered, "
             f"the option off {'asks nothing' if off else 'ASKED'} (no network: $TWIN_UPDATE_TEST)")
     return newer and older and off, what
+
+
+# The graphics API's start (THE LIST 73, graphicsapi.cpp): window runs with the setting and $TWIN_GPU_API empty (a player's way),
+# each a few seconds of --quick: the API the last start left unfinished (graphics_start.txt) and an API whose library isn't there
+# (SDL's hints from the environment: SDL_OPENGL_LIBRARY, SDL_VULKAN_LIBRARY) both take the other one and change the setting to it
+API_SECONDS = 20
+API_CASES = [
+    # (name, options, graphics_start.txt's text or None, environment, the API taken, the log's line)
+    ("OpenGL's start left unfinished", [], "opengl\n", {}, "vulkan",
+     r"graphics: the last start with OpenGL never showed the game's pictures \(graphics_start\.txt left behind\), so Vulkan"),
+    ("Vulkan's start left unfinished", ["graphics_api=1"], "vulkan\n", {}, "opengl",
+     r"graphics: the last start with Vulkan never showed the game's pictures \(graphics_start\.txt left behind\), so OpenGL"),
+    ("no OpenGL", [], None, {"SDL_OPENGL_LIBRARY": "no-opengl-here.dll"}, "vulkan",
+     r"graphics: OpenGL can't show the game here \(.*\): Vulkan instead"),
+    ("no Vulkan", ["graphics_api=1"], None, {"SDL_VULKAN_LIBRARY": "no-vulkan-here.dll"}, "opengl",
+     r"graphics: Vulkan can't show the game here \(.*\): OpenGL instead"),
+    ("a start as it should be", ["graphics_api=1"], None, {}, "vulkan", r"graphics: Vulkan: "),
+]
+
+
+def graphics_api(exe, work):
+    """The graphics API's setting and its fallback at the start (API_CASES): each run's window shown with the API expected (the
+    log's "graphics: Vulkan: ..." line, or OpenGL's "graphics: NAME (VENDOR), OpenGL ..."), its log line, options.txt's
+    graphics_api changed to the API taken, graphics_start.txt gone once the pictures showed: [(name, passed, what happened)]"""
+    results = []
+    for index, (name, options, left, environment, taken, line) in enumerate(API_CASES):
+        folder = work / f"graphics-api-{index}"
+        files = {"graphics_start.txt": left.encode()} if left else None
+        log = run_for(exe, folder, options, dict(environment, TWIN_GPU_API=""), ["--quick"], None, API_SECONDS,
+                      resolution="scale=1\nwindow=1280x720\nfullscreen=0\n", files=files)
+        settings = folder / "settings" / "Crash Twinsanity"
+        options_text = (settings / "options.txt").read_text() if (settings / "options.txt").exists() else ""
+        saved = re.search(r"^graphics_api=(\d)", options_text, re.M)
+        saved = "vulkan" if saved and saved.group(1) == "1" else "opengl"
+        window = "vulkan" if re.search(r"\] graphics: Vulkan: ", log) else \
+            "opengl" if re.search(r"\] graphics: .+ \(.+\), OpenGL \d", log) else "none"
+        said = re.search(line, log) is not None
+        left_behind = (settings / "graphics_start.txt").exists()
+        played = "hardware renderer: drawing at" in log
+        ok = window == taken and saved == taken and said and not left_behind and played
+        results.append((name, ok, f"the window {window}, the setting {saved}, the line {'there' if said else 'MISSING'}, "
+                                  f"graphics_start.txt {'LEFT' if left_behind else 'gone'}"
+                                  f"{'' if played else ', the renderer NOT started'} ({taken} expected)"))
+    return results
 
 
 def resolution_steps(exe, work):
@@ -1097,7 +1162,7 @@ def session_log(exe, work):
     status, log = run("start.txt", ["--iso", disc_image()],
                       {"TWIN_SWEEP_LEVEL": PORTABLE_CHUNK, "TWIN_SWEEP_SECONDS": str(LOG_SECONDS), "TWIN_SWEEP_TIMEOUT": "120",
                        "TWIN_PERFORMANCE_EVERY": "10", "TWIN_GPU_TIME_TEST": "stuck"}, 300)
-    results = [result("a start played", status, 0, log, LOG_START, changes=0)]
+    results = [result("a start played", status, 0, log, log_start(), changes=0)]
     status, log = run("error.txt", ["--iso", str(root / "missing image.iso")], {}, 60)
     results.append(result("a start ending on an error", status, 1, log, LOG_ERROR))
     status, log = run("settings.txt", ["--iso", disc_image()], {"TWIN_SETTINGS_LOG_TEST": "1"}, 120, folder=changing)
@@ -1803,7 +1868,16 @@ def main():
                              "..\\compare, PCSX2's pictures kept there)")
     parser.add_argument("--fps-shots", metavar="FOLDER",
                         help="only the FPS counter's check, with a window: the window's pictures saved in FOLDER")
+    parser.add_argument("--api", choices=["opengl", "vulkan"], default="opengl",
+                        help="the graphics API every run draws with ($TWIN_GPU_API; THE LIST 73): opengl, the default's, as a "
+                             "player's start (the variable not set), or vulkan")
+    parser.add_argument("--graphics-api", action="store_true",
+                        help="only the graphics API's check (the setting, the other API taken when one can't start: windows)")
     arguments = parser.parse_args()
+    if arguments.api == "vulkan":
+        os.environ["TWIN_GPU_API"] = "vulkan"
+    else:
+        os.environ.pop("TWIN_GPU_API", None)
 
     if arguments.build:
         built = subprocess.run([sys.executable, str(TOOLS / "build_windows.py")], stdout=subprocess.DEVNULL,
@@ -1851,7 +1925,12 @@ def main():
         for name, ok, what in results:
             print(f"fps counter     {'ok' if ok else 'FAILED'} {name}: {what}")
         sys.exit(0 if all(ok for _, ok, _ in results) else 1)
-    print(f"checking        {exe}")
+    if arguments.graphics_api:
+        results = graphics_api(exe, work)
+        for name, ok, what in results:
+            print(f"graphics api    {'ok' if ok else 'FAILED'} {name}: {what}")
+        sys.exit(0 if all(ok for _, ok, _ in results) else 1)
+    print(f"checking        {exe} with {'Vulkan' if arguments.api == 'vulkan' else 'OpenGL'}")
     failed = report(exe, Path(arguments.reference) if arguments.reference else None, work, arguments.sweep)
     print(f"details in      {work}")
     sys.exit(1 if failed else 0)
@@ -1906,6 +1985,15 @@ def report(exe, reference, work, with_sweep, reference_name=None):
 
     cases = portable(exe, work)
     print(f"portable        {sum(ok for _, ok, _ in cases)}/{len(cases)} cases as they should be "
+          f"({', '.join(name for name, _, _ in cases)})")
+    for name, ok, what in cases:
+        if not ok:
+            failed = True
+            print(f"  FAILED {name}: {what}")
+
+    # (The setting's own runs: the same whichever --api)
+    cases = graphics_api(exe, work)
+    print(f"graphics api    {sum(ok for _, ok, _ in cases)}/{len(cases)} starts with the API they should have "
           f"({', '.join(name for name, _, _ in cases)})")
     for name, ok, what in cases:
         if not ok:

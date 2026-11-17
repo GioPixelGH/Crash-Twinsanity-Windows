@@ -336,6 +336,9 @@ English slot); an empty cell shows the English. To translate: fill that column i
 | 0x220 | a restart checkpoint row in the pause menu (the ps2's pause menu has none). | une ligne recommencer dans le menu pause (celui de la ps2 n'en a pas). | eine zeile neu starten im pausenmenü (das der ps2 hat keine). | una fila reiniciar en el menú de pausa (el de la ps2 no la tiene). | una riga ricomincia nel menu di pausa (quello della ps2 non ce l'ha). |  |
 | 0x221 | monitor | écran | bildschirm | monitor | monitor |  |
 | 0x222 | the monitor the game shows on. auto is the main one. | l'écran où s'affiche le jeu. auto est l'écran principal. | der bildschirm für das spiel. auto ist der hauptbildschirm. | el monitor donde se ve el juego. auto es el principal. | il monitor dove si vede il gioco. auto è il principale. |  |
+| 0x223 | renderer | rendu | renderer | renderizado | rendering |  |
+| 0x224 | graphics api | api graphique | grafik-api | api gráfica | api grafica |  |
+| 0x225 | opengl, or vulkan (new). from the next start. if one doesn't start, the other. | opengl, ou vulkan (nouveau). au prochain lancement. si l'une ne démarre pas, l'autre. | opengl oder vulkan (neu). ab dem nächsten start. startet eine nicht, die andere. | opengl o vulkan (nueva). al volver a abrir el juego. si una no arranca, la otra. | opengl o vulkan (nuova). dal prossimo avvio del gioco. se una non parte, l'altra. |  |
 
 ## English (29 lines)
 

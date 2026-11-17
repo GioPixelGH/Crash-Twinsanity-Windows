@@ -91,6 +91,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionAspect1610, "aspect_16_10", 0, 1},
     {OptionImprovedMenus, "improved_menus", 0, 1},
     {OptionRestartCheckpoint, "restart_checkpoint", 0, 1},
+    {OptionGraphicsApi, "graphics_api", 0, 1},
 };
 
 s32 g_Values[OptionCount];
@@ -169,6 +170,7 @@ const char* ValueMeaning(const OptionInfo& info, s32 value)
     static constexpr const char* Layouts[] = {"by the places", "Nintendo's"};
     static constexpr const char* Dithering[] = {"as the PS2", "off"};
     static constexpr const char* Distances[] = {"original", "short", "medium", "long", "unlimited"};
+    static constexpr const char* Apis[] = {"OpenGL", "Vulkan"};
     static constexpr const char* Toggle[] = {"off", "on"};
     auto pick = [value](const auto& words) -> const char*
     { return value >= 0 && static_cast<size_t>(value) < std::size(words) ? words[value] : nullptr; };
@@ -198,6 +200,8 @@ const char* ValueMeaning(const OptionInfo& info, s32 value)
         return pick(Anisotropy);
     case OptionSlideJump:
         return pick(SlideJumps);
+    case OptionGraphicsApi:
+        return pick(Apis);
     default:
         return info.maximum == 1 ? pick(Toggle) : nullptr;
     }

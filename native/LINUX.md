@@ -17,7 +17,8 @@ checked by native/tools/release_windows.py. Playing it is in "Playing from the A
 3. Run it. The first time it asks for your disc image (a PAL `.iso`, `.bin` or `.img` of your own copy, SLES-52568) and
    remembers it; `--iso PATH` gives one on the command line.
 
-What it needs: an x86-64 PC with OpenGL 3.3 (Mesa or the graphics card's own driver); a distribution with glibc 2.38 or
+What it needs: an x86-64 PC with OpenGL 3.3 or Vulkan (Mesa or the graphics card's own driver; Vulkan since 1.3.0, chosen in
+**Display > Renderer > Graphics API**); a distribution with glibc 2.38 or
 later: Ubuntu 24.04, Linux Mint 22, Debian 13, Fedora 39, Arch and the ones after them, not Ubuntu 22.04, Linux Mint 21 or
 Debian 12 (their glibc is older: there, build the program yourself, below; SteamOS should have it, untried so far); and
 FUSE, which most desktops have for AppImages. Without FUSE (it
@@ -108,13 +109,14 @@ You need about 3 GB of disk space, your PAL disc image (SLES-52568) and an inter
    .venv/bin/python tools/split.py
    ```
 
-4. **Build** (the first time it also builds SDL3 and FFmpeg):
+4. **Build** (the first time it also builds SDL3, glslang and FFmpeg):
 
    ```sh
    .venv/bin/python native/tools/build_linux.py
    ```
 
-   It finds clang (`clang++` if it's 21 or later, else the newest `clang++-N`), builds SDL3 into `build/native/deps` and
+   It finds clang (`clang++` if it's 21 or later, else the newest `clang++-N`), builds SDL3 and glslang (16.6.0, static: the
+   Vulkan backend's shaders, THE LIST 73; a build configured without it is configured again) into `build/native/deps` and
    FFmpeg into `build/native/ffmpeg/linux-x86_64` when they aren't there, configures `build/native/cmake` the first time
    (`--configure` again, `--clean` from nothing) and builds. CMake needs clang as the C++ compiler, not GCC: the layout tools
    (`data_types.py`, `convert_data.py`) run it for its record layouts, the PS2's target's included. The C++ runtime is linked
@@ -142,8 +144,8 @@ You need about 3 GB of disk space, your PAL disc image (SLES-52568) and an inter
 
 makes `build/native/dist/Crash-Twinsanity-Linux-x86_64.AppImage` from the build above: one file a player marks executable
 (`chmod +x`) and runs, on most distributions, with nothing installed. It holds the program, SDL3 and FFmpeg's libraries,
-the UI's fonts and the licences, and nothing of the game's. The C library, OpenGL (the player's driver) and what SDL loads at
-run time (X11 or Wayland, PipeWire, PulseAudio or ALSA) are the system's. The script checks that nothing else is loaded from
+the UI's fonts and the licences (glslang's among them), and nothing of the game's. The C library, OpenGL or Vulkan (the
+player's driver: SDL loads `libvulkan.so.1` when the setting asks for Vulkan) and what SDL loads at run time (X11 or Wayland, PipeWire, PulseAudio or ALSA) are the system's. The script checks that nothing else is loaded from
 outside the AppImage, and downloads appimagetool and its runtime at fixed versions, checked by their SHA-256.
 
 The AppImage needs a glibc as new as the system it was built on, or newer; the script prints which. A release meant for older
@@ -169,7 +171,8 @@ removing one starts it again from nothing. The split has to be made first, as fo
 
 `--check --iso IMAGE` then runs native/tools/check_linux.py in the same image: what the AppImage holds and loads, its licences,
 the glibc it needs, its version, and a start as a player's, headless on Xvfb with Mesa's software OpenGL, the beach played for 20 seconds
-from your disc image (mounted read-only). release_windows.py check does both (native/WINDOWS.md, "Releasing").
+from your disc image (mounted read-only), then the same start with Vulkan (`$TWIN_GPU_API=vulkan`) on Mesa's Vulkan on the
+processor (lavapipe, in the image since 1.3.0). release_windows.py check does both (native/WINDOWS.md, "Releasing").
 
 Ubuntu 24.04 because it's where ps2dev's own Linux toolchain is built (its EE compiler, which the layout tools ask for its
 headers' folders, runs there) and an LTS many distributions follow; the AppImage needs the glibc of the newest symbols it

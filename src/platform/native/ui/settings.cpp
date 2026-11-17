@@ -11,6 +11,7 @@
 
 #include "native.h"
 #include "graphics/resolution.h"
+#include "graphics/window.h"
 #include "mods.h"
 #include "renderdistance.h"
 #include "updatecheck.h"
@@ -636,6 +637,17 @@ void Build()
         [](s32 value) { return Text(DistanceTexts[value]); }));
     display.push_back(Toggle(TextTexturePack, TextDescTexturePack, OptionTexturePack));
     display.push_back(Toggle(TextCrt, TextDescCrt, OptionCrtFilter));
+    // The renderer (THE LIST 73): the graphics API, OpenGL or Vulkan, from the next start (graphicsapi.cpp: the other one taken when
+    // one can't show the game); in a build that has Vulkan
+    Row renderer = Section(TextSectionRenderer);
+    renderer.shown = [] { return NativeGraphicsVulkanBuilt(); };
+    display.push_back(renderer);
+    Row api = Choice(
+        TextGraphicsApi, TextDescGraphicsApi, [] { return GetOption(OptionGraphicsApi); },
+        [](s32 value) { SetOption(OptionGraphicsApi, value); }, 1,
+        [](s32 value) { return std::string(value != 0 ? "vulkan" : "opengl"); });
+    api.shown = [] { return NativeGraphicsVulkanBuilt(); };
+    display.push_back(api);
 
     std::vector<Row>& audio = g_Rows[TabAudio];
     // The master volume first (THE LIST 81): options.txt's 0 to 100 in steps of 5, the slider's 0 to 20 shown as the percent
@@ -1121,7 +1133,7 @@ void ResetTab(u32 tab)
         ResetOptions({OptionWidescreen, OptionUltrawide, OptionRefresh60, OptionTextureFilter, OptionCrtFilter, OptionTexturePack,
                       OptionTextureUpscale, OptionAntiAliasing, OptionVSync, OptionRenderDistance});
         ResetOptions({OptionAnisotropy});
-        ResetOptions({OptionSuperUltrawide, OptionAspect1610});
+        ResetOptions({OptionSuperUltrawide, OptionAspect1610, OptionGraphicsApi});
         break;
     case TabAudio:
         SetMusic(DefaultOption(OptionMusicVolume));

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""The native build on Linux x86-64 (native/LINUX.md): finds clang (21 or later), builds SDL3 from its source release into
-build/native/deps and an LGPL FFmpeg (native/tools/build_ffmpeg.sh) when they aren't there, then configures and builds
-build/native/cmake/twinsanity.
+"""The native build on Linux x86-64 (native/LINUX.md): finds clang (21 or later), builds SDL3 and glslang (the Vulkan backend's)
+from their source releases into build/native/deps and an LGPL FFmpeg (native/tools/build_ffmpeg.sh) when they aren't there, then
+configures and builds build/native/cmake/twinsanity.
 
     .venv/bin/python native/tools/build_linux.py [--configure] [--clean] [ninja arguments...]
 
@@ -32,6 +32,12 @@ SDL_VERSION = "3.4.18"
 SDL_URL = f"https://github.com/libsdl-org/SDL/releases/download/release-{SDL_VERSION}/SDL3-{SDL_VERSION}.tar.gz"
 SDL_SHA256 = "9c75cf16330322c217dedd2e0609f1124f1b54b8633e763467b4684d0f4334a3"
 SDL_PREFIX = DEPS / f"SDL3-{SDL_VERSION}-linux"
+# glslang (BSD 3-Clause and others, its LICENSE.txt): the Vulkan backend makes the renderer's GLSL SPIR-V with it (THE LIST 71, 73),
+# the same release as build_windows.py's, static libraries
+GLSLANG_VERSION = "16.6.0"
+GLSLANG_URL = f"https://github.com/KhronosGroup/glslang/archive/refs/tags/{GLSLANG_VERSION}.tar.gz"
+GLSLANG_SHA256 = "9c09b901149c729df745057dafa815278aaa101b84d2b6e14f16a42de52f97f2"
+GLSLANG_PREFIX = DEPS / f"glslang-{GLSLANG_VERSION}-linux"
 # The C++ runtime linked in, so the program runs where the system's libstdc++ is older than the builder's, with none of its
 # symbols exported for the system's own C++ libraries (Mesa's LLVM) to bind to
 STATIC_RUNTIME_FLAGS = "-static-libstdc++ -static-libgcc -Wl,--exclude-libs,ALL"
@@ -108,6 +114,38 @@ def own_sdl(cmake, ninja, clang):
     return SDL_PREFIX
 
 
+def own_glslang(cmake, ninja, clang, clangxx):
+    """glslang built from its source release into GLSLANG_PREFIX when it isn't there (static, no tools, no HLSL)"""
+    if (GLSLANG_PREFIX / "lib" / "cmake" / "glslang" / "glslang-config.cmake").exists():
+        return GLSLANG_PREFIX
+    archive = DEPS / f"glslang-{GLSLANG_VERSION}.tar.gz"
+    download(GLSLANG_URL, archive, GLSLANG_SHA256)
+    source = DEPS / f"glslang-{GLSLANG_VERSION}"
+    if not source.exists():
+        with tarfile.open(archive) as tar:
+            tar.extractall(DEPS, filter="data")
+    build = DEPS / f"glslang-{GLSLANG_VERSION}-build-linux"
+    print(f"building glslang {GLSLANG_VERSION}", flush=True)
+    subprocess.run([cmake, "-S", str(source), "-B", str(build), "-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={ninja}",
+                    f"-DCMAKE_C_COMPILER={clang}", f"-DCMAKE_CXX_COMPILER={clangxx}", "-DCMAKE_BUILD_TYPE=Release",
+                    f"-DCMAKE_INSTALL_PREFIX={GLSLANG_PREFIX}", "-DCMAKE_INSTALL_LIBDIR=lib", "-DBUILD_SHARED_LIBS=OFF",
+                    "-DENABLE_OPT=OFF", "-DENABLE_HLSL=OFF", "-DENABLE_GLSLANG_BINARIES=OFF", "-DGLSLANG_TESTS=OFF",
+                    "-DBUILD_EXTERNAL=OFF", "-DENABLE_SPVREMAPPER=OFF", "-DGLSLANG_ENABLE_INSTALL=ON",
+                    f"-DPython3_EXECUTABLE={sys.executable}"], check=True)
+    subprocess.run([cmake, "--build", str(build), "--target", "install"], check=True)
+    return GLSLANG_PREFIX
+
+
+def configured(name):
+    """A variable of the build's CMake cache ("" before it was configured)"""
+    cache = BUILD / "CMakeCache.txt"
+    if cache.exists():
+        for line in cache.read_text(errors="replace").splitlines():
+            if line.startswith(name + ":"):
+                return line.split("=", 1)[1]
+    return ""
+
+
 def own_ffmpeg(clang):
     """Our decode-only LGPL 2.1 FFmpeg (native/tools/build_ffmpeg.sh), built when it isn't there; CMake finds it in FFMPEG"""
     if (FFMPEG / "lib" / "pkgconfig" / "libavcodec.pc").exists():
@@ -146,13 +184,16 @@ def main():
         sdl = Path(args.sdl)
     else:
         sdl = own_sdl(cmake, ninja, clang)
+    glslang = own_glslang(cmake, ninja, clang, clangxx)
     own_ffmpeg(clang)
 
     if args.clean and BUILD.exists():
         shutil.rmtree(BUILD)
-    if args.configure or not (BUILD / "build.ninja").exists():
+    # (A build configured before glslang was there, 1.2.0's, configured again to have the Vulkan backend)
+    without_glslang = str(glslang) not in configured("CMAKE_PREFIX_PATH")
+    if args.configure or without_glslang or not (BUILD / "build.ninja").exists():
         subprocess.run([cmake, "-S", str(HERE / "native"), "-B", str(BUILD), "-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={ninja}",
-                        f"-DCMAKE_CXX_COMPILER={clangxx}", f"-DCMAKE_PREFIX_PATH={sdl}",
+                        f"-DCMAKE_CXX_COMPILER={clangxx}", f"-DCMAKE_PREFIX_PATH={sdl};{glslang}",
                         f"-DCMAKE_EXE_LINKER_FLAGS={STATIC_RUNTIME_FLAGS}", f"-DPython3_EXECUTABLE={sys.executable}"],
                        check=True)
     result = subprocess.run([cmake, "--build", str(BUILD), "--"] + args.ninja)

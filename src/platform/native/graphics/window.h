@@ -9,5 +9,19 @@
 struct SDL_Window;
 
 bool NativeGraphicsAttachWindow(SDL_Window* window);
-// Whether the window is to be Vulkan's ($TWIN_GPU_API=vulkan; THE LIST 73 makes it a setting), for a build that has it
+// The graphics API (THE LIST 73, graphicsapi.cpp): whether the window and the renderer are to be Vulkan's, decided once at the
+// first call: the setting's (options.txt's graphics_api), $TWIN_GPU_API over it (opengl or vulkan: a test's), the other API when
+// the last start with this one never showed its pictures (graphics_start.txt left in the settings folder, the setting changed);
+// OpenGL in a build without Vulkan
 bool NativeGraphicsVulkanWanted();
+bool NativeGraphicsVulkanBuilt();
+// The window about to be made with an API: graphics_start.txt names it until the start's pictures show (not with $TWIN_GPU_API)
+void NativeGraphicsStartingWith(bool vulkan);
+// The window couldn't show the game with the API asked for, so the other's taken: the setting changed to it (not with
+// $TWIN_GPU_API)
+void NativeGraphicsStartFellBack(bool vulkan);
+// A picture shown in the window: enough of them and the start worked (graphics_start.txt removed)
+void NativeGraphicsPictureShown();
+// The session's end in order (sessionlog.cpp: the window closed, a fatal error's message, the exit): graphics_start.txt removed; a
+// crash or a killed program leaves it
+void NativeGraphicsStartEnded();

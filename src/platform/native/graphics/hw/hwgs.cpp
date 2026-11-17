@@ -44,6 +44,7 @@
 #include "../gs/backend.h"
 #include "../gs/drawstate.h"
 #include "../gs/gs.h"
+#include "native.h"
 
 #include <SDL3/SDL.h>
 
@@ -1557,6 +1558,16 @@ bool HwGs::Init()
         if (backend_ == nullptr)
         {
             std::fprintf(stderr, "graphics: no Vulkan: OpenGL draws\n");
+        }
+        else
+        {
+            // (A window's run has its device in the log already: the window's, display.cpp; a run without one, here)
+            if (Native::GetSettings().headless)
+            {
+                Native::Log("graphics: %s", backend_->Describe().c_str());
+            }
+
+            Native::Log("graphics: the card's time unknown with Vulkan (SDL's GPU API has no timer queries)");
         }
     }
 

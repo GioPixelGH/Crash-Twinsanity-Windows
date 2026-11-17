@@ -386,6 +386,8 @@ void PresentTexture(u32 texture, f32 u0, f32 v0, f32 u1, f32 v1, u32 pictureWidt
     WriteWindowShot(width, height);
     gpu.Submit();
     p.backend->ShowWindow();
+    // (The start's pictures counted: graphicsapi.cpp, THE LIST 73)
+    NativeGraphicsPictureShown();
 }
 
 void Present(const NativeGraphics::Picture& picture)
@@ -426,15 +428,10 @@ bool PresenterContext(SDL_Window** window, SDL_GLContext* context)
     return true;
 }
 
-// The graphics API asked for (window.h)
+// The graphics API asked for (window.h: the setting, THE LIST 73, graphicsapi.cpp)
 bool VulkanWanted()
 {
-    // ($TWIN_GPU_API=vulkan, THE LIST 71; THE LIST 73 makes it a setting)
-    static const bool wanted = [] {
-        const char* api = std::getenv("TWIN_GPU_API");
-        return api != nullptr && std::strcmp(api, "vulkan") == 0 && Hw::VulkanBuilt();
-    }();
-    return wanted;
+    return NativeGraphicsVulkanWanted();
 }
 
 // The renderer's: the window's backend's, or the one asked for without a window
@@ -535,11 +532,6 @@ bool RenderContext(SDL_Window** window, SDL_GLContext* context)
     *context = g_RenderContext;
     return true;
 }
-}
-
-bool NativeGraphicsVulkanWanted()
-{
-    return NativeGraphics::VulkanWanted();
 }
 
 Hw::Gpu& NativeGraphicsWindowGpu()
@@ -884,8 +876,8 @@ bool NativeGraphicsAttachWindow(SDL_Window* window)
 
         // The graphics card and its driver in the log, for the bug reports: SDL GPU's device (its name, the driver's name and
         // version), then Windows' adapters and their drivers' versions
+        // (The card's time unknown with it: hwgs.cpp says so as the renderer starts)
         Native::Log("graphics: %s", p.backend->Describe().c_str());
-        Native::Log("graphics: the card's time unknown with Vulkan (SDL's GPU API has no timer queries)");
     }
     else
     {
@@ -920,6 +912,9 @@ bool NativeGraphicsAttachWindow(SDL_Window* window)
         if (p.backend == nullptr)
         {
             std::fprintf(stderr, "graphics: OpenGL 3.3's entry points missing\n");
+            // (Its context gone with the window: system.cpp tries Vulkan's next, THE LIST 73)
+            SDL_GL_DestroyContext(p.context);
+            p.context = nullptr;
             return false;
         }
     }
@@ -949,6 +944,12 @@ bool NativeGraphicsAttachWindow(SDL_Window* window)
         gpu.Submit();
         delete p.backend;
         p.backend = nullptr;
+        if (p.context != nullptr)
+        {
+            SDL_GL_DestroyContext(p.context);
+            p.context = nullptr;
+        }
+
         return false;
     }
 

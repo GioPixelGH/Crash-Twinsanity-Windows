@@ -237,7 +237,7 @@ Three runs of 60 s each (the program before it, built from the same tree, then t
 | Frames a second | 67.3 | 68.0 |
 
 The Vulkan backend (THE LIST 71) is hw/sdlgpu.cpp. It plays the same lists with SDL's GPU API on its "vulkan" driver, SPIR-V
-only, for now behind `$TWIN_GPU_API=vulkan` (73 makes it a setting). The renderer's GLSL 3.30 programs become SPIR-V while the
+only, behind `$TWIN_GPU_API=vulkan` until 73 made it a setting ("The graphics API", below). The renderer's GLSL 3.30 programs become SPIR-V while the
 game runs, made by glslang 16.6.0 as a static library (native/tools/build_windows.py builds it from its release, checked by
 SHA-256, and without it the build has OpenGL only). The translation gathers each stage's loose uniforms into a std140 block,
 binds the float samplers in order, reads the integer textures (R32UI, R16UI, which SDL doesn't sample) as storage textures
@@ -295,10 +295,24 @@ other; compare/perf_f/gl_72.json and vulkan_72.json against 71's):
 | The render thread | 12.9 / 13.2 ms (the GS 11.8, OpenGL 1.2, the picture handed over 0.2) | 15.5 / 14.4 ms (the GS 12.8, Vulkan 1.5, the picture handed over 0.1) |
 | The window's present | 2.3 / 2.5 ms | 0.4 / 0.2 ms |
 
-OpenGL's numbers moved within a run's spread (VU1, which 72 doesn't touch, 3.8% slower in the same runs). With Vulkan the
+OpenGL's numbers moved within a run's spread (VU1, which 72 doesn't touch, 3.8% slower in the same runs). Measured again in
+one session, the two programs one after the other (pre-72, 72, pre-72, 72; compare/perf_f/ab73): the program before 72
+62.0, 63.8 and 62.1 fps, 72's 64.9 and 64.1, so OpenGL lost nothing. With Vulkan the
 picture's read back is gone (2.9 ms to 0.1) and the window's present is SDL GPU's (0.2 ms against OpenGL's 2.5 here), so the
 game runs faster than with OpenGL on this PC, though its render thread is 1.2 ms longer (the GS's work 1.0, the API's calls
 0.3). The card's own time isn't known with Vulkan.
+
+The graphics API (THE LIST 73): a setting, Display > Renderer > Graphics API (`graphics_api`: OpenGL, the default in 1.3.0, or
+Vulkan), used from the next start, since the window is made for one API (graphics/graphicsapi.cpp). A start can fail with one
+API in two ways. The window can't be drawn in with it (no OpenGL 3.3, no Vulkan driver): system.cpp makes the window again for
+the other API at once ("graphics: OpenGL can't show the game here (...): Vulkan instead"). Or the start goes on and never shows
+its pictures, a driver that hangs or crashes first, as #12 and #16's black screens and #4's hang may be. For that one
+`graphics_start.txt` in the settings folder names the API before the window is made, and goes once 30 pictures were shown or the
+session ended in order (the window closed, a fatal error's message, the exit). Found at the next start for the same API, the
+other API is taken ("graphics: the last start with OpenGL never showed the game's pictures (graphics_start.txt left behind), so
+Vulkan this time"). Either way the setting changes to the API taken, so the next start begins with it and the settings show
+the one in use. A start with `$TWIN_GPU_API` set leaves both alone. A build without Vulkan (the AppImage before 1.3.0) hides the
+row and keeps OpenGL. A black screen whose pictures are shown, black, isn't caught: only a start that never shows any.
 
 ### Hitches
 
@@ -592,7 +606,18 @@ bound to F8, the screen closed, the program ended). Each log must have its kinds
 `LOG_ERROR`, `LOG_SETTINGS`: below, "The log"; the played start's performance lines with the graphics card's time), as many
 lines of settings changed as it should (none in the played start, three in the settings' run) and nothing private: not the
 profile folder's name anywhere, nor the user's in a path, nor the computer's, nor a path with `/` in a folder written as its
-variable.
+variable. With Vulkan the played start's log names the Vulkan device and says the card's time is unknown, where OpenGL's has
+the timer query left out, and its performance lines say "the graphics card unknown" (`log_start()`).
+
+The graphics API's check (`graphics_api()`, `--graphics-api` alone, under two minutes; THE LIST 73) runs five short window
+starts of `--quick` with the setting and `$TWIN_GPU_API` empty, as a player starts: OpenGL's start left unfinished
+(`graphics_start.txt` saying `opengl`) and Vulkan's, a PC without OpenGL (`SDL_OPENGL_LIBRARY` naming a DLL that isn't there:
+SDL reads its hints from the environment) and one without Vulkan (`SDL_VULKAN_LIBRARY`), and a Vulkan start as it should be.
+Each must show its window with the API expected, write its log line, leave the setting on that API and remove
+`graphics_start.txt` once its pictures showed.
+
+`--api vulkan` runs every check with Vulkan (`$TWIN_GPU_API=vulkan` for all the runs; the pictures are compared with the
+reference's OpenGL ones, byte for byte); `--api opengl`, the default, runs them as a player's start (the variable not set).
 
 ## The log
 
@@ -798,9 +823,11 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   ("Fewer calls" under "Speed"): to tell a drawing difference from the calls left out.
 - `$TWIN_HW_LIST_BYTES=N`: the hardware renderer's command list played once it holds N bytes (and when a result is wanted, and
   at the frame's end) instead of after each batch ("The command list" under "Speed").
-- `$TWIN_GPU_API=vulkan`: the window made for Vulkan and shown through SDL GPU, and the hardware renderer's lists played by the
-  Vulkan backend (hw/sdlgpu.cpp, "The Vulkan backend" and "The window on the backend" under "Speed"); without a window (headless)
-  the renderer's alone. OpenGL when Vulkan can't start, the window made again for it (the log says why). The overlay's offscreen
+- `$TWIN_GPU_API=vulkan` or `opengl`: the graphics API over the setting (Display > Renderer > Graphics API, `graphics_api`,
+  THE LIST 73; "The graphics API" under "Speed"), for a test: the window made for it, and the hardware renderer's lists played
+  by its backend (hw/sdlgpu.cpp for Vulkan, "The Vulkan backend" and "The window on the backend" under "Speed"); without a
+  window (headless) the renderer's alone. With it set nothing writes `graphics_start.txt` and the setting isn't changed. The
+  other API when one can't make the window show the game, the window made again for it (the log says why). The overlay's offscreen
   shots ($TWIN_UI_SETTINGS_SHOTS) draw with the renderer's API too, Vulkan on a device of their own. `$TWIN_VULKAN_DEBUG=1`: SDL
   GPU's debug mode with Vulkan's validation
   layers (the Vulkan SDK installed), their messages in the log, the textures named ("texture 141 64x64 format 0 levels 7"); run

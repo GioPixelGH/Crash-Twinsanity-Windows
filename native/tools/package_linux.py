@@ -5,8 +5,9 @@ build/native/dist/Crash-Twinsanity-Linux-x86_64.AppImage, one file the player ma
     .venv/bin/python native/tools/package_linux.py [--build build/native/cmake]
 
 The AppImage holds the program, the libraries it loads from build/native (SDL3, FFmpeg's libavcodec and libavutil), the UI's
-fonts and the licences. The rest comes from the player's system: the C library, OpenGL (their graphics driver), and what SDL
-loads at run time (X11 or Wayland, PipeWire or PulseAudio). Nothing of the game's: the player picks their own disc image.
+fonts and the licences. The rest comes from the player's system: the C library, OpenGL or Vulkan (their graphics driver: SDL
+loads libvulkan.so.1 when the Vulkan setting asks for it), and what SDL loads at run time (X11 or Wayland, PipeWire or
+PulseAudio). Nothing of the game's: the player picks their own disc image.
 appimagetool and its runtime are downloaded into build/native/deps at the versions below; patchelf has to be installed.
 
 TRADEOFF: the AppImage needs the building system's glibc or a newer one (it prints which); build on the oldest system it
@@ -217,6 +218,13 @@ def main():
         shutil.copy2(found[-1], licenses / "SDL3-LICENSE.txt")
     else:
         print(f"warning: no SDL3-*/LICENSE.txt in {deps}", file=sys.stderr)
+    # glslang's (the Vulkan backend's GLSL to SPIR-V, in the program: build_linux.py builds it from its release), as
+    # package_windows.py
+    found = sorted(deps.glob("glslang-*/LICENSE.txt"))
+    if found:
+        shutil.copy2(found[-1], licenses / "glslang-LICENSE.txt")
+    else:
+        print(f"warning: no glslang-*/LICENSE.txt in {deps}", file=sys.stderr)
     # FFmpeg's licence and how to replace its libraries (the LGPL's relinking clause: extract the AppImage, swap usr/lib's)
     ffmpeg = licenses / "ffmpeg"
     ffmpeg.mkdir()
