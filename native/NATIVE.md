@@ -374,6 +374,18 @@ have made itself (`src/platform/native/gameoptions.h`):
   level select row, a level picked on the gems' pages and played, the pause menu, the gems' pages and the extras from their
   rows and back, return to title asked and refused, then a level picked in play and played through the title, each step logged
   ("menus test:").
+  Continue (THE LIST 63a, #48's part 1, its main menu half): with the improved menus the main menu's rows are continue, level
+  select (with its option), new game, load game, options, as the PDF has them; continue is there while the card holds a save
+  (`Native::MemoryCardHasSave`: a folder with its folder file, looked at again after the card changes) and selected first, new
+  game otherwise. It leads to the load game page as load game does, and the game's own load takes the newest save where load game
+  shows the slots to choose from (savecode.cpp, `OperationReadFolder`: the slot whose folder summary has the latest date, the
+  dates the game writes when it saves): no saving or loading of ours, so no save can be left inconsistent. A folder whose slots
+  hold no game (a save cancelled after the folder was made) shows the "no save data" screen, as load game does. The load brings
+  the game's autosave notice, as load game's does. The extras stay in the pause menu: the gallery follows the progress of a save
+  that's loaded. `$TWIN_MENUS_TEST=3` (with `improved_menus=1` and a card with saves) logs the main menu's rows, chooses continue,
+  answers the notice and plays 3 seconds ("continue: slot N loaded, saved ..., the newest of M saves"); the ui self-test checks
+  the slot taken (the second of three: neither the first nor the last saved; a year's end before a later day) and that the next
+  load shows the slots again.
 - The pause menu's restart checkpoint (`restart_checkpoint`, THE LIST 85, off; Enhancements > Menus): HAB3X's row (play again
   from the last checkpoint), which the PS2's pause menu doesn't have, shown only with this option on (until
   1.3.0 it was always there). It is independent of the improved menus: they decide where it goes (second, or before the level

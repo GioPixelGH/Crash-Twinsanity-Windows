@@ -22,6 +22,10 @@ extern "C"
 #ifdef TWIN_NATIVE
 // $TWIN_SAVE_TRACE: the save code's steps in the log (src/platform/native/memorycard.cpp)
 void NativeSaveTrace(const char* format, ...);
+// The improved menus' continue (THE LIST 63a, improvedmenus.cpp): whether it asked for this load (forgotten as it's asked), and
+// the slot it takes logged
+bool NativeTakeContinue();
+void NativeContinueSlot(u32 slot, u32 saves, u32 day, u32 month, u32 year, u32 hour, u32 minute, u32 second);
 #endif
 
 namespace
@@ -61,6 +65,7 @@ void EndOperation(SaveCode* code, u32 flagged, u32 saveDue)
 {
 #ifdef TWIN_NATIVE
     NativeSaveTrace("end operation flagged %u save due %u", flagged, saveDue);
+    NativeTakeContinue();
 #endif
     CallVirtual<void>(code, code->vtable, SaveCode::FinishSlot, flagged, saveDue);
 }
@@ -92,6 +97,39 @@ bool AnySlotSaved(SaveDevice* device)
     }
 
     return false;
+}
+
+// The slot of the newest save (by the date its folder summary keeps; the first of equal ones), how many there are in *saves (the
+// slots holding one)
+u32 NewestSlot(SaveDevice* device, u32* saves)
+{
+    u32 newest = 0;
+    u64 newestWhen = 0;
+    *saves = 0;
+    for (u32 slot = 0; slot < device->flags.fileCount; slot++)
+    {
+        const SaveDate& date = device->folder->summaries[slot]->date;
+        if (!device->folder->summaries[slot]->HasSave())
+        {
+            continue;
+        }
+
+        u64 when = date.year;
+        when = when * 13 + date.month;
+        when = when * 32 + date.day;
+        when = when * 24 + date.hour;
+        when = when * 60 + date.minute;
+        when = when * 60 + date.second;
+        if (*saves == 0 || when > newestWhen)
+        {
+            newest = slot;
+            newestWhen = when;
+        }
+
+        (*saves)++;
+    }
+
+    return newest;
 }
 #endif
 
@@ -247,7 +285,9 @@ void SaveCode::OperationDone(u32 operation)
 
             return;
         case SaveDevice::OperationReadFolder:
+        {
 #ifdef TWIN_NATIVE
+            const bool continuing = NativeTakeContinue();
             // A save whose slots hold no game yet (made by a save that was then cancelled) has nothing to load: the "no save data"
             // screen rather than a page of no slots
             if (!AnySlotSaved(device))
@@ -255,9 +295,23 @@ void SaveCode::OperationDone(u32 operation)
                 ShowChoicesScreen(this, SaveScreenInsertSave);
                 return;
             }
+
+            // Continue (THE LIST 63a): the newest save's slot taken as the slots' page's answer would take it (TakeAnswer's
+            // SaveScreenLoadSlots), the page not shown
+            if (continuing)
+            {
+                u32 saves = 0;
+                const u32 slot = NewestSlot(device, &saves);
+                const SaveDate& date = device->folder->summaries[slot]->date;
+                NativeContinueSlot(slot, saves, date.day, date.month, date.year, date.hour, date.minute, date.second);
+                bits.targetSlot = slot;
+                AskDevice(this, SaveDevice::OperationReadFile, slot);
+                return;
+            }
 #endif
             ShowSlotsScreen(this, SaveScreenLoadSlots);
             return;
+        }
         case SaveDevice::OperationReadFile:
             results.slot = bits.targetSlot;
             AskDevice(this, SaveDevice::OperationWaitLoaded, 0);
@@ -468,6 +522,7 @@ void SaveCode::TakeAnswer()
     u32 chosen = bits.chosen;
 #ifdef TWIN_NATIVE
     NativeSaveTrace("answer %u on screen %u (operation %u, chosen %u)", answer, screen, operation, chosen);
+    NativeTakeContinue();
 #endif
     if (answer == AnswerFirst)
     {

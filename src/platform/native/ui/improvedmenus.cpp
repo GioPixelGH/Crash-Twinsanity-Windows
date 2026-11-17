@@ -14,6 +14,12 @@
 // from a "level select" row in the main menu (this file runs their pages and their back there) and in the pause menu (the
 // original's with the option on, the improved menus' gems row then named level select); from play, yes goes through the title
 // (levelselect.cpp's StartLevelFromPlay).
+//
+// Continue (THE LIST 63a, #48's BETTER MENUS.pdf, its part 1's main menu): with the improved menus the main menu's rows are
+// continue, level select (the option on), new game, load game, options, as the PDF has them, and continue is there while the card
+// holds a save (selected first then; new game otherwise). It leads to the load game page as load game does, and the game's load
+// takes the newest of the saves' slots (by the dates the game keeps in the card's folder file) where load game shows them to
+// choose from (savecode.cpp): no saving or loading of ours, so nothing a save can't be.
 #include "ui/nativeui.h"
 
 #include "ui/bindings.h"
@@ -65,8 +71,15 @@ bool g_Captured = false;
 OlegPage* g_ConfirmPage = nullptr;
 GccVTableEntry g_ConfirmVTable[10];
 GccVTableEntry g_LevelItemVTable[15];
-// The pause page's rows in each layout's order (all of them: the hidden ones too)
+// Continue asked for the load it leads to (savecode.cpp takes it)
+bool g_Continue = false;
+// The pause page's rows in each layout's order (all of them: the hidden ones too), and the main menu's
 constexpr u32 PauseRows = 9;
+constexpr u32 MainMenuRows = 5;
+constexpr u32 ImprovedMainOrder[MainMenuRows] = {NativeItems::MainMenuContinue, NativeItems::MainMenuLevels, NativeItems::NewGame,
+                                                 NativeItems::LoadGame, NativeItems::Options};
+constexpr u32 OriginalMainOrder[MainMenuRows] = {NativeItems::NewGame, NativeItems::LoadGame, NativeItems::MainMenuLevels,
+                                                 NativeItems::MainMenuContinue, NativeItems::Options};
 constexpr u32 ImprovedOrder[PauseRows] = {NativeItems::Options,     NativeItems::RestartCheckpoint, NativeItems::Levels,
                                           NativeItems::SaveGame,    NativeItems::LoadGame,          NativeItems::DisableAutosave,
                                           NativeItems::Extras,      NativeItems::QuitGame,          NativeItems::Resume};
@@ -174,6 +187,11 @@ void Order(MenuPage* page, const u32* ids, u32 count)
     }
 
     MenuItem* ordered[PauseRows];
+    if (count > PauseRows)
+    {
+        return;
+    }
+
     bool same = true;
     for (u32 i = 0; i < count; i++)
     {
@@ -231,10 +249,18 @@ void LayOutMainMenu(OLEG& oleg)
         return;
     }
 
+    const bool improved = IsOn(OptionImprovedMenus);
+    const bool continueShown = improved && Native::MemoryCardHasSave();
+    Order(page, improved ? ImprovedMainOrder : OriginalMainOrder, MainMenuRows);
     SetShown(page->Find(NativeItems::MainMenuLevels), IsOn(OptionLevelSelect));
+    SetShown(page->Find(NativeItems::MainMenuContinue), continueShown);
     if (g_MainMenuReturning)
     {
         page->SetFirstItem(NativeItems::MainMenuLevels);
+    }
+    else if (improved)
+    {
+        page->SetFirstItem(continueShown ? NativeItems::MainMenuContinue : NativeItems::NewGame);
     }
     else
     {
@@ -248,11 +274,14 @@ void LayOutMainMenu(OLEG& oleg)
 // pause menu (its rows and the first selected), the gems' pages from their row and back, the extras from theirs and their back
 // row, return to title's confirmation and its no, then from the gems' pages Jungle Bungle played from play (through the title). Each step
 // logged ("menus test:"), "menus test: done" at the end, "menus test: stuck" if a step waits a minute. $TWIN_MENUS_TEST=2 ends
-// at the first pause menu (the original menus' rows: improved_menus=0 and level_select=1, restart_checkpoint on or off; THE LIST 85)
+// at the first pause menu (the original menus' rows: improved_menus=0 and level_select=1, restart_checkpoint on or off; THE LIST 85).
+// $TWIN_MENUS_TEST=3 (improved_menus=1, a card with saves; THE LIST 63a): the main menu's rows, continue chosen, the notice a load
+// brings answered, then 3 seconds of play and "menus test: done" (the slot it loaded is continue's own line)
 struct Test
 {
     bool on = false;
     bool toFirstPause = false;
+    bool toContinue = false;
     u32 step = 0;
     u32 frame = 0;
     u32 stepFrame = 0;
@@ -378,6 +407,19 @@ void TestFrame(GameController* controller)
         }
         break;
     case 1:
+        if (test.toContinue)
+        {
+            if (Shown(oleg.mainMenu) && Choose(oleg.mainMenu, NativeItems::MainMenuContinue))
+            {
+                // Then in play (step 19's 3 seconds) and the end
+                Native::Log("menus test: continue chosen");
+                test.step = 18;
+                Next();
+            }
+
+            break;
+        }
+
         if (Shown(oleg.mainMenu) && Choose(oleg.mainMenu, NativeItems::MainMenuLevels))
         {
             Next();
@@ -419,6 +461,15 @@ void TestFrame(GameController* controller)
         break;
     case 5:
     case 19:
+        // (After continue's load: the game's notice that follows a load, answered as a player would)
+        if (test.toContinue && state == GameController::StatePaused && test.frame > test.buttonsUntil + 30)
+        {
+            Native::Log("menus test: paused after the load (pause reason %u), answered",
+                        static_cast<u32>(controller->states.pauseReason));
+            Press(MenuSelectBit());
+            break;
+        }
+
         // In play for 3 seconds, then paused (or the end)
         test.playFrames = state == GameController::StatePlaying ? test.playFrames + 1 : 0;
         if (test.playFrames >= 150)
@@ -541,6 +592,12 @@ void OpenLevelsFromMainMenu()
     g_FromMainMenu = true;
     g_World = 0;
     ShowScreen(controller->oleg, OLEG::ScreenLevels);
+}
+
+void ContinueChosen()
+{
+    g_Continue = true;
+    Native::Log("continue: the newest save asked for, through load game's load");
 }
 
 void PickLevel(u32 area)
@@ -682,8 +739,9 @@ void ImprovedMenusFrame()
         }
 
         static const char* test = std::getenv("TWIN_MENUS_TEST");
-        g_Test.on = test != nullptr && (test[0] == '1' || test[0] == '2');
+        g_Test.on = test != nullptr && (test[0] == '1' || test[0] == '2' || test[0] == '3');
         g_Test.toFirstPause = g_Test.on && test[0] == '2';
+        g_Test.toContinue = g_Test.on && test[0] == '3';
     }
 
     // Back on the pause menu or the main menu: their first rows as usual again
@@ -721,4 +779,19 @@ u32 MenusTestButtons()
 {
     return g_Test.on && g_Test.frame < g_Test.buttonsUntil ? g_Test.buttons : 0;
 }
+}
+
+// The save code's (savecode.cpp): whether continue asked for the load whose slots were just read (then forgotten; also when an
+// operation ends or the player answers a screen, so a later load game asks as usual), and the slot it takes logged
+bool NativeTakeContinue()
+{
+    const bool asked = NativeUi::g_Continue;
+    NativeUi::g_Continue = false;
+    return asked;
+}
+
+void NativeContinueSlot(u32 slot, u32 saves, u32 day, u32 month, u32 year, u32 hour, u32 minute, u32 second)
+{
+    Native::Log("continue: slot %u loaded, saved %u/%u/%02u %u:%02u:%02u, the newest of %u save%s", slot + 1, day, month, year, hour,
+                minute, second, saves, saves == 1 ? "" : "s");
 }

@@ -380,6 +380,8 @@ enum NativeText : u32
     TextSectionRenderer,
     TextGraphicsApi,
     TextDescGraphicsApi,
+    // The improved menus' main menu: continue, the newest save loaded (THE LIST 63a, #48)
+    TextContinue,
     NativeTextEnd,
 };
 
@@ -653,6 +655,9 @@ void QuitScreenAsQuit();
 void AskPausePage(u32 reason, u32 fromItem);
 u32 TakePausePage();
 void OpenLevelsFromMainMenu();
+// The improved menus' main menu's continue (THE LIST 63a, #48): its row activated (the load it leads to takes the newest save:
+// savecode.cpp's NativeTakeContinue)
+void ContinueChosen();
 void PickLevel(u32 area);
 // The gems' pages' levels' vtable (the link's, its activation PickLevel)
 const GccVTableEntry* LevelItemVTable();

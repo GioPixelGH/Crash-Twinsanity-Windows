@@ -241,10 +241,11 @@ void AddGalleries(GemExtrasPage* page, u32 text, const char* name, u32 pictures)
 }
 
 #ifdef TWIN_NATIVE
-// The native menu rows (THE LIST 79, 80: the main menu's level select, the pause menu's gems' pages and extras) in storage of the
-// native build's own, not the game's heap: the game's allocations stay 1.2.0's, which the pictures' check compares byte for byte
-// (other allocations moved the beach's particles a few pixels), and the pause page's list stays within its first ten
-alignas(16) u8 g_NativeRows[3][sizeof(ActionItem)];
+// The native menu rows (THE LIST 79, 80: the main menu's level select, the pause menu's gems' pages and extras; 63a: the main
+// menu's continue) in storage of the native build's own, not the game's heap: the game's allocations stay 1.2.0's, which the
+// pictures' check compares byte for byte (other allocations moved the beach's particles a few pixels), and the pause page's and
+// the main menu's lists stay within their first ten
+alignas(16) u8 g_NativeRows[4][sizeof(ActionItem)];
 
 ActionItem* NativeRow(u32 row, u32 text, u32 id, u32 action)
 {
@@ -394,6 +395,10 @@ MenuPage* ActionItem::Activate(u32 player, MenuPage* page)
     case ActionMainMenuLevels:
         NativeUi::OpenLevelsFromMainMenu();
         break;
+    case ActionMainMenuContinue:
+        // (Then the load game page, its target, entered: the game's load, the newest save chosen for it)
+        NativeUi::ContinueChosen();
+        break;
     case ActionPlayLevel:
         NativeUi::PlayPickedLevel();
         break;
@@ -420,8 +425,13 @@ MainMenuPage* MainMenuPage::Construct(MainMenuPage* page)
     page->Add(newGame);
     page->Add(loadGame);
 #ifdef TWIN_NATIVE
-    // Native: the level select's row (THE LIST 80; shown while the option's on: improvedmenus.cpp)
+    // Native: the level select's row (THE LIST 80; shown while the option's on: improvedmenus.cpp), and continue's (THE LIST
+    // 63a; shown with the improved menus while the card has a save), which leads to the load game page as load game does
     page->Add(NativeRow(0, NativeUi::TextLevelSelect, NativeItems::MainMenuLevels, ActionItem::ActionMainMenuLevels));
+    ActionItem* continueRow =
+        NativeRow(3, NativeUi::TextContinue, NativeItems::MainMenuContinue, ActionItem::ActionMainMenuContinue);
+    continueRow->target = &page->loadGame;
+    page->Add(continueRow);
 #endif
     page->Add(options);
     return page;

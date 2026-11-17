@@ -408,6 +408,7 @@ void TestTexts()
 struct Recorded
 {
     u32 asked = 0;
+    u32 askedFile = 0;
     s32 choices = -1;
     s32 slots = -1;
     s32 finished = -1;
@@ -423,9 +424,10 @@ struct TestStorage
 };
 TestStorage g_Storage;
 
-u32 Ask(void*, u32 operation, u32)
+u32 Ask(void*, u32 operation, u32 file)
 {
     g_Recorded.asked = operation;
+    g_Recorded.askedFile = file;
     return 1;
 }
 
@@ -591,6 +593,36 @@ void TestSaveFlow()
     Check(g_Recorded.slots == SaveScreenLoadSlots, "load, a game saved: slots %d", g_Recorded.slots);
     summaries[2].date.bits = 0;
 
+    // Continue (THE LIST 63a): the newest save's slot read at once, without the page of slots (here the second of three saved slots:
+    // neither the first nor the last; a year's end before a later day); the next load asks for a slot again, as one after continue
+    // on a card with no game does
+    summaries[0].date = {31, 12, 25, 23, 59, 59, SaveDate::Valid};
+    summaries[1].date = {12, 11, 26, 23, 25, 54, SaveDate::Valid};
+    summaries[3].date = {11, 11, 26, 22, 36, 29, SaveDate::Valid};
+    ContinueChosen();
+    start(SaveOperationLoad, SaveScreenMessage);
+    code.OperationDone(SaveDevice::OperationReadFolder);
+    Check(g_Recorded.asked == SaveDevice::OperationReadFile && g_Recorded.askedFile == 1 && code.bits.targetSlot == 1 &&
+              g_Recorded.slots == -1,
+          "continue: asked %u for file %u, target %u, slots %d (the second slot's read, no slots shown)", g_Recorded.asked,
+          g_Recorded.askedFile, static_cast<u32>(code.bits.targetSlot), g_Recorded.slots);
+    start(SaveOperationLoad, SaveScreenMessage);
+    code.OperationDone(SaveDevice::OperationReadFolder);
+    Check(g_Recorded.slots == SaveScreenLoadSlots, "a load after continue's: slots %d", g_Recorded.slots);
+    for (FolderSummary& summary : summaries)
+    {
+        summary.date = {};
+    }
+
+    ContinueChosen();
+    start(SaveOperationLoad, SaveScreenMessage);
+    code.OperationDone(SaveDevice::OperationReadFolder);
+    summaries[2].date.bits = SaveDate::Valid;
+    start(SaveOperationLoad, SaveScreenMessage);
+    code.OperationDone(SaveDevice::OperationReadFolder);
+    Check(g_Recorded.slots == SaveScreenLoadSlots, "a load after continue's on no game: slots %d", g_Recorded.slots);
+    summaries[2].date.bits = 0;
+
     // The save failing to be made: the no room screen (the storage is full or can't be written)
     start(SaveOperationNewGameSave, SaveScreenMessage);
     device.flags.running = SaveDevice::OperationCreate;
@@ -603,7 +635,8 @@ void TestSaveFlow()
     g_Storage.hasCard = 1;
     Check(g_Recorded.choices == SaveScreenNoRoom, "the save couldn't be made: screen %d", g_Recorded.choices);
 
-    Native::Log("ui self-test: the save flow (made at once, no room, retry, back, load with no game, failed create) checked");
+    Native::Log("ui self-test: the save flow (made at once, no room, retry, back, load with no game, continue's newest slot, failed "
+                "create) checked");
 }
 
 // ------------------------------------------------------------------------------------------------------------- the resolution

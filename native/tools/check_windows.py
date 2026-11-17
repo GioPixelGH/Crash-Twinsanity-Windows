@@ -520,6 +520,8 @@ def game_options(exe, work):
         "the level select's Iceberg Lab on its own card": ("memorycard-level-select" in level and
                                                             "Levels\\Ice\\Hub\\labext loaded" in level),
         "the improved menus and the gems' pages' level select": (
+            # (the main menu in the PDF's order, and no continue on a card without a save: THE LIST 63a)
+            "menus test: the main menu: level select, [new game], load game, options" in menus and
             "menus test: the pause menu: [options], restart checkpoint, level select" in menus and
             "options, restart checkpoint, [level select], save game" in menus and
             "load game, [extras], return to title" in menus and "return to title asks: return to title?" in menus and

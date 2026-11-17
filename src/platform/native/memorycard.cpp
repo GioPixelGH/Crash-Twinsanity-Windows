@@ -148,11 +148,15 @@ s32 UsedClusters()
     return clusters;
 }
 
+// Whether the card holds a save (MemoryCardHasSave): -1 not looked at since the card last changed
+s32 g_HasSave = -1;
+
 // After a call that may have changed what the card's files take (a file made, emptied or written, a directory made, an entry
-// deleted): the next GetInfo counts them again
+// deleted): the next GetInfo counts them again, and the next MemoryCardHasSave looks again
 void CardChanged()
 {
     g_UsedClusters = -1;
+    g_HasSave = -1;
 }
 
 // The PS2's directory entry time: a reserved byte, then second, minute, hour, day, month and the year in 16 bits
@@ -503,4 +507,27 @@ void Native::UseMemoryCard(const char* name)
 const char* Native::MemoryCardName()
 {
     return g_CardName.c_str();
+}
+
+bool Native::MemoryCardHasSave()
+{
+    if (g_HasSave < 0)
+    {
+        // A game's save is a folder holding a file of the folder's own name (its folder file, BESLES-52568's): the card's folder
+        // isn't made for this (Root would)
+        g_HasSave = 0;
+        std::error_code error;
+        for (auto it = fs::directory_iterator(fs::path(Native::SettingsFolder()) / g_CardName, error);
+             !error && it != fs::directory_iterator(); it.increment(error))
+        {
+            std::error_code ignored;
+            if (it->is_directory(ignored) && fs::is_regular_file(it->path() / it->path().filename(), ignored))
+            {
+                g_HasSave = 1;
+                break;
+            }
+        }
+    }
+
+    return g_HasSave == 1;
 }

@@ -327,7 +327,7 @@ English slot); an empty cell shows the English. To translate: fill that column i
 | 0x217 | with three masks, what you touch is hit as by a spin: crates break, enemies are beaten. | avec trois masques, ce que tu touches est frappé comme par la toupie : caisses, ennemis. | mit drei masken trifft jede berührung wie drehen: kisten brechen, gegner fallen. | con tres máscaras, lo que tocas recibe un giro: las cajas se rompen, los enemigos caen. | con tre maschere, ciò che tocchi è colpito come girando: casse rotte, nemici battuti. |  |
 | 0x218 | assisted | assistée | unterstützt | asistida | assistita |  |
 | 0x219 | improved menus | menus améliorés | bessere menüs | menús mejorados | menu migliorati |  |
-| 0x21A | the pause menu from its first row: restart checkpoint higher, gems and extras as rows, return to title. | le menu pause dès sa première ligne : recommencer plus haut, gemmes et bonus en lignes, retour au titre. | das pausenmenü ab der ersten zeile: neu starten weiter oben, edelsteine und extras als zeilen, zum titel. | el menú de pausa desde su primera fila: reiniciar más arriba, gemas y extras como filas, volver al título. | il menu di pausa dalla prima riga: ricomincia più in alto, gemme ed extra come righe, torna al titolo. |  |
+| 0x21A | continue in the main menu. the pause menu from its first row, gems and extras as rows, return to title. | continuer au menu principal. la pause dès sa première ligne, gemmes et bonus en lignes, retour au titre. | fortsetzen im hauptmenü. das pausenmenü ab der ersten zeile, edelsteine und extras als zeilen, zum titel. | continuar en el menú principal. la pausa desde su primera fila, gemas y extras como filas, volver al título. | continua nel menu principale. la pausa dalla prima riga, gemme ed extra come righe, torna al titolo. |  |
 | 0x21B | menus | menus | menüs | menús | menu |  |
 | 0x21C | return to title | retour au titre | zurück zum titel | volver al título | torna al titolo |  |
 | 0x21D | gems | gemmes | edelsteine | gemas | gemme |  |
@@ -339,6 +339,7 @@ English slot); an empty cell shows the English. To translate: fill that column i
 | 0x223 | renderer | rendu | renderer | renderizado | rendering |  |
 | 0x224 | graphics api | api graphique | grafik-api | api gráfica | api grafica |  |
 | 0x225 | opengl, or vulkan (new). from the next start. if one doesn't start, the other. | opengl, ou vulkan (nouveau). au prochain lancement. si l'une ne démarre pas, l'autre. | opengl oder vulkan (neu). ab dem nächsten start. startet eine nicht, die andere. | opengl o vulkan (nueva). al volver a abrir el juego. si una no arranca, la otra. | opengl o vulkan (nuova). dal prossimo avvio del gioco. se una non parte, l'altra. |  |
+| 0x226 | continue | continuer | fortsetzen | continuar | continua |  |
 
 ## English (29 lines)
 

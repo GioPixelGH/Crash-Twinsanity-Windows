@@ -193,6 +193,9 @@ bool IsMod(u64 offset);
 // it's changed only where nothing is being saved (the main menu, a level's loading)
 void UseMemoryCard(const char* name);
 const char* MemoryCardName();
+// Whether the card in use holds a save of the game's (its folder and the folder's file: the slots in it aren't read; looked at again
+// after the card changed): the improved menus' continue row (THE LIST 63a)
+bool MemoryCardHasSave();
 
 // The disc image recognised for the log (discidentity.cpp): the program its SYSTEM.CNF boots, its size and, once an image, its
 // CRC-32 and SHA-1 against redump.org's dumps ("disc: the retail disc, SLES-52568 v1.01 PAL ..."), kept in disc_identity.txt.
