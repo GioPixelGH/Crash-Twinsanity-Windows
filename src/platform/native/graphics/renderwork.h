@@ -39,6 +39,18 @@ u64 ProgramsMade();
 u64 ProgramNanoseconds();
 // The longest program's time since the last call (the performance lines')
 u64 TakeLongestProgram();
+// Vulkan's part split for the log's slow frames (#55/#56: stalls of seconds inside it): the textures made (SDL_CreateGPUTexture and
+// their levels cleared), the command buffers submitted (SDL defragments its memory at a submit) and the waits for the frames in
+// flight (the card's work behind them); the rest is the commands' own recording
+enum class VulkanPart : u32
+{
+    Textures,
+    Submits,
+    InFlight,
+    Count,
+};
+void CountVulkanPart(VulkanPart part, u64 nanoseconds);
+u64 VulkanPartNanoseconds(VulkanPart part);
 
 class WorkSpan
 {

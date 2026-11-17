@@ -10,9 +10,11 @@
 // address
 #include "native.h"
 
+#include "graphics/display.h"
 #include "graphics/gputime.h"
 #include "graphics/hw/gl.h"
 #include "graphics/hw/hwgs.h"
+#include "graphics/hw/replace.h"
 #include "graphics/renderthread.h"
 #include "graphics/renderwork.h"
 #include "graphics/window.h"
@@ -40,6 +42,7 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+#include <psapi.h>
 #else
 #include <sys/utsname.h>
 #include <unistd.h>
@@ -248,6 +251,9 @@ u64 g_LastChunk = 0;
 u64 g_LastReading = 0;
 u64 g_LastPrograms = 0;
 u64 g_LastProgramNanoseconds = 0;
+// Vulkan's parts (renderwork.h's VulkanPart): at the last frame, and the slow frame's own
+u64 g_LastVulkanParts[static_cast<u32>(NativeGraphics::VulkanPart::Count)] = {};
+u64 g_SlowVulkanParts[static_cast<u32>(NativeGraphics::VulkanPart::Count)] = {};
 // The shader programs made by the last performance line
 u64 g_MinutePrograms = 0;
 u64 g_MinuteProgramNanoseconds = 0;
@@ -467,6 +473,102 @@ void LogRendererCounts(u64 frames)
     Native::Log("%s", top.c_str());
 }
 
+// The program's memory and the PC's, the texture pack's images held and the video memory (#55: Vulkan stalls of seconds on a 4 GB card
+// with a large pack): with each performance line and after a frame of a second or more
+void LogMemory()
+{
+    constexpr double Gb = 1024.0 * 1024.0 * 1024.0;
+    std::string line = "memory:";
+    char part[256];
+    double program = -1.0;
+    double inRam = -1.0;
+    double total = -1.0;
+    double available = -1.0;
+#if defined(_WIN32)
+    PROCESS_MEMORY_COUNTERS_EX counters = {};
+    if (K32GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters), sizeof(counters)))
+    {
+        program = static_cast<double>(counters.PrivateUsage) / Gb;
+        inRam = static_cast<double>(counters.WorkingSetSize) / Gb;
+    }
+
+    MEMORYSTATUSEX memory = {};
+    memory.dwLength = sizeof(memory);
+    if (GlobalMemoryStatusEx(&memory))
+    {
+        total = static_cast<double>(memory.ullTotalPhys) / Gb;
+        available = static_cast<double>(memory.ullAvailPhys) / Gb;
+    }
+#else
+    if (std::FILE* statm = std::fopen("/proc/self/statm", "r"))
+    {
+        unsigned long long size = 0;
+        unsigned long long resident = 0;
+        if (std::fscanf(statm, "%llu %llu", &size, &resident) == 2)
+        {
+            const double page = static_cast<double>(sysconf(_SC_PAGESIZE));
+            inRam = static_cast<double>(resident) * page / Gb;
+        }
+
+        std::fclose(statm);
+    }
+
+    if (std::FILE* info = std::fopen("/proc/meminfo", "r"))
+    {
+        char name[64];
+        unsigned long long kb = 0;
+        while (std::fscanf(info, "%63s %llu kB", name, &kb) == 2)
+        {
+            if (std::strcmp(name, "MemTotal:") == 0)
+            {
+                total = static_cast<double>(kb) * 1024.0 / Gb;
+            }
+            else if (std::strcmp(name, "MemAvailable:") == 0)
+            {
+                available = static_cast<double>(kb) * 1024.0 / Gb;
+            }
+        }
+
+        std::fclose(info);
+    }
+#endif
+    if (program >= 0.0)
+    {
+        std::snprintf(part, sizeof(part), " the program %.2f GB (%.2f GB of it in RAM)", program, inRam);
+        line += part;
+    }
+    else if (inRam >= 0.0)
+    {
+        std::snprintf(part, sizeof(part), " the program %.2f GB in RAM", inRam);
+        line += part;
+    }
+
+    if (available >= 0.0)
+    {
+        std::snprintf(part, sizeof(part), ", the PC's RAM %.1f GB free of %.1f", available, total);
+        line += part;
+    }
+
+    if (NativeGraphics::ReplacementsEnabled())
+    {
+        size_t bytes = 0;
+        const size_t images = NativeGraphics::ReplacementImagesHeld(&bytes);
+        std::snprintf(part, sizeof(part), "; the texture pack's images read %zu, %.2f GB", images, static_cast<double>(bytes) / Gb);
+        line += part;
+    }
+
+    NativeGraphics::VideoMemory video;
+    if (NativeGraphics::VideoMemoryNow(&video))
+    {
+        std::snprintf(part, sizeof(part), "; video memory %.2f GB of a %.2f GB budget (%s), %.2f GB in shared memory",
+                      static_cast<double>(video.used) / Gb, static_cast<double>(video.budget) / Gb, video.adapter,
+                      static_cast<double>(video.shared) / Gb);
+        line += part;
+    }
+
+    Native::Log("%s", line.c_str());
+}
+
 void LogPerformance()
 {
     char played[32];
@@ -491,6 +593,7 @@ void LogPerformance()
 
     g_MinutePrograms = programs;
     g_MinuteProgramNanoseconds = programNanoseconds;
+    LogMemory();
     LogRendererCounts(g_Minute.frames);
 }
 
@@ -517,13 +620,28 @@ void LogSlowFrame(double seconds, u64 game, u64 waited, u64 present, u64 backgro
         g_SlowFramesUnlogged = 0;
     }
 
+    // Vulkan's own split (#55/#56): where its time went
+    char vulkanText[128] = "";
+    if (std::strcmp(RendererApi(), "Vulkan") == 0)
+    {
+        using NativeGraphics::VulkanPart;
+        std::snprintf(vulkanText, sizeof(vulkanText), "; of Vulkan's, textures made %.1f ms, submits %.1f ms, fences waited %.1f ms",
+                      ms(g_SlowVulkanParts[static_cast<u32>(VulkanPart::Textures)]),
+                      ms(g_SlowVulkanParts[static_cast<u32>(VulkanPart::Submits)]),
+                      ms(g_SlowVulkanParts[static_cast<u32>(VulkanPart::InFlight)]));
+    }
+
     const char* where = NativeUi::TrailChunk();
     Native::Log("slow frame: %.0f ms in %s; the game %.1f ms (its loading %.1f ms, of it the chunks' %.1f ms, their longest step %.1f "
                 "ms; reading the disc %.1f ms) and %.1f ms waiting, the window's present %.1f ms; the render thread %.1f ms (the GS %.1f, "
-                "%s %.1f with %llu shader program%s made in %.1f ms, waiting for the card %.1f, the picture handed over %.1f)%s%s",
+                "%s %.1f with %llu shader program%s made in %.1f ms, waiting for the card %.1f, the picture handed over %.1f)%s%s%s",
                 seconds * 1000.0, where != nullptr ? where : "?", ms(gameOwn), ms(background), ms(chunk), ms(longest), ms(reading), ms(waited),
                 ms(present), ms(render), ms(gs), RendererApi(), ms(openGl), static_cast<unsigned long long>(programs), programs == 1 ? "" : "s",
-                ms(programNanoseconds), ms(cardWait), ms(picture), vuText, unlogged);
+                ms(programNanoseconds), ms(cardWait), ms(picture), vuText, vulkanText, unlogged);
+    if (seconds >= 1.0)
+    {
+        LogMemory();
+    }
 }
 
 // --------------------------------------------------------------------------------------------------------------- the start
@@ -1126,6 +1244,12 @@ void Native::SessionFrame(u64 gameWorkNanoseconds)
             if (g_SlowFramesLogged < SlowFramesAMinute)
             {
                 g_SlowFramesLogged++;
+                for (u32 i = 0; i < static_cast<u32>(NativeGraphics::VulkanPart::Count); i++)
+                {
+                    g_SlowVulkanParts[i] = NativeGraphics::VulkanPartNanoseconds(static_cast<NativeGraphics::VulkanPart>(i)) -
+                                           g_LastVulkanParts[i];
+                }
+
                 LogSlowFrame(seconds, gameWorkNanoseconds - g_LastGame, waited - g_LastWaited, present - g_LastPresent,
                              g_BackgroundNanoseconds - g_LastBackground, g_ChunkNanoseconds - g_LastChunk, g_LongestChunkStep,
                              g_ReadingNanoseconds.load(std::memory_order_relaxed) - g_LastReading, vu - g_LastVu, render - g_LastRender, openGl - g_LastOpenGl, cardWait - g_LastCardWait,
@@ -1185,6 +1309,10 @@ void Native::SessionFrame(u64 gameWorkNanoseconds)
     g_LongestChunkStep = 0;
     g_LastPrograms = programs;
     g_LastProgramNanoseconds = programNanoseconds;
+    for (u32 i = 0; i < static_cast<u32>(NativeGraphics::VulkanPart::Count); i++)
+    {
+        g_LastVulkanParts[i] = NativeGraphics::VulkanPartNanoseconds(static_cast<NativeGraphics::VulkanPart>(i));
+    }
     g_LastFrame = now;
     g_LastInPlay = inPlay;
     g_LastGame = gameWorkNanoseconds;

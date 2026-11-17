@@ -714,6 +714,23 @@ option drawing new combinations): `graphics: 3 shader programs made since, 45.2 
 `graphics: 31 shader programs made at the start in 180 ms (25 listed in shaders.txt, 31 this version's own)`. THE LIST 19's
 hitches (#23, #32) were measured with these; "Hitches" under "Speed" has what they were.
 
+Since 1.4.0 (THE LIST 92, #55/#56: Vulkan stopping 5-6 s in roof01 and the bus chase on a 4 GB GTX 1650 at 3x with a 3913-file
+texture pack) Vulkan's slow frames end with its own split, `; of Vulkan's, textures made 2.0 ms, submits 0.8 ms, fences waited
+5088.6 ms` (renderwork.h's VulkanPart: SDL_CreateGPUTexture with the new texture's levels cleared; the submits, where SDL
+defragments its memory; the waits for the frames in flight, the card's own work behind them), and each performance line, and
+each frame of a second or more, is followed by `memory: the program 1.34 GB (0.59 GB of it in RAM), the PC's RAM 6.8 GB free of
+15.9; the texture pack's images read 155, 0.12 GB; video memory 0.71 GB of a 10.97 GB budget (NVIDIA GeForce RTX 4070 SUPER),
+0.08 GB in shared memory` (the program's committed memory and working set; the pack's images decoded and kept, RGBA; Windows'
+own count of the program's video memory on the adapter where it uses the most, DXGI 1.4's QueryVideoMemoryInfo, whatever the
+API, its budget and what it moved to shared memory; Linux has the RAM only). Measured on this PC (12 GB RTX 4070 SUPER) with
+`compare\tools\vram_hog.exe 10` holding 10 GB in use (a 4 GB card's room left, about 0.5 GB, under the 0.7 GB the port takes
+at 3x with the player's pack copy) and `compare\tools\vram_run.py` taking the port from roof01 through the rooftop, the bus
+chase, the beach, the hub and back to roof01: Vulkan stopped 5107 ms in roof01, 5088.6 ms of it waiting on the card (the
+textures made 2.0 ms, the submits 0.8 ms: neither SDL's allocations nor its defragmenting); OpenGL on the same way, under the
+same pressure, 660 ms at most (the beach's loading, in the GS). Without the hog neither stops. SDL 3.4.18 can't be asked for
+VK_EXT_pageable_device_local_memory (it chains only the core features' structures, not an extension's), so with Vulkan the
+answer is less video memory (THE LIST 25: the pack's textures kept compressed) or OpenGL.
+
 The graphics card's time (graphics/gputime.cpp) tells a render thread slow on the processor from one waiting on the card: the
 render thread's own time has the driver's work in it, and its waits for the card (a picture read back, a full queue), so 25 ms
 there can be either. Each OpenGL call that gives the card work (`glDrawArrays`, `glClear`, `glBlitFramebuffer`,

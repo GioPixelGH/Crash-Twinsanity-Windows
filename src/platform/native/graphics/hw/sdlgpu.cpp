@@ -77,6 +77,25 @@ constexpr SDL_GPUPrimitiveType Primitives[] = {SDL_GPU_PRIMITIVETYPE_POINTLIST, 
 
 // The time in SDL GPU's calls counted as the API's while the GS is emulated (renderwork.h: OpenGL's calls for the GL backend; the
 // log's split names the API), a read back's wait as the card's
+// A span of Vulkan's part counted to one of its parts (renderwork.h's VulkanPart)
+class VulkanPartSpan
+{
+public:
+    explicit VulkanPartSpan(NativeGraphics::VulkanPart part) : part_(part), start_(SDL_GetTicksNS())
+    {
+    }
+    ~VulkanPartSpan()
+    {
+        NativeGraphics::CountVulkanPart(part_, SDL_GetTicksNS() - start_);
+    }
+    VulkanPartSpan(const VulkanPartSpan&) = delete;
+    VulkanPartSpan& operator=(const VulkanPartSpan&) = delete;
+
+private:
+    NativeGraphics::VulkanPart part_;
+    u64 start_;
+};
+
 class ApiSpan
 {
 public:
@@ -1562,10 +1581,12 @@ void VulkanBackend::SubmitWork(bool wait, bool presenting)
     {
         // (Where SDL may move textures: no other command buffer of the device open meanwhile, g_DeviceLock's comment)
         std::lock_guard<std::mutex> lock(g_RecordingLock);
+        VulkanPartSpan part(NativeGraphics::VulkanPart::Submits);
         fence = SDL_SubmitGPUCommandBufferAndAcquireFence(commands_);
     }
     else
     {
+        VulkanPartSpan part(NativeGraphics::VulkanPart::Submits);
         fence = SDL_SubmitGPUCommandBufferAndAcquireFence(commands_);
     }
 
@@ -1585,7 +1606,11 @@ void VulkanBackend::SubmitWork(bool wait, bool presenting)
 
     if (wait)
     {
-        SDL_WaitForGPUFences(device_, true, &fence, 1);
+        {
+            VulkanPartSpan part(NativeGraphics::VulkanPart::InFlight);
+            SDL_WaitForGPUFences(device_, true, &fence, 1);
+        }
+
         SDL_ReleaseGPUFence(device_, fence);
         for (SDL_GPUFence* f : inFlight_)
         {
@@ -1599,6 +1624,7 @@ void VulkanBackend::SubmitWork(bool wait, bool presenting)
     inFlight_.push_back(fence);
     while (inFlight_.size() > 2)
     {
+        VulkanPartSpan part(NativeGraphics::VulkanPart::InFlight);
         SDL_WaitForGPUFences(device_, true, &inFlight_.front(), 1);
         SDL_ReleaseGPUFence(device_, inFlight_.front());
         inFlight_.pop_front();
@@ -1607,6 +1633,7 @@ void VulkanBackend::SubmitWork(bool wait, bool presenting)
 
 bool VulkanBackend::MakeTexture(Texture& t, u32 format, s32 width, s32 height, u32 levels)
 {
+    VulkanPartSpan part(NativeGraphics::VulkanPart::Textures);
     if (t.texture != nullptr && !t.taken)
     {
         SDL_ReleaseGPUTexture(device_, t.texture);
@@ -2827,7 +2854,12 @@ void* VulkanBackend::Fence()
     }
 
     EndPasses();
-    SDL_GPUFence* fence = SDL_SubmitGPUCommandBufferAndAcquireFence(commands_);
+    SDL_GPUFence* fence = nullptr;
+    {
+        VulkanPartSpan part(NativeGraphics::VulkanPart::Submits);
+        fence = SDL_SubmitGPUCommandBufferAndAcquireFence(commands_);
+    }
+
     commands_ = nullptr;
     draws_ = 0;
     uploaded_ = 0;

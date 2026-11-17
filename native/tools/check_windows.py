@@ -265,6 +265,10 @@ LOG_START = [
     r"\] performance: [\d.]+ fps over \d+ s of play, the slowest frame \d+ ms; a frame's work: the game [\d.]+ ms .*"
     r"the window's present [\d.]+ ms, VU1 [\d.]+ ms, the render thread [\d.]+ ms \(the GS [\d.]+, (?:OpenGL|Vulkan) [\d.]+, waiting for "
     r"the card [\d.]+, the picture handed over [\d.]+\), the graphics card [\d.]+ ms; the player in levels\\earth\\hub\\beach",
+    # (the memory after it, THE LIST 92: the program's, the PC's and the video memory, Windows' count)
+    r"\] memory: the program [\d.]+ GB \([\d.]+ GB of it in RAM\), the PC's RAM [\d.]+ GB free of [\d.]+"
+    r"(?:; the texture pack's images read \d+, [\d.]+ GB)?; video memory [\d.]+ GB of a [\d.]+ GB budget \(.+\), [\d.]+ GB in "
+    r"shared memory",
     rf"\] session: {DURATION}, {DURATION} of it played at [\d.]+ fps on average, \d+% of it below 57 fps .*"
     r"the slowest frame \d+ ms; a frame's work: .*, the graphics card [\d.]+ ms\n",
     rf"\] exit: the level sweep's run ended \(status 0\) after {DURATION}; the game's state ",

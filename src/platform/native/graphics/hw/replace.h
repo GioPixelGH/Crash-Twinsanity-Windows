@@ -34,6 +34,8 @@ struct ReplacementKey
 void ReplacementsSetEnabled(bool on);
 bool ReplacementsEnabled();
 size_t ReplacementCount();
+// The replacement images read so far (kept in memory once read): how many, and their bytes (the log's memory line, #55)
+size_t ReplacementImagesHeld(size_t* bytes);
 
 // A texture's key as PCSX2 names it (level 0 only, as with PCSX2's mipmapping off); false for a format it doesn't replace
 bool ReplacementKeyFor(const Gs::Gs& gs, const Gs::TextureLevel& level, const Gs::RegTex0& tex0, const Gs::RegClamp& clamp,

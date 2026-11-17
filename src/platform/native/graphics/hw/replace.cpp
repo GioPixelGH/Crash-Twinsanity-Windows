@@ -495,6 +495,24 @@ size_t ReplacementCount()
     return g_Files.size();
 }
 
+size_t ReplacementImagesHeld(size_t* bytes)
+{
+    std::lock_guard<std::mutex> lock(g_Lock);
+    size_t count = 0;
+    size_t total = 0;
+    for (const auto& entry : g_Images)
+    {
+        if (entry.second != nullptr)
+        {
+            count++;
+            total += entry.second->pixels.size() * sizeof(u32);
+        }
+    }
+
+    *bytes = total;
+    return count;
+}
+
 bool ReplacementKeyFor(const Gs::Gs& gs, const Gs::TextureLevel& level, const Gs::RegTex0& tex0, const Gs::RegClamp& clamp,
                        ReplacementKey* key)
 {

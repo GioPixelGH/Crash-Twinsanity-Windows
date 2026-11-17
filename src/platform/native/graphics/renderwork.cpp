@@ -100,6 +100,21 @@ Work SwitchWork(Work to)
     return before;
 }
 
+namespace
+{
+std::atomic<u64> g_VulkanParts[static_cast<u32>(VulkanPart::Count)] = {};
+}
+
+void CountVulkanPart(VulkanPart part, u64 nanoseconds)
+{
+    g_VulkanParts[static_cast<u32>(part)].fetch_add(nanoseconds, std::memory_order_relaxed);
+}
+
+u64 VulkanPartNanoseconds(VulkanPart part)
+{
+    return g_VulkanParts[static_cast<u32>(part)].load(std::memory_order_relaxed);
+}
+
 u64 WorkNanoseconds(Work kind)
 {
     return static_cast<u64>(static_cast<double>(g_Ticks[static_cast<u32>(kind)].load(std::memory_order_relaxed)) *
