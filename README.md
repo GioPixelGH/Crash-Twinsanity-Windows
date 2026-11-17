@@ -2,7 +2,8 @@
 
 # Crash Twinsanity for Windows
 
-**Crash Twinsanity (PlayStation 2) running natively on your PC, on Windows and Linux. No emulator.**
+**Crash Twinsanity (PlayStation 2) running natively on your PC, on Windows and Linux.
+No emulator.**
 
 [![Latest release](https://img.shields.io/github/v/release/GioPixelGH/Crash-Twinsanity-Windows?style=flat-square)](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/GioPixelGH/Crash-Twinsanity-Windows/total?style=flat-square)](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases)
@@ -19,63 +20,73 @@
 ![Title](docs/screenshots/title.jpg)
 
 > [!IMPORTANT]
-> **Bring your own copy.** No game files are included. You need a disc image of your own PAL copy of the game
-> (Europe/Australia, SLES-52568). A translated or modded copy of the PAL disc works too. The North American disc doesn't
-> work yet.
+> **Bring your own copy.**
+> No game files are included.
+> You need a disc image of your own PAL copy of the game (Europe/Australia, SLES-52568).
+> A translated or modded copy of the PAL disc works too.
+> The North American disc doesn't work yet.
 >
-> Crash Twinsanity and Crash Bandicoot are trademarks of Activision. PlayStation is a trademark of Sony Interactive
-> Entertainment. This is a fan project, not affiliated with or endorsed by either. Please don't ask for the game's files
-> or disc images in the issues: such requests are closed.
+> Crash Twinsanity and Crash Bandicoot are trademarks of Activision.
+> PlayStation is a trademark of Sony Interactive Entertainment.
+> This is a fan project, not affiliated with or endorsed by either.
+> Please don't ask for the game's files or disc images in the issues: such requests are closed.
 
-This port is built on two projects. [Smartkin's decompilation](https://github.com/Smartkin/twinsanity-reversed) rewrote
-the whole game in C++. [HAB3X's port for Mac](https://github.com/HAB3X/Crash-Twinsanity-Mac) made it run natively. This
-repository brings it to Windows and Linux, keeps it at a steady 60 fps, and fixes what playing it turned up.
+This port is built on two projects.
+[Smartkin's decompilation](https://github.com/Smartkin/twinsanity-reversed) rewrote the whole game in C++.
+[HAB3X's port for Mac](https://github.com/HAB3X/Crash-Twinsanity-Mac) made it run natively.
+This repository brings it to Windows and Linux, keeps it at a steady 60 fps, and fixes what playing it turned up.
 
 ## Play it
 
 ### What you need
 
 - 64-bit Windows 10 or 11, or 64-bit Linux.
-- A graphics card with OpenGL 3.3 or Vulkan. Any card from the last ten years has them.
+- A graphics card with OpenGL 3.3 or Vulkan.
+  Any card from the last ten years has them.
 - A disc image of **your own** PAL copy of the game, as an `.iso`, `.bin` or `.img`.
-- A keyboard and mouse, or a controller. Xbox, PlayStation, Switch and most other controllers work out of the box.
+- A keyboard and mouse, or a controller.
+  Xbox, PlayStation, Switch and most other controllers work out of the box.
 
 ### On Windows
 
-1. Download `Crash-Twinsanity-Windows.zip` from the
-   [latest release](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases/latest).
+1. Download `Crash-Twinsanity-Windows.zip` from the [latest release](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases/latest).
 2. Unzip it anywhere you like.
 3. Open the `Crash Twinsanity` folder and run `CrashTwinsanity.exe`.
-4. If Windows says "Windows protected your PC", choose **More info**, then **Run anyway**. The program isn't code-signed.
-5. Pick your disc image. The game remembers it.
+4. If Windows says "Windows protected your PC", choose **More info**, then **Run anyway**.
+   The program isn't code-signed.
+5. Pick your disc image.
+   The game remembers it.
 
-That's all. The [players' guide](native/PLAYING_WINDOWS.md) explains the options, the controls, the saves and the mods.
+That's all.
+The [players' guide](native/PLAYING_WINDOWS.md) explains the options, the controls, the saves and the mods.
 
 ### On Linux and the Steam Deck
 
-1. Download `Crash-Twinsanity-Linux-x86_64.AppImage` from the
-   [latest release](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases/latest).
+1. Download `Crash-Twinsanity-Linux-x86_64.AppImage` from the [latest release](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases/latest).
 2. Make it executable: `chmod +x Crash-Twinsanity-Linux-x86_64.AppImage`.
 3. Run it, and pick your disc image.
 
-It needs glibc 2.38 or later: Ubuntu 24.04, Linux Mint 22, Debian 13, Fedora 39, Arch, or newer. On older systems, such
-as Ubuntu 22.04, Debian 12 or Linux Mint 21, you can build it yourself with [native/LINUX.md](native/LINUX.md).
+It needs glibc 2.38 or later: Ubuntu 24.04, Linux Mint 22, Debian 13, Fedora 39, Arch, or newer.
+On older systems, such as Ubuntu 22.04, Debian 12 or Linux Mint 21, you can build it yourself with [native/LINUX.md](native/LINUX.md).
 
-On a Steam Deck it starts fullscreen on the Deck's screen. [native/LINUX.md](native/LINUX.md) shows how to add it as a
-non-Steam game. Nobody has tried it on a Deck yet, so **testers are wanted** ([#34]).
+On a Steam Deck it starts fullscreen on the Deck's screen.
+[native/LINUX.md](native/LINUX.md) shows how to add it as a non-Steam game.
+Nobody has tried it on a Deck yet, so **testers are wanted** ([#34]).
 
 ![Menu](docs/screenshots/menu.jpg)
 
 ## Is it safe?
 
-- The download holds only the program, its two libraries (SDL 3 and FFmpeg), its fonts and the licences. There's no
-  installer.
-- The program goes online only if you turn on **Check for updates** (Options > Game, off by default). Then, at each
-  start, it asks GitHub which version is the latest. It sends no personal data, and it never downloads or installs anything.
+- The download holds only the program, its two libraries (SDL 3 and FFmpeg), its fonts and the licences.
+  There's no installer.
+- The program goes online only if you turn on **Check for updates** (Options > Game, off by default).
+  Then, at each start, it asks GitHub which version is the latest.
+  It sends no personal data, and it never downloads or installs anything.
   The Linux version has no update check at all.
-- Each download has a `.sha256` file beside it on the release page, with the download's SHA-256. On Windows,
-  `Get-FileHash` prints your download's, to compare. On Linux, `sha256sum -c` checks it for you. Here is
-  [VirusTotal's report on 1.0.12's download](https://www.virustotal.com/gui/url/6ed9050e25993157d30ef77a69c4b7e7aba61368c9669caca1caf95553cd1e90/detection).
+- Each download has a `.sha256` file beside it on the release page, with the download's SHA-256.
+  On Windows, `Get-FileHash` prints your download's, to compare.
+  On Linux, `sha256sum -c` checks it for you.
+  Here is [VirusTotal's report on 1.0.12's download](https://www.virustotal.com/gui/url/6ed9050e25993157d30ef77a69c4b7e7aba61368c9669caca1caf95553cd1e90/detection).
 - You can also build it yourself from this code ([below](#building-on-windows)).
 
 [SECURITY.md](.github/SECURITY.md) has the details, and how to report a security problem privately.
@@ -83,44 +94,57 @@ non-Steam game. Nobody has tried it on a Deck yet, so **testers are wanted** ([#
 ## Questions people ask first
 
 **Do I need an emulator or a PS2 BIOS?**
-No. It's a Windows or Linux program of its own. It only reads the game's data from your disc image.
+No.
+It's a Windows or Linux program of its own.
+It only reads the game's data from your disc image.
 
 **Where do I get the game?**
-From your own PAL disc. Copy it into an `.iso` with a PC's DVD drive and a disc-copying program, such as ImgBurn on
-Windows. Nobody here can share the game's files.
+From your own PAL disc.
+Copy it into an `.iso` with a PC's DVD drive and a disc-copying program, such as ImgBurn on Windows.
+Nobody here can share the game's files.
 
 **Does the North American disc work?**
-Not yet ([#14]). It's on the [roadmap](#roadmap). Translated or modded copies of the PAL disc work.
+Not yet ([#14]).
+It's on the [roadmap](#roadmap).
+Translated or modded copies of the PAL disc work.
 
 **Is the game changed?**
-No. By default it plays as the PS2 original, bugs included. Everything that changes the game, such as the bug fixes, the
-cutscene skip or infinite lives, is an option. It stays off until you turn it on.
+No.
+By default it plays as the PS2 original, bugs included.
+Everything that changes the game, such as the bug fixes, the cutscene skip or infinite lives, is an option.
+It stays off until you turn it on.
 
 **Why is it slow on my older PC?**
-The port draws the PS2's graphics the way the PS2's graphics chip does, on your processor. That's hard work for older
-processors. Try the settings in [If something goes wrong](#if-something-goes-wrong). A faster renderer is on the
-[roadmap](#roadmap), aimed at 1.4.0.
+The port draws the PS2's graphics the way the PS2's graphics chip does, on your processor.
+That's hard work for older processors.
+Try the settings in [If something goes wrong](#if-something-goes-wrong).
+A faster renderer is on the [roadmap](#roadmap), aimed at 1.4.0.
 
 **Does it play at more than 60 fps?**
-Yes: 120, 144 or unlimited, in Options > Display. The game keeps the same speed. A few places still go wrong above 60,
-such as the seal chase ([#17]) and Evil Crash in Bandicoot Pursuit ([#44]). 60 is the safe choice.
+Yes: 120, 144 or unlimited, in Options > Display.
+The game keeps the same speed.
+A few places still go wrong above 60, such as the seal chase ([#17]) and Evil Crash in Bandicoot Pursuit ([#44]).
+60 is the safe choice.
 
 **Do texture packs and mods work?**
-Yes. PCSX2's texture packs for this game work as they are ([how](#texture-packs)). Mods that change the game's files work
-too: levels, texts, pictures, sounds and movies. Changes to the game's program don't apply
-([why](native/MODDING.md#limits)). The [modding guide](native/MODDING.md) shows how to add mods.
+Yes.
+PCSX2's texture packs for this game work as they are ([how](#texture-packs)).
+Mods that change the game's files work too: levels, texts, pictures, sounds and movies.
+Changes to the game's program don't apply ([why](native/MODDING.md#limits)).
+The [modding guide](native/MODDING.md) shows how to add mods.
 
 **Is there a version for Mac, Android or 32-bit Windows?**
-Not from here. It needs 64-bit Windows 10 or 11, or 64-bit Linux. For a Mac, look at
-[HAB3X's port for Mac](https://github.com/HAB3X/Crash-Twinsanity-Mac), which this one is built on.
+Not from here.
+It needs 64-bit Windows 10 or 11, or 64-bit Linux.
+For a Mac, look at [HAB3X's port for Mac](https://github.com/HAB3X/Crash-Twinsanity-Mac), which this one is built on.
 
 **Where are my saves?**
-On Windows in `%APPDATA%\Crash Twinsanity\`, on Linux in `~/.config/crash-twinsanity`. Your settings are there too
-([more](#if-something-goes-wrong)).
+On Windows in `%APPDATA%\Crash Twinsanity\`, on Linux in `~/.config/crash-twinsanity`.
+Your settings are there too ([more](#if-something-goes-wrong)).
 
 **Where can I ask for help?**
-In the [Discussions](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/discussions). Bugs go in the
-[issues](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues): [what to include](#if-something-goes-wrong).
+In the [Discussions](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/discussions).
+Bugs go in the [issues](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues): [what to include](#if-something-goes-wrong).
 
 ![autosave](docs/screenshots/autosave.jpg)
 
@@ -129,8 +153,9 @@ In the [Discussions](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/disc
 **Looks**
 
 - Up to 8 times the PS2's resolution, with the characters drawn as they look on the PS2.
-- Widescreen in 16:10, 16:9, 21:9 and 32:9, besides the original 4:3. 16:10 fits the Steam Deck's screen. At 32:9 the
-  menus and the HUD stay in the middle.
+- Widescreen in 16:10, 16:9, 21:9 and 32:9, besides the original 4:3.
+  16:10 fits the Steam Deck's screen.
+  At 32:9 the menus and the HUD stay in the middle.
 - Smooth edges with FXAA, SMAA, or supersampling at 2x or 4x.
 - Anisotropic filtering up to 16x, for sharp textures seen at an angle.
 - The PS2's dithering, or off for full colour.
@@ -141,7 +166,9 @@ In the [Discussions](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/disc
 
 - A steady 60 fps, or 50, 120, 144 or unlimited, always at the same game speed.
 - No pauses to prepare graphics when you reach a new area.
-- OpenGL or Vulkan, your choice ([#37]). OpenGL is the default. Vulkan is new in 1.3.0, and testers are wanted.
+- OpenGL or Vulkan, your choice ([#37]).
+  OpenGL is the default.
+  Vulkan is new in 1.3.0, and testers are wanted.
 - If a start fails with one of them, the game uses the other.
 
 **Playing**
@@ -161,18 +188,18 @@ In the [Discussions](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/disc
 - Infinite lives.
 - A stronger Aku Aku: one or two masks protect you from TNT and Nitro ([#30]).
 - With three masks on, a touch breaks crates and beats enemies, as a spin does ([#18]).
-- An automatic camera that swings behind you by itself ([#42]). Or an assisted one, which you still turn, and which
-  swings behind you once you let go.
+- An automatic camera that swings behind you by itself ([#42]).
+  Or an assisted one, which you still turn, and which swings behind you once you let go.
 - The slide's long jump at any moment, or an easier one ([#11], [#35]).
 - A double jump later in a fall, at any moment of it, or after a slide jump ([#47]).
 - Improved menus, where the pause menu starts at the top and has the gems and the extras as rows ([#48]).
 - Restart Checkpoint in the pause menu, which the PS2's pause menu doesn't have.
-- Level select, from the gems' pages in the main menu or the pause menu ([#48]). Its saves are kept apart from yours.
+- Level select, from the gems' pages in the main menu or the pause menu ([#48]).
+  Its saves are kept apart from yours.
 - A speedrun timer.
 - A shadow under you in the air, with a yellow ring if you like, so it shows on dark ground too ([#11]).
 - Aku Aku's shadow ([#51]), and your shadow on crates.
-- Bug fixes for six bugs of the original game: the masks' particles and stars ([#18]), Rockslide Rumble's smoke ([#41]),
-  and Evil Crash in Bandicoot Pursuit.
+- Bug fixes for six bugs of the original game: the masks' particles and stars ([#18]), Rockslide Rumble's smoke ([#41]), and Evil Crash in Bandicoot Pursuit.
 
 **Mods**
 
@@ -242,30 +269,40 @@ controller, saves, cutscene skipping and community fixes), this port adds:
 - **Tested on Windows 11** with an NVIDIA GeForce RTX 4070 SUPER, keyboard and mouse, and an Xbox One controller.
 - **Played by hand from the start to the credits**, in Italian with an Xbox One controller, on the releases up to 1.0.7.
   Every crash found on the way is fixed.
-- **All 131 of the game's areas were tried** with scripted input, 30 seconds each, with no unexpected crash
-  ([results](native/sweep/results_windows.md)). 108 played. The other 23 can only be entered from a neighbouring area.
-- **Vulkan**, new in 1.3.0, is tested on the same PC. There the checks' pictures come out the same as OpenGL's. Each
-  release also starts it on Linux with Mesa's Vulkan on the processor. It hasn't been tried on other graphics cards yet.
-- **Linux:** built and checked with each release since 1.2.0. It plays on x86-64 (tried on Debian 13).
+- **All 131 of the game's areas were tried** with scripted input, 30 seconds each, with no unexpected crash ([results](native/sweep/results_windows.md)).
+  108 played.
+  The other 23 can only be entered from a neighbouring area.
+- **Vulkan**, new in 1.3.0, is tested on the same PC.
+  There the checks' pictures come out the same as OpenGL's.
+  Each release also starts it on Linux with Mesa's Vulkan on the processor.
+  It hasn't been tried on other graphics cards yet.
+- **Linux:** built and checked with each release since 1.2.0.
+  It plays on x86-64 (tried on Debian 13).
 - **macOS:** HAB3X's code for it is still here, but this fork isn't built or tested on macOS.
 
 ![beach](docs/screenshots/beach_play.jpg)
 
 ## Known issues
 
-- **The North American disc doesn't work yet** ([#14]). The game says the disc image isn't the PAL release. It's on the
-  [roadmap](#roadmap).
-- **Older PCs can run well below 60 fps** ([#23], [#39]). The PS2's graphics are emulated on the processor, which is hard
-  work for older ones: a two-core laptop processor from 2011 ran it at 18 fps. A faster renderer is on the roadmap.
-- **A black screen at start on a few AMD PCs** ([#12], [#16]). It doesn't happen on the PC the port is tested on. Since
-  1.3.0, a start that hangs before its first pictures makes the next one use the other graphics API. A log from an
-  affected PC still helps.
-- **The camera can stop following Crash after a high path scene** ([#23], [#52]). It wasn't reproduced here yet. The
-  detailed log now says what the camera was doing when it happens.
-- **Aku Aku disappears in two cutscenes** ([#18]), by Cavern Catastrophe's excavator and at Dingodile's house. Not solved
-  yet.
-- **Vulkan is new** ([#37]), so OpenGL stays the default. Testers with other graphics cards are wanted.
-- **The Steam Deck hasn't been tried** ([#34]). Testers wanted.
+- **The North American disc doesn't work yet** ([#14]).
+  The game says the disc image isn't the PAL release.
+  It's on the [roadmap](#roadmap).
+- **Older PCs can run well below 60 fps** ([#23], [#39]).
+  The PS2's graphics are emulated on the processor, which is hard work for older ones: a two-core laptop processor from 2011 ran it at 18 fps.
+  A faster renderer is on the roadmap.
+- **A black screen at start on a few AMD PCs** ([#12], [#16]).
+  It doesn't happen on the PC the port is tested on.
+  Since 1.3.0, a start that hangs before its first pictures makes the next one use the other graphics API.
+  A log from an affected PC still helps.
+- **The camera can stop following Crash after a high path scene** ([#23], [#52]).
+  It wasn't reproduced here yet.
+  The detailed log now says what the camera was doing when it happens.
+- **Aku Aku disappears in two cutscenes** ([#18]), by Cavern Catastrophe's excavator and at Dingodile's house.
+  Not solved yet.
+- **Vulkan is new** ([#37]), so OpenGL stays the default.
+  Testers with other graphics cards are wanted.
+- **The Steam Deck hasn't been tried** ([#34]).
+  Testers wanted.
 
 ## If something goes wrong
 
@@ -284,13 +321,13 @@ controller, saves, cutscene skipping and community fixes), this port adds:
 
 1. Make sure you have the [latest release](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/releases/latest).
 2. Search the [issues](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues?q=is%3Aissue) to see if it's known.
-3. Attach `log.txt`. After a crash or a freeze, start the game again and attach `log.previous.txt` too: that's the run that
-   went wrong.
+3. Attach `log.txt`.
+   After a crash or a freeze, start the game again and attach `log.previous.txt` too: that's the run that went wrong.
 4. Say where in the game it happened, and add a screenshot or a video if you can.
 
-For a bug you can repeat, turn on **Options > Game > Detailed log** first. Never attach your disc image or the game's
-files. Questions and help are welcome in the
-[Discussions](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/discussions).
+For a bug you can repeat, turn on **Options > Game > Detailed log** first.
+Never attach your disc image or the game's files.
+Questions and help are welcome in the [Discussions](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/discussions).
 
 **Where your saves and settings are**
 
@@ -300,37 +337,33 @@ Saves, options, controls, mods, texture packs and `log.txt` are all in one folde
 - on Linux, `~/.config/crash-twinsanity`;
 - with **Options > Game > Portable mode** on, the `User` folder beside the program.
 
-To uninstall, delete the game's folder and that one. The [players' guide](native/PLAYING_WINDOWS.md#where-things-are) lists
-every file.
+To uninstall, delete the game's folder and that one.
+The [players' guide](native/PLAYING_WINDOWS.md#where-things-are) lists every file.
 
 ## Roadmap
 
-Plans, not promises, roughly from the quickest to the longest. New game options will be off by default, so the game stays
-the original.
+Plans, not promises, roughly from the quickest to the longest.
+New game options will be off by default, so the game stays the original.
 
-- [ ] The port's own texts in Brazilian Portuguese ([#25]). NormanTheFox is translating them, and the program is ready for
-  them since 1.3.0.
+- [ ] The port's own texts in Brazilian Portuguese ([#25]).
+  NormanTheFox is translating them, and the program is ready for them since 1.3.0.
 - [ ] Eight save slots.
 - [ ] A checked skip for the last six cutscenes, like the final boss's start ([#28]).
 - [ ] Aku Aku disappearing in two cutscenes, compared with the original game ([#18]).
-- [ ] Frame rates other than 60 checked through the game: the seal chase at 240 fps ([#17]), Evil Crash at 120 and 144 Hz
-  ([#44]), the cannon's bombs below 60 fps ([#12]).
+- [ ] Frame rates other than 60 checked through the game: the seal chase at 240 fps ([#17]), Evil Crash at 120 and 144 Hz ([#44]), the cannon's bombs below 60 fps ([#12]).
 - [ ] The black screen at start on some AMD PCs ([#12], [#16]).
 - [ ] HD texture packs in BC7, and texture upscaling.
-- [ ] The characters' shadows at the chosen resolution. They stay at the PS2's, softer than the rest of the picture at
-  high resolutions.
+- [ ] The characters' shadows at the chosen resolution.
+  They stay at the PS2's, softer than the rest of the picture at high resolutions.
 - [ ] The North American disc, NTSC-U v2.00 ([#14]).
-- [ ] A faster renderer as an option for weaker PCs ([#23], [#39]): the game's models and scenes drawn straight on the
-  graphics card, instead of emulating the PS2's graphics chip a shape at a time. Planned for 1.3.0, now aimed at 1.4.0.
+- [ ] A faster renderer as an option for weaker PCs ([#23], [#39]): the game's models and scenes drawn straight on the graphics card, instead of emulating the PS2's graphics chip a shape at a time.
+  Planned for 1.3.0, now aimed at 1.4.0.
   1.3.0 laid its base, with the renderer's work recorded as a list of commands that OpenGL or Vulkan draws.
 - [ ] An animated title screen, and Continue in the main menu, from ichagas7's designs ([#48]).
 - [ ] Achievements, kept on your PC (RetroAchievements doesn't award them for ports).
 - [ ] Subtitles for the cutscenes ([#11]).
 
-Maybe later: fast-forwarding cutscenes as well as skipping them ([#9]); two-player co-op; some of the North American
-release's differences as options on the PAL disc ([#14]); progress kept when you go back to an area, such as crates broken,
-cutscenes seen and challenges done ([#38]); a mod's movies larger than the original ones ([#46]); and character packs from
-the other Crash games (a mod, since it needs those games' discs).
+Maybe later: fast-forwarding cutscenes as well as skipping them ([#9]); two-player co-op; some of the North American release's differences as options on the PAL disc ([#14]); progress kept when you go back to an area, such as crates broken, cutscenes seen and challenges done ([#38]); a mod's movies larger than the original ones ([#46]); and character packs from the other Crash games (a mod, since it needs those games' discs).
 
 <details>
 <summary><b>Done so far</b></summary>
@@ -425,7 +458,8 @@ the other Crash games (a mod, since it needs those games' discs).
 PCSX2's texture packs for this game work as they are.
 
 1. Put the pack's `SLES-52568` folder into `%APPDATA%\Crash Twinsanity\textures\`.
-2. Check that Texture pack is on in Options > Display. It is by default.
+2. Check that Texture pack is on in Options > Display.
+   It is by default.
 
 The HD texture pack by CRASHARKI that HAB3X's repository shipped isn't included here: get it from its author.
 
@@ -439,9 +473,8 @@ You need about 3 GB of disk space, your PAL disc image and an internet connectio
    winget install MartinStorsjo.LLVM-MinGW.UCRT Kitware.CMake Ninja-build.Ninja Python.Python.3.13 Git.Git
    ```
 
-2. **Get the PS2 toolchain**: download `ps2dev-windows-latest.tar.gz` from
-   [ps2dev's latest release](https://github.com/ps2dev/ps2dev/releases/tag/latest) and extract it into `C:\`, which makes
-   `C:\ps2dev`. The native build uses its headers to lay out the game's data.
+2. **Get the PS2 toolchain**: download `ps2dev-windows-latest.tar.gz` from [ps2dev's latest release](https://github.com/ps2dev/ps2dev/releases/tag/latest) and extract it into `C:\`, which makes `C:\ps2dev`.
+   The native build uses its headers to lay out the game's data.
 
    ```powershell
    tar -xzf "$HOME\Downloads\ps2dev-windows-latest.tar.gz" -C C:\
@@ -477,76 +510,59 @@ You need about 3 GB of disk space, your PAL disc image and an internet connectio
    build\native\cmake\CrashTwinsanity.exe
    ```
 
-   The first time, it asks for your disc image and remembers it. Settings, saves and texture packs are in
-   `%APPDATA%\Crash Twinsanity\`.
+   The first time, it asks for your disc image and remembers it.
+   Settings, saves and texture packs are in `%APPDATA%\Crash Twinsanity\`.
 
-More on the Windows build: [native/WINDOWS.md](native/WINDOWS.md). On Linux: [native/LINUX.md](native/LINUX.md). The
-decompilation itself (the PS2 build that matches the retail executable, and its tools): [README_DECOMP.md](README_DECOMP.md)
-and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). HAB3X's native layer: [native/NATIVE.md](native/NATIVE.md),
-[native/GRAPHICS.md](native/GRAPHICS.md), [native/AUDIO.md](native/AUDIO.md).
+More on the Windows build: [native/WINDOWS.md](native/WINDOWS.md).
+On Linux: [native/LINUX.md](native/LINUX.md).
+The decompilation itself (the PS2 build that matches the retail executable, and its tools): [README_DECOMP.md](README_DECOMP.md) and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+HAB3X's native layer: [native/NATIVE.md](native/NATIVE.md), [native/GRAPHICS.md](native/GRAPHICS.md), [native/AUDIO.md](native/AUDIO.md).
 
 ![dungeon](docs/screenshots/dungeon.jpg)
 
-*On 1.2.0. Screenshot by [NormanTheFox](https://github.com/NormanTheFox), thank you!*
+*On 1.2.0.
+Screenshot by [NormanTheFox](https://github.com/NormanTheFox), thank you!*
 
 ## Credits
 
 **Upstream projects (most of the work):**
 
-- [Smartkin](https://github.com/Smartkin/twinsanity-reversed) and everyone behind the Crash Twinsanity decompilation: every
-  function of the game rewritten in C++, with the tools that build and test it.
-- [HAB3X](https://github.com/HAB3X/Crash-Twinsanity-Mac): the native port for Mac. This includes the platform layer, the
-  emulation of the PS2's graphics (GS, VIF, VU) and its OpenGL renderer, audio and movies, saves, the options screen and the
-  community fixes.
-- [Crash Twinsanity Improved](https://github.com/AlexMollard/Crash-Twinsanity-Improved) by AlexMollard: the optional bug
-  fixes come from this mod, used with AlexMollard's permission
-  ([Crash-Twinsanity-Improved#5](https://github.com/AlexMollard/Crash-Twinsanity-Improved/issues/5)). Its 21:9 mode is
-  TechieSaru's fix, from the mod's PCSX2 patches.
+- [Smartkin](https://github.com/Smartkin/twinsanity-reversed) and everyone behind the Crash Twinsanity decompilation: every function of the game rewritten in C++, with the tools that build and test it.
+- [HAB3X](https://github.com/HAB3X/Crash-Twinsanity-Mac): the native port for Mac.
+  This includes the platform layer, the emulation of the PS2's graphics (GS, VIF, VU) and its OpenGL renderer, audio and movies, saves, the options screen and the community fixes.
+- [Crash Twinsanity Improved](https://github.com/AlexMollard/Crash-Twinsanity-Improved) by AlexMollard: the optional bug fixes come from this mod, used with AlexMollard's permission ([Crash-Twinsanity-Improved#5](https://github.com/AlexMollard/Crash-Twinsanity-Improved/issues/5)).
+  Its 21:9 mode is TechieSaru's fix, from the mod's PCSX2 patches.
 - CRASHARKI, for the HD texture pack the Mac port was tested with.
-- [SMAA](https://github.com/iryoku/smaa) by Jorge Jimenez, Jose I. Echevarria, Belen Masia, Fernando Navarro and Diego
-  Gutierrez (MIT): the SMAA anti-aliasing.
-- [TwinsanityEvolved](https://github.com/menaman123/TwinsanityEvolved) by menaman123, another PC port. Code under its MIT
-  licence (the disc image's CRC-32 and SHA-1, and how a text bank's language is told, from its engine NativeEE), with its
-  notices kept. With menaman123's permission
-  ([TwinsanityEvolved#19](https://github.com/menaman123/TwinsanityEvolved/issues/19)), its cutscene skip and its census of
-  the game's cutscenes, under its MIT licence.
+- [SMAA](https://github.com/iryoku/smaa) by Jorge Jimenez, Jose I. Echevarria, Belen Masia, Fernando Navarro and Diego Gutierrez (MIT): the SMAA anti-aliasing.
+- [TwinsanityEvolved](https://github.com/menaman123/TwinsanityEvolved) by menaman123, another PC port.
+  Code under its MIT licence (the disc image's CRC-32 and SHA-1, and how a text bank's language is told, from its engine NativeEE), with its notices kept.
+  With menaman123's permission ([TwinsanityEvolved#19](https://github.com/menaman123/TwinsanityEvolved/issues/19)), its cutscene skip and its census of the game's cutscenes, under its MIT licence.
   [`native/third_party/twinsanityevolved`](native/third_party/twinsanityevolved/README.md) lists what.
 
 **Contributors and testers of the Windows port:**
 
-- [Gabriel-TwoBits](https://github.com/Gabriel-TwoBits): the Linux build, with its fixes and low memory emulation, named
-  backtraces, and the build script with its AppImage (#1, #2, #3).
+- [Gabriel-TwoBits](https://github.com/Gabriel-TwoBits): the Linux build, with its fixes and low memory emulation, named backtraces, and the build script with its AppImage (#1, #2, #3).
 - [jeff1-cpu](https://github.com/jeff1-cpu): the automatic camera (#45).
-- The players whose reports and tests made it better: [NitorikoSkye](https://github.com/NitorikoSkye) (the ROG Ally and AMD
-  graphics, the physics past 60 Hz, the movies' crash, many suggestions), [NormanTheFox](https://github.com/NormanTheFox)
-  (the masks' bugs, mods, shadows and many suggestions), [ichagas7](https://github.com/ichagas7) (the double jump and the
-  menus' designs), [GNRTX-3](https://github.com/GNRTX-3) (the camera, with videos and logs),
-  [GamerAlfa117](https://github.com/GamerAlfa117) (mods and ReShade), [SSStylishh](https://github.com/SSStylishh) (played
-  it to the end), [APerson7778](https://github.com/APerson7778) (mouse look) and
-  [VenezuelanHell](https://github.com/VenezuelanHell) (older AMD drivers).
+- The players whose reports and tests made it better: [NitorikoSkye](https://github.com/NitorikoSkye) (the ROG Ally and AMD graphics, the physics past 60 Hz, the movies' crash, many suggestions), [NormanTheFox](https://github.com/NormanTheFox) (the masks' bugs, mods, shadows and many suggestions), [ichagas7](https://github.com/ichagas7) (the double jump and the menus' designs), [GNRTX-3](https://github.com/GNRTX-3) (the camera, with videos and logs), [GamerAlfa117](https://github.com/GamerAlfa117) (mods and ReShade), [SSStylishh](https://github.com/SSStylishh) (played it to the end), [APerson7778](https://github.com/APerson7778) (mouse look) and [VenezuelanHell](https://github.com/VenezuelanHell) (older AMD drivers).
 - [Onaga00](https://github.com/Onaga00), with thanks.
 
 Bug reports, suggestions and pull requests are welcome: see [CONTRIBUTING.md](.github/CONTRIBUTING.md).
 
 **References:**
 
-- [PCSX2](https://github.com/PCSX2/pcsx2): how the PS2's VU, VIF and GS behave, the model of its float maths, and the design
-  of its hardware renderers.
+- [PCSX2](https://github.com/PCSX2/pcsx2): how the PS2's VU, VIF and GS behave, the model of its float maths, and the design of its hardware renderers.
 - Microsoft's documentation of the x64 calling convention, and the System V and MIPS EABI conventions.
-- [Tenkaichi3Decomp](https://github.com/z3xox/Tenkaichi3Decomp) by z3xox: the design of a renderer that records the GS's
-  work and draws it with OpenGL or SDL's GPU API, at its MIT commit 06e4671. No code was taken.
+- [Tenkaichi3Decomp](https://github.com/z3xox/Tenkaichi3Decomp) by z3xox: the design of a renderer that records the GS's work and draws it with OpenGL or SDL's GPU API, at its MIT commit 06e4671.
+  No code was taken.
 
 **Tools:**
 
-- [splat](https://github.com/ethteck/splat), [spimdisasm](https://github.com/Decompollaborate/spimdisasm) and
-  [rabbitizer](https://github.com/Decompollaborate/rabbitizer): split the executable.
+- [splat](https://github.com/ethteck/splat), [spimdisasm](https://github.com/Decompollaborate/spimdisasm) and [rabbitizer](https://github.com/Decompollaborate/rabbitizer): split the executable.
 - [ps2dev](https://github.com/ps2dev/ps2dev): the PS2 toolchain, GCC 15.2 with PS2SDK.
 - Ghidra: used upstream for the decompilation's symbols.
-- [LLVM-MinGW](https://github.com/mstorsjo/llvm-mingw) by Martin Storsjö (clang 23, UCRT), [CMake](https://cmake.org/) and
-  [Ninja](https://ninja-build.org/): build the Windows program.
+- [LLVM-MinGW](https://github.com/mstorsjo/llvm-mingw) by Martin Storsjö (clang 23, UCRT), [CMake](https://cmake.org/) and [Ninja](https://ninja-build.org/): build the Windows program.
 - [Python](https://www.python.org/) 3.13 and [Pillow](https://python-pillow.org/): build tools and test scripts.
-- [Git for Windows](https://gitforwindows.org/), MSYS2's `make` and [winget](https://github.com/microsoft/winget-cli): build
-  FFmpeg and install the tools.
+- [Git for Windows](https://gitforwindows.org/), MSYS2's `make` and [winget](https://github.com/microsoft/winget-cli): build FFmpeg and install the tools.
 
 **Libraries and fonts bundled with the program:**
 
@@ -559,24 +575,23 @@ Bug reports, suggestions and pull requests are welcome: see [CONTRIBUTING.md](.g
 | [Luckiest Guy](https://fonts.google.com/specimen/Luckiest+Guy) | Apache 2.0 |
 | [Fredoka](https://fonts.google.com/specimen/Fredoka) | SIL Open Font Licence 1.1 |
 
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) says where each licence's text is, SMAA's and TwinsanityEvolved's too, and
-what is used with its authors' permission.
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) says where each licence's text is, SMAA's and TwinsanityEvolved's too, and what is used with its authors' permission.
 
 **The icon** is our own drawing (`native/tools/draw_icon.py` draws it), under this repository's licence.
 
-**AI assistance:** this port was written with the help of [Claude Code](https://claude.com/claude-code) (Anthropic). As the
-developer, I reviewed and supervised the work. Each commit made with it says so.
+**AI assistance:** this port was written with the help of [Claude Code](https://claude.com/claude-code) (Anthropic).
+As the developer, I reviewed and supervised the work.
+Each commit made with it says so.
 
 ## Licence
 
-- **Upstream code:** Smartkin's decompilation and HAB3X's Mac port are published without a licence, so all their rights
-  stay with their authors. They are included here, unchanged in the first commit, with the credit above.
-- **Crash Twinsanity Improved** (AlexMollard's mod) has no licence either: the parts the port uses are used with
-  AlexMollard's permission ([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) says which).
+- **Upstream code:** Smartkin's decompilation and HAB3X's Mac port are published without a licence, so all their rights stay with their authors.
+  They are included here, unchanged in the first commit, with the credit above.
+- **Crash Twinsanity Improved** (AlexMollard's mod) has no licence either: the parts the port uses are used with AlexMollard's permission ([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) says which).
 - **This repository's own changes** (the commits after the first) are under the MIT licence: see [LICENSE](LICENSE).
 - **Third-party libraries and fonts** keep their own licences (table above).
-- **The game** (its code, data, art and sound) belongs to Activision. None of the game's files are in this repository:
-  the executable, data, art and sound come from your own disc image.
+- **The game** (its code, data, art and sound) belongs to Activision.
+  None of the game's files are in this repository: the executable, data, art and sound come from your own disc image.
 
 ## Gallery
 | | |
@@ -585,5 +600,5 @@ developer, I reviewed and supervised the work. Each commit made with it says so.
 | ![A cutscene with the villains](docs/screenshots/villains.jpg) | ![Twinsanity Island](docs/screenshots/twinsanity.jpg) |
 | ![The pause menu, with an Xbox controller's buttons](docs/screenshots/pause_menu.jpg) | ![The PC options](docs/screenshots/options.jpg) |
 
-*Taken from the Windows program at 4× the PS2's resolution, without texture packs. The menus show the
-buttons of the controller in use, and the PC options have their own screen.*
+*Taken from the Windows program at 4× the PS2's resolution, without texture packs.
+The menus show the buttons of the controller in use, and the PC options have their own screen.*

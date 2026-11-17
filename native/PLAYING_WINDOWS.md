@@ -1,13 +1,15 @@
 # Playing Crash Twinsanity on Windows
 
-This is a native Windows port of Crash Twinsanity, made from a decompilation of the PAL PlayStation 2 game. It contains no
-game data, so you need your own copy of the game. The source code, the credits and the bug reports are at
-https://github.com/GioPixelGH/Crash-Twinsanity-Windows. On Linux, see LINUX.md there.
+This is a native Windows port of Crash Twinsanity, made from a decompilation of the PAL PlayStation 2 game.
+It contains no game data, so you need your own copy of the game.
+The source code, the credits and the bug reports are at https://github.com/GioPixelGH/Crash-Twinsanity-Windows.
+On Linux, see LINUX.md there.
 
 ## What you need
 
 - 64-bit Windows 10 or 11.
-- A graphics card with OpenGL 3.3 or Vulkan. Any card from the last ten years has them.
+- A graphics card with OpenGL 3.3 or Vulkan.
+  Any card from the last ten years has them.
 - A disc image of **your own** PAL copy of Crash Twinsanity (Europe/Australia, SLES-52568), as an `.iso`, `.bin` or `.img`.
   Other versions (USA, Japan) don't work.
 
@@ -15,25 +17,27 @@ Nothing else: the folder carries the libraries the game needs.
 
 ## First run
 
-1. Unzip `Crash-Twinsanity-Windows.zip` anywhere, and open the `Crash Twinsanity` folder. Keep its files together: the
-   program needs the DLLs and the `fonts` folder beside it.
-2. Double-click `CrashTwinsanity.exe`. The first time, Windows may warn about an unrecognised app. Choose **More info**,
-   then **Run anyway**.
-3. The game asks for your disc image. Pick your `.iso`. The game remembers it, and reads the game's data from it at every
-   start.
+1. Unzip `Crash-Twinsanity-Windows.zip` anywhere, and open the `Crash Twinsanity` folder.
+   Keep its files together: the program needs the DLLs and the `fonts` folder beside it.
+2. Double-click `CrashTwinsanity.exe`.
+   The first time, Windows may warn about an unrecognised app.
+   Choose **More info**, then **Run anyway**.
+3. The game asks for your disc image.
+   Pick your `.iso`.
+   The game remembers it, and reads the game's data from it at every start.
 
 Good to know:
 
-- To pick another disc image, delete `disc_image.txt` from the settings folder (below). You can also start the game with
-  `CrashTwinsanity.exe --iso "C:\path\to\game.iso"`.
+- To pick another disc image, delete `disc_image.txt` from the settings folder (below).
+  You can also start the game with `CrashTwinsanity.exe --iso "C:\path\to\game.iso"`.
 - If you move or rename the disc image, the game says so and asks for it again.
-- If the image isn't the PAL release (another game, or another version of Crash Twinsanity), a message says so and asks
-  for another one.
+- If the image isn't the PAL release (another game, or another version of Crash Twinsanity), a message says so and asks for another one.
 
 ## Where things are
 
-Everything the game keeps is in one folder: **%APPDATA%\Crash Twinsanity\**. Paste that in the Explorer's address bar to
-open it. In portable mode (below), it's the **User** folder beside the game instead.
+Everything the game keeps is in one folder: **%APPDATA%\Crash Twinsanity\**.
+Paste that in the Explorer's address bar to open it.
+In portable mode (below), it's the **User** folder beside the game instead.
 
 | What | Where |
 | --- | --- |
@@ -46,37 +50,42 @@ open it. In portable mode (below), it's the **User** folder beside the game inst
 | Mods, their order and their switches (below) | `mods\`, `mods.txt` |
 | The graphics' shaders, made at each start so play doesn't stop for them (made again if deleted) | `shaders.txt` |
 
-Saving works like a PC game, with no memory card screens. Save from the pause menu or at the game's save points. Load from
-the main menu.
+Saving works like a PC game, with no memory card screens.
+Save from the pause menu or at the game's save points.
+Load from the main menu.
 
 ### Portable mode
 
 Portable mode keeps everything in the game's own folder, to carry it on a USB stick or keep it all in one place.
 
 1. Turn on **Options > Game > Portable mode**.
-2. The game copies your settings, saves, mods and texture packs into a **`User`** folder beside `CrashTwinsanity.exe`, makes
-   a `portable.txt` file there, and closes.
-3. Start it again. From then on it uses the `User` folder.
+2. The game copies your settings, saves, mods and texture packs into a **`User`** folder beside `CrashTwinsanity.exe`, makes a `portable.txt` file there, and closes.
+3. Start it again.
+   From then on it uses the `User` folder.
 
-Nothing is moved or deleted. The copy in `%APPDATA%` stays as it was. A `User` folder that was already there is kept as
-`User (backup DATE)`. Turning the option off copies the `User` folder back to `%APPDATA%` the same way, keeps the old one as
-`Crash Twinsanity (backup DATE)`, and removes `portable.txt`.
+Nothing is moved or deleted.
+The copy in `%APPDATA%` stays as it was.
+A `User` folder that was already there is kept as `User (backup DATE)`.
+Turning the option off copies the `User` folder back to `%APPDATA%` the same way, keeps the old one as `Crash Twinsanity (backup DATE)`, and removes `portable.txt`.
 
-- The game's folder must be one you can write to, so not `C:\Program Files`. Otherwise the game says so and stays on
-  `%APPDATA%`.
-- Your disc image can go in the game's folder too. If the game has no disc image yet, or the one it had is gone, it looks for
-  an `.iso`, `.bin` or `.img` in its folder and uses it without asking. It remembers that one by its name, so the folder
-  still works after you move it, or on a USB stick that gets another drive letter.
-- You can also make an empty `portable.txt` beside `CrashTwinsanity.exe` yourself. If there's no `User` folder yet, the next
-  start copies `%APPDATA%`'s data into it first, showing its progress.
-- **To update in portable mode**, unzip the new version over the old folder. Or unzip it into a new folder, then move your
-  `User` folder, `portable.txt` and your disc image (if it's there) into it. The zip never contains `User` or `portable.txt`.
+- The game's folder must be one you can write to, so not `C:\Program Files`.
+  Otherwise the game says so and stays on `%APPDATA%`.
+- Your disc image can go in the game's folder too.
+  If the game has no disc image yet, or the one it had is gone, it looks for an `.iso`, `.bin` or `.img` in its folder and uses it without asking.
+  It remembers that one by its name, so the folder still works after you move it, or on a USB stick that gets another drive letter.
+- You can also make an empty `portable.txt` beside `CrashTwinsanity.exe` yourself.
+  If there's no `User` folder yet, the next start copies `%APPDATA%`'s data into it first, showing its progress.
+- **To update in portable mode**, unzip the new version over the old folder.
+  Or unzip it into a new folder, then move your `User` folder, `portable.txt` and your disc image (if it's there) into it.
+  The zip never contains `User` or `portable.txt`.
 
 ## Controls
 
-A controller works out of the box: Xbox, PlayStation, Switch and most others. It plays as on the PS2. Its round stick
-reaches as far as the PS2 stick's square corners, so Crash runs on diagonals too. **Select+Start** (Back+Start on an Xbox
-controller) opens the options while you play. The game pauses, and goes on when you close them.
+A controller works out of the box: Xbox, PlayStation, Switch and most others.
+It plays as on the PS2.
+Its round stick reaches as far as the PS2 stick's square corners, so Crash runs on diagonals too.
+**Select+Start** (Back+Start on an Xbox controller) opens the options while you play.
+The game pauses, and goes on when you close them.
 
 On keyboard and mouse:
 
@@ -95,32 +104,36 @@ On keyboard and mouse:
 | Menus | Arrow keys (or the mouse), Enter to select, Esc to go back |
 | Fullscreen | Alt+Enter |
 
-You can rebind everything in **Options > Controls**. The button prompts follow what you used last. Controls also has:
+You can rebind everything in **Options > Controls**.
+The button prompts follow what you used last.
+Controls also has:
 
-- **Mouse look**, its sensitivity, and inverted Y. Up to a sensitivity of 5 (the default), the mouse turns the camera at most
-  as fast as a stick does, as on the PS2. Above 5, a quick move turns it faster, up to six times at 10.
-- **Menu hints**: the menus' own hints as the game draws them (the default, with your controller's buttons, and clickable),
-  or a bar of prompts at the bottom.
+- **Mouse look**, its sensitivity, and inverted Y.
+  Up to a sensitivity of 5 (the default), the mouse turns the camera at most as fast as a stick does, as on the PS2.
+  Above 5, a quick move turns it faster, up to six times at 10.
+- **Menu hints**: the menus' own hints as the game draws them (the default, with your controller's buttons, and clickable), or a bar of prompts at the bottom.
 - **Camera speed**: the camera turns faster or slower, for the mouse, a controller and the keys alike.
 
 ## Options
 
-Open Options from the main menu or the pause menu. The defaults are the game as on the PS2: a 1280×720 window at twice the
-PS2's resolution, 60 Hz, cutscenes that can't be skipped, and the original bugs kept. Faster loading and pausing in the
-background are on. **Reset to defaults**, at the bottom of each tab, puts that tab back.
+Open Options from the main menu or the pause menu.
+The defaults are the game as on the PS2: a 1280×720 window at twice the PS2's resolution, 60 Hz, cutscenes that can't be skipped, and the original bugs kept.
+Faster loading and pausing in the background are on.
+**Reset to defaults**, at the bottom of each tab, puts that tab back.
 
 There are seven tabs:
 
 1. **Game**: languages, cutscenes, loading, and the program itself.
-2. **Enhancements**: changes to the original game. All are off at first.
+2. **Enhancements**: changes to the original game.
+   All are off at first.
 3. **Display**: the window, then the picture.
 4. **Audio**: the volumes.
 5. **Controls**: your controller, the mouse, the camera, and the keys.
 6. **Accessibility**: camera shake and shadows that help you see.
 7. **Mods**: the mods you have.
 
-On **Display** and **Accessibility** the game shows behind the options, so you see each change at once. Hold **H** (or the
-right trigger) to hide the options and see the whole picture.
+On **Display** and **Accessibility** the game shows behind the options, so you see each change at once.
+Hold **H** (or the right trigger) to hide the options and see the whole picture.
 
 **Game**
 
@@ -135,28 +148,33 @@ right trigger) to hide the options and see the whole picture.
 | Credits | Who made the port, and what it's built on. |
 | Quit to desktop | Asks first, then closes the game as the window's close button or Alt+F4 does. Progress since your last save is lost. |
 
-**Enhancements** change the original game, so they're all off unless you turn them on. Your saves stay ones the original
-game could make.
+**Enhancements** change the original game, so they're all off unless you turn them on.
+Your saves stay ones the original game could make.
 
-- **Bug fixes**: optional fixes of the original game's bugs. Off plays exactly like the PS2.
+- **Bug fixes**: optional fixes of the original game's bugs.
+  Off plays exactly like the PS2.
 - **Infinite lives**: dying costs no life.
 - **Stronger Aku Aku**: with one or two masks, TNT and Nitro take a mask instead of a life, as in the earlier Crash games.
-- **Three masks' touch**: while three masks make you invincible, what you touch is hit as if you spun. Crates break and
-  enemies are beaten.
-- **Slide jump**: the long jump from a slide at any moment of it. Or easier: also just after the slide, and steered in the
-  air.
-- **Double jump**: later in a fall, or at any moment of it, and after a slide jump too. Later ones are weaker; at any moment
-  it's always full.
-- **Automatic camera**: the camera swings behind you by itself while you move, and the camera stick, the mouse and the camera
-  keys turn nothing. Pick **assisted** to keep turning it yourself: it swings behind you a second after you let go. Off is
-  the original's free camera. A level's own fixed cameras still work as they did.
-- **Improved menus**: the pause menu starts at the top, with Restart Checkpoint second (if it's on, below). Gems and Extras
-  are rows of it, and back from them brings you back to it. Quit Game is called Return to Title.
-- **Restart checkpoint**: adds Restart Checkpoint to the pause menu. It takes you back to your last checkpoint. The PS2's
-  pause menu doesn't have it, so it's off at first.
-- **Level select**: start any level. Choose Level Select in the main menu or the pause menu, pick a level on the gems' pages,
-  then say yes. (Options > Enhancements > Level works too.) What you save in such a game is kept apart from your own saves,
-  which come back once you're at the title again.
+- **Three masks' touch**: while three masks make you invincible, what you touch is hit as if you spun.
+  Crates break and enemies are beaten.
+- **Slide jump**: the long jump from a slide at any moment of it.
+  Or easier: also just after the slide, and steered in the air.
+- **Double jump**: later in a fall, or at any moment of it, and after a slide jump too.
+  Later ones are weaker; at any moment it's always full.
+- **Automatic camera**: the camera swings behind you by itself while you move, and the camera stick, the mouse and the camera keys turn nothing.
+  Pick **assisted** to keep turning it yourself: it swings behind you a second after you let go.
+  Off is the original's free camera.
+  A level's own fixed cameras still work as they did.
+- **Improved menus**: the pause menu starts at the top, with Restart Checkpoint second (if it's on, below).
+  Gems and Extras are rows of it, and back from them brings you back to it.
+  Quit Game is called Return to Title.
+- **Restart checkpoint**: adds Restart Checkpoint to the pause menu.
+  It takes you back to your last checkpoint.
+  The PS2's pause menu doesn't have it, so it's off at first.
+- **Level select**: start any level.
+  Choose Level Select in the main menu or the pause menu, pick a level on the gems' pages, then say yes.
+  (Options > Enhancements > Level works too.)
+  What you save in such a game is kept apart from your own saves, which come back once you're at the title again.
 
 **Display**
 
@@ -176,121 +194,132 @@ game could make.
 | Texture packs, scanlines | As their names say. |
 | Graphics API | Under **Renderer**. OpenGL (the default) or Vulkan (new in 1.3.0). A change is used from the next start. If one doesn't start on your PC, the game uses the other one and changes this setting. |
 
-The volumes are in **Audio**. **Master volume**, its first row, turns all the sound up or down together. Music, effects and
-voices keep their own volumes under it.
+The volumes are in **Audio**.
+**Master volume**, its first row, turns all the sound up or down together.
+Music, effects and voices keep their own volumes under it.
 
 **Accessibility**
 
-- **Camera shake**: on as in the original. Turn it off if the shaking bothers you.
-- **Drop shadow**: a round shadow under you while you're in the air, so you see where you'll land. Off by default.
-  Pick **outlined** to add a yellow ring around it. It shows on dark ground too.
-- **Aku Aku's shadow**: the mask casts a round shadow while it follows you. While you wear it, with three masks, the
-  shadow falls under your feet. Off by default.
-- **Shadows on crates**: your shadow falls on crates too, from the next level loaded. Off by default.
+- **Camera shake**: on as in the original.
+  Turn it off if the shaking bothers you.
+- **Drop shadow**: a round shadow under you while you're in the air, so you see where you'll land.
+  Off by default.
+  Pick **outlined** to add a yellow ring around it.
+  It shows on dark ground too.
+- **Aku Aku's shadow**: the mask casts a round shadow while it follows you.
+  While you wear it, with three masks, the shadow falls under your feet.
+  Off by default.
+- **Shadows on crates**: your shadow falls on crates too, from the next level loaded.
+  Off by default.
 
 ## Mods
 
-Each mod is a folder of its own in **%APPDATA%\Crash Twinsanity\mods\**. It can be:
+Each mod is a folder of its own in **%APPDATA%\Crash Twinsanity\mods\**.
+It can be:
 
-- a **Mod Crate** from Crate Mod Loader (a folder with `ModCrateInfo.txt`, `layer0` and `layer1`), unzipped as it comes, for
-  example `mods\Padoru Pandemonium\`;
-- or a folder of changed files laid out as the game's: `mods\My mod\Levels\Earth\Hub\beach.rm2` for a level,
-  `mods\My mod\Language\AgentLab\Italian.txt` for texts, `mods\My mod\FMV\H01_A.PSS` for a movie.
+- a **Mod Crate** from Crate Mod Loader (a folder with `ModCrateInfo.txt`, `layer0` and `layer1`), unzipped as it comes, for example `mods\Padoru Pandemonium\`;
+- or a folder of changed files laid out as the game's: `mods\My mod\Levels\Earth\Hub\beach.rm2` for a level, `mods\My mod\Language\AgentLab\Italian.txt` for texts, `mods\My mod\FMV\H01_A.PSS` for a movie.
 
-**Importing.** You can also put a mod's **zip**, or a **changed disc image**, straight in the mods folder. A changed disc
-image is an `.iso` made with the community's tools, or one patched first with an xdelta, PPF or BPS file. Then choose
-**Options > Mods > Import mods**:
+**Importing.**
+You can also put a mod's **zip**, or a **changed disc image**, straight in the mods folder.
+A changed disc image is an `.iso` made with the community's tools, or one patched first with an xdelta, PPF or BPS file.
+Then choose **Options > Mods > Import mods**:
 
 - a zip is unpacked into a mod folder;
-- a disc image is kept only as the files that differ from your disc, so a 4 GB image becomes the few hundred megabytes the
-  mod changes.
+- a disc image is kept only as the files that differ from your disc, so a 4 GB image becomes the few hundred megabytes the mod changes.
 
-After that, you can delete the zip or the image. From the command line: `.\CrashTwinsanity.exe --import-mods`.
+After that, you can delete the zip or the image.
+From the command line: `.\CrashTwinsanity.exe --import-mods`.
 
-**Choosing mods.** **Options > Mods** lists the mods. Each one is off, or on in its place: on · 1 is the first. Where two
-mods change the same file, the first one wins. A new mod comes first, and on. Mods you just imported are listed at once. The
-choices apply from the next start, and are kept in **mods.txt** in the settings folder: a line for each mod, `on` or `off`,
-a tab, and the mod's folder (`*` for files put straight in the mods folder).
+**Choosing mods.**
+**Options > Mods** lists the mods.
+Each one is off, or on in its place: on · 1 is the first.
+Where two mods change the same file, the first one wins.
+A new mod comes first, and on.
+Mods you just imported are listed at once.
+The choices apply from the next start, and are kept in **mods.txt** in the settings folder: a line for each mod, `on` or `off`, a tab, and the mod's folder (`*` for files put straight in the mods folder).
 
 Files put straight in the mods folder at their path (`mods\Levels\Earth\Hub\beach.rm2`) still work, as before 1.2.0.
 
-**Your saves are safe.** While any mod is on, your saves go on a memory card of their own (`memorycard-mods-...` in the
-settings folder). Your own saves are never touched, and they're back when the mods are off.
+**Your saves are safe.**
+While any mod is on, your saves go on a memory card of their own (`memorycard-mods-...` in the settings folder).
+Your own saves are never touched, and they're back when the mods are off.
 
-A mod's changed game program (SLES_525.68) can't work here, because this port has its own. The log says what the mod
-changed in it.
+A mod's changed game program (SLES_525.68) can't work here, because this port has its own.
+The log says what the mod changed in it.
 
-**Making a mod.** To get a file to change, open PowerShell or the Command Prompt in the game's folder:
+**Making a mod.**
+To get a file to change, open PowerShell or the Command Prompt in the game's folder:
 
     .\CrashTwinsanity.exe --list-files
     .\CrashTwinsanity.exe --extract=Language/AgentLab/Italian.txt
 
-The first lists the game's files. The second copies one from your disc image into the mods folder, and leaves a file that's
-already there alone. The log says which mods the game used. To play the original again, turn a mod off in Options > Mods, or
-remove its folder. [MODDING.md](MODDING.md) (MODDING.txt beside the game) is the modding guide: a first mod step by step,
-the game's files, the community's tools and the limits.
+The first lists the game's files.
+The second copies one from your disc image into the mods folder, and leaves a file that's already there alone.
+The log says which mods the game used.
+To play the original again, turn a mod off in Options > Mods, or remove its folder.
+[MODDING.md](MODDING.md) (MODDING.txt beside the game) is the modding guide: a first mod step by step, the game's files, the community's tools and the limits.
 
 ## If something goes wrong
 
-The game writes what it's doing to `log.txt` in the settings folder. Started from a terminal (`CrashTwinsanity.exe` in
-PowerShell or the Command Prompt), it writes there instead.
+The game writes what it's doing to `log.txt` in the settings folder.
+Started from a terminal (`CrashTwinsanity.exe` in PowerShell or the Command Prompt), it writes there instead.
 
 - A crash writes a report in the log, with the program's addresses.
 - So does a freeze: if the game is stuck for 20 seconds, the log says where.
-- Each start keeps the last run's log as `log.previous.txt`. After a freeze or a crash, you can start the game again and
-  still send it.
+- Each start keeps the last run's log as `log.previous.txt`.
+  After a freeze or a crash, you can start the game again and still send it.
 
-Please include the log with any bug report, and say where in the game it happened. The log also names your graphics card
-and its driver's version.
+Please include the log with any bug report, and say where in the game it happened.
+The log also names your graphics card and its driver's version.
 
 If the screen stays black when the game starts:
 
-1. If the game doesn't respond, end it in the Task Manager, then start it again. The next start uses the other graphics
-   API, Vulkan or OpenGL, and **Display > Renderer > Graphics API** keeps it.
-2. If the game still responds but shows nothing, close it. Open `options.txt` in the settings folder, change
-   `graphics_api=0` to `graphics_api=1` (Vulkan), or `1` back to `0` (OpenGL), and save it. Then start the game again.
+1. If the game doesn't respond, end it in the Task Manager, then start it again.
+   The next start uses the other graphics API, Vulkan or OpenGL, and **Display > Renderer > Graphics API** keeps it.
+2. If the game still responds but shows nothing, close it.
+   Open `options.txt` in the settings folder, change `graphics_api=0` to `graphics_api=1` (Vulkan), or `1` back to `0` (OpenGL), and save it.
+   Then start the game again.
 3. If it's still black, update your graphics card's driver, and attach `log.txt` to issue #16 on GitHub.
 
-On a laptop with two graphics cards, the game asks for the faster one. If the log still names the built-in card
-(Intel, or AMD Radeon Graphics), choose **High performance** for `CrashTwinsanity.exe` in Windows' **Settings > System >
-Display > Graphics**.
+On a laptop with two graphics cards, the game asks for the faster one.
+If the log still names the built-in card (Intel, or AMD Radeon Graphics), choose **High performance** for `CrashTwinsanity.exe` in Windows' **Settings > System > Display > Graphics**.
 
 What the log has:
 
-- always: the time of each line, and the game's states as they change (loading, playing, a cutscene, paused, a death, game
-  over), with where Crash is, the area he's in, the saves written and the movies played;
-- at the start: what a bug report would ask you. That's the date, your Windows version (and Wine's, on Linux or a Steam
-  Deck), your processor, memory, screen and sound device, the game's options and resolution, the mods and texture pack in
-  use, and how the last session ended (closed, crashed or stuck);
-- while you play: how long each level took to load, a line a minute with the frame rate and how long the processor and the
-  graphics card took for a frame, and a line for each option you change;
+- always: the time of each line, and the game's states as they change (loading, playing, a cutscene, paused, a death, game over), with where Crash is, the area he's in, the saves written and the movies played;
+- at the start: what a bug report would ask you.
+  That's the date, your Windows version (and Wine's, on Linux or a Steam Deck), your processor, memory, screen and sound device, the game's options and resolution, the mods and texture pack in use, and how the last session ended (closed, crashed or stuck);
+- while you play: how long each level took to load, a line a minute with the frame rate and how long the processor and the graphics card took for a frame, and a line for each option you change;
 - when the game closes: a summary of the session's frame rate, and how it closed.
 
-To report a bug you can repeat, turn on **Options > Game > Detailed log** first. It also writes where Crash is every 5
-seconds, every sound played, every file read from the disc image, and what the camera was doing if it stops following
-Crash.
+To report a bug you can repeat, turn on **Options > Game > Detailed log** first.
+It also writes where Crash is every 5 seconds, every sound played, every file read from the disc image, and what the camera was doing if it stops following Crash.
 
-**The log is made to be shared.** It writes your user folder as `%USERPROFILE%`, and the game's settings folder as
-`%APPDATA%\Crash Twinsanity`, so your user name isn't in its paths. A device named after someone ("Ann's AirPods") loses the
-name. The game doesn't write your computer's name, serial numbers or addresses. Folders outside your user folder keep their
-names, so have a look before you share it if one has yours.
+**The log is made to be shared.**
+It writes your user folder as `%USERPROFILE%`, and the game's settings folder as `%APPDATA%\Crash Twinsanity`, so your user name isn't in its paths.
+A device named after someone ("Ann's AirPods") loses the name.
+The game doesn't write your computer's name, serial numbers or addresses.
+Folders outside your user folder keep their names, so have a look before you share it if one has yours.
 
 ## Licences
 
-The game's code here is a decompilation for preservation and study. Crash Twinsanity and its content belong to their owners.
+The game's code here is a decompilation for preservation and study.
+Crash Twinsanity and its content belong to their owners.
 
 The folder carries:
 
 - SDL 3 (zlib licence);
-- FFmpeg 9.0.2's libavcodec and libavutil (LGPL 2.1 or later). It's a decode-only build with just the MPEG-2 video decoder,
-  from https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz. `avcodec-63.dll` and `avutil-61.dll` are separate files that you can
-  replace with your own build of FFmpeg 9.x;
+- FFmpeg 9.0.2's libavcodec and libavutil (LGPL 2.1 or later).
+  It's a decode-only build with just the MPEG-2 video decoder, from https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz.
+  `avcodec-63.dll` and `avutil-61.dll` are separate files that you can replace with your own build of FFmpeg 9.x;
 - the fonts Luckiest Guy (Apache 2.0) and Fredoka (SIL Open Font Licence);
 - stb_truetype (public domain or MIT);
 - SMAA by Jorge Jimenez and others (MIT);
 - code from TwinsanityEvolved by menaman123 (MIT: `twinsanityevolved-README.md` says which).
 
-Their licences are in the `licenses` folder, with the port's own: `Crash-Twinsanity-Windows-LICENSE.txt`, MIT for the
-Windows port's changes. `THIRD_PARTY_NOTICES.md` there lists them all. The decompilation and the Mac port it's built on keep
-their authors' rights. The optional bug fixes come from AlexMollard's mod Crash Twinsanity Improved, used with permission. The icon is the port's
-own drawing.
+Their licences are in the `licenses` folder, with the port's own: `Crash-Twinsanity-Windows-LICENSE.txt`, MIT for the Windows port's changes.
+`THIRD_PARTY_NOTICES.md` there lists them all.
+The decompilation and the Mac port it's built on keep their authors' rights.
+The optional bug fixes come from AlexMollard's mod Crash Twinsanity Improved, used with permission.
+The icon is the port's own drawing.
