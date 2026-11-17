@@ -498,7 +498,8 @@ def game_options(exe, work):
     improved menus with the level select (1.3.0, THE LIST 79 and 80: $TWIN_MENUS_TEST): the main menu's level select row, a level
     picked on the gems' pages and played, the pause menu from its first row, back from the gems' pages and the extras to their
     rows, return to title asked, a level picked in play played through the title, with the restart checkpoint row on (THE LIST
-    85), and the original menus' first pause menu without it (the row's option off): (passed, what happened)"""
+    85), with the outlined drop shadow none cast for the hidden character of the title returned to (THE LIST 89, #53), and the original
+    menus' first pause menu without it (the row's option off): (passed, what happened)"""
     fixed = {"TWIN_FIXED_TIME": "1", "TWINSANITY_AUDIO": "frames"}
     sea = run_for(exe, work / "game-options-sea",
                   ["infinite_lives=1", "speedrun_timer=1", "shadows_on_crates=1", "retail_fixes=0"],
@@ -508,8 +509,11 @@ def game_options(exe, work):
                     None, 40)
     level = run_for(exe, work / "game-options-level", ["level_select=1"], {"TWIN_LEVEL_SELECT_TEST": "4"}, ["--headless"], None,
                     40)
-    menus = run_for(exe, work / "game-options-menus", ["improved_menus=1", "level_select=1", "restart_checkpoint=1"],
-                    {"TWIN_MENUS_TEST": "1"}, ["--headless"], None, 120)
+    # (the outlined drop shadow on: the title it returns to, the opening scene, keeps the played character hidden in the sea, THE
+    # LIST 89, #53)
+    menus = run_for(exe, work / "game-options-menus",
+                    ["improved_menus=1", "level_select=1", "restart_checkpoint=1", "drop_shadow=2"],
+                    {"TWIN_MENUS_TEST": "1", "TWIN_SHADOW_TRACE": "1"}, ["--headless"], None, 120)
     original = run_for(exe, work / "game-options-menus-original", ["level_select=1"], {"TWIN_MENUS_TEST": "2"}, ["--headless"],
                        None, 90)
     checks = {
@@ -530,6 +534,8 @@ def game_options(exe, work):
         "the original pause menu without restart checkpoint": (
             "menus test: the pause menu: options, save game, load game" in original and
             "restart checkpoint" not in original.split("menus test: the pause menu:")[-1] and "menus test: done" in original),
+        "no drop shadow for the title's hidden character (#53)":
+            "shadow trace: off the ground, the played character hidden, no drop shadow" in menus,
     }
     failed = [name for name, ok in checks.items() if not ok]
     return not failed, ", ".join(checks) if not failed else "NOT: " + ", ".join(failed)

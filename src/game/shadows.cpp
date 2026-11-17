@@ -25,6 +25,7 @@
 #include "game/gamecontroller.h"
 #include "game/instances.h"
 #include "game/layout.h"
+#include "native.h"
 
 namespace
 {
@@ -81,6 +82,23 @@ void CastDropShadow(InstanceContext* instance)
     CharacterAgent* agent = CharacterAgentOf(instance);
     ChunkShadows* shadows = instance->chunk->shadows;
     if (agent == nullptr || shadows == nullptr || static_cast<CharacterPart*>(agent->part)->flags.onGround != 0)
+    {
+        return;
+    }
+
+    // Not while the played character is hidden (THE LIST 89, #53: on the title's opening scene the hidden character stands in the
+    // sea, and its ring showed on the water), as the game's own shadows aren't (ShadowNode::Update) nor Aku Aku's (CastMaskShadow).
+    // $TWIN_SHADOW_TRACE: off the ground, whether the played character is shown and the shadow cast, at each change
+    static const bool shadowTrace = std::getenv("TWIN_SHADOW_TRACE") != nullptr;
+    static int tracedVisible = -1;
+    if (shadowTrace && static_cast<int>(instance->flags.visible) != tracedVisible)
+    {
+        tracedVisible = static_cast<int>(instance->flags.visible);
+        Native::Log("shadow trace: off the ground, the played character %s", tracedVisible != 0 ? "shown, the drop shadow cast"
+                                                                                                 : "hidden, no drop shadow");
+    }
+
+    if (!instance->flags.visible)
     {
         return;
     }
