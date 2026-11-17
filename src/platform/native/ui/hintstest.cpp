@@ -2,7 +2,8 @@
 // the pause menu. Its hints are checked as the menu hints option has them (the game's own drawn, or left out for the bar) and
 // their lines logged as the controller in use labels them; with a folder and a window (no --headless) the window is saved there as
 // it's shown (hints_pause.png, the pause menu; hints_levels.png, the next page). The mouse then clicks the pages' right arrow (the
-// levels' page), the left one (the pause menu again) and back (play again). "hints test: pass" and exit 0, else what failed and 1;
+// levels' page), the left one (the pause menu again) and back (play again); the mouse is the test's own from its start (the PC's
+// left out), so its options turn it on with a window too. "hints test: pass" and exit 0, else what failed and 1;
 // a step taking over 30 s fails it
 #include "ui/bindings.h"
 
@@ -61,6 +62,11 @@ bool Active()
         }
 
         g_StepStart = Clock::now();
+        if (g_Active)
+        {
+            // The clicks are the test's own (mouse=1 in its options, a window or not): the PC's mouse is left out
+            ScriptMouseTakeOver();
+        }
     }
 
     return g_Active;

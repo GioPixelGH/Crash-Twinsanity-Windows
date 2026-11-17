@@ -724,6 +724,8 @@ void MouseMenuStep(MenuPage* page, MenuInput* input, MenuSounds* sounds, u32 pla
 // The pad's buttons a click on a hint presses (a pages' arrow: L1 or R1), for a few of the pad's reads (ReadBindings adds them)
 u32 MouseMenuButtons();
 void ScriptMouse(f32 x, f32 y, bool click);
+// A test's script takes the mouse: the PC's own mouse is left out from then on (a hand on it can't click the menus)
+void ScriptMouseTakeOver();
 // The shots' script: the mouse onto the middle of the game's hint of that text (0x1C select ...) drawn last frame, clicked or not
 bool ScriptMouseToHint(u32 text, bool click);
 // A window point (SDL's) in fractions of the game's picture; a text's width and height (fractions) in the renderer's font and scale

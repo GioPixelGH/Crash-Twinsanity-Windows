@@ -591,6 +591,11 @@ void MouseMenuStep(MenuPage* page, MenuInput* input, MenuSounds* sounds, u32 pla
     }
 }
 
+void ScriptMouseTakeOver()
+{
+    g_Scripted = true;
+}
+
 // The shots' script: the mouse moved to a place of the picture, clicked
 void ScriptMouse(f32 x, f32 y, bool click)
 {

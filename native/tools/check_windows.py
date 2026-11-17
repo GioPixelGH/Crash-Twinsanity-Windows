@@ -809,7 +809,8 @@ def scenarios(exe, work):
 def menu_hints(exe, work, shots=None):
     """The pause menu's hints (hintstest.cpp) for each of HINTS: shown as the option has them, their lines as the prompts label
     them, and the game's own clicked with the mouse (the pages' arrows, back). With shots (a folder) the window is saved there,
-    run with a window rather than headless: [(name, passed, what happened)]"""
+    run with a window rather than headless: [(name, passed, what happened)]. The mouse on in every run: its clicks are the test's
+    own (hintstest.cpp leaves the PC's mouse out), so without_mouse mustn't turn it off when there's a window"""
     def one(case):
         style, bar = case
         name = f"{style}, {'bar' if bar else 'original'}"
@@ -819,7 +820,7 @@ def menu_hints(exe, work, shots=None):
             pictures.mkdir(parents=True, exist_ok=True)
         status, log = run_game(exe, folder, ["--quick"] + ([] if pictures else ["--headless"]),
                                {"TWIN_HINTS_TEST": str(pictures.resolve()) if pictures else "1", "TWIN_UI_PROMPTS": style},
-                               timeout=300, options=f"menu_hints={bar}\npause_on_focus_loss=0\n")
+                               timeout=300, options=f"menu_hints={bar}\nmouse=1\npause_on_focus_loss=0\n")
         lines = [line.split("hints test: ", 1)[1] for line in log.splitlines() if "hints test: " in line]
         hints = next((line for line in lines if line.startswith(("original, the hints", "bar, the hints"))), "")
         hints = hints.split(", the hints ", 1)[1].rsplit(" (", 1)[0] if hints else ""

@@ -591,8 +591,9 @@ chunk, its outcome
 against `native/sweep/results_windows.json` (a run that went on and one that ended in a game over count alike: the scripted
 input decides which). Some 5 minutes, 25 more with the sweep. Each run has a settings folder of its own; the disc image is
 local.json's. The runs that open a window have the mouse and mouse look off (`without_mouse`: a window takes the focus, and a
-hand on the PC's mouse turned the SMAA run's camera in 1.2.0's first release check); the look and hints tests script the
-mouse headless. `--hints-shots FOLDER` runs only the hints' check, with a window, and saves the pause menu's pictures there;
+hand on the PC's mouse turned the SMAA run's camera in 1.2.0's first release check); the look test scripts the mouse
+headless, the hints test with a window too (mouse=1 in its options: hintstest.cpp leaves the PC's mouse out from its start, so
+its clicks are its own). `--hints-shots FOLDER` runs only the hints' check, with a window, and saves the pause menu's pictures there;
 `--physics` only the physics' (a minute or so); `--scenarios` only the scenarios (two minutes or so); `--portable` only
 portable mode's (under a minute; the dialog's pictures in `build/native/check/portable/shots/`); `--fps-shots FOLDER` only the
 FPS counter's (its `FPS_CASES`, `$TWIN_FPS_TEST`, below: at 60 Hz, 50 Hz, 144 Hz without v-sync, and off; a minute or so), with
@@ -971,7 +972,9 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   busy, four at a time with four: 32 fps on average, 4 to 49, where the failure was at about 48), and the later program 130.
   Its cause stays unknown; the second click and the wait cover both candidates.
   `$TWIN_HINTS_TEST=FOLDER` without `--headless` also saves the window as it's shown (the picture and the overlay:
-  `NativeGraphicsShootWindow`) there: hints_pause.png and hints_levels.png.
+  `NativeGraphicsShootWindow`) there: hints_pause.png and hints_levels.png. The test takes the mouse from its start
+  (`ScriptMouseTakeOver`: the PC's mouse left out), and its runs need the mouse option on: with mouse=0, as check_windows'
+  window runs had it from 46374b5, the menus drop its clicks and the four clicking cases stopped at step 3.
 - `$TWIN_PARTICLE_TRACE=1`: each particle section's systems as they're read (their chunk, index, name, slot, blend, rate, life,
   sizes, first and last colours, velocity, gravity, cut-off and page) and its emitters (their chunk, place, system's name and
   index, position, switch and group): check_windows.py's #41 scenario.
