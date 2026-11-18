@@ -69,6 +69,11 @@ size_t PixelBytes(Format format, s32 width, s32 height, s32 rowLength, s32 align
         return 0;
     }
 
+    if (CompressedFormat(format))
+    {
+        return CompressedBytes(format, width, height);
+    }
+
     size_t texel = 4;
     switch (format)
     {

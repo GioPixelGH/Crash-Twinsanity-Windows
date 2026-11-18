@@ -10,6 +10,8 @@
 
 #include "replace.h"
 
+#include "gpu.h"
+
 #define XXH_INLINE_ALL
 #include "xxhash.h"
 
@@ -44,12 +46,18 @@ namespace
 constexpr u32 TccBit = 1u << 14;
 
 // The options' switch is on the game's thread, the lookups on the renderer's: the pack is scanned once (the first time it's turned
-// on) and its images never freed after (FindReplacement's pointers stay good), the switch an atomic, the maps under a lock
+// on) and its images never deleted after (FindReplacement's pointers stay good; their bytes let go once the card has them, by the
+// renderer's thread), the switch an atomic, the maps under a lock
 std::atomic<bool> g_Enabled{false};
 bool g_Scanned = false;
 std::mutex g_Lock;
 std::map<ReplacementKey, std::string> g_Files;
 std::map<ReplacementKey, std::unique_ptr<ReplacementImage>> g_Images;
+// The block-compressed formats the card samples (a bit for each Hw::Format)
+std::atomic<u32> g_CardFormats{0};
+// The images given to the card (ReleaseReplacement), and their bytes there
+size_t g_Sent = 0;
+size_t g_SentBytes = 0;
 
 std::string Lower(std::string text)
 {
@@ -278,6 +286,9 @@ void DecodeColourBlock(const u8* block, u32* out, bool alphaFromColour)
     }
 }
 
+// A DDS file: DXT1-5 or DX10's BC1, BC2, BC3 and BC7 (their sRGB kinds read as the others: the PS2's bytes aren't sRGB) kept as
+// blocks with the file's levels when the card samples the format (THE LIST 25a), else BC1 to BC3 decoded to RGBA (BC7 not read);
+// uncompressed 32 or 24 bit with masks to RGBA
 bool LoadDds(const std::string& path, ReplacementImage* image)
 {
     FILE* file = std::fopen(path.c_str(), "rb");
@@ -301,35 +312,42 @@ bool LoadDds(const std::string& path, ReplacementImage* image)
     }
 
     auto read32 = [&](size_t at) { return static_cast<u32>(data[at] | data[at + 1] << 8 | data[at + 2] << 16 | data[at + 3] << 24); };
+    constexpr u32 HasMipCount = 0x20000;
+    u32 headerFlags = read32(8);
     u32 height = read32(12);
     u32 width = read32(16);
+    u32 mipCount = read32(28);
     u32 flags = read32(80);
     u32 fourCc = read32(84);
     u32 bitCount = read32(88);
     u32 masks[4] = {read32(92), read32(96), read32(100), read32(104)};
     size_t at = 128;
-    u32 format = 0;
+    u32 format = Hw::FormatRgba8;
     auto four = [](const char* t) { return static_cast<u32>(t[0] | t[1] << 8 | t[2] << 16 | t[3] << 24); };
     if ((flags & 4) != 0)
     {
         if (fourCc == four("DXT1"))
         {
-            format = 1;
+            format = Hw::FormatBc1;
         }
         else if (fourCc == four("DXT2") || fourCc == four("DXT3"))
         {
-            format = 2;
+            format = Hw::FormatBc2;
         }
         else if (fourCc == four("DXT4") || fourCc == four("DXT5"))
         {
-            format = 3;
+            format = Hw::FormatBc3;
         }
         else if (fourCc == four("DX10") && data.size() >= 148)
         {
             u32 dxgi = read32(128);
             at = 148;
-            format = (dxgi == 71 || dxgi == 72) ? 1 : (dxgi == 74 || dxgi == 75) ? 2 : (dxgi == 77 || dxgi == 78) ? 3 : 0;
-            if (format == 0)
+            format = (dxgi == 71 || dxgi == 72)   ? Hw::FormatBc1
+                     : (dxgi == 74 || dxgi == 75) ? Hw::FormatBc2
+                     : (dxgi == 77 || dxgi == 78) ? Hw::FormatBc3
+                     : (dxgi == 98 || dxgi == 99) ? Hw::FormatBc7
+                                                  : Hw::FormatRgba8;
+            if (format == Hw::FormatRgba8)
             {
                 Native::Log("texture pack: %s: a DDS format not read yet (DXGI %u)", Native::LogPath(path).c_str(), dxgi);
                 return false;
@@ -343,10 +361,48 @@ bool LoadDds(const std::string& path, ReplacementImage* image)
 
     image->width = width;
     image->height = height;
-    image->pixels.assign(static_cast<size_t>(width) * height, 0);
-    if (format != 0)
+    image->levels.clear();
+    if (width == 0 || height == 0)
     {
-        u32 blockBytes = format == 1 ? 8 : 16;
+        return false;
+    }
+
+    if (Hw::CompressedFormat(format) && (g_CardFormats & (1u << format)) != 0)
+    {
+        // The blocks as they are, as many of the file's levels as it holds (each one block at least; SDL's levels end at the short
+        // side's 1, the renderer leaves out those past it)
+        u32 levels = (headerFlags & HasMipCount) != 0 && mipCount > 1 ? mipCount : 1;
+        for (u32 level = 0; level < levels; level++)
+        {
+            u32 w = std::max(width >> level, 1u);
+            u32 h = std::max(height >> level, 1u);
+            size_t bytes = Hw::CompressedBytes(format, static_cast<s32>(w), static_cast<s32>(h));
+            if (data.size() < at + bytes)
+            {
+                break;
+            }
+
+            image->levels.push_back({w, h, std::vector<u8>(data.begin() + static_cast<std::ptrdiff_t>(at),
+                                                           data.begin() + static_cast<std::ptrdiff_t>(at + bytes))});
+            at += bytes;
+        }
+
+        image->format = format;
+        return !image->levels.empty();
+    }
+
+    if (format == Hw::FormatBc7)
+    {
+        Native::Log("texture pack: %s: BC7, which this graphics card doesn't read", Native::LogPath(path).c_str());
+        return false;
+    }
+
+    image->format = Hw::FormatRgba8;
+    std::vector<u32> pixels(static_cast<size_t>(width) * height, 0);
+    if (format != Hw::FormatRgba8)
+    {
+        // Decoded to RGBA (the card doesn't sample the format): level 0
+        u32 blockBytes = format == Hw::FormatBc1 ? 8 : 16;
         u32 blocksWide = (width + 3) / 4;
         u32 blocksHigh = (height + 3) / 4;
         if (data.size() < at + static_cast<size_t>(blocksWide) * blocksHigh * blockBytes)
@@ -360,8 +416,8 @@ bool LoadDds(const std::string& path, ReplacementImage* image)
             {
                 const u8* block = &data[at + (static_cast<size_t>(by) * blocksWide + bx) * blockBytes];
                 u32 texels[16];
-                DecodeColourBlock(format == 1 ? block : block + 8, texels, format == 1);
-                if (format == 2)
+                DecodeColourBlock(format == Hw::FormatBc1 ? block : block + 8, texels, format == Hw::FormatBc1);
+                if (format == Hw::FormatBc2)
                 {
                     for (u32 i = 0; i < 16; i++)
                     {
@@ -369,7 +425,7 @@ bool LoadDds(const std::string& path, ReplacementImage* image)
                         texels[i] = (texels[i] & 0xFFFFFF) | (a * 17) << 24;
                     }
                 }
-                else if (format == 3)
+                else if (format == Hw::FormatBc3)
                 {
                     u32 a0 = block[0];
                     u32 a1 = block[1];
@@ -397,12 +453,14 @@ bool LoadDds(const std::string& path, ReplacementImage* image)
                     u32 y = by * 4 + (i >> 2);
                     if (x < width && y < height)
                     {
-                        image->pixels[static_cast<size_t>(y) * width + x] = texels[i];
+                        pixels[static_cast<size_t>(y) * width + x] = texels[i];
                     }
                 }
             }
         }
 
+        image->levels.push_back({width, height, std::vector<u8>(pixels.size() * 4)});
+        std::memcpy(image->levels[0].bytes.data(), pixels.data(), pixels.size() * 4);
         return true;
     }
 
@@ -434,9 +492,11 @@ bool LoadDds(const std::string& path, ReplacementImage* image)
         u32 g = channel(value, masks[1]);
         u32 b = channel(value, masks[2]);
         u32 a = hasAlpha ? channel(value, masks[3]) : 0xFF;
-        image->pixels[i] = r | g << 8 | b << 16 | a << 24;
+        pixels[i] = r | g << 8 | b << 16 | a << 24;
     }
 
+    image->levels.push_back({width, height, std::vector<u8>(pixels.size() * 4)});
+    std::memcpy(image->levels[0].bytes.data(), pixels.data(), pixels.size() * 4);
     return true;
 }
 
@@ -457,11 +517,12 @@ bool LoadPng(const std::string& path, ReplacementImage* image)
 
     image->width = static_cast<u32>(rgba->w);
     image->height = static_cast<u32>(rgba->h);
-    image->pixels.resize(static_cast<size_t>(image->width) * image->height);
+    image->format = Hw::FormatRgba8;
+    image->levels.assign(1, {image->width, image->height, std::vector<u8>(static_cast<size_t>(image->width) * image->height * 4)});
     for (u32 y = 0; y < image->height; y++)
     {
-        std::memcpy(&image->pixels[static_cast<size_t>(y) * image->width], static_cast<const u8*>(rgba->pixels) + y * rgba->pitch,
-                    image->width * 4);
+        std::memcpy(&image->levels[0].bytes[static_cast<size_t>(y) * image->width * 4],
+                    static_cast<const u8*>(rgba->pixels) + y * rgba->pitch, image->width * 4);
     }
 
     SDL_DestroySurface(rgba);
@@ -502,10 +563,13 @@ size_t ReplacementImagesHeld(size_t* bytes)
     size_t total = 0;
     for (const auto& entry : g_Images)
     {
-        if (entry.second != nullptr)
+        if (entry.second != nullptr && !entry.second->released)
         {
             count++;
-            total += entry.second->pixels.size() * sizeof(u32);
+            for (const ReplacementLevel& level : entry.second->levels)
+            {
+                total += level.bytes.size();
+            }
         }
     }
 
@@ -622,7 +686,7 @@ const ReplacementImage* FindReplacement(const ReplacementKey& key)
     }
 
     auto loaded = g_Images.find(key);
-    if (loaded != g_Images.end())
+    if (loaded != g_Images.end() && (loaded->second == nullptr || !loaded->second->released))
     {
         return loaded->second.get();
     }
@@ -643,8 +707,53 @@ const ReplacementImage* FindReplacement(const ReplacementKey& key)
         image.reset();
     }
 
+    if (loaded != g_Images.end())
+    {
+        // Let go before and read again: into the same object (its pointer handed out before stays good; kept let go when the
+        // file can't be read now)
+        if (image == nullptr)
+        {
+            return nullptr;
+        }
+
+        *loaded->second = std::move(*image);
+        return loaded->second.get();
+    }
+
     const ReplacementImage* result = image.get();
     g_Images[key] = std::move(image);
     return result;
+}
+
+size_t ReplacementImagesSent(size_t* bytes)
+{
+    std::lock_guard<std::mutex> lock(g_Lock);
+    *bytes = g_SentBytes;
+    return g_Sent;
+}
+
+void ReleaseReplacement(const ReplacementKey& key)
+{
+    std::lock_guard<std::mutex> lock(g_Lock);
+    auto loaded = g_Images.find(key);
+    if (loaded != g_Images.end() && loaded->second != nullptr && !loaded->second->released)
+    {
+        size_t bytes = 0;
+        for (const ReplacementLevel& level : loaded->second->levels)
+        {
+            bytes += level.bytes.size();
+        }
+
+        g_Sent++;
+        g_SentBytes += Hw::CompressedFormat(loaded->second->format) ? bytes : bytes + bytes / 3;
+        loaded->second->levels.clear();
+        loaded->second->levels.shrink_to_fit();
+        loaded->second->released = true;
+    }
+}
+
+void ReplacementsCardFormats(u32 formatBits)
+{
+    g_CardFormats = formatBits;
 }
 }

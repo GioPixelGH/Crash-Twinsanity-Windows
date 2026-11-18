@@ -14,6 +14,7 @@
 
 #include "common.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -52,7 +53,25 @@ enum Format : u32
     // The window's code's (SMAA's tables and targets, the overlay's glyphs)
     FormatR8,
     FormatRg8,
+    // Block-compressed RGBA (a texture pack's DDS files as they are, THE LIST 25a): blocks of 4x4 texels, BC1 8 bytes, BC2, BC3
+    // and BC7 16; sampled only, uploaded a whole level at a time (its blocks in rows, a level smaller than a block one block)
+    FormatBc1,
+    FormatBc2,
+    FormatBc3,
+    FormatBc7,
 };
+
+inline bool CompressedFormat(u32 format)
+{
+    return format >= FormatBc1 && format <= FormatBc7;
+}
+
+// A block-compressed level's bytes
+inline size_t CompressedBytes(u32 format, s32 width, s32 height)
+{
+    const size_t blocks = static_cast<size_t>((std::max(width, 1) + 3) / 4) * static_cast<size_t>((std::max(height, 1) + 3) / 4);
+    return blocks * (format == FormatBc1 ? 8 : 16);
+}
 
 enum Filter : u32
 {
@@ -419,6 +438,8 @@ public:
     virtual bool OutOfMemory() = 0;
     virtual s32 MaxTextureSize() = 0;
     virtual s32 MaxAnisotropy() = 0;
+    // Whether the card samples a block-compressed format (gpu.h's FormatBc1 to FormatBc7)
+    virtual bool SamplesFormat(u32 format) { return !CompressedFormat(format); }
     // A fence after everything played; a fence waited for by the card before what's played next; one deleted
     virtual void* Fence() = 0;
     virtual void WaitFence(void* fence) = 0;

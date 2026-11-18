@@ -56,9 +56,12 @@ constexpr SDL_GPUTextureFormat Formats[] = {
     SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT, SDL_GPU_TEXTUREFORMAT_R32_FLOAT,
     SDL_GPU_TEXTUREFORMAT_R32_UINT,       SDL_GPU_TEXTUREFORMAT_R16_UINT,           SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT,
     SDL_GPU_TEXTUREFORMAT_R8_UNORM,       SDL_GPU_TEXTUREFORMAT_R8G8_UNORM,
+    SDL_GPU_TEXTUREFORMAT_BC1_RGBA_UNORM, SDL_GPU_TEXTUREFORMAT_BC2_RGBA_UNORM,     SDL_GPU_TEXTUREFORMAT_BC3_RGBA_UNORM,
+    SDL_GPU_TEXTUREFORMAT_BC7_RGBA_UNORM,
 };
-constexpr u32 TexelBytes[] = {4, 8, 4, 4, 2, 8, 1, 2};
-constexpr bool IntegerFormat[] = {false, false, false, true, true, false, false, false};
+// (The block-compressed formats' bytes are CompressedBytes's)
+constexpr u32 TexelBytes[] = {4, 8, 4, 4, 2, 8, 1, 2, 0, 0, 0, 0};
+constexpr bool IntegerFormat[] = {false, false, false, true, true, false, false, false, false, false, false, false};
 constexpr SDL_GPUCompareOp Compares[] = {SDL_GPU_COMPAREOP_NEVER,   SDL_GPU_COMPAREOP_LESS,      SDL_GPU_COMPAREOP_EQUAL,
                                          SDL_GPU_COMPAREOP_LESS_OR_EQUAL, SDL_GPU_COMPAREOP_GREATER, SDL_GPU_COMPAREOP_NOT_EQUAL,
                                          SDL_GPU_COMPAREOP_GREATER_OR_EQUAL, SDL_GPU_COMPAREOP_ALWAYS};
@@ -898,6 +901,11 @@ public:
     // (SDL GPU tells neither: Vulkan's least on the cards it runs on)
     s32 MaxTextureSize() override { return 16384; }
     s32 MaxAnisotropy() override { return 16; }
+    bool SamplesFormat(u32 format) override
+    {
+        return !CompressedFormat(format) ||
+               SDL_GPUTextureSupportsFormat(device_, Formats[format], SDL_GPU_TEXTURETYPE_2D, SDL_GPU_TEXTUREUSAGE_SAMPLER);
+    }
     void* Fence() override;
     void WaitFence(void* fence) override { (void)fence; }
     void DeleteFence(void* fence) override
@@ -1646,7 +1654,8 @@ bool VulkanBackend::MakeTexture(Texture& t, u32 format, s32 width, s32 height, u
     info.type = SDL_GPU_TEXTURETYPE_2D;
     info.format = Formats[format];
     // (Integer textures are read as storage textures: SDL GPU samples none)
-    info.usage = format == FormatDepth32fStencil8 ? (SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET)
+    info.usage = CompressedFormat(format)          ? SDL_GPU_TEXTUREUSAGE_SAMPLER
+                 : format == FormatDepth32fStencil8 ? (SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET)
                  : IntegerFormat[format]          ? (SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET)
                                                   : (SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET);
     info.width = static_cast<Uint32>(std::max(width, 1));
@@ -1682,7 +1691,13 @@ bool VulkanBackend::MakeTexture(Texture& t, u32 format, s32 width, s32 height, u
     }
 
     // Its levels cleared to zero: OpenGL's drivers give a new texture's storage zeroed and the renderer has come to rely on it (a depth
-    // buffer's first draws tested against 0), Vulkan's are undefined
+    // buffer's first draws tested against 0), Vulkan's are undefined. (A block-compressed one, a texture pack's, has every level
+    // uploaded at once and can't be drawn into)
+    if (CompressedFormat(format))
+    {
+        return true;
+    }
+
     EndPasses();
     for (u32 level = 0; level < t.levels; level++)
     {
@@ -1753,7 +1768,8 @@ bool VulkanBackend::MakeTexture(Texture& t, u32 format, s32 width, s32 height, u
 // A texture given more levels (OpenGL's level made past those it has): made again, its levels copied
 void VulkanBackend::EnsureLevels(Texture& t, u32 levels)
 {
-    if (t.texture == nullptr || levels <= t.levels)
+    // (A block-compressed texture is made with the levels it has: its levels past SDL's chain are left out)
+    if (t.texture == nullptr || levels <= t.levels || CompressedFormat(t.format))
     {
         return;
     }
@@ -2261,7 +2277,7 @@ void VulkanBackend::Play(const CommandList& list)
         else if ((header.op == Op::TexImage || header.op == Op::TexSubImage) && reinterpret_cast<const TexImageCommand*>(at)->bytes != 0)
         {
             const auto& c = *reinterpret_cast<const TexImageCommand*>(at);
-            total += static_cast<size_t>(c.width) * c.height * TexelBytes[c.format] + 16;
+            total += (CompressedFormat(c.format) ? c.bytes : static_cast<size_t>(c.width) * c.height * TexelBytes[c.format]) + 16;
         }
     }
 
@@ -2315,6 +2331,14 @@ void VulkanBackend::Play(const CommandList& list)
                 const auto& c = *reinterpret_cast<const TexImageCommand*>(at);
                 place = (place + 15) & ~size_t{15};
                 uploadOffsets_.push_back(static_cast<u32>(place));
+                if (CompressedFormat(c.format))
+                {
+                    // (A whole level's blocks, as they are)
+                    std::memcpy(mapped + place, list.data() + c.data, c.bytes);
+                    place += c.bytes;
+                    continue;
+                }
+
                 const size_t row = static_cast<size_t>(c.width) * TexelBytes[c.format];
                 const s32 rowLength = c.rowLength != 0 ? c.rowLength : c.width;
                 size_t stride = static_cast<size_t>(rowLength) * TexelBytes[c.format];
@@ -2542,7 +2566,10 @@ void VulkanBackend::Play(const CommandList& list)
                 break;
             }
 
-            SDL_GPUTextureTransferInfo from = {upload_, static_cast<Uint32>(offset), static_cast<Uint32>(c.width), static_cast<Uint32>(c.height)};
+            // (A block-compressed level's rows and height in whole blocks' texels)
+            const s32 blocksAcross = CompressedFormat(c.format) ? (c.width + 3) / 4 * 4 : c.width;
+            const s32 blocksDown = CompressedFormat(c.format) ? (c.height + 3) / 4 * 4 : c.height;
+            SDL_GPUTextureTransferInfo from = {upload_, static_cast<Uint32>(offset), static_cast<Uint32>(blocksAcross), static_cast<Uint32>(blocksDown)};
             SDL_GPUTextureRegion to = {t->texture,
                                        static_cast<Uint32>(c.level),
                                        0,
@@ -2594,7 +2621,7 @@ void VulkanBackend::Play(const CommandList& list)
         {
             const auto& c = *reinterpret_cast<const TextureCommand*>(at);
             Texture* t = TextureOf(c.texture);
-            if (t == nullptr || t->texture == nullptr || IntegerFormat[t->format])
+            if (t == nullptr || t->texture == nullptr || IntegerFormat[t->format] || CompressedFormat(t->format))
             {
                 break;
             }

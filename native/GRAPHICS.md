@@ -354,9 +354,18 @@ colour filter at the PS2's pixels), `TWIN_HW_SMALL_SCENES=0` (scenes drawn into 
 
 `hw/replace.cpp`: `NativeGraphicsSetTexturePack(true)` reads `<settings folder>/textures/<serial>/replacements/**` (or
 `$TWIN_TEXTURES_DIR/<serial>/replacements`; serials SLES-52568, SLUS-20909 and SLPM-65801, as the packs share the PAL disc's
-hashes), PNG (SDL) and DDS (uncompressed, BC1-3; BC7 not yet), named as PCSX2 names them (native/research/HD_TEXTURES.md:
-XXH3-64 of the texture's GS blocks or texels, the palette's hash, the packed TEX0/TEXA word; level 0 only, as with PCSX2's
-mipmapping off). A replaced texture is sampled with the original's normalised coordinates, its mipmaps generated.
+hashes), PNG (SDL) and DDS (uncompressed; BC1, BC2, BC3 and BC7, as DXT1-5 or DX10 headers, their sRGB kinds read as the
+others), named as PCSX2 names them (native/research/HD_TEXTURES.md: XXH3-64 of the texture's GS blocks or texels, the palette's
+hash, the packed TEX0/TEXA word; level 0 only, as with PCSX2's mipmapping off). A replaced texture is sampled with the original's
+normalised coordinates. Its bytes hold the PS2's alpha (0x80 = 1.0) as PCSX2 dumps them, so it's sampled as the game's own
+textures are. Since THE LIST 25a (#55, #56) a compressed DDS goes to the card as its blocks with the file's own mipmaps (a file
+without them has none), when the card samples the format: OpenGL's EXT_texture_compression_s3tc and ARB_texture_compression_bptc,
+SDL GPU's `SDL_GPUTextureSupportsFormat`; the log's "texture pack: the graphics card reads its DDS files as they are" line says
+which. Otherwise BC1 to BC3 are decoded to RGBA and BC7 is left out, as before. PNG files and uncompressed DDS are RGBA with
+mipmaps the card makes. Each image goes to the card once (`HwGs::ReplacementTexture`, by its key) and its bytes are let go after
+(`ReleaseReplacement`; read again from the file only by the CPU decoder's test path): before, every image read stayed in RAM
+decoded to RGBA, so a BC1/BC3/BC7 pack cost 4 to 8 times its size on disc both in RAM and on the card (THE LIST 92's
+measure).
 The UI's glyph images (`glyphs.h`: the menus' buttons) are neither replaced nor dumped: TEX0 still names the font they're drawn
 over, whose replacement (the pack's whole font sheet) was drawn squeezed into each button.
 `hw/xxhash.h` is xxHash 0.8.3 (BSD 2-Clause, Yann Collet). `$TWIN_HW_DUMP_TEXTURES=folder` writes the textures the draws read

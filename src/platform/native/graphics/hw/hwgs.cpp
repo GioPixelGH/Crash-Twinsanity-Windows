@@ -1465,8 +1465,13 @@ private:
     u32 memStaging_[StagingRing] = {};
     u32 stagingFbo_[StagingRing] = {};
     u32 stagingNext_ = 0;
-    // Replacement images' textures, made once each
+    // Replacement images' textures, made once each (ReplacementTexture)
     std::map<NativeGraphics::ReplacementKey, u32> replacementTextures_;
+    // The card's block-compressed formats told to the pack's reader (the first time a replacement is looked for)
+    bool cardFormatsTold_ = false;
+    void TellCardFormats();
+    u32 ReplacementTexture(const NativeGraphics::ReplacementKey& key);
+    void UploadReplacement(const NativeGraphics::ReplacementImage& image);
     u32 DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 right, s32 bottom);
     void DecodePasses(const Gs::Gs::DrawState& state, u32 texture, const Rect* rects, u32 levels);
     u64 ContentHash(const Gs::Gs::DrawState& state);
@@ -2578,26 +2583,14 @@ u32 HwGs::DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 rig
             if (ReplacementsEnabled())
             {
                 NativeGraphics::ReplacementKey replacementKey;
-                const NativeGraphics::ReplacementImage* image = nullptr;
+                u32 made = 0;
                 if (NativeGraphics::ReplacementKeyFor(gs_, base, tex0, state.context->clamp, &replacementKey))
                 {
-                    image = NativeGraphics::FindReplacement(replacementKey);
+                    made = ReplacementTexture(replacementKey);
                 }
 
-                if (image != nullptr)
+                if (made != 0)
                 {
-                    u32& made = replacementTextures_[replacementKey];
-                    if (made == 0)
-                    {
-                        gpu.GenTextures(1, &made);
-                        gpu.BindTexture(made);
-                        gpu.PixelStore(StoreUnpackAlignment, 4);
-                        gpu.PixelStore(StoreUnpackRowLength, 0);
-                        gpu.TexImage(0, FormatRgba8, static_cast<s32>(image->width), static_cast<s32>(image->height), image->pixels.data());
-                        gpu.TexParameter(ParamBaseLevel, 0);
-                        gpu.GenerateMipmap();
-                    }
-
                     c.replacement = made;
                     stats.replaced++;
                 }
@@ -2659,29 +2652,16 @@ u32 HwGs::DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 rig
     if (anyStale && whole && ReplacementsEnabled() && (t.pages & (cpuStale_ | newestMask_)).none())
     {
         NativeGraphics::ReplacementKey replacementKey;
-        const NativeGraphics::ReplacementImage* image = nullptr;
+        u32 made = 0;
         if (NativeGraphics::ReplacementKeyFor(gs_, base, tex0, state.context->clamp, &replacementKey))
         {
-            image = NativeGraphics::FindReplacement(replacementKey);
+            // Each replacement made a texture once (the textures that share it, and the decodes again, use that one)
+            made = ReplacementTexture(replacementKey);
         }
 
-        t.replacement = 0;
-        if (image != nullptr)
+        t.replacement = made;
+        if (made != 0)
         {
-            // Each replacement made a texture once (the textures that share it, and the decodes again, use that one)
-            u32& made = replacementTextures_[replacementKey];
-            if (made == 0)
-            {
-                gpu.GenTextures(1, &made);
-                gpu.BindTexture(made);
-                gpu.PixelStore(StoreUnpackAlignment, 4);
-                gpu.PixelStore(StoreUnpackRowLength, 0);
-                gpu.TexImage(0, FormatRgba8, static_cast<s32>(image->width), static_cast<s32>(image->height), image->pixels.data());
-                gpu.TexParameter(ParamBaseLevel, 0);
-                gpu.GenerateMipmap();
-            }
-
-            t.replacement = made;
             stats.replaced++;
         }
     }
@@ -2720,6 +2700,77 @@ u32 HwGs::DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 rig
 
     t.shown = t.replacement != 0 && ReplacementsEnabled() ? t.replacement : t.id;
     return t.shown;
+}
+
+void HwGs::TellCardFormats()
+{
+    if (cardFormatsTold_)
+    {
+        return;
+    }
+
+    cardFormatsTold_ = true;
+    u32 bits = 0;
+    for (u32 format : {FormatBc1, FormatBc2, FormatBc3, FormatBc7})
+    {
+        if (gpu_.backend().SamplesFormat(format))
+        {
+            bits |= 1u << format;
+        }
+    }
+
+    NativeGraphics::ReplacementsCardFormats(bits);
+    Native::Log("texture pack: the graphics card reads its DDS files as they are: BC1 to BC3 %s, BC7 %s",
+                (bits & (1u << FormatBc1)) != 0 ? "yes" : "no (decoded)", (bits & (1u << FormatBc7)) != 0 ? "yes" : "no (left out)");
+}
+
+// THE LIST 25a: a pack's image made a texture once (its key's), its bytes let go after (the card keeps them): 0 when the key has none
+u32 HwGs::ReplacementTexture(const NativeGraphics::ReplacementKey& key)
+{
+    auto known = replacementTextures_.find(key);
+    if (known != replacementTextures_.end())
+    {
+        return known->second;
+    }
+
+    TellCardFormats();
+    const NativeGraphics::ReplacementImage* image = NativeGraphics::FindReplacement(key);
+    if (image == nullptr)
+    {
+        return 0;
+    }
+
+    Gpu& gpu = gpu_;
+    u32& made = replacementTextures_[key];
+    gpu.GenTextures(1, &made);
+    gpu.BindTexture(made);
+    UploadReplacement(*image);
+    NativeGraphics::ReleaseReplacement(key);
+    return made;
+}
+
+// The bound texture given a pack's image: a DDS's blocks with the file's own levels, or RGBA with its mipmaps made by the card
+void HwGs::UploadReplacement(const NativeGraphics::ReplacementImage& image)
+{
+    Gpu& gpu = gpu_;
+    gpu.PixelStore(StoreUnpackAlignment, 4);
+    gpu.PixelStore(StoreUnpackRowLength, 0);
+    if (CompressedFormat(image.format))
+    {
+        gpu.TexParameter(ParamBaseLevel, 0);
+        gpu.TexParameter(ParamMaxLevel, static_cast<s32>(image.levels.size()) - 1);
+        for (size_t level = 0; level < image.levels.size(); level++)
+        {
+            const NativeGraphics::ReplacementLevel& l = image.levels[level];
+            gpu.TexImage(static_cast<s32>(level), image.format, static_cast<s32>(l.width), static_cast<s32>(l.height), l.bytes.data());
+        }
+
+        return;
+    }
+
+    gpu.TexImage(0, FormatRgba8, static_cast<s32>(image.width), static_cast<s32>(image.height), image.levels[0].bytes.data());
+    gpu.TexParameter(ParamBaseLevel, 0);
+    gpu.GenerateMipmap();
 }
 
 u32 HwGs::MakeLevels(const Gs::Gs::DrawState& state)
@@ -4648,6 +4699,7 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
                     WritePng(path, base.texels, base.width, base.height);
                 }
 
+                TellCardFormats();
                 const NativeGraphics::ReplacementImage* image = keyed ? NativeGraphics::FindReplacement(replacementKey) : nullptr;
                 if (image != nullptr)
                 {
@@ -4658,10 +4710,8 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
                     }
 
                     gpu.BindTexture(cached.replacement);
-                    gpu.PixelStore(StoreUnpackAlignment, 4);
-                    gpu.TexImage(0, FormatRgba8, static_cast<s32>(image->width), static_cast<s32>(image->height), image->pixels.data());
-                    gpu.TexParameter(ParamBaseLevel, 0);
-                    gpu.GenerateMipmap();
+                    UploadReplacement(*image);
+                    NativeGraphics::ReleaseReplacement(replacementKey);
                     cached.replacementMipmaps = true;
                 }
                 else if (cached.replacement != 0)

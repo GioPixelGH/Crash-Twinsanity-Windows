@@ -26,6 +26,11 @@ constexpr GLenum Formats[][3] = {
     {GL_DEPTH32F_STENCIL8, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV},
     {GL_R8, GL_RED, GL_UNSIGNED_BYTE},
     {GL_RG8, GL_RG, GL_UNSIGNED_BYTE},
+    // (Uploaded by glCompressedTexImage2D: only the internal format)
+    {GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, 0, 0},
+    {GL_COMPRESSED_RGBA_S3TC_DXT3_EXT, 0, 0},
+    {GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, 0, 0},
+    {GL_COMPRESSED_RGBA_BPTC_UNORM, 0, 0},
 };
 constexpr GLenum Filters[] = {GL_NEAREST, GL_LINEAR, GL_NEAREST_MIPMAP_NEAREST, GL_LINEAR_MIPMAP_NEAREST, GL_NEAREST_MIPMAP_LINEAR,
                               GL_LINEAR_MIPMAP_LINEAR};
@@ -64,6 +69,7 @@ public:
     bool OutOfMemory() override;
     s32 MaxTextureSize() override;
     s32 MaxAnisotropy() override;
+    bool SamplesFormat(u32 format) override;
     void* Fence() override;
     void WaitFence(void* fence) override;
     void DeleteFence(void* fence) override { G().DeleteSync(static_cast<GLsync>(fence)); }
@@ -540,7 +546,11 @@ void GlBackend::Play(const CommandList& list)
                 UnbindUnpackBuffer();
             }
 
-            if (header.op == Op::TexImage)
+            if (header.op == Op::TexImage && CompressedFormat(c.format))
+            {
+                gl.CompressedTexImage2D(GL_TEXTURE_2D, c.level, format[0], c.width, c.height, 0, static_cast<GLsizei>(c.bytes), pixels);
+            }
+            else if (header.op == Op::TexImage)
             {
                 gl.TexImage2D(GL_TEXTURE_2D, c.level, static_cast<GLint>(format[0]), c.width, c.height, 0, format[1], format[2], pixels);
             }
@@ -759,6 +769,20 @@ s32 GlBackend::MaxTextureSize()
     GLint biggest = 0;
     G().GetIntegerv(GL_MAX_TEXTURE_SIZE, &biggest);
     return biggest;
+}
+
+// S3TC (BC1-3) by EXT_texture_compression_s3tc, BPTC (BC7) by ARB_texture_compression_bptc (core since 4.2); asked once, with the
+// context current
+bool GlBackend::SamplesFormat(u32 format)
+{
+    if (!CompressedFormat(format))
+    {
+        return true;
+    }
+
+    static const bool s3tc = SDL_GL_ExtensionSupported("GL_EXT_texture_compression_s3tc");
+    static const bool bptc = SDL_GL_ExtensionSupported("GL_ARB_texture_compression_bptc");
+    return format == FormatBc7 ? bptc : s3tc;
 }
 
 s32 GlBackend::MaxAnisotropy()

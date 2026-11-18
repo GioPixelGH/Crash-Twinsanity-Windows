@@ -719,9 +719,9 @@ texture pack) Vulkan's slow frames end with its own split, `; of Vulkan's, textu
 5088.6 ms` (renderwork.h's VulkanPart: SDL_CreateGPUTexture with the new texture's levels cleared; the submits, where SDL
 defragments its memory; the waits for the frames in flight, the card's own work behind them), and each performance line, and
 each frame of a second or more, is followed by `memory: the program 1.34 GB (0.59 GB of it in RAM), the PC's RAM 6.8 GB free of
-15.9; the texture pack's images read 155, 0.12 GB; video memory 0.71 GB of a 10.97 GB budget (NVIDIA GeForce RTX 4070 SUPER),
-0.08 GB in shared memory` (the program's committed memory and working set; the pack's images decoded and kept, RGBA; Windows'
-own count of the program's video memory on the adapter where it uses the most, DXGI 1.4's QueryVideoMemoryInfo, whatever the
+15.9; the texture pack's images held 0, 0.00 GB, on the graphics card 155, 0.12 GB; video memory 0.71 GB of a 10.97 GB budget
+(NVIDIA GeForce RTX 4070 SUPER), 0.08 GB in shared memory` (the program's committed memory and working set; the pack's images
+read and not given to the card yet, and those given to it with the bytes they take there, THE LIST 25a; Windows' own count of the program's video memory on the adapter where it uses the most, DXGI 1.4's QueryVideoMemoryInfo, whatever the
 API, its budget and what it moved to shared memory; Linux has the RAM only). Measured on this PC (12 GB RTX 4070 SUPER) with
 `compare\tools\vram_hog.exe 10` holding 10 GB in use (a 4 GB card's room left, about 0.5 GB, under the 0.7 GB the port takes
 at 3x with the player's pack copy) and `compare\tools\vram_run.py` taking the port from roof01 through the rooftop, the bus

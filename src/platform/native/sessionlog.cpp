@@ -553,7 +553,10 @@ void LogMemory()
     {
         size_t bytes = 0;
         const size_t images = NativeGraphics::ReplacementImagesHeld(&bytes);
-        std::snprintf(part, sizeof(part), "; the texture pack's images read %zu, %.2f GB", images, static_cast<double>(bytes) / Gb);
+        size_t sentBytes = 0;
+        const size_t sent = NativeGraphics::ReplacementImagesSent(&sentBytes);
+        std::snprintf(part, sizeof(part), "; the texture pack's images held %zu, %.2f GB, on the graphics card %zu, %.2f GB", images,
+                      static_cast<double>(bytes) / Gb, sent, static_cast<double>(sentBytes) / Gb);
         line += part;
     }
 

@@ -950,6 +950,7 @@ bool LoadTable(Gl& gl)
         Load(gl.MaxShaderCompilerThreads, "glMaxShaderCompilerThreadsARB");
     }
 
+    ok &= Load(gl.CompressedTexImage2D, "glCompressedTexImage2D");
     return ok;
 }
 }

@@ -43,7 +43,9 @@ constexpr GLenum GL_TEXTURE_2D = 0x0DE1, GL_TEXTURE_MIN_FILTER = 0x2801, GL_TEXT
                  GL_VERTEX_SHADER = 0x8B31, GL_FRAGMENT_SHADER = 0x8B30, GL_COMPILE_STATUS = 0x8B81, GL_LINK_STATUS = 0x8B82,
                  GL_TEXTURE0 = 0x84C0, GL_ARRAY_BUFFER = 0x8892, GL_PIXEL_UNPACK_BUFFER = 0x88EC, GL_STREAM_DRAW = 0x88E0, GL_UNPACK_ROW_LENGTH = 0x0CF2,
                  GL_PACK_ROW_LENGTH = 0x0D02, GL_UNPACK_ALIGNMENT = 0x0CF5, GL_PACK_ALIGNMENT = 0x0D05, GL_BACK = 0x0405,
-                 GL_TRUE = 1, GL_FALSE = 0, GL_KEEP = 0x1E00, GL_R32UI = 0x8236, GL_R16UI = 0x8234, GL_RED_INTEGER = 0x8D94, GL_UNSIGNED_SHORT = 0x1403, GL_RGBA16F = 0x881A, GL_HALF_FLOAT = 0x140B, GL_R8 = 0x8229, GL_RG8 = 0x822B, GL_RG = 0x8227, GL_TEXTURE_MAX_ANISOTROPY = 0x84FE, GL_REPLACE = 0x1E01, GL_EQUAL = 0x0202;
+                 GL_TRUE = 1, GL_FALSE = 0, GL_KEEP = 0x1E00, GL_R32UI = 0x8236, GL_R16UI = 0x8234, GL_RED_INTEGER = 0x8D94, GL_UNSIGNED_SHORT = 0x1403, GL_RGBA16F = 0x881A, GL_HALF_FLOAT = 0x140B, GL_R8 = 0x8229, GL_RG8 = 0x822B, GL_RG = 0x8227, GL_TEXTURE_MAX_ANISOTROPY = 0x84FE, GL_REPLACE = 0x1E01, GL_EQUAL = 0x0202,
+                 GL_COMPRESSED_RGBA_S3TC_DXT1_EXT = 0x83F1, GL_COMPRESSED_RGBA_S3TC_DXT3_EXT = 0x83F2, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT = 0x83F3,
+                 GL_COMPRESSED_RGBA_BPTC_UNORM = 0x8E8C;
 
 struct Gl
 {
@@ -126,6 +128,8 @@ struct Gl
     void (*DeleteSync)(GLsync);
     // KHR_ or ARB_parallel_shader_compile's (null without either): the driver compiling the shader programs on threads of its own
     void (*MaxShaderCompilerThreads)(GLuint);
+    // A texture pack's block-compressed levels (THE LIST 25a)
+    void (*CompressedTexImage2D)(GLenum, GLint, GLenum, GLsizei, GLsizei, GLint, GLsizei, const void*);
 };
 
 // The entry points (loaded the first time, with a context current); false when one is missing
