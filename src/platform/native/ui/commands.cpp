@@ -904,6 +904,15 @@ void TestDescriptions()
     Check(std::strcmp(NativeTextFor(both, 1, false), "fr") == 0 && std::strcmp(NativeTextFor(both, 0, true), "pt") == 0 &&
               std::strcmp(NativeTextFor(english, 0, true), "en") == 0 && std::strcmp(NativeTextFor(english, -1, false), "en") == 0,
           "the native texts' Portuguese chosen for a Portuguese bank, the English where it has none");
+    // Every line's Portuguese (not only the descriptions' below) in characters the game's text can hold
+    for (u32 i = 0; i < g_NativeTextCount; i++)
+    {
+        const char* line = g_NativeTexts[i].languages[PortugueseColumn];
+        std::string text;
+        Check(line == nullptr || ToGameText(line, &text), "text 0x%X in Portuguese: a character the game's text can't hold",
+              g_NativeTexts[i].text);
+    }
+
     constexpr f32 NoteRoom = 860.0f - 2.0f * 18.0f - 2.0f * 22.0f;
     u32 measured = 0;
     f32 widest = 0.0f;
@@ -918,13 +927,20 @@ void TestDescriptions()
                     continue;
                 }
 
-                for (u32 language = 0; language < TextLanguages; language++)
+                // (Brazilian Portuguese's too where a line has it: THE LIST 56)
+                for (u32 language = 0; language < NativeTextColumns; language++)
                 {
+                    const char* line = g_NativeTexts[i].languages[language];
+                    if (language == PortugueseColumn && (line == nullptr || *line == '\0'))
+                    {
+                        continue;
+                    }
+
                     std::string text;
-                    ToGameText(g_NativeTexts[i].languages[language], &text);
+                    ToGameText(line, &text);
                     const f32 width = DescriptionWidth(text);
                     Check(width > 0.0f && width <= NoteRoom, "note 0x%X in %s: %.0f of %.0f pixels", row.label,
-                          g_TextLanguages[language], width, NoteRoom);
+                          language == PortugueseColumn ? "Portuguese" : g_TextLanguages[language], width, NoteRoom);
                 }
             }
 

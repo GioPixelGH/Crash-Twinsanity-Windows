@@ -40,161 +40,163 @@ The disc error lines (0x21, 0x22: "please replace the crash twinsanity disc") ta
 
 The graphic options' resolution setting (NATIVE.md) adds texts of its own after the file's lines, at text numbers 0x100 on (`NativeUi::NativeText`).
 The last column, Brazilian Portuguese (1.3.0, #25), is shown where the disc's text bank is Portuguese (#25's disc has it in the
-English slot); an empty cell shows the English. To translate: fill that column in a copy of this file and send it (an issue);
-`native/tools/pc_text_table.py --import FILE` takes it into `pctext.cpp`, each row matched by its English:
+English slot); an empty cell shows the English. NormanTheFox's translation of 2026-11-18 fills 199 of the 295 rows. To
+translate: fill that column in a copy of this file and send it (an issue); `native/tools/pc_text_table.py --import FILE` takes
+it into `pctext.cpp`, each row matched by its English (a row too long for its place, or with a character the game's text can't
+hold, such as curly quotes, stays empty, as the ui self-test finds them):
 
 | Text | English | French | German | Spanish | Italian | Português |
 |---|---|---|---|---|---|---|
-| 0x100 | resolution | résolution | auflösung | resolución | risoluzione |  |
-| 0x101 | display | affichage | anzeige | pantalla | schermo |  |
-| 0x102 | 1x | 1x | 1x | 1x | 1x |  |
-| 0x103 | 2x | 2x | 2x | 2x | 2x |  |
-| 0x104 | 3x | 3x | 3x | 3x | 3x |  |
-| 0x105 | 4x | 4x | 4x | 4x | 4x |  |
-| 0x106 | 960x720 | 960x720 | 960x720 | 960x720 | 960x720 |  |
-| 0x107 | 1280x960 | 1280x960 | 1280x960 | 1280x960 | 1280x960 |  |
-| 0x108 | 1600x1200 | 1600x1200 | 1600x1200 | 1600x1200 | 1600x1200 |  |
-| 0x109 | 1920x1440 | 1920x1440 | 1920x1440 | 1920x1440 | 1920x1440 |  |
-| 0x10A | 1280x720 | 1280x720 | 1280x720 | 1280x720 | 1280x720 |  |
-| 0x10B | 1920x1080 | 1920x1080 | 1920x1080 | 1920x1080 | 1920x1080 |  |
-| 0x10C | fullscreen | plein écran | vollbild | completa | intero |  |
-| 0x10D | filtering | filtrage | filter | filtrado | filtro |  |
-| 0x10E | smooth | lisse | weich | suave | morbido |  |
-| 0x10F | sharp | net | scharf | nítido | nitido |  |
-| 0x110 | scanlines | lignes crt | crt-zeilen | líneas crt | linee crt |  |
-| 0x111 | voice volume | volume des voix | stimmen-lautstärke | volumen de las voces | volume voci |  |
-| 0x112 | skip cutscenes | passer les scènes | szenen überspringen | saltar escenas | salta scene |  |
-| 0x113 | fast loading | chargement rapide | schnelles laden | carga rápida | caricamento rapido |  |
-| 0x114 | pause in background | pause en arrière-plan | pause im hintergrund | pausa en segundo plano | pausa in secondo piano |  |
-| 0x115 | detailed log | journal détaillé | ausführliches protokoll | registro detallado | log dettagliato |  |
-| 0x116 | refresh rate | fréquence | bildfrequenz | frecuencia | frequenza |  |
-| 0x117 | 50 hz | 50 hz | 50 hz | 50 hz | 50 hz |  |
-| 0x118 | 60 hz | 60 hz | 60 hz | 60 hz | 60 hz |  |
-| 0x119 | 120 hz | 120 hz | 120 hz | 120 hz | 120 hz |  |
-| 0x11A | 144 hz | 144 hz | 144 hz | 144 hz | 144 hz |  |
-| 0x11B | unlimited | illimitée | unbegrenzt | ilimitada | illimitata |  |
-| 0x11C | text language | langue des textes | textsprache | idioma de los textos | lingua dei testi |  |
-| 0x11D | as windows | comme windows | wie windows | como windows | come windows |  |
-| 0x11E | english | english | english | english | english |  |
-| 0x11F | français | français | français | français | français |  |
-| 0x120 | deutsch | deutsch | deutsch | deutsch | deutsch |  |
-| 0x121 | italiano | italiano | italiano | italiano | italiano |  |
-| 0x122 | español | español | español | español | español |  |
-| 0x123 | bug fixes | corrections | fehlerkorrekturen | correcciones | correzioni |  |
-| 0x124 | controls | commandes | steuerung | controles | comandi |  |
-| 0x125 | reset controls | réinitialiser | zurücksetzen | restablecer | ripristina |  |
-| 0x126 | press a key or button (esc to cancel) | appuie sur une touche (échap pour annuler) | taste drücken (esc bricht ab) | pulsa una tecla (esc para cancelar) | premi un tasto (esc per annullare) |  |
-| 0x127 | l3 | l3 | l3 | l3 | l3 |  |
-| 0x128 | r3 | r3 | r3 | r3 | r3 |  |
-| 0x129 | start | start | start | start | start |  |
-| 0x12A | select | select | select | select | select |  |
-| 0x12B | up | haut | oben | arriba | su |  |
-| 0x12C | down | bas | unten | abajo | giù |  |
-| 0x12D | left | gauche | links | izquierda | sinistra |  |
-| 0x12E | right | droite | rechts | derecha | destra |  |
-| 0x12F | stick | joystick | stick | joystick | levetta |  |
-| 0x130 | jump | sauter | springen | saltar | saltare |  |
-| 0x131 | crouch / slide | accroupi / glisser | ducken / rutschen | agacharse / deslizar | abbassarsi / scivolare |  |
-| 0x132 | status | statut | status | estado | stato |  |
-| 0x133 | spin | toupie | drehen | girar | girare |  |
-| 0x134 | layout | boutons | belegung | botones | tasti |  |
-| 0x135 | nintendo | nintendo | nintendo | nintendo | nintendo |  |
-| 0x136 | controller | manette | controller | mando | controller |  |
-| 0x137 | auto | auto | auto | auto | auto |  |
-| 0x138 | keyboard | clavier | tastatur | teclado | tastiera |  |
-| 0x139 | xbox | xbox | xbox | xbox | xbox |  |
-| 0x13A | playstation | playstation | playstation | playstation | playstation |  |
-| 0x13B | switch | switch | switch | switch | switch |  |
-| 0x13C | mouse | souris | maus | ratón | mouse |  |
-| 0x13D | display | affichage | anzeige | pantalla | schermo |  |
-| 0x13E | audio | audio | audio | audio | audio |  |
+| 0x100 | resolution | résolution | auflösung | resolución | risoluzione | resolução |
+| 0x101 | display | affichage | anzeige | pantalla | schermo | exibição |
+| 0x102 | 1x | 1x | 1x | 1x | 1x | 1x |
+| 0x103 | 2x | 2x | 2x | 2x | 2x | 2x |
+| 0x104 | 3x | 3x | 3x | 3x | 3x | 3x |
+| 0x105 | 4x | 4x | 4x | 4x | 4x | 4x |
+| 0x106 | 960x720 | 960x720 | 960x720 | 960x720 | 960x720 | 960x720 |
+| 0x107 | 1280x960 | 1280x960 | 1280x960 | 1280x960 | 1280x960 | 1280x960 |
+| 0x108 | 1600x1200 | 1600x1200 | 1600x1200 | 1600x1200 | 1600x1200 | 1600x1200 |
+| 0x109 | 1920x1440 | 1920x1440 | 1920x1440 | 1920x1440 | 1920x1440 | 1920x1440 |
+| 0x10A | 1280x720 | 1280x720 | 1280x720 | 1280x720 | 1280x720 | 1280x720 |
+| 0x10B | 1920x1080 | 1920x1080 | 1920x1080 | 1920x1080 | 1920x1080 | 1920x1080 |
+| 0x10C | fullscreen | plein écran | vollbild | completa | intero | tela cheia |
+| 0x10D | filtering | filtrage | filter | filtrado | filtro | filtragem |
+| 0x10E | smooth | lisse | weich | suave | morbido | suave |
+| 0x10F | sharp | net | scharf | nítido | nitido | nítido |
+| 0x110 | scanlines | lignes crt | crt-zeilen | líneas crt | linee crt | linhas de crt |
+| 0x111 | voice volume | volume des voix | stimmen-lautstärke | volumen de las voces | volume voci | volume da voz |
+| 0x112 | skip cutscenes | passer les scènes | szenen überspringen | saltar escenas | salta scene | pular as cenas |
+| 0x113 | fast loading | chargement rapide | schnelles laden | carga rápida | caricamento rapido | carregamento rápido |
+| 0x114 | pause in background | pause en arrière-plan | pause im hintergrund | pausa en segundo plano | pausa in secondo piano | pausar ao sair da janela |
+| 0x115 | detailed log | journal détaillé | ausführliches protokoll | registro detallado | log dettagliato | registro detalhado |
+| 0x116 | refresh rate | fréquence | bildfrequenz | frecuencia | frequenza | taxa de atualização |
+| 0x117 | 50 hz | 50 hz | 50 hz | 50 hz | 50 hz | 50 hz |
+| 0x118 | 60 hz | 60 hz | 60 hz | 60 hz | 60 hz | 60 hz |
+| 0x119 | 120 hz | 120 hz | 120 hz | 120 hz | 120 hz | 120 hz |
+| 0x11A | 144 hz | 144 hz | 144 hz | 144 hz | 144 hz | 144 hz |
+| 0x11B | unlimited | illimitée | unbegrenzt | ilimitada | illimitata | ilimitado |
+| 0x11C | text language | langue des textes | textsprache | idioma de los textos | lingua dei testi | idioma do texto |
+| 0x11D | as windows | comme windows | wie windows | como windows | come windows | ao windows |
+| 0x11E | english | english | english | english | english | inglês |
+| 0x11F | français | français | français | français | français | francês |
+| 0x120 | deutsch | deutsch | deutsch | deutsch | deutsch | alemão |
+| 0x121 | italiano | italiano | italiano | italiano | italiano | italiano |
+| 0x122 | español | español | español | español | español | espanhol |
+| 0x123 | bug fixes | corrections | fehlerkorrekturen | correcciones | correzioni | correções de bugs |
+| 0x124 | controls | commandes | steuerung | controles | comandi | controles |
+| 0x125 | reset controls | réinitialiser | zurücksetzen | restablecer | ripristina | redefinir controles |
+| 0x126 | press a key or button (esc to cancel) | appuie sur une touche (échap pour annuler) | taste drücken (esc bricht ab) | pulsa una tecla (esc para cancelar) | premi un tasto (esc per annullare) | aperte uma tecla ou um botão (esc para cancelar) |
+| 0x127 | l3 | l3 | l3 | l3 | l3 | l3 |
+| 0x128 | r3 | r3 | r3 | r3 | r3 | r3 |
+| 0x129 | start | start | start | start | start | iníciar |
+| 0x12A | select | select | select | select | select | selecionar |
+| 0x12B | up | haut | oben | arriba | su | para cima |
+| 0x12C | down | bas | unten | abajo | giù | para baixo |
+| 0x12D | left | gauche | links | izquierda | sinistra | para esquerda |
+| 0x12E | right | droite | rechts | derecha | destra | para direita |
+| 0x12F | stick | joystick | stick | joystick | levetta | controle |
+| 0x130 | jump | sauter | springen | saltar | saltare | pular |
+| 0x131 | crouch / slide | accroupi / glisser | ducken / rutschen | agacharse / deslizar | abbassarsi / scivolare | agachar-se |
+| 0x132 | status | statut | status | estado | stato | atributos |
+| 0x133 | spin | toupie | drehen | girar | girare | girar |
+| 0x134 | layout | boutons | belegung | botones | tasti | mapeamento de botões |
+| 0x135 | nintendo | nintendo | nintendo | nintendo | nintendo | nintendo |
+| 0x136 | controller | manette | controller | mando | controller | controlador |
+| 0x137 | auto | auto | auto | auto | auto | automático |
+| 0x138 | keyboard | clavier | tastatur | teclado | tastiera | teclado |
+| 0x139 | xbox | xbox | xbox | xbox | xbox | xbox |
+| 0x13A | playstation | playstation | playstation | playstation | playstation | playstation |
+| 0x13B | switch | switch | switch | switch | switch | switch |
+| 0x13C | mouse | souris | maus | ratón | mouse | mouse |
+| 0x13D | display | affichage | anzeige | pantalla | schermo | exibição |
+| 0x13E | audio | audio | audio | audio | audio | audio |
 | 0x13F | game | jeu | spiel | juego | gioco |  |
-| 0x140 | display mode | mode d'affichage | anzeigemodus | modo de pantalla | modalità schermo |  |
-| 0x141 | texture upscale | textures agrandies | texturen skalieren | escalar texturas | scala texture |  |
-| 0x142 | texture pack | pack de textures | texturpaket | pack de texturas | pacchetto texture |  |
-| 0x143 | anti-aliasing | anticrénelage | kantenglättung | antialiasing | antialiasing |  |
-| 0x144 | v-sync | v-sync | v-sync | v-sync | v-sync |  |
-| 0x145 | action | action | aktion | acción | azione |  |
-| 0x146 | key | touche | taste | tecla | tasto |  |
-| 0x147 | alt key | autre | alternativ | alternativa | alternativo |  |
-| 0x148 | controller | manette | controller | mando | controller |  |
-| 0x149 | move up | avancer | vorwärts | avanzar | avanti |  |
-| 0x14A | move down | reculer | rückwärts | retroceder | indietro |  |
-| 0x14B | move left | gauche | links | izquierda | sinistra |  |
-| 0x14C | move right | droite | rechts | derecha | destra |  |
-| 0x14D | camera left | caméra gauche | kamera links | cámara izquierda | telecamera sin. |  |
-| 0x14E | camera right | caméra droite | kamera rechts | cámara derecha | telecamera des. |  |
-| 0x14F | strafe left | pas latéral g. | seitlich links | lateral izq. | laterale sin. |  |
-| 0x150 | strafe right | pas latéral d. | seitlich rechts | lateral der. | laterale des. |  |
-| 0x151 | pause | pause | pause | pausa | pausa |  |
-| 0x152 | reset keyboard | clavier par défaut | tastatur zurücksetzen | restablecer teclado | ripristina tastiera |  |
-| 0x153 | reset controller | manette par défaut | controller zurücksetzen | restablecer mando | ripristina controller |  |
-| 0x154 | reset to defaults | valeurs par défaut | standard | valores por defecto | valori predefiniti |  |
-| 0x155 | a window of a set size, or fullscreen. | une fenêtre d'une taille donnée, ou plein écran. | ein fenster fester größe oder vollbild. | una ventana de tamaño fijo o pantalla completa. | una finestra di dimensione fissa o schermo intero. |  |
+| 0x140 | display mode | mode d'affichage | anzeigemodus | modo de pantalla | modalità schermo | modo de exibição |
+| 0x141 | texture upscale | textures agrandies | texturen skalieren | escalar texturas | scala texture | texturas em alta resolução |
+| 0x142 | texture pack | pack de textures | texturpaket | pack de texturas | pacchetto texture | pacote de texturas |
+| 0x143 | anti-aliasing | anticrénelage | kantenglättung | antialiasing | antialiasing | suavização de serrilhado |
+| 0x144 | v-sync | v-sync | v-sync | v-sync | v-sync | v-sync |
+| 0x145 | action | action | aktion | acción | azione | ação |
+| 0x146 | key | touche | taste | tecla | tasto | tecla |
+| 0x147 | alt key | autre | alternativ | alternativa | alternativo | tecla alt |
+| 0x148 | controller | manette | controller | mando | controller | controlador |
+| 0x149 | move up | avancer | vorwärts | avanzar | avanti | mover para cima |
+| 0x14A | move down | reculer | rückwärts | retroceder | indietro | mover para baixo |
+| 0x14B | move left | gauche | links | izquierda | sinistra | mover para esquerda |
+| 0x14C | move right | droite | rechts | derecha | destra | mover para direita |
+| 0x14D | camera left | caméra gauche | kamera links | cámara izquierda | telecamera sin. | à esquerda da câmera |
+| 0x14E | camera right | caméra droite | kamera rechts | cámara derecha | telecamera des. | à direita da câmera |
+| 0x14F | strafe left | pas latéral g. | seitlich links | lateral izq. | laterale sin. | mover para a esquerda |
+| 0x150 | strafe right | pas latéral d. | seitlich rechts | lateral der. | laterale des. | mover para a direita |
+| 0x151 | pause | pause | pause | pausa | pausa | pausar |
+| 0x152 | reset keyboard | clavier par défaut | tastatur zurücksetzen | restablecer teclado | ripristina tastiera | redefinir teclado |
+| 0x153 | reset controller | manette par défaut | controller zurücksetzen | restablecer mando | ripristina controller | redefinir controle |
+| 0x154 | reset to defaults | valeurs par défaut | standard | valores por defecto | valori predefiniti | redefinir padrões |
+| 0x155 | a window of a set size, or fullscreen. | une fenêtre d'une taille donnée, ou plein écran. | ein fenster fester größe oder vollbild. | una ventana de tamaño fijo o pantalla completa. | una finestra di dimensione fissa o schermo intero. | exibe o jogo em modo janela, ou em tela cheia. |
 | 0x156 | sharper 3d, smoother edges. 3x and up are slower: 6x and 8x need a strong graphics card. | 3d plus net, bords lissés. 3x et plus sont plus lents : 6x et 8x demandent une carte graphique puissante. | schärferes 3d, glatte kanten. ab 3x langsamer: 6x und 8x brauchen eine starke grafikkarte. | 3d más nítido, bordes suaves. desde 3x es más lento: 6x y 8x piden una gráfica potente. | 3d più nitido, bordi lisci. da 3x è più lento: 6x e 8x chiedono una scheda video potente. |  |
 | 0x157 | your screen's shape: the game is drawn for it. 16:10 is the steam deck's. | la forme de ton écran : le jeu est dessiné pour elle. 16:10 est celle du steam deck. | die form deines bildschirms: das spiel wird dafür gezeichnet. 16:10 hat das steam deck. | la forma de tu pantalla: el juego se dibuja para ella. 16:10 es la del steam deck. | la forma del tuo schermo: il gioco è disegnato per essa. 16:10 è quella dello steam deck. |  |
 | 0x158 | smooth or sharp pixels when the picture is scaled. | pixels lissés ou nets à l'agrandissement. | weiche oder scharfe pixel beim skalieren. | píxeles suaves o nítidos al escalar. | pixel morbidi o nitidi nel ridimensionamento. |  |
 | 0x159 | smooth the game's textures at a larger size. | textures lissées en plus grand. | texturen größer und glatter. | texturas suavizadas a mayor tamaño. | texture levigate più grandi. |  |
-| 0x15A | use the textures of a texture pack. | utiliser un pack de textures. | texturen eines texturpakets nutzen. | usar un pack de texturas. | usa un pacchetto di texture. |  |
+| 0x15A | use the textures of a texture pack. | utiliser un pack de textures. | texturen eines texturpakets nutzen. | usar un pack de texturas. | usa un pacchetto di texture. | usar as texturas de um pacote de texturas. |
 | 0x15B | fxaa and smaa smooth the edges, smaa better. ssaa draws the picture 2 or 4 times larger: slower. | fxaa et smaa lissent les bords, smaa mieux. ssaa dessine l'image 2 ou 4 fois plus grande : plus lent. | fxaa und smaa glätten kanten, smaa besser. ssaa zeichnet das bild 2- oder 4-mal größer: langsamer. | fxaa y smaa suavizan bordes, smaa mejor. ssaa dibuja la imagen 2 o 4 veces mayor: más lento. | fxaa e smaa levigano i bordi, smaa meglio. ssaa disegna l'immagine 2 o 4 volte più grande: più lento. |  |
-| 0x15C | wait for the screen's refresh: no tearing. | synchronisé à l'écran: pas de déchirure. | auf den bildschirm warten: kein tearing. | sincronizar con la pantalla: sin cortes. | sincronizza con lo schermo: niente tearing. |  |
-| 0x15D | the look of an old crt television. | l'aspect d'une vieille télévision. | wie ein alter röhrenfernseher. | el aspecto de una tele antigua. | l'aspetto di un vecchio televisore. |  |
-| 0x15E | 50 hz is the original timing. above 60 needs a fast pc. | 50 hz est la cadence d'origine. au-delà de 60, un pc rapide. | 50 hz ist das original. über 60 braucht einen schnellen pc. | 50 hz es el ritmo original. más de 60 pide un pc rápido. | 50 hz è la frequenza originale. oltre 60 serve un pc veloce. |  |
-| 0x15F | the texts and title pictures, and the voices unless chosen below. from the next start. | les textes et les titres, et les voix sauf choix plus bas. au prochain lancement. | texte und titelbilder, die stimmen auch, außer unten gewählt. ab dem nächsten start. | los textos y los títulos, y las voces salvo que elijas abajo. al volver a abrir el juego. | i testi e i titoli, e le voci se non scelte sotto. dal prossimo avvio del gioco. |  |
-| 0x160 | move the picture on the screen. | déplacer l'image à l'écran. | das bild verschieben. | mover la imagen en pantalla. | sposta l'immagine sullo schermo. |  |
-| 0x161 | the music's volume. | le volume de la musique. | die lautstärke der musik. | el volumen de la música. | il volume della musica. |  |
-| 0x162 | the sound effects' volume. | le volume des sons. | die lautstärke der effekte. | el volumen de los efectos. | il volume degli effetti. |  |
-| 0x163 | the characters' voices' volume. | le volume des voix. | die lautstärke der stimmen. | el volumen de las voces. | il volume delle voci. |  |
-| 0x164 | mono, stereo or dolby pro logic ii. | mono, stéréo ou dolby pro logic ii. | mono, stereo oder dolby pro logic ii. | mono, estéreo o dolby pro logic ii. | mono, stereo o dolby pro logic ii. |  |
+| 0x15C | wait for the screen's refresh: no tearing. | synchronisé à l'écran: pas de déchirure. | auf den bildschirm warten: kein tearing. | sincronizar con la pantalla: sin cortes. | sincronizza con lo schermo: niente tearing. | aguarde a atualização da tela: sem distorções. |
+| 0x15D | the look of an old crt television. | l'aspect d'une vieille télévision. | wie ein alter röhrenfernseher. | el aspecto de una tele antigua. | l'aspetto di un vecchio televisore. | o visual de uma televisão crt antiga. |
+| 0x15E | 50 hz is the original timing. above 60 needs a fast pc. | 50 hz est la cadence d'origine. au-delà de 60, un pc rapide. | 50 hz ist das original. über 60 braucht einen schnellen pc. | 50 hz es el ritmo original. más de 60 pide un pc rápido. | 50 hz è la frequenza originale. oltre 60 serve un pc veloce. | 50 Hz é a frequência original. acima de 60, é necessário um computador rápido. |
+| 0x15F | the texts and title pictures, and the voices unless chosen below. from the next start. | les textes et les titres, et les voix sauf choix plus bas. au prochain lancement. | texte und titelbilder, die stimmen auch, außer unten gewählt. ab dem nächsten start. | los textos y los títulos, y las voces salvo que elijas abajo. al volver a abrir el juego. | i testi e i titoli, e le voci se non scelte sotto. dal prossimo avvio del gioco. | muda textos, logotipos e dublagem, a menos que você escolha outra abaixo. aplica-se ao reiniciar o jogo. |
+| 0x160 | move the picture on the screen. | déplacer l'image à l'écran. | das bild verschieben. | mover la imagen en pantalla. | sposta l'immagine sullo schermo. | mover a imagem na tela. |
+| 0x161 | the music's volume. | le volume de la musique. | die lautstärke der musik. | el volumen de la música. | il volume della musica. | o volume da música. |
+| 0x162 | the sound effects' volume. | le volume des sons. | die lautstärke der effekte. | el volumen de los efectos. | il volume degli effetti. | o volume dos efeitos sonoros. |
+| 0x163 | the characters' voices' volume. | le volume des voix. | die lautstärke der stimmen. | el volumen de las voces. | il volume delle voci. | o volume das vozes dos personagens. |
+| 0x164 | mono, stereo or dolby pro logic ii. | mono, stéréo ou dolby pro logic ii. | mono, stereo oder dolby pro logic ii. | mono, estéreo o dolby pro logic ii. | mono, stereo o dolby pro logic ii. | mono, stereo or dolby pro logic ii. |
 | 0x165 | the button prompts: auto follows what you use. | les boutons affichés: auto suit ce que tu utilises. | die tastensymbole: auto folgt dem gerät. | los botones: auto sigue lo que usas. | i tasti mostrati: auto segue ciò che usi. |  |
-| 0x166 | nintendo: a selects and b goes back in menus. | nintendo: a valide et b revient dans les menus. | nintendo: a wählt, b zurück in menüs. | nintendo: a elige y b vuelve en los menús. | nintendo: a seleziona e b torna nei menu. |  |
-| 0x167 | the controller's vibration. | les vibrations de la manette. | die vibration des controllers. | la vibración del mando. | la vibrazione del controller. |  |
+| 0x166 | nintendo: a selects and b goes back in menus. | nintendo: a valide et b revient dans les menus. | nintendo: a wählt, b zurück in menüs. | nintendo: a elige y b vuelve en los menús. | nintendo: a seleziona e b torna nei menu. | nintendo: o botão A seleciona e o botão B volta nos menus. |
+| 0x167 | the controller's vibration. | les vibrations de la manette. | die vibration des controllers. | la vibración del mando. | la vibrazione del controller. | a vibração do controle. |
 | 0x168 | use the mouse in menus. | utiliser la souris dans les menus. | die maus in menüs nutzen. | usar el ratón en los menús. | usa il mouse nei menu. |  |
-| 0x169 | select a key or button to change it. | choisis une touche pour la changer. | taste wählen, um sie zu ändern. | elige una tecla para cambiarla. | scegli un tasto per cambiarlo. |  |
-| 0x16A | the default keys again. | les touches par défaut. | die standardtasten. | las teclas por defecto. | i tasti predefiniti. |  |
-| 0x16B | the default buttons again. | les boutons par défaut. | die standardknöpfe. | los botones por defecto. | i pulsanti predefiniti. |  |
-| 0x16C | hold any button to skip cutscenes and movies. | maintiens une touche pour passer les scènes. | beliebige taste halten, um szenen zu überspringen. | mantén cualquier botón para saltar escenas. | tieni premuto un tasto per saltare le scene. |  |
-| 0x16D | load levels faster. | chargement plus rapide des niveaux. | level schneller laden. | cargar niveles más rápido. | caricamento più rapido dei livelli. |  |
-| 0x16E | pause when the window is in the background. | pause quand la fenêtre est en arrière-plan. | pause im hintergrund. | pausa en segundo plano. | pausa quando la finestra è in secondo piano. |  |
-| 0x16F | write more of what happens to log.txt, for bug reports. | plus de détails dans log.txt, pour signaler un bug. | mehr details in log.txt, für fehlerberichte. | más detalles en log.txt, para informar de errores. | più dettagli in log.txt, per segnalare i bug. |  |
+| 0x169 | select a key or button to change it. | choisis une touche pour la changer. | taste wählen, um sie zu ändern. | elige una tecla para cambiarla. | scegli un tasto per cambiarlo. | use o mouse nos menus. |
+| 0x16A | the default keys again. | les touches par défaut. | die standardtasten. | las teclas por defecto. | i tasti predefiniti. | as teclas padrão novamente. |
+| 0x16B | the default buttons again. | les boutons par défaut. | die standardknöpfe. | los botones por defecto. | i pulsanti predefiniti. | os botões padrão novamente. |
+| 0x16C | hold any button to skip cutscenes and movies. | maintiens une touche pour passer les scènes. | beliebige taste halten, um szenen zu überspringen. | mantén cualquier botón para saltar escenas. | tieni premuto un tasto per saltare le scene. | mantenha pressionado qualquer botão para pular as cenas e os vídeos. |
+| 0x16D | load levels faster. | chargement plus rapide des niveaux. | level schneller laden. | cargar niveles más rápido. | caricamento più rapido dei livelli. | carregar os níveis mais rapidamente. |
+| 0x16E | pause when the window is in the background. | pause quand la fenêtre est en arrière-plan. | pause im hintergrund. | pausa en segundo plano. | pausa quando la finestra è in secondo piano. | pausar quando a janela estiver em segundo plano. |
+| 0x16F | write more of what happens to log.txt, for bug reports. | plus de détails dans log.txt, pour signaler un bug. | mehr details in log.txt, für fehlerberichte. | más detalles en log.txt, para informar de errores. | più dettagli in log.txt, per segnalare i bug. | registre mais detalhes do que acontece no arquivo log.txt, para relatórios de bugs. |
 | 0x170 | fixes from the community patch and the decomp's bug list. off plays exactly like the original. | corrections du patch de la communauté et de la liste de la décompilation. désactivé : comme l'original. | korrekturen aus dem community-patch und der fehlerliste der dekompilierung. aus: wie das original. | arreglos del parche de la comunidad y de la lista de la descompilación. desactivado: como el original. | correzioni della patch della comunità e dell'elenco della decompilazione. disattivato: come l'originale. |  |
-| 0x171 | this tab's settings as they were at first. | les réglages de cet onglet par défaut. | die einstellungen dieser seite zurücksetzen. | los ajustes de esta pestaña por defecto. | le impostazioni di questa scheda predefinite. |  |
-| 0x172 | tabs | onglets | reiter | pestañas | schede |  |
-| 0x173 | accessibility | accessibilité | barrierefreiheit | accesibilidad | accessibilità |  |
-| 0x174 | window size | taille de fenêtre | fenstergröße | tamaño de ventana | dimensione finestra |  |
-| 0x175 | window | fenêtre | fenster | ventana | finestra |  |
-| 0x176 | keyboard | clavier | tastatur | teclado | tastiera |  |
-| 0x177 | controller | manette | controller | mando | controller |  |
-| 0x178 | button | bouton | knopf | botón | pulsante |  |
-| 0x179 | alt button | autre | alternativ | alternativo | alternativo |  |
-| 0x17A | camera shake | tremblement caméra | kamerawackeln | vibración de cámara | tremolio telecamera |  |
-| 0x17B | invert camera x | inverser caméra x | kamera x umkehren | invertir cámara x | inverti telecamera x |  |
-| 0x17C | invert camera y | inverser caméra y | kamera y umkehren | invertir cámara y | inverti telecamera y |  |
-| 0x17D | camera speed | vitesse caméra | kamerageschwindigkeit | velocidad de cámara | velocità telecamera |  |
-| 0x17E | stick dead zone | zone morte | stick-totzone | zona muerta | zona morta |  |
-| 0x17F | mute in background | muet en arrière-plan | stumm im hintergrund | silencio en segundo plano | muto in secondo piano |  |
-| 0x180 | shoulder left | gâchette gauche | schulter links | gatillo izquierdo | dorsale sinistro |  |
-| 0x181 | shoulder right | gâchette droite | schulter rechts | gatillo derecho | dorsale destro |  |
-| 0x182 | walk (toggle) | marcher (bascule) | gehen (umschalten) | caminar (alternar) | cammina (attiva) |  |
-| 0x183 | camera up | caméra haut | kamera oben | cámara arriba | telecamera su |  |
-| 0x184 | camera down | caméra bas | kamera unten | cámara abajo | telecamera giù |  |
-| 0x185 | mouse left | souris gauche | maus links | ratón izq. | mouse sin. |  |
-| 0x186 | mouse right | souris droite | maus rechts | ratón der. | mouse des. |  |
-| 0x187 | keep these display settings? | garder cet affichage ? | diese anzeige behalten? | ¿mantener esta pantalla? | mantenere questo schermo? |  |
-| 0x188 | clear | effacer | löschen | borrar | cancella |  |
-| 0x189 | the window's size. | la taille de la fenêtre. | die größe des fensters. | el tamaño de la ventana. | la dimensione della finestra. |  |
-| 0x18A | the keys for each action. | les touches de chaque action. | die tasten jeder aktion. | las teclas de cada acción. | i tasti di ogni azione. |  |
-| 0x18B | the controller's buttons for each action. | les boutons de chaque action. | die knöpfe jeder aktion. | los botones de cada acción. | i pulsanti di ogni azione. |  |
-| 0x18C | the camera shakes with explosions and impacts. | la caméra tremble aux explosions. | die kamera wackelt bei explosionen. | la cámara tiembla con explosiones. | la telecamera trema con le esplosioni. |  |
-| 0x18D | turn the camera the other way left and right. | caméra inversée à gauche et à droite. | kamera links und rechts umgekehrt. | cámara invertida a izquierda y derecha. | telecamera invertita a sinistra e destra. |  |
-| 0x18E | turn the camera the other way up and down. | caméra inversée en haut et en bas. | kamera oben und unten umgekehrt. | cámara invertida arriba y abajo. | telecamera invertita su e giù. |  |
-| 0x18F | how fast the camera turns. | la vitesse de la caméra. | wie schnell die kamera dreht. | la velocidad de la cámara. | la velocità della telecamera. |  |
-| 0x190 | how far a stick moves before it counts. | la course du joystick ignorée. | wie weit ein stick ohne wirkung geht. | el recorrido ignorado del joystick. | la corsa ignorata della levetta. |  |
-| 0x191 | no sound when the window is in the background. | pas de son en arrière-plan. | kein ton im hintergrund. | sin sonido en segundo plano. | nessun suono in secondo piano. |  |
-| 0x192 | next | suivant | weiter | siguiente | avanti |  |
-| 0x193 | position | position | position | posición | posizione |  |
-| 0x194 | restart checkpoint | recommencer | neu starten | reiniciar | ricomincia |  |
-| 0x195 | level select | choix du niveau | levelauswahl | elegir nivel | scelta livello |  |
+| 0x171 | this tab's settings as they were at first. | les réglages de cet onglet par défaut. | die einstellungen dieser seite zurücksetzen. | los ajustes de esta pestaña por defecto. | le impostazioni di questa scheda predefinite. | as configurações desta aba, tal como estavam inicialmente. |
+| 0x172 | tabs | onglets | reiter | pestañas | schede | tabs |
+| 0x173 | accessibility | accessibilité | barrierefreiheit | accesibilidad | accessibilità | acessibilidade |
+| 0x174 | window size | taille de fenêtre | fenstergröße | tamaño de ventana | dimensione finestra | tamanho da janela |
+| 0x175 | window | fenêtre | fenster | ventana | finestra | janela |
+| 0x176 | keyboard | clavier | tastatur | teclado | tastiera | teclado |
+| 0x177 | controller | manette | controller | mando | controller | controlador |
+| 0x178 | button | bouton | knopf | botón | pulsante | botão |
+| 0x179 | alt button | autre | alternativ | alternativo | alternativo | tecla alt |
+| 0x17A | camera shake | tremblement caméra | kamerawackeln | vibración de cámara | tremolio telecamera | vibração da câmera |
+| 0x17B | invert camera x | inverser caméra x | kamera x umkehren | invertir cámara x | inverti telecamera x | inverter a câmera x |
+| 0x17C | invert camera y | inverser caméra y | kamera y umkehren | invertir cámara y | inverti telecamera y | inverter a câmera y |
+| 0x17D | camera speed | vitesse caméra | kamerageschwindigkeit | velocidad de cámara | velocità telecamera | velocidade da câmera |
+| 0x17E | stick dead zone | zone morte | stick-totzone | zona muerta | zona morta | zona morta do controle |
+| 0x17F | mute in background | muet en arrière-plan | stumm im hintergrund | silencio en segundo plano | muto in secondo piano | silenciar em segundo plano |
+| 0x180 | shoulder left | gâchette gauche | schulter links | gatillo izquierdo | dorsale sinistro | botão superior esquerdo |
+| 0x181 | shoulder right | gâchette droite | schulter rechts | gatillo derecho | dorsale destro | botão superior direito |
+| 0x182 | walk (toggle) | marcher (bascule) | gehen (umschalten) | caminar (alternar) | cammina (attiva) | caminhar (alternar) |
+| 0x183 | camera up | caméra haut | kamera oben | cámara arriba | telecamera su | câmera para cima |
+| 0x184 | camera down | caméra bas | kamera unten | cámara abajo | telecamera giù | câmera para baixo |
+| 0x185 | mouse left | souris gauche | maus links | ratón izq. | mouse sin. | botão esquerdo do mouse |
+| 0x186 | mouse right | souris droite | maus rechts | ratón der. | mouse des. | botão direito do mouse |
+| 0x187 | keep these display settings? | garder cet affichage ? | diese anzeige behalten? | ¿mantener esta pantalla? | mantenere questo schermo? | manter essas configurações de tela? |
+| 0x188 | clear | effacer | löschen | borrar | cancella | limpar |
+| 0x189 | the window's size. | la taille de la fenêtre. | die größe des fensters. | el tamaño de la ventana. | la dimensione della finestra. | o tamanho da janela. |
+| 0x18A | the keys for each action. | les touches de chaque action. | die tasten jeder aktion. | las teclas de cada acción. | i tasti di ogni azione. | as teclas correspondentes a cada ação. |
+| 0x18B | the controller's buttons for each action. | les boutons de chaque action. | die knöpfe jeder aktion. | los botones de cada acción. | i pulsanti di ogni azione. | os botões do controle para cada ação. |
+| 0x18C | the camera shakes with explosions and impacts. | la caméra tremble aux explosions. | die kamera wackelt bei explosionen. | la cámara tiembla con explosiones. | la telecamera trema con le esplosioni. | a câmera treme com as explosões e os impactos. |
+| 0x18D | turn the camera the other way left and right. | caméra inversée à gauche et à droite. | kamera links und rechts umgekehrt. | cámara invertida a izquierda y derecha. | telecamera invertita a sinistra e destra. | vire a câmera para o outro lado, para a esquerda e para a direita. |
+| 0x18E | turn the camera the other way up and down. | caméra inversée en haut et en bas. | kamera oben und unten umgekehrt. | cámara invertida arriba y abajo. | telecamera invertita su e giù. | vire a câmera para o outro lado, para cima e para baixo. |
+| 0x18F | how fast the camera turns. | la vitesse de la caméra. | wie schnell die kamera dreht. | la velocidad de la cámara. | la velocità della telecamera. | a velocidade com que a câmera gira. |
+| 0x190 | how far a stick moves before it counts. | la course du joystick ignorée. | wie weit ein stick ohne wirkung geht. | el recorrido ignorado del joystick. | la corsa ignorata della levetta. | a distância que um bastão percorre antes de ser contabilizado. |
+| 0x191 | no sound when the window is in the background. | pas de son en arrière-plan. | kein ton im hintergrund. | sin sonido en segundo plano. | nessun suono in secondo piano. | não há som quando a janela está em segundo plano. |
+| 0x192 | next | suivant | weiter | siguiente | avanti | próximo |
+| 0x193 | position | position | position | posición | posizione | posição |
+| 0x194 | restart checkpoint | recommencer | neu starten | reiniciar | ricomincia | reiniciar ponto de controle |
+| 0x195 | level select | choix du niveau | levelauswahl | elegir nivel | scelta livello | seleção de fase |
 | 0x196 | left stick up | stick g. haut | linker stick hoch | stick izq. arriba | levetta sin. su |  |
 | 0x197 | left stick down | stick g. bas | linker stick runter | stick izq. abajo | levetta sin. giù |  |
 | 0x198 | left stick left | stick g. gauche | linker stick links | stick izq. izquierda | levetta sin. sinistra |  |
@@ -203,86 +205,86 @@ English slot); an empty cell shows the English. To translate: fill that column i
 | 0x19B | right stick down | stick d. bas | rechter stick runter | stick der. abajo | levetta des. giù |  |
 | 0x19C | right stick left | stick d. gauche | rechter stick links | stick der. izquierda | levetta des. sinistra |  |
 | 0x19D | right stick right | stick d. droite | rechter stick rechts | stick der. derecha | levetta des. destra |  |
-| 0x19E | mouse middle | souris milieu | maus mitte | ratón central | mouse centr. |  |
-| 0x19F | mouse 4 | souris 4 | maus 4 | ratón 4 | mouse 4 |  |
-| 0x1A0 | mouse 5 | souris 5 | maus 5 | ratón 5 | mouse 5 |  |
+| 0x19E | mouse middle | souris milieu | maus mitte | ratón central | mouse centr. | botão do meio do mouse |
+| 0x19F | mouse 4 | souris 4 | maus 4 | ratón 4 | mouse 4 | mouse 4 |
+| 0x1A0 | mouse 5 | souris 5 | maus 5 | ratón 5 | mouse 5 | mouse 5 |
 | 0x1A1 | wheel up | molette haut | mausrad hoch | rueda arriba | rotella su |  |
 | 0x1A2 | wheel down | molette bas | mausrad runter | rueda abajo | rotella giù |  |
 | 0x1A3 | mouse look | visée souris | mausblick | vista con ratón | visuale mouse |  |
-| 0x1A4 | mouse sensitivity | sensibilité souris | mausempfindlichkeit | sensibilidad del ratón | sensibilità mouse |  |
-| 0x1A5 | invert mouse y | inverser souris y | maus y umkehren | invertir ratón y | inverti mouse y |  |
-| 0x1A6 | move the camera with the mouse while playing. | la souris tourne la caméra en jeu. | die maus dreht die kamera im spiel. | el ratón mueve la cámara al jugar. | il mouse muove la telecamera in gioco. |  |
+| 0x1A4 | mouse sensitivity | sensibilité souris | mausempfindlichkeit | sensibilidad del ratón | sensibilità mouse | sensibilidade do mouse |
+| 0x1A5 | invert mouse y | inverser souris y | maus y umkehren | invertir ratón y | inverti mouse y | inverter o eixo y do mouse |
+| 0x1A6 | move the camera with the mouse while playing. | la souris tourne la caméra en jeu. | die maus dreht die kamera im spiel. | el ratón mueve la cámara al jugar. | il mouse muove la telecamera in gioco. | mova a câmera com o mouse enquanto joga. |
 | 0x1A7 | how fast the mouse turns the camera. | la vitesse de la caméra à la souris. | wie schnell die maus die kamera dreht. | lo rápido que el ratón gira la cámara. | quanto velocemente il mouse gira la telecamera. |  |
 | 0x1A8 | moving the mouse up looks down. | souris vers le haut : la caméra baisse. | maus hoch blickt nach unten. | ratón arriba mira hacia abajo. | mouse in alto guarda in basso. |  |
-| 0x1A9 | fxaa | fxaa | fxaa | fxaa | fxaa |  |
+| 0x1A9 | fxaa | fxaa | fxaa | fxaa | fxaa | fxaa |
 | 0x1AA | menu hints | aides des menus | menühinweise | ayudas de menú | suggerimenti menu |  |
 | 0x1AB | the menus' button hints: the game's own, or a bar at the bottom. | les aides des boutons : celles du jeu, ou une barre en bas. | die tastenhinweise: die des spiels oder eine leiste unten. | las ayudas de botones: las del juego o una barra abajo. | i suggerimenti dei tasti: quelli del gioco o una barra in basso. |  |
-| 0x1AC | original | originales | original | originales | originali |  |
+| 0x1AC | original | originales | original | originales | originali | original |
 | 0x1AD | bar | barre | leiste | barra | barra |  |
-| 0x1AE | show fps | afficher les fps | fps anzeigen | mostrar fps | mostra fps |  |
+| 0x1AE | show fps | afficher les fps | fps anzeigen | mostrar fps | mostra fps | mostrar fps |
 | 0x1AF | a frames per second counter in the top left corner. | un compteur d'images par seconde en haut à gauche. | ein bilder-pro-sekunde-zähler oben links. | un contador de imágenes por segundo arriba a la izquierda. | un contatore di fotogrammi al secondo in alto a sinistra. |  |
 | 0x1B0 | portable mode | mode portable | portabler modus | modo portátil | modalità portatile |  |
 | 0x1B1 | settings, saves and mods in the game's own user folder, to carry it on a usb stick. | réglages, sauvegardes et mods dans le dossier user du jeu, pour l'emporter sur une clé usb. | einstellungen, spielstände und mods im user-ordner des spiels, für einen usb-stick. | ajustes, partidas y mods en la carpeta user del juego, para llevarlo en un usb. | impostazioni, salvataggi e mod nella cartella user del gioco, da portare su chiavetta usb. |  |
 | 0x1B2 | copy your settings, saves and mods from appdata into the game's user folder and use them from there? the game closes when it's done. | copier tes réglages, sauvegardes et mods d'appdata dans le dossier user du jeu et les utiliser de là ? le jeu se ferme une fois fini. | deine einstellungen, spielstände und mods aus appdata in den user-ordner des spiels kopieren und von dort nutzen? danach schließt sich das spiel. | ¿copiar tus ajustes, partidas y mods de appdata a la carpeta user del juego y usarlos desde allí? el juego se cierra al terminar. | copiare impostazioni, salvataggi e mod da appdata nella cartella user del gioco e usarli da lì? il gioco si chiude alla fine. |  |
 | 0x1B3 | copy your settings, saves and mods from the game's user folder back to appdata and use them from there? the game closes when it's done. | recopier tes réglages, sauvegardes et mods du dossier user du jeu dans appdata et les utiliser de là ? le jeu se ferme une fois fini. | deine einstellungen, spielstände und mods aus dem user-ordner des spiels zurück nach appdata kopieren und von dort nutzen? danach schließt sich das spiel. | ¿copiar de nuevo tus ajustes, partidas y mods de la carpeta user del juego a appdata y usarlos desde allí? el juego se cierra al terminar. | ricopiare impostazioni, salvataggi e mod dalla cartella user del gioco in appdata e usarli da lì? il gioco si chiude alla fine. |  |
-| 0x1B4 | copying… | copie… | kopieren… | copiando… | copia in corso… |  |
-| 0x1B5 | done. the game closes now: start it again. | terminé. le jeu se ferme : relance-le. | fertig. das spiel schließt sich jetzt: starte es neu. | hecho. el juego se cierra ahora: vuelve a abrirlo. | fatto. il gioco ora si chiude: riavvialo. |  |
-| 0x1B6 | what was already there is kept in: | ce qui s'y trouvait déjà est gardé dans : | was schon dort war, liegt jetzt in: | lo que ya había se guarda en: | quello che c'era già è conservato in: |  |
+| 0x1B4 | copying… | copie… | kopieren… | copiando… | copia in corso… | copiando… |
+| 0x1B5 | done. the game closes now: start it again. | terminé. le jeu se ferme : relance-le. | fertig. das spiel schließt sich jetzt: starte es neu. | hecho. el juego se cierra ahora: vuelve a abrirlo. | fatto. il gioco ora si chiude: riavvialo. | pronto. o jogo vai fechar agora: reinicie-o. |
+| 0x1B6 | what was already there is kept in: | ce qui s'y trouvait déjà est gardé dans : | was schon dort war, liegt jetzt in: | lo que ya había se guarda en: | quello che c'era già è conservato in: | o que já estava lá é mantido em: |
 | 0x1B7 | the game's folder can't be written to (is it in program files?). move the game's folder somewhere else first. | impossible d'écrire dans le dossier du jeu (est-il dans program files ?). déplace d'abord le dossier du jeu ailleurs. | in den ordner des spiels kann nicht geschrieben werden (liegt er in program files?). verschiebe ihn zuerst woandershin. | no se puede escribir en la carpeta del juego (¿está en program files?). mueve antes la carpeta del juego a otro sitio. | nella cartella del gioco non si può scrivere (è in program files?). sposta prima la cartella del gioco altrove. |  |
 | 0x1B8 | the copy didn't work, so nothing changed: the reason is in log.txt. | la copie n'a pas marché, rien n'a changé : la raison est dans log.txt. | das kopieren hat nicht geklappt, nichts wurde geändert: der grund steht in log.txt. | la copia no ha funcionado y nada ha cambiado: el motivo está en log.txt. | la copia non è riuscita e non è cambiato nulla: il motivo è in log.txt. |  |
-| 0x1B9 | ok | ok | ok | aceptar | ok |  |
-| 0x1BA | dithering | tramage | dithering | tramado | dithering |  |
+| 0x1B9 | ok | ok | ok | aceptar | ok | ok |
+| 0x1BA | dithering | tramage | dithering | tramado | dithering | suavização de cores |
 | 0x1BB | the ps2 shows the picture in 16-bit colour with a fine pattern. off keeps its full colour. | la ps2 affiche l'image en couleurs 16 bits avec une fine trame. désactivé garde toutes ses couleurs. | die ps2 zeigt das bild in 16-bit-farben mit feinem muster. aus behält die vollen farben. | la ps2 muestra la imagen en color de 16 bits con una trama fina. desactivado mantiene todo el color. | la ps2 mostra l'immagine a colori a 16 bit con una trama fine. disattivato mantiene tutti i colori. |  |
-| 0x1BC | as the ps2 | comme la ps2 | wie die ps2 | como la ps2 | come la ps2 |  |
-| 0x1BD | ssaa 2x | ssaa 2x | ssaa 2x | ssaa 2x | ssaa 2x |  |
-| 0x1BE | ssaa 4x | ssaa 4x | ssaa 4x | ssaa 4x | ssaa 4x |  |
-| 0x1BF | draw distance | distance d'affichage | sichtweite | distancia de dibujado | distanza di disegno |  |
+| 0x1BC | as the ps2 | comme la ps2 | wie die ps2 | como la ps2 | come la ps2 | igual ao ps2 |
+| 0x1BD | ssaa 2x | ssaa 2x | ssaa 2x | ssaa 2x | ssaa 2x | ssaa 2x |
+| 0x1BE | ssaa 4x | ssaa 4x | ssaa 4x | ssaa 4x | ssaa 4x | ssaa 4x |
+| 0x1BF | draw distance | distance d'affichage | sichtweite | distancia de dibujado | distanza di disegno | distância de renderização |
 | 0x1C0 | how far things and their detailed models are drawn. farther is slower on older pcs. | jusqu'où les objets et leurs détails sont affichés. plus loin ralentit les vieux pc. | wie weit objekte und ihre details gezeichnet werden. weiter bremst ältere pcs. | hasta dónde se ven los objetos y sus detalles. más lejos es más lento en pcs antiguos. | fin dove si vedono gli oggetti e i loro dettagli. più lontano rallenta i pc vecchi. |  |
-| 0x1C1 | short | courte | kurz | corta | corta |  |
-| 0x1C2 | original | d'origine | original | original | originale |  |
-| 0x1C3 | medium | moyenne | mittel | media | media |  |
-| 0x1C4 | long | longue | weit | larga | lunga |  |
-| 0x1C5 | quit to desktop | quitter vers le bureau | zum desktop beenden | salir al escritorio | esci al desktop |  |
-| 0x1C6 | closes the game as the window's close button does. progress not saved is lost. | ferme le jeu comme le bouton de la fenêtre. la progression non sauvegardée est perdue. | schließt das spiel wie der knopf des fensters. nicht gespeicherter fortschritt geht verloren. | cierra el juego como el botón de la ventana. el progreso no guardado se pierde. | chiude il gioco come il pulsante della finestra. i progressi non salvati vanno persi. |  |
+| 0x1C1 | short | courte | kurz | corta | corta | curto |
+| 0x1C2 | original | d'origine | original | original | originale | original |
+| 0x1C3 | medium | moyenne | mittel | media | media | médio |
+| 0x1C4 | long | longue | weit | larga | lunga | longo |
+| 0x1C5 | quit to desktop | quitter vers le bureau | zum desktop beenden | salir al escritorio | esci al desktop | sair para a área de trabalho |
+| 0x1C6 | closes the game as the window's close button does. progress not saved is lost. | ferme le jeu comme le bouton de la fenêtre. la progression non sauvegardée est perdue. | schließt das spiel wie der knopf des fensters. nicht gespeicherter fortschritt geht verloren. | cierra el juego como el botón de la ventana. el progreso no guardado se pierde. | chiude il gioco come il pulsante della finestra. i progressi non salvati vanno persi. | encerra o jogo da mesma forma que o botão de fechar da janela. o progresso não salvo será perdido. |
 | 0x1C7 | quit the game now? progress not saved is lost. | quitter le jeu maintenant ? la progression non sauvegardée est perdue. | das spiel jetzt beenden? nicht gespeicherter fortschritt geht verloren. | ¿salir del juego ahora? el progreso no guardado se pierde. | uscire dal gioco adesso? i progressi non salvati vanno persi. |  |
-| 0x1C8 | credits | crédits | mitwirkende | créditos | riconoscimenti |  |
+| 0x1C8 | credits | crédits | mitwirkende | créditos | riconoscimenti | créditos |
 | 0x1C9 | the people who made this port and the work it stands on. | les personnes qui ont fait ce portage et le travail sur lequel il repose. | die leute hinter dieser portierung und der arbeit, auf der sie aufbaut. | las personas que hicieron este port y el trabajo en el que se basa. | le persone che hanno fatto questo port e il lavoro su cui si basa. |  |
-| 0x1CA | the windows port | le portage windows | die windows-portierung | el port para windows | il port per windows |  |
-| 0x1CB | the decompilation | la décompilation | die dekompilierung | la descompilación | la decompilazione |  |
-| 0x1CC | the mac port | le portage mac | die mac-portierung | el port para mac | il port per mac |  |
-| 0x1CD | crash twinsanity improved's fixes and 21:9 | les corrections et le 21:9 de crash twinsanity improved | korrekturen und 21:9 aus crash twinsanity improved | las correcciones y el 21:9 de crash twinsanity improved | le correzioni e il 21:9 di crash twinsanity improved |  |
-| 0x1CE | the linux build | la version linux | die linux-version | la versión para linux | la versione per linux |  |
+| 0x1CA | the windows port | le portage windows | die windows-portierung | el port para windows | il port per windows | a versão para windows |
+| 0x1CB | the decompilation | la décompilation | die dekompilierung | la descompilación | la decompilazione | a decompilação |
+| 0x1CC | the mac port | le portage mac | die mac-portierung | el port para mac | il port per mac | a versão para mac |
+| 0x1CD | crash twinsanity improved's fixes and 21:9 | les corrections et le 21:9 de crash twinsanity improved | korrekturen und 21:9 aus crash twinsanity improved | las correcciones y el 21:9 de crash twinsanity improved | le correzioni e il 21:9 di crash twinsanity improved | correções do crash twinsanity melhoradas em 21:9 |
+| 0x1CE | the linux build | la version linux | die linux-version | la versión para linux | la versione per linux | a versão para linux |
 | 0x1CF | tests and reports | tests et rapports | tests und berichte | pruebas e informes | prove e segnalazioni |  |
-| 0x1D0 | the hd texture pack | le pack de textures hd | das hd-texturpaket | el pack de texturas hd | il pacchetto di texture hd |  |
-| 0x1D1 | code from twinsanityevolved | du code de twinsanityevolved | code aus twinsanityevolved | código de twinsanityevolved | codice da twinsanityevolved |  |
-| 0x1D2 | voice language | langue des voix | sprache der stimmen | idioma de las voces | lingua delle voci |  |
-| 0x1D3 | the voices and the movies' sound: as the texts, or another. from the next start. | les voix et le son des films : comme les textes, ou une autre. au prochain lancement. | stimmen und ton der filme: wie die texte oder eine andere. ab dem nächsten start. | las voces y el sonido de los vídeos: como los textos u otro. al volver a abrir el juego. | le voci e l'audio dei filmati: come i testi, o un'altra. dal prossimo avvio del gioco. |  |
-| 0x1D4 | as the texts | comme les textes | wie die texte | como los textos | come i testi |  |
-| 0x1D5 | português | português | português | português | português |  |
+| 0x1D0 | the hd texture pack | le pack de textures hd | das hd-texturpaket | el pack de texturas hd | il pacchetto di texture hd | o pacote de texturas em hd |
+| 0x1D1 | code from twinsanityevolved | du code de twinsanityevolved | code aus twinsanityevolved | código de twinsanityevolved | codice da twinsanityevolved | código de twinsanityevolved |
+| 0x1D2 | voice language | langue des voix | sprache der stimmen | idioma de las voces | lingua delle voci | idioma das vozes |
+| 0x1D3 | the voices and the movies' sound: as the texts, or another. from the next start. | les voix et le son des films : comme les textes, ou une autre. au prochain lancement. | stimmen und ton der filme: wie die texte oder eine andere. ab dem nächsten start. | las voces y el sonido de los vídeos: como los textos u otro. al volver a abrir el juego. | le voci e l'audio dei filmati: come i testi, o un'altra. dal prossimo avvio del gioco. | as vozes e o som dos filmes: como os textos, ou algo diferente. a partir da próxima inícialização |
+| 0x1D4 | as the texts | comme les textes | wie die texte | como los textos | come i testi | conforme os textos |
+| 0x1D5 | português | português | português | português | português | português |
 | 0x1D6 | nederlands | nederlands | nederlands | nederlands | nederlands |  |
-| 0x1D7 | smaa | smaa | smaa | smaa | smaa |  |
-| 0x1D8 | anisotropic filtering | filtrage anisotrope | anisotrope filterung | filtrado anisotrópico | filtro anisotropico |  |
+| 0x1D7 | smaa | smaa | smaa | smaa | smaa | smaa |
+| 0x1D8 | anisotropic filtering | filtrage anisotrope | anisotrope filterung | filtrado anisotrópico | filtro anisotropico | filtragem anisotrópica |
 | 0x1D9 | textures seen at an angle (floors, paths) sharper. off is the ps2's look. | textures vues de biais (sols, chemins) plus nettes. désactivé : comme la ps2. | texturen im schrägen winkel (böden, wege) schärfer. aus: wie die ps2. | texturas vistas en ángulo (suelos, caminos) más nítidas. desactivado: como la ps2. | texture viste di sbieco (pavimenti, sentieri) più nitide. disattivato: come la ps2. |  |
 | 0x1DA | check for updates | vérifier les mises à jour | nach updates suchen | buscar actualizaciones | controlla aggiornamenti |  |
 | 0x1DB | at each start, asks github for the latest version. it never downloads anything. | à chaque lancement, demande à github la dernière version. rien n'est téléchargé. | fragt bei jedem start github nach der neuesten version. lädt nie etwas herunter. | en cada inicio, pregunta a github por la última versión. nunca descarga nada. | a ogni avvio chiede a github l'ultima versione. non scarica mai niente. |  |
-| 0x1DC | new version's page | page de la nouvelle version | seite der neuen version | página de la nueva versión | pagina della nuova versione |  |
-| 0x1DD | opens the new version's page on github in your browser. | ouvre la page de la nouvelle version sur github dans ton navigateur. | öffnet die seite der neuen version auf github im browser. | abre la página de la nueva versión en github en tu navegador. | apre la pagina della nuova versione su github nel browser. |  |
+| 0x1DC | new version's page | page de la nouvelle version | seite der neuen version | página de la nueva versión | pagina della nuova versione | página da nova versão |
+| 0x1DD | opens the new version's page on github in your browser. | ouvre la page de la nouvelle version sur github dans ton navigateur. | öffnet die seite der neuen version auf github im browser. | abre la página de la nueva versión en github en tu navegador. | apre la pagina della nuova versione su github nel browser. | abre a página da nova versão no GitHub no seu navegador. |
 | 0x1DE | version x.y.z is out: options, game. | la version x.y.z est sortie : options, jeu. | version x.y.z ist da: optionen, spiel. | ya está la versión x.y.z: opciones, juego. | è uscita la versione x.y.z: opzioni, gioco. |  |
 | 0x1DF | infinite lives | vies infinies | unendliche leben | vidas infinitas | vite infinite |  |
 | 0x1E0 | a death costs no life: the count stays where it is. off plays as the original. | une mort ne fait perdre aucune vie : le compteur ne bouge pas. désactivé : comme l'original. | ein tod kostet kein leben: der zähler bleibt. aus: wie das original. | morir no cuesta vidas: el contador no cambia. desactivado: como el original. | morire non costa vite: il conteggio resta. disattivato: come l'originale. |  |
-| 0x1E1 | stronger aku aku | aku aku plus fort | stärkerer aku aku | aku aku más fuerte | aku aku più forte |  |
+| 0x1E1 | stronger aku aku | aku aku plus fort | stärkerer aku aku | aku aku más fuerte | aku aku più forte | aku aku mais forte |
 | 0x1E2 | aku aku's masks also take tnt and nitro blasts, as in the earlier crash games. | les masques d'aku aku encaissent aussi tnt et nitro, comme dans les anciens crash. | aku akus masken halten auch tnt und nitro aus, wie in den früheren crash-spielen. | las máscaras de aku aku aguantan también tnt y nitro, como en los crash anteriores. | le maschere di aku aku reggono anche tnt e nitro, come nei crash precedenti. |  |
 | 0x1E3 | automatic camera | caméra automatique | automatische kamera | cámara automática | telecamera automatica |  |
 | 0x1E4 | the camera follows behind you: ignoring the look controls, or (assisted) still turned by them. | la caméra te suit de dos : sans les commandes de caméra, ou (assistée) encore tournée par elles. | die kamera folgt dir von hinten: ohne kamerasteuerung oder (unterstützt) noch von ihr gedreht. | la cámara te sigue por detrás: sin los controles de cámara, o (asistida) aún girada por ellos. | la telecamera ti segue da dietro: ignora i comandi, o (assistita) si gira ancora con essi. |  |
-| 0x1E5 | slide jump | saut glissé | rutschsprung | salto deslizante | salto in scivolata |  |
+| 0x1E5 | slide jump | saut glissé | rutschsprung | salto deslizante | salto in scivolata | salto deslizante |
 | 0x1E6 | the long jump from a slide: at any moment of it, or easier (a later press, steered in the air). | le saut long depuis une glissade : à tout moment, ou plus facile (plus tard, dirigé en l'air). | der weitsprung aus dem rutschen: jederzeit oder leichter (später drücken, in der luft lenken). | el salto largo al deslizarte: en cualquier momento, o más fácil (más tarde, dirigido en el aire). | il salto lungo dalla scivolata: in qualunque momento, o più facile (più tardi, guidato in aria). |  |
-| 0x1E7 | any moment | à tout moment | jederzeit | en cualquier momento | in qualunque momento |  |
-| 0x1E8 | easier | plus facile | leichter | más fácil | più facile |  |
+| 0x1E7 | any moment | à tout moment | jederzeit | en cualquier momento | in qualunque momento | a qualquer momento |
+| 0x1E8 | easier | plus facile | leichter | más fácil | più facile | mais fácil |
 | 0x1E9 | start any level from the main menu. what you save then is kept apart from your saves. | lancer n'importe quel niveau depuis le menu principal. ses sauvegardes restent à part. | jedes level aus dem hauptmenü starten. was du dann speicherst, bleibt getrennt. | empezar cualquier nivel desde el menú principal. lo que guardes entonces queda aparte. | inizia qualsiasi livello dal menu principale. ciò che salvi allora resta separato. |  |
-| 0x1EA | level | niveau | level | nivel | livello |  |
+| 0x1EA | level | niveau | level | nivel | livello | fase |
 | 0x1EB | the level to start, from its beginning. the story is opened up to it. | le niveau à lancer, depuis son début. l'histoire est ouverte jusqu'à lui. | das level, von seinem anfang an. die geschichte ist bis dorthin offen. | el nivel que empezar, desde el principio. la historia se abre hasta él. | il livello da iniziare, dal suo inizio. la storia è aperta fino a lì. |  |
-| 0x1EC | start the level | lancer le niveau | level starten | empezar el nivel | inizia il livello |  |
-| 0x1ED | from the main menu | depuis le menu principal | aus dem hauptmenü | desde el menú principal | dal menu principale |  |
+| 0x1EC | start the level | lancer le niveau | level starten | empezar el nivel | inizia il livello | começar a fase |
+| 0x1ED | from the main menu | depuis le menu principal | aus dem hauptmenü | desde el menú principal | dal menu principale | no menu principal |
 | 0x1EE | quit to the main menu, then open the options there to start a level. | quitte vers le menu principal, puis ouvre les options pour lancer un niveau. | zum hauptmenü beenden und dort in den optionen ein level starten. | sal al menú principal y abre allí las opciones para empezar un nivel. | esci al menu principale e apri lì le opzioni per iniziare un livello. |  |
 | 0x1EF | speedrun timer | chrono speedrun | speedrun-timer | cronómetro speedrun | cronometro speedrun |  |
 | 0x1F0 | real time from new game, with each level's time as you finish it. | temps réel depuis nouvelle partie, avec le temps de chaque niveau fini. | echtzeit ab neues spiel, mit der zeit jedes beendeten levels. | tiempo real desde nueva partida, con el tiempo de cada nivel al acabarlo. | tempo reale da nuova partita, con il tempo di ogni livello finito. |  |
@@ -291,17 +293,17 @@ English slot); an empty cell shows the English. To translate: fill that column i
 | 0x1F3 | shadows on crates | ombres sur les caisses | schatten auf kisten | sombras en las cajas | ombre sulle casse |  |
 | 0x1F4 | your shadow falls on the tops of crates too. from a level's next loading. | ton ombre tombe aussi sur le dessus des caisses. au prochain chargement d'un niveau. | dein schatten fällt auch auf kisten. ab dem nächsten laden eines levels. | tu sombra cae también sobre las cajas. desde la próxima carga de un nivel. | la tua ombra cade anche sopra le casse. dal prossimo caricamento di un livello. |  |
 | 0x1F5 | thanks | remerciements | dank | agradecimientos | ringraziamenti |  |
-| 0x1F6 | mods | mods | mods | mods | mod |  |
-| 0x1F7 | import mods | importer des mods | mods importieren | importar mods | importa mod |  |
+| 0x1F6 | mods | mods | mods | mods | mod | mods |
+| 0x1F7 | import mods | importer des mods | mods importieren | importar mods | importa mod | importar mods |
 | 0x1F8 | turns the zips and disc images in the mods folder into mods. from the next start. | transforme les zip et images disque du dossier mods en mods. au prochain lancement. | macht aus den zips und disc-images im mods-ordner mods. ab dem nächsten start. | convierte los zip e imágenes de disco de la carpeta mods en mods. al volver a abrir el juego. | trasforma zip e immagini disco della cartella mods in mod. dal prossimo avvio del gioco. |  |
-| 0x1F9 | open the mods folder | ouvrir le dossier mods | mods-ordner öffnen | abrir la carpeta mods | apri la cartella mods |  |
+| 0x1F9 | open the mods folder | ouvrir le dossier mods | mods-ordner öffnen | abrir la carpeta mods | apri la cartella mods | abra a pasta mods |
 | 0x1FA | put mods there. where two change a file, the first on wins. changes from the next start. | mets-y les mods. si deux changent un fichier, le premier activé gagne. au prochain lancement. | leg die mods dort ab. ändern zwei eine datei, gilt die erste aktive. ab dem nächsten start. | pon ahí los mods. si dos cambian un archivo, gana el primero activo. al volver a abrir el juego. | mettici le mod. se due cambiano un file, vince la prima attiva. dal prossimo avvio del gioco. |  |
-| 0x1FB | files in the mods folder | fichiers du dossier mods | dateien im mods-ordner | archivos de la carpeta mods | file nella cartella mods |  |
-| 0x1FC | importing the mods: a disc image takes a minute or two. | import des mods : une image disque prend une minute ou deux. | mods werden importiert: ein disc-image dauert ein, zwei minuten. | importando los mods: una imagen de disco tarda un minuto o dos. | importazione delle mod: un'immagine disco richiede un minuto o due. |  |
-| 0x1FD | done: the mods are used from the next start of the game. | terminé : les mods sont utilisés au prochain lancement du jeu. | fertig: die mods gelten ab dem nächsten start des spiels. | hecho: los mods se usan al volver a abrir el juego. | fatto: le mod si usano dal prossimo avvio del gioco. |  |
-| 0x1FE | something couldn't be imported: the reason is in log.txt. | quelque chose n'a pas pu être importé : la raison est dans log.txt. | etwas konnte nicht importiert werden: der grund steht in log.txt. | algo no se pudo importar: el motivo está en log.txt. | qualcosa non è stato importato: il motivo è in log.txt. |  |
-| 0x1FF | can't be used: | inutilisable : | nicht nutzbar: | no se puede usar: | non utilizzabile: |  |
-| 0x200 | its program changes don't apply. | ses changements du programme ne s'appliquent pas. | seine programmänderungen gelten nicht. | sus cambios del programa no se aplican. | le sue modifiche al programma non valgono. |  |
+| 0x1FB | files in the mods folder | fichiers du dossier mods | dateien im mods-ordner | archivos de la carpeta mods | file nella cartella mods | arquivos na pasta mods |
+| 0x1FC | importing the mods: a disc image takes a minute or two. | import des mods : une image disque prend une minute ou deux. | mods werden importiert: ein disc-image dauert ein, zwei minuten. | importando los mods: una imagen de disco tarda un minuto o dos. | importazione delle mod: un'immagine disco richiede un minuto o due. | importação dos mods: uma imagem de disco leva um ou dois minutos. |
+| 0x1FD | done: the mods are used from the next start of the game. | terminé : les mods sont utilisés au prochain lancement du jeu. | fertig: die mods gelten ab dem nächsten start des spiels. | hecho: los mods se usan al volver a abrir el juego. | fatto: le mod si usano dal prossimo avvio del gioco. | concluído: as modificações serão aplicadas a partir da próxima vez que o jogo for iniciado. |
+| 0x1FE | something couldn't be imported: the reason is in log.txt. | quelque chose n'a pas pu être importé : la raison est dans log.txt. | etwas konnte nicht importiert werden: der grund steht in log.txt. | algo no se pudo importar: el motivo está en log.txt. | qualcosa non è stato importato: il motivo è in log.txt. | não foi possível importar algo: o motivo está no arquivo log.txt. |
+| 0x1FF | can't be used: | inutilisable : | nicht nutzbar: | no se puede usar: | non utilizzabile: | não pode ser usado: |
+| 0x200 | its program changes don't apply. | ses changements du programme ne s'appliquent pas. | seine programmänderungen gelten nicht. | sus cambios del programa no se aplican. | le sue modifiche al programma non valgono. | suas alterações no programa não se aplicam. |
 | 0x201 | the automatic camera | la caméra automatique | die automatische kamera | la cámara automática | la telecamera automatica |  |
 | 0x202 | enhancements | améliorations | verbesserungen | mejoras | migliorie |  |
 | 0x203 | these change the original game. all off, it plays as on the ps2. | elles changent le jeu original. tout désactivé : comme sur ps2. | sie ändern das originalspiel. alles aus: wie auf der ps2. | cambian el juego original. todo desactivado: como en ps2. | cambiano il gioco originale. tutto spento: come su ps2. |  |
@@ -310,10 +312,10 @@ English slot); an empty cell shows the English. To translate: fill that column i
 | 0x206 | movement | mouvement | bewegung | movimiento | movimento |  |
 | 0x207 | camera | caméra | kamera | cámara | telecamera |  |
 | 0x208 | levels | niveaux | level | niveles | livelli |  |
-| 0x209 | window | fenêtre | fenster | ventana | finestra |  |
+| 0x209 | window | fenêtre | fenster | ventana | finestra | janela |
 | 0x20A | picture | image | bild | imagen | immagine |  |
 | 0x20B | device | appareil | gerät | dispositivo | dispositivo |  |
-| 0x20C | mouse | souris | maus | ratón | mouse |  |
+| 0x20C | mouse | souris | maus | ratón | mouse | mouse |
 | 0x20D | master volume | volume général | gesamtlautstärke | volumen general | volume generale |  |
 | 0x20E | all the sound at once: music, effects, voices and movies. | tout le son à la fois : musique, effets, voix et vidéos. | der ganze ton auf einmal: musik, effekte, stimmen und filme. | todo el sonido a la vez: música, efectos, voces y vídeos. | tutto l'audio insieme: musica, effetti, voci e filmati. |  |
 | 0x20F | hide (hold) | masquer (maintenir) | ausblenden (halten) | ocultar (mantener) | nascondi (tieni premuto) |  |
