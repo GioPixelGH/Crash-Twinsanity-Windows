@@ -64,6 +64,54 @@ bool NativeGame::MaskTouching(const void* character)
 
 namespace
 {
+// What the character stands on (a few at once: the edge between two crates), since when and last when
+struct Stand
+{
+    const void* other;
+    u32 since;
+    u32 last;
+};
+Stand g_Stands[4] = {};
+}
+
+bool NativeGame::MaskStoodOn(const void* other, u32 now)
+{
+    const u32 gap = static_cast<u32>(MaskTouchSeconds * g_ClockUnitsPerSecond);
+    Stand* stand = nullptr;
+    for (Stand& each : g_Stands)
+    {
+        if (each.other == other && now - each.last <= gap)
+        {
+            stand = &each;
+            break;
+        }
+    }
+
+    if (stand == nullptr)
+    {
+        stand = &g_Stands[0];
+        for (Stand& each : g_Stands)
+        {
+            if (static_cast<s32>(each.last - stand->last) < 0)
+            {
+                stand = &each;
+            }
+        }
+
+        *stand = {other, now, now};
+    }
+
+    stand->last = now;
+    return now - stand->since >= static_cast<u32>(MaskStandSeconds * g_ClockUnitsPerSecond);
+}
+
+bool NativeGame::LongInvincibility()
+{
+    return NativeUi::IsOn(NativeUi::OptionLongInvincibility);
+}
+
+namespace
+{
 // The slide jump's late press and steering moment, this frame's
 bool g_SlideJumpLate = false;
 bool g_SlideSteering = false;

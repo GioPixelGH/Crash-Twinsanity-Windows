@@ -28,6 +28,9 @@
 
 #ifdef TWIN_NATIVE
 #include "gameoptions.h"
+#include "native.h"
+
+#include <cstdlib>
 #endif
 
 extern "C"
@@ -624,10 +627,24 @@ void CharacterAgent::LinkedHits()
 void CharacterAgent::AttackHits()
 {
     auto* character = static_cast<CharacterPart*>(part);
+#ifdef TWIN_NATIVE
+    // Three masks' touch (THE LIST 93, #56: its reach): what's within the spin's reach is touched as by the spin, not only what
+    // the body touches, but what the character stands on is left to its contact (hit after a second of standing on it)
+    bool masked = false;
+    if (!IsSpinning(AttackKind(character)) && AttackKind(character) != AttackThrownFromSpin)
+    {
+        masked = NativeGame::MaskTouch() && NativeGame::MaskTouching(instance);
+        if (!masked)
+        {
+            return;
+        }
+    }
+#else
     if (!IsSpinning(AttackKind(character)) && AttackKind(character) != AttackThrownFromSpin)
     {
         return;
     }
+#endif
 
     void* results[MostHits];
     InstanceQuery query;
@@ -652,7 +669,11 @@ void CharacterAgent::AttackHits()
     }
 
     s32 attacked = ChunkInstancesInHull(chunk, attackHull, &place->matrix, AttackHitKinds, &query, 0);
+#ifdef TWIN_NATIVE
+    s32 touched = masked ? 0 : ChunkInstancesInHull(chunk, &body->standingHull, &place->matrix, AttackHitKinds, &query, 0);
+#else
     s32 touched = ChunkInstancesInHull(chunk, &body->standingHull, &place->matrix, AttackHitKinds, &query, 0);
+#endif
     if (attacked > 0 || touched > 0)
     {
         TouchQuery(&query);
@@ -854,6 +875,15 @@ void CharacterAgent::HurtFrame(TimeClock* clock)
 
     if (elapsed >= modeTicks)
     {
+#ifdef TWIN_NATIVE
+        // $TWIN_MASK_TRACE: how long the invincibility lasted (the longer invincibility's check, THE LIST 93)
+        static const bool trace = std::getenv("TWIN_MASK_TRACE") != nullptr;
+        if (trace && IsPlayer() != 0)
+        {
+            Native::Log("mask trace: the player's invincibility over after %.1f s",
+                        static_cast<double>(static_cast<f32>(elapsed) * g_SecondsPerClockUnit));
+        }
+#endif
         instance->flags.visible = 1;
         mode = ModeNone;
         character->bits.invulnerable = 0;

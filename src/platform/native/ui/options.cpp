@@ -92,6 +92,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionImprovedMenus, "improved_menus", 0, 1},
     {OptionRestartCheckpoint, "restart_checkpoint", 0, 1},
     {OptionGraphicsApi, "graphics_api", 0, 1},
+    {OptionLongInvincibility, "long_invincibility", 0, 1},
 };
 
 s32 g_Values[OptionCount];

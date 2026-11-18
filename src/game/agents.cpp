@@ -18,6 +18,10 @@
 #include "game/rigidbody.h"
 #include "game/shadows.h"
 
+#ifdef TWIN_NATIVE
+#include "gameoptions.h"
+#endif
+
 extern "C"
 {
     // An instance's model's joint's position (in the world when asked). Whether it has the joint
@@ -1354,7 +1358,13 @@ void CharacterAgent::StartInvincibility(u32 kind)
     }
     else if (kind == 1)
     {
+#ifdef TWIN_NATIVE
+        // The longer invincibility (the game option, THE LIST 93, #56): 20 s, as in the earlier games
+        modeTicks = static_cast<s32>(g_ClockUnitsPerSecond *
+                                     (NativeGame::LongInvincibility() ? NativeGame::LongInvincibilitySeconds : LongSeconds));
+#else
         modeTicks = static_cast<s32>(g_ClockUnitsPerSecond * LongSeconds);
+#endif
     }
 }
 

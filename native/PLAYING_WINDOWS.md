@@ -155,8 +155,10 @@ Your saves stay ones the original game could make.
   Off plays exactly like the PS2.
 - **Infinite lives**: dying costs no life.
 - **Stronger Aku Aku**: with one or two masks, TNT and Nitro take a mask instead of a life, as in the earlier Crash games.
-- **Three masks' touch**: while three masks make you invincible, what you touch is hit as if you spun.
-  Crates break and enemies are beaten.
+- **Three masks' touch**: while three masks make you invincible, what you touch or pass close to is hit as if you spun.
+  Crates break, the reinforced ones too, and enemies are beaten.
+  A crate you stand on breaks after a second, so you can cross a bridge of crates.
+- **Longer invincibility**: three masks make you invincible for 20 seconds instead of 8, as in the earlier Crash games.
 - **Slide jump**: the long jump from a slide at any moment of it.
   Or easier: also just after the slide, and steered in the air.
 - **Double jump**: later in a fall, or at any moment of it, and after a slide jump too.

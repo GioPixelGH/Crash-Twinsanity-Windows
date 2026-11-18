@@ -70,6 +70,18 @@ constexpr f32 MaskTouchSeconds = 0.1f;
 bool MaskTouch();
 void SetMaskTouching(const void* character);
 bool MaskTouching(const void* character);
+// As in the earlier games (THE LIST 93, #56): what the character stands on is hit only once it has stood on it MaskStandSeconds
+// by the game clock (now), touches less than MaskTouchSeconds apart counting as one stand, so a bridge of crates can be crossed
+constexpr f32 MaskStandSeconds = 1.0f;
+bool MaskStoodOn(const void* other, u32 now);
+}
+
+// The longer invincibility (long_invincibility, THE LIST 93, #56): three masks make the played character invincible for 20 s, as
+// in the earlier games, instead of 8 (agents.cpp's CharacterAgent::StartInvincibility)
+namespace NativeGame
+{
+constexpr f32 LongInvincibilitySeconds = 20.0f;
+bool LongInvincibility();
 }
 
 // The drop shadow (drop_shadow, #11, #35): a round shadow on the ground under the played character while it's off the ground,

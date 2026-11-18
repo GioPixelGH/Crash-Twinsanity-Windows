@@ -382,6 +382,9 @@ enum NativeText : u32
     TextDescGraphicsApi,
     // The improved menus' main menu: continue, the newest save loaded (THE LIST 63a, #48)
     TextContinue,
+    // The longer invincibility (THE LIST 93, #56): the row and its description
+    TextLongInvincibility,
+    TextDescLongInvincibility,
     NativeTextEnd,
 };
 
@@ -581,6 +584,8 @@ enum Option : u32
     // The graphics API (THE LIST 73: graphics/graphicsapi.cpp): OpenGL 0 (the default), Vulkan 1, from the next start; the other
     // one taken at a start where this one can't show the game or didn't at the last start
     OptionGraphicsApi,
+    // The longer invincibility (THE LIST 93, #56): three masks' 20 s instead of 8
+    OptionLongInvincibility,
     OptionCount,
 };
 

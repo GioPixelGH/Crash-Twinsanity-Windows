@@ -490,6 +490,8 @@ void Build()
     enhancements.push_back(Toggle(TextStrongMask, TextDescStrongMask, OptionStrongMask));
     // Three masks' touch (THE LIST 54, #18)
     enhancements.push_back(Toggle(TextMaskTouch, TextDescMaskTouch, OptionMaskTouch));
+    // The longer invincibility (THE LIST 93, #56)
+    enhancements.push_back(Toggle(TextLongInvincibility, TextDescLongInvincibility, OptionLongInvincibility));
     // The slide jump (THE LIST 11, #11, #35): original, any moment, easier; the double jump (THE LIST 53, #47): original, later, any moment
     enhancements.push_back(Section(TextSectionMovement));
     enhancements.push_back(OptionChoice(TextSlideJump, TextDescSlideJump, OptionSlideJump,
@@ -1146,8 +1148,8 @@ void ResetTab(u32 tab)
                       OptionSpeedrunTimer, OptionUpdateCheck, OptionDetailedLog});
         break;
     case TabEnhancements:
-        ResetOptions({OptionRetailFixes, OptionInfiniteLives, OptionStrongMask, OptionMaskTouch, OptionSlideJump,
-                      OptionDoubleJump, OptionAutoCamera, OptionImprovedMenus, OptionRestartCheckpoint,
+        ResetOptions({OptionRetailFixes, OptionInfiniteLives, OptionStrongMask, OptionMaskTouch, OptionLongInvincibility,
+                      OptionSlideJump, OptionDoubleJump, OptionAutoCamera, OptionImprovedMenus, OptionRestartCheckpoint,
                       OptionLevelSelect});
         break;
     case TabControls:

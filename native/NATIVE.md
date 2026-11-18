@@ -288,6 +288,22 @@ have made itself (`src/platform/native/gameoptions.h`):
   did (the stronger mask or the bug fixes keep them out). `$TWIN_MASK_TRACE` logs each touch it makes a spin. Checked on the
   beach with four masks (`$TWIN_HOP`'s `mask` step) and the hop's `fly` through a crate and through the crabs: at 0 the crate
   stays whole and nothing is hit; at 1 the crate gives its contents and the crabs take spin attacks.
+  Since THE LIST 93 (#56, NormanTheFox's videos: the PS1 games' invincibility next to the port's) it goes as in the earlier
+  games in three ways. Its reach is the spin's (`CharacterAgent::AttackHits` queries the spin's box, ±0.99 round the
+  character, while the touch is on, not only what the body touches). A crate touched also gets a body slam after the spin, so
+  the reinforced wooden crates, whose scripts answer only the slam (their parts are hit by every kind), break; each crate's
+  script still decides, so the metal ones stay whole, and a crate the spin broke gives its contents once (Jungle Bungle's first
+  crates: each crate's contents made once with the slam as without; the reinforced pair and the surprise crate on it broken
+  only with it). What the character stands on (touched from above, not landed on) is walked into for its first second and
+  only then hit (`NativeGame::MaskStoodOn`, by the game clock), as a crate under invincible Crash breaks a moment after he's on
+  it in the PS1 games: a bridge of crates (Rooftop Rampage's, NormanTheFox's second video) can be crossed. Landing on a crate
+  still breaks it at once, as the jump does. check_windows.py's scenario: the reinforced crates broken, an iron crate stood on
+  walked into, then hit a second later and still whole.
+- The longer invincibility (`long_invincibility`, THE LIST 93, #56): three masks make the played character invincible for 20 s
+  (the PS1 games' and the N. Sane Trilogy's) instead of the original's 8 (`CharacterAgent::StartInvincibility`'s kind 1, the
+  only place the time is set: the hurt's mode counts it down, the mask's controller follows the part's invulnerable bit, no
+  sound or music is timed to it). `$TWIN_MASK_TRACE` logs "the player's invincibility over after N s"; check_windows.py's
+  scenarios see 8.0 s and, with the option, 20.0 s.
 - The automatic camera (`auto_camera`): in `FollowCameraRig::Frame` (`followrig.cpp`) the look axes' yaw and pitch input are
   zero whatever the stick, the mouse or the camera keys give (the zoom stays), they count as let go for the "camera still"
   test, and while the character moves the yaw's swing behind it runs as the shoulders' press has it (`yaw.rateScale` 1: the

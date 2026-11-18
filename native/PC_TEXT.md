@@ -342,6 +342,8 @@ hold, such as curly quotes, stays empty, as the ui self-test finds them):
 | 0x224 | graphics api | api graphique | grafik-api | api gráfica | api grafica |  |
 | 0x225 | opengl, or vulkan (new). from the next start. if one doesn't start, the other. | opengl, ou vulkan (nouveau). au prochain lancement. si l'une ne démarre pas, l'autre. | opengl oder vulkan (neu). ab dem nächsten start. startet eine nicht, die andere. | opengl o vulkan (nueva). al volver a abrir el juego. si una no arranca, la otra. | opengl o vulkan (nuova). dal prossimo avvio del gioco. se una non parte, l'altra. |  |
 | 0x226 | continue | continuer | fortsetzen | continuar | continua |  |
+| 0x227 | longer invincibility | invincibilité plus longue | längere unverwundbarkeit | invencibilidad más larga | invincibilità più lunga |  |
+| 0x228 | three masks make you invincible for 20 seconds, as in the earlier games, not 8. | trois masques te rendent invincible 20 secondes, comme dans les premiers jeux, pas 8. | drei masken machen dich 20 sekunden unverwundbar, wie in den früheren spielen, nicht 8. | tres máscaras te hacen invencible 20 segundos, como en los juegos anteriores, no 8. | tre maschere ti rendono invincibile per 20 secondi, come nei primi giochi, non 8. |  |
 
 ## English (29 lines)
 

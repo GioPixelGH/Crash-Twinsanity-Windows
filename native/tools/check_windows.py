@@ -126,6 +126,19 @@ SCENARIOS = [
           expect=[r"mask trace: AKUMASK, kind 1, state 5, .*its character \|throne\|act_FINAL_BOSS",
                   r"mask trace: AKUMASK, kind 1, state 0, .*the player \|throne\|act_NINA"],
           forbid=[r"the invincibility's trail \d still there"])),
+    # Issue #56 (THE LIST 93): three masks' touch as in the earlier games, in Jungle Bungle's first crates: the reinforced wooden
+    # crates (their scripts answer only the slam) get a slam after the spin and break; Crash dropped on the iron crates' pillar
+    # lands on its Aku Aku crate (broken as by the jump) and stands on an iron crate, walked into for a second, then hit as by the
+    # spin and the slam, and it stays whole; the invincibility over at the original's 8 s
+    ("Three masks' touch: the reinforced crates broken, what's stood on a second later (#56)", "Levels\\Earth\\Hub\\huba", 22,
+     "idle,mask,mask,mask,mask,goto:-58.1:-1.4:105.6,wait3,goto:-109.9:-2:110.1,wait6",
+     dict(options="mask_touch=1\n", env={"TWIN_MASK_TRACE": "1", "TWIN_SWEEP_GAME_TIME": "1"},
+          expect=[r"touch: attack 6 and a slam on REINFORCEDWOODENCRATE", r"touch: attack 3 on IRONCRATE .*normal y -1\.0",
+                  r"touch: attack 6 and a slam on IRONCRATE .*normal y -1\.0", r"invincibility over after 8\.0 s"])),
+    # Issue #56 (THE LIST 93): the longer invincibility, three masks' 20 s
+    ("The longer invincibility: three masks' 20 s (#56)", "Levels\\Earth\\Hub\\huba", 30, "idle,mask,mask,mask,mask,wait24",
+     dict(options="long_invincibility=1\n", env={"TWIN_MASK_TRACE": "1", "TWIN_SWEEP_GAME_TIME": "1"},
+          expect=[r"invincibility over after 20\.0 s"])),
     # THE LIST 37: Bandicoot Pursuit's Evil Crash, whose first route step taken straight ahead misses it, stands for good (on the
     # PS2 too); under Bug fixes the step itself is his target and he follows Cortex (Crash put on the checkpoint crate, then the pad)
     ("Bandicoot Pursuit's Evil Crash follows Cortex under Bug fixes", "Levels\\AltEarth\\Hub\\altdoc", 14,

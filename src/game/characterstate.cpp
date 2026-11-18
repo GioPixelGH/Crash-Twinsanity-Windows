@@ -470,15 +470,40 @@ void CharacterAgent::Touched(InstanceContext* other, const Vector4* normal)
 
     u32 kind = ContactAttack(normal);
 #ifdef TWIN_NATIVE
-    // $TWIN_MASK_TRACE: what three masks' touch hits as by a spin (where it is)
+    // Three masks' touch as in the earlier games (THE LIST 93, #56): what the character stands on (touched from above, not landed
+    // on) is hit only after a second of standing on it, so a bridge of crates can be crossed (Rooftop Rampage's), as a crate under
+    // invincible Crash breaks a moment after he's on it in the PS1 games; and a crate gets a body slam after the spin, so the
+    // reinforced wooden crates, whose scripts answer only the slam, break too. Each crate's script still decides: the metal ones
+    // stay whole, and a crate the spin broke gives its contents once (checked in Jungle Bungle's first crates)
+    const bool masked = NativeGame::MaskTouch() && NativeGame::MaskTouching(instance);
+    if (masked && kind == AttackSpin && normal->y == -1.0f && PartOf(this)->bits.attackKind != AttackSpin &&
+        !NativeGame::MaskStoodOn(other, GetContextClock(instance)->time))
+    {
+        kind = AttackWalkInto;
+    }
+
+    bool slamToo = false;
+    if (masked && (kind == AttackSpin || kind == AttackLandOnSpinning || kind == AttackFromBelowSpinning))
+    {
+        AgentNode* node = AgentNodeOf(other);
+        Agent* agent = node != nullptr ? node->agent : nullptr;
+        slamToo = agent != nullptr && CallVirtual<u32>(agent, agent->vtable, Agent::IsCrateSlot) != 0;
+    }
+
+    // $TWIN_MASK_TRACE: what three masks' touch hits as by a spin (its object and where it is)
     static const bool trace = std::getenv("TWIN_MASK_TRACE") != nullptr;
-    if (trace && NativeGame::MaskTouch() && NativeGame::MaskTouching(instance))
+    if (trace && masked && GetGameNode(&other->nodes, NodePickup) == nullptr)
     {
         ObjectPlace* place = other->place;
         place->SyncPosition();
-        Native::Log("mask trace: three masks' touch: attack %u on the instance at (%.1f, %.1f, %.1f)", kind,
+        auto* object = static_cast<ObjectNodeBase*>(GetGameNode(&other->nodes, NodeObject));
+        GameObject* source = object == nullptr ? nullptr
+                             : object->sourceNode != nullptr ? SourceObject(object->sourceNode)
+                                                             : object->object;
+        Native::Log("mask trace: three masks' touch: attack %u%s on %s at (%.1f, %.1f, %.1f), normal y %.1f", kind,
+                    slamToo ? " and a slam" : "", source != nullptr && source->name.string != nullptr ? source->name.string : "?",
                     static_cast<double>(place->position.x), static_cast<double>(place->position.y),
-                    static_cast<double>(place->position.z));
+                    static_cast<double>(place->position.z), static_cast<double>(normal->y));
     }
 #endif
     if (kind == AttackLandOnSpinning)
@@ -495,6 +520,13 @@ void CharacterAgent::Touched(InstanceContext* other, const Vector4* normal)
     {
         QueueAttack(other, kind, instance, kinds);
     }
+
+#ifdef TWIN_NATIVE
+    if (slamToo)
+    {
+        QueueAttack(other, AttackSlam, instance, kinds);
+    }
+#endif
 
     // Another character walks into this one
     if (kinds == CharacterNodes)

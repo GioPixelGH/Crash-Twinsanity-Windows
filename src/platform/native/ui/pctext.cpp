@@ -748,6 +748,8 @@ const NativeTextLine g_NativeTexts[] = {
     {TextDescScreen, {"the monitor the game shows on. auto is the main one.", "l'écran où s'affiche le jeu. auto est l'écran principal.", "der bildschirm für das spiel. auto ist der hauptbildschirm.", "el monitor donde se ve el juego. auto es el principal.", "il monitor dove si vede il gioco. auto è il principale."}},
     {TextSectionRenderer, {"renderer", "rendu", "renderer", "renderizado", "rendering"}},
     {TextContinue, {"continue", "continuer", "fortsetzen", "continuar", "continua"}},
+    {TextLongInvincibility, {"longer invincibility", "invincibilité plus longue", "längere unverwundbarkeit", "invencibilidad más larga", "invincibilità più lunga"}},
+    {TextDescLongInvincibility, {"three masks make you invincible for 20 seconds, as in the earlier games, not 8.", "trois masques te rendent invincible 20 secondes, comme dans les premiers jeux, pas 8.", "drei masken machen dich 20 sekunden unverwundbar, wie in den früheren spielen, nicht 8.", "tres máscaras te hacen invencible 20 segundos, como en los juegos anteriores, no 8.", "tre maschere ti rendono invincibile per 20 secondi, come nei primi giochi, non 8."}},
     {TextGraphicsApi, {"graphics api", "api graphique", "grafik-api", "api gráfica", "api grafica"}},
     {TextDescGraphicsApi, {"opengl, or vulkan (new). from the next start. if one doesn't start, the other.", "opengl, ou vulkan (nouveau). au prochain lancement. si l'une ne démarre pas, l'autre.", "opengl oder vulkan (neu). ab dem nächsten start. startet eine nicht, die andere.", "opengl o vulkan (nueva). al volver a abrir el juego. si una no arranca, la otra.", "opengl o vulkan (nuova). dal prossimo avvio del gioco. se una non parte, l'altra."}},
 };
