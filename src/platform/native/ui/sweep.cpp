@@ -689,6 +689,88 @@ void HopFrame()
         return;
     }
 
+    // "states:NAME": the instances of the player's chunk whose object's name holds NAME logged with their places, their context's
+    // flags (reference.h), their agent's state flags (properties.h's InstanceState) and their part's bits (agentparts.h)
+    if (targets[next].rfind("states:", 0) == 0)
+    {
+        std::string wanted = targets[next].substr(7);
+        std::transform(wanted.begin(), wanted.end(), wanted.begin(), [](unsigned char c) { return std::tolower(c); });
+        InstanceList list = {chunk, wanted, {}};
+        ForEachLiveInstance(ListInstance, &list);
+        for (InstanceContext* instance : list.found)
+        {
+            AgentNode* node = AgentNodeOf(instance);
+            Agent* agent = node != nullptr ? node->agent : nullptr;
+            ObjectPlace* place = instance->place;
+            place->SyncPosition();
+            Native::Log("hop:   %s at (%.1f, %.1f, %.1f): flags %08x, state %08x, part %08x", ObjectNameOf(instance),
+                        place->position.x, place->position.y, place->position.z, instance->flags.value,
+                        agent != nullptr && agent->properties != nullptr ? agent->properties->state.value : 0u,
+                        agent != nullptr && agent->part != nullptr ? static_cast<BasicAgentPart*>(agent->part)->bits.value : 0u);
+        }
+
+        if (list.found.empty())
+        {
+            Native::Log("hop: no instance of an object named like %s in %s", wanted.c_str(), name.c_str());
+        }
+
+        next++;
+        lastHop = now;
+        return;
+    }
+
+    // "damage:NAME": the instance nearest the player in its chunk whose object's name holds NAME sent an explosion's contact message
+    // of 1 damage from the player, as the scripts' CreateDamage sends one (#58). "knock:NAME": hit by a body as a rigid body's
+    // collision tells it (its agent's Collided, an impulse of 6 sideways: over a crate's breaking 5). "trigger:NAME": its trigger
+    // event run, as a "!" crate's TriggerLinkedObjects runs its linked objects' (an outline crate made solid)
+    bool knock = targets[next].rfind("knock:", 0) == 0;
+    bool trigger = targets[next].rfind("trigger:", 0) == 0;
+    if (knock || trigger || targets[next].rfind("damage:", 0) == 0)
+    {
+        std::string wanted = targets[next].substr(knock ? 6 : trigger ? 8 : 7);
+        std::transform(wanted.begin(), wanted.end(), wanted.begin(), [](unsigned char c) { return std::tolower(c); });
+        ObjectPlace* place = player->place;
+        place->SyncPosition();
+        InstanceSearch search = {chunk, player, wanted, place->position, nullptr, 0.0f};
+        ForEachLiveInstance(VisitInstance, &search);
+        AgentNode* node = search.found != nullptr ? AgentNodeOf(search.found) : nullptr;
+        if (node == nullptr)
+        {
+            Native::Log("hop: no agent of an object named like %s in %s", wanted.c_str(), name.c_str());
+        }
+        else
+        {
+            Agent* agent = node->agent;
+            search.found->place->SyncPosition();
+            Vector4 at = search.found->place->position;
+            Native::Log("hop: %s at (%.1f, %.1f, %.1f), flags %08x, %s", ObjectNameOf(search.found), at.x, at.y, at.z,
+                        search.found->flags.value,
+                        knock ? "knocked by a body" : trigger ? "its trigger event run" : "sent an explosion's damage");
+            if (trigger)
+            {
+                RunAgentEvent(agent, OnTrigger, reinterpret_cast<uiptr>(player), 0, 0);
+            }
+            else if (knock)
+            {
+                Vector4 impulse = {6.0f, 0.0f, 0.0f, 1.0f};
+                CallVirtual<u32>(agent, agent->vtable, Agent::CollidedSlot, player, &at, &impulse);
+            }
+            else
+            {
+                ContactMessage message;
+                ContactMessage::Construct(&message);
+                message.point = at;
+                message.hitKinds = HitExplosion;
+                message.damage = 1;
+                CallVirtual<void>(agent, agent->vtable, Agent::ContactSlot, &message, player, 1u);
+            }
+        }
+
+        next++;
+        lastHop = now;
+        return;
+    }
+
     // "on:NAME" (or "on:NAME:HEIGHT"): the player put HEIGHT (2) units above the instance nearest it in its chunk whose object's
     // name holds NAME. "bring:NAME" (or "bring:NAME:HEIGHT"): that instance put HEIGHT (0) units above the player instead (where
     // the player can't be put: down a slide, its physics keep it on its way)

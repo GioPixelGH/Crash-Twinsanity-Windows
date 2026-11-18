@@ -926,7 +926,11 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   far the player went since the last step and whether that's N units or more ("NOT": a player the scripted input doesn't
   move); `objects` logs the
   instances of its chunk (their objects' names and places); `on:mine` puts it 2 units above the nearest instance whose
-  object's name holds "mine" (`on:mine:5`: 5 units) and `bring:mine` puts that instance where the player is instead; `idle`
+  object's name holds "mine" (`on:mine:5`: 5 units) and `bring:mine` puts that instance where the player is instead;
+  `states:crate` logs those instances' places, their context's flags, their agent's state flags and their part's bits (an
+  outline crate's collision and triggers' signals off: #58); `damage:tnt` sends the nearest such instance an explosion's damage
+  as the scripts' CreateDamage does, `knock:tnt` a rigid body's knock over a crate's breaking (its agent's Collided) and
+  `trigger:tnt` runs its trigger event as a "!" crate's link does (#58's scenario); `idle`
   stops the scripted input and `input` starts it again; `wait5` waits 5 s; `die` drops it to its death; `mask` gives it a mask as an Aku Aku crate does (the fourth in a row makes it invincible); `hurt` takes a hit point from it and starts 2 s of blinking, as a hit that isn't kept out does (#18's three masks scenario); `movie:H03_F` plays the game's movie whose file has that in its name, as the game asks for one in play, play going on after it (`$TWIN_MOVIE_GUARD=1` puts each piece of a movie's stream right before a page that can't be read, so that FFmpeg reading past a piece crashes every time: check_windows.py's #49 scenario); `credits` rolls the end credits as the game's end asks for them, the Iceberg Lab played after them (#20's scenario: 135 s of credits, not counted as play); with `$TWIN_SWEEP_GAME_TIME=1` the steps' waits and flights go by the game clock instead of real time, so a run with `$TWIN_FIXED_TIME=1` and `$TWINSANITY_AUDIO=frames` makes the same pictures every time (two builds', or two switches', compared frame by frame); `$TWIN_NO_SHADOWS` leaves the characters' shadows out, to compare what they darken; `scripts:director`
   logs the behaviour scripts of the instances whose object's name holds "director" (each runner's graphs, the state they're in,
   every state's bodies: condition, commands, jump) and `state:GRAPH:3` makes the runner that runs a graph whose name holds GRAPH

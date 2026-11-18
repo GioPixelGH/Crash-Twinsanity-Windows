@@ -19,6 +19,7 @@
 #include "game/shadows.h"
 
 #ifdef TWIN_NATIVE
+#include "fixes.h"
 #include "gameoptions.h"
 #endif
 
@@ -638,8 +639,28 @@ void CrateAgent::Bumped(InstanceContext*, const Vector4*, const Vector4*)
 {
 }
 
+#ifdef TWIN_NATIVE
+// With the bug fixes on, a crate that doesn't take triggers' signals (an outline crate before its "!" crate makes it solid) is
+// left whole by what isn't the player's attacks, as those already leave it (BasicAgent::Attacked): an explosion's damage and a
+// body's knock (#58). Retail's explosions (the scripts' CreateDamage) and rigid bodies find it whatever its flags, and its script
+// breaks it (an outline TNT explodes, and its explosion every outline Nitro near it: on the PS2 too)
+static bool OutlineCrateLeftWhole(const InstanceContext* instance)
+{
+    return NativeFixes::RetailFixes() && instance->flags.receivesTriggerSignals == 0;
+}
+#endif
+
 void CrateAgent::Contact(const ContactMessage* message, InstanceContext* sender, u32 physical)
 {
+#ifdef TWIN_NATIVE
+    if (message->damage != 0 && OutlineCrateLeftWhole(instance))
+    {
+        ContactMessage pushOnly = *message;
+        pushOnly.damage = 0;
+        BasicAgent::Contact(&pushOnly, sender, physical);
+        return;
+    }
+#endif
     BasicAgent::Contact(message, sender, physical);
 }
 
@@ -691,6 +712,12 @@ u32 CrateAgent::Collided(void* other, const Vector4*, const Vector4* impulse)
     direction.y = direction.y * inverse;
     bool intact = state.broken == 0;
     bool unbreakable = properties->state.solidToSlide != 0;
+#ifdef TWIN_NATIVE
+    if (OutlineCrateLeftWhole(instance))
+    {
+        return intact;
+    }
+#endif
     if (squared > BreakingSquared)
     {
         RunAgentEvent(this, OnDamage, reinterpret_cast<uiptr>(other), 0, 0);

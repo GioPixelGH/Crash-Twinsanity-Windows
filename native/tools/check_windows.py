@@ -139,6 +139,19 @@ SCENARIOS = [
     ("The longer invincibility: three masks' 20 s (#56)", "Levels\\Earth\\Hub\\huba", 30, "idle,mask,mask,mask,mask,wait24",
      dict(options="long_invincibility=1\n", env={"TWIN_MASK_TRACE": "1", "TWIN_SWEEP_GAME_TIME": "1"},
           expect=[r"invincibility over after 20\.0 s"])),
+    # Issue #58 (THE LIST 95): alta's outline crates (an outline TNT beside a tower of outline Nitro and iron crates, their
+    # collision and triggers' signals off until their "!" crate) left whole under Bug fixes by a body's knock and an explosion's
+    # damage (the hop's knock: and damage: on the TNT; retail's TNT explodes and its ten Nitro with it, on the PS2 too); made solid
+    # (the hop's trigger:, as its "!" crate's link) it explodes at the damage, and the Nitro still outlines stay whole
+    ("Outline crates stay whole until their '!' crate under Bug fixes (#58)", "Levels\\AltEarth\\Hub\\alta", 40,
+     "idle,wait3,goto:-6.4:11.6:-49,wait1,knock:tnt,wait2,damage:tnt,wait3,states:tnt,trigger:tnt,wait3,states:tnt,damage:tnt,"
+     "wait4,states:tnt,states:nitro",
+     dict(options="retail_fixes=1\n",
+          expect=[r"hop:   TNTCRATE at \(-6\.4, 11\.6, -52\.0\): flags 0000e[46]00",
+                  r"hop:   TNTCRATE at \(-6\.4, 11\.6, -52\.0\): flags 0000f[46]18",
+                  r"hop:   TNTCRATE at \(-6\.4, 11\.6, -52\.0\): flags 0000[0-9a-f]{3}[13579bdf]",
+                  r"hop:   NITROCRATE at \(-8\.3, 11\.7, -50\.3\): flags 0000e[46]00"],
+          forbid=[r"hop:   NITROCRATE at \(-8\.3, .*flags 0000[0-9a-f]{3}[13579bdf]"])),
     # THE LIST 37: Bandicoot Pursuit's Evil Crash, whose first route step taken straight ahead misses it, stands for good (on the
     # PS2 too); under Bug fixes the step itself is his target and he follows Cortex (Crash put on the checkpoint crate, then the pad)
     ("Bandicoot Pursuit's Evil Crash follows Cortex under Bug fixes", "Levels\\AltEarth\\Hub\\altdoc", 14,
