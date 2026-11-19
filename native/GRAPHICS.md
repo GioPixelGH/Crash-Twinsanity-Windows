@@ -372,3 +372,19 @@ over, whose replacement (the pack's whole font sheet) was drawn squeezed into ea
 whole under the same names (a pack's starting point). Checked against PCSX2 2.8.2's own dump of the PAL game (Metal renderer,
 mipmapping off): 50 names alike, every texture of local memory our replays dumped that PCSX2's run reached (the one name not
 alike is the frame read as a 1024x1024 texture, which PCSX2 takes from its render target). No pack is bundled.
+
+## The fast renderer
+
+THE LIST 24's way to a faster renderer, in steps (74 to 77): a PC option beside the accurate renderer, which stays the default
+(Display > Renderer > Renderer, options.txt's `fast_renderer`, `$TWIN_FAST_RENDERER` over it: graphics/fastrenderer.h). The
+accurate renderer emulates the GS a primitive at a time (the hardware renderer above); the fast one draws the kinds of drawing it
+knows without the GS's emulation, and the rest as before. A kind is a VU1 program: its work done as native arithmetic that gives
+the program's values bit for bit (TwinsanityEvolved's prepared meshes, MIT, are the model: each model's packets decoded once,
+each instance only transformed, clipped and projected), and the GS's state and vertexes handed to the hardware renderer as one
+batch. So the pictures can stay the same byte for byte, which is the test, and `$TWIN_FAST_RENDERER=verify` draws both ways and
+compares them.
+
+Which kind first: the render thread's time by kind of drawing (WINDOWS.md, "The render thread by kind of drawing",
+`$TWIN_RENDER_SPLIT`) puts the scenery and the placed objects first, the type 01 shader's program (0x2DF700) above all: 36 to
+42% of the render thread at the beach, the Academy's hub and Amberly's fight, against 1 to 3% for the characters' skins. The
+setting's row stays hidden until the fast renderer knows a kind (THE LIST 75, the scenery).

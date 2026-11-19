@@ -93,6 +93,7 @@ constexpr OptionInfo Infos[OptionCount] = {
     {OptionRestartCheckpoint, "restart_checkpoint", 0, 1},
     {OptionGraphicsApi, "graphics_api", 0, 1},
     {OptionLongInvincibility, "long_invincibility", 0, 1},
+    {OptionFastRenderer, "fast_renderer", 0, 1},
 };
 
 s32 g_Values[OptionCount];
@@ -172,6 +173,7 @@ const char* ValueMeaning(const OptionInfo& info, s32 value)
     static constexpr const char* Dithering[] = {"as the PS2", "off"};
     static constexpr const char* Distances[] = {"original", "short", "medium", "long", "unlimited"};
     static constexpr const char* Apis[] = {"OpenGL", "Vulkan"};
+    static constexpr const char* Renderers[] = {"accurate", "fast"};
     static constexpr const char* Toggle[] = {"off", "on"};
     auto pick = [value](const auto& words) -> const char*
     { return value >= 0 && static_cast<size_t>(value) < std::size(words) ? words[value] : nullptr; };
@@ -203,6 +205,8 @@ const char* ValueMeaning(const OptionInfo& info, s32 value)
         return pick(SlideJumps);
     case OptionGraphicsApi:
         return pick(Apis);
+    case OptionFastRenderer:
+        return pick(Renderers);
     default:
         return info.maximum == 1 ? pick(Toggle) : nullptr;
     }

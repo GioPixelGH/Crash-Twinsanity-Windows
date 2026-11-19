@@ -10,6 +10,7 @@
 #include "ui/overlay.h"
 
 #include "native.h"
+#include "graphics/fastrenderer.h"
 #include "graphics/resolution.h"
 #include "graphics/window.h"
 #include "mods.h"
@@ -642,7 +643,7 @@ void Build()
     // The renderer (THE LIST 73): the graphics API, OpenGL or Vulkan, from the next start (graphicsapi.cpp: the other one taken when
     // one can't show the game); in a build that has Vulkan
     Row renderer = Section(TextSectionRenderer);
-    renderer.shown = [] { return NativeGraphicsVulkanBuilt(); };
+    renderer.shown = [] { return NativeGraphicsVulkanBuilt() || NativeGraphicsFastRendererShown(); };
     display.push_back(renderer);
     Row api = Choice(
         TextGraphicsApi, TextDescGraphicsApi, [] { return GetOption(OptionGraphicsApi); },
@@ -650,6 +651,11 @@ void Build()
         [](s32 value) { return std::string(value != 0 ? "vulkan" : "opengl"); });
     api.shown = [] { return NativeGraphicsVulkanBuilt(); };
     display.push_back(api);
+    // The renderer's kind (THE LIST 74): accurate (the GS emulated, the default) or fast (experimental), at once; hidden until the
+    // fast one draws some kind of drawing itself (graphics/fastrenderer.h)
+    Row kind = OptionChoice(TextRendererKind, TextDescRendererKind, OptionFastRenderer, {TextAccurate, TextFastExperimental});
+    kind.shown = [] { return NativeGraphicsFastRendererShown(); };
+    display.push_back(kind);
 
     std::vector<Row>& audio = g_Rows[TabAudio];
     // The master volume first (THE LIST 81): options.txt's 0 to 100 in steps of 5, the slider's 0 to 20 shown as the percent

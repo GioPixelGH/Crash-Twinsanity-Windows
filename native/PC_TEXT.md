@@ -41,7 +41,7 @@ The disc error lines (0x21, 0x22: "please replace the crash twinsanity disc") ta
 The graphic options' resolution setting (NATIVE.md) adds texts of its own after the file's lines, at text numbers 0x100 on (`NativeUi::NativeText`).
 The last column, Brazilian Portuguese (1.3.0, #25), is shown where the disc's text bank is Portuguese (#25's disc has it in the
 English slot); an empty cell shows the English. NormanTheFox's translation (2026-11-18, updated 2026-11-19) fills 209 of the
-297 rows. To translate: fill that column in a copy of this file and send it (an issue); `native/tools/pc_text_table.py --import
+301 rows. To translate: fill that column in a copy of this file and send it (an issue); `native/tools/pc_text_table.py --import
 FILE` takes it into `pctext.cpp`, each row matched by its English (a row too long for its place, or with a character the game's
 text can't hold, such as curly quotes, stays empty, as the ui self-test finds them):
 
@@ -344,6 +344,10 @@ text can't hold, such as curly quotes, stays empty, as the ui self-test finds th
 | 0x226 | continue | continuer | fortsetzen | continuar | continua |  |
 | 0x227 | longer invincibility | invincibilité plus longue | längere unverwundbarkeit | invencibilidad más larga | invincibilità più lunga |  |
 | 0x228 | three masks make you invincible for 20 seconds, as in the earlier games, not 8. | trois masques te rendent invincible 20 secondes, comme dans les premiers jeux, pas 8. | drei masken machen dich 20 sekunden unverwundbar, wie in den früheren spielen, nicht 8. | tres máscaras te hacen invencible 20 segundos, como en los juegos anteriores, no 8. | tre maschere ti rendono invincibile per 20 secondi, come nei primi giochi, non 8. |  |
+| 0x229 | renderer | rendu | renderer | renderizado | rendering |  |
+| 0x22A | accurate draws as the ps2 does. fast draws the scenery more directly, quicker on older processors. | précis dessine comme la ps2. rapide dessine le décor plus directement, plus vite sur les vieux processeurs. | genau zeichnet wie die ps2. schnell zeichnet die umgebung direkter, flotter auf älteren prozessoren. | preciso dibuja como la ps2. rápido dibuja el escenario más directamente, más veloz en cpu antiguas. | accurato disegna come la ps2. veloce disegna lo scenario più direttamente, più rapido sulle cpu vecchie. |  |
+| 0x22B | accurate | précis | genau | preciso | accurato |  |
+| 0x22C | fast (experimental) | rapide (expérimental) | schnell (experimentell) | rápido (experimental) | veloce (sperimentale) |  |
 
 ## English (29 lines)
 

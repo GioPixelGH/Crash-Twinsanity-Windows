@@ -385,6 +385,11 @@ enum NativeText : u32
     // The longer invincibility (THE LIST 93, #56): the row and its description
     TextLongInvincibility,
     TextDescLongInvincibility,
+    // The renderer's kind (THE LIST 74): the row, its description and its two choices
+    TextRendererKind,
+    TextDescRendererKind,
+    TextAccurate,
+    TextFastExperimental,
     NativeTextEnd,
 };
 
@@ -586,6 +591,9 @@ enum Option : u32
     OptionGraphicsApi,
     // The longer invincibility (THE LIST 93, #56): three masks' 20 s instead of 8
     OptionLongInvincibility,
+    // The renderer's kind (THE LIST 74, graphics/fastrenderer.h): accurate 0 (the default), fast 1 (experimental: the kinds of
+    // drawing it has drawn without the GS's emulation); $TWIN_FAST_RENDERER over it
+    OptionFastRenderer,
     OptionCount,
 };
 

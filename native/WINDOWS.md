@@ -879,6 +879,9 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   named as renderer/vuprograms.cpp registers it, with its address in .vutext; the GIF's paths 2 and 3; the work queued) and by
   the renderer's frame bucket they were sent in (`render split by bucket`), the busiest first. Needs the render thread. With
   perf.py: `--env TWIN_RENDER_SPLIT=1` (compare/runs_b74/split.sh runs the beach, the Academy's hub and Amberly's fight).
+- `$TWIN_FAST_RENDERER=0`, `1` or `verify` (THE LIST 74, graphics/fastrenderer.h): the renderer's kind over the setting
+  (Display > Renderer > Renderer, `fast_renderer`, shown once the fast renderer knows a kind of drawing): accurate, fast, or both
+  ways with their results compared.
 - `$TWIN_HW_DECODE_TRACE=1`: each texture the hardware renderer decodes from GS memory's copy, to stderr (the log): its place,
   format and size, the region the draw asked for ("(whole)" when the strips' rule widened it), the stale tiles' box, their
   pages and count (`decode: #62858054 2c00/4 psm 27 1024x1024 levels 1, asked 0,0-33,257 (whole), stale 0,0-263,263, 37 pages,
