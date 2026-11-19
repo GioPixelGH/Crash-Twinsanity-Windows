@@ -717,7 +717,8 @@ hitches (#23, #32) were measured with these; "Hitches" under "Speed" has what th
 Since 1.4.0 (THE LIST 92, #55/#56: Vulkan stopping 5-6 s in roof01 and the bus chase on a 4 GB GTX 1650 at 3x with a 3913-file
 texture pack) Vulkan's slow frames end with its own split, `; of Vulkan's, textures made 2.0 ms, submits 0.8 ms, fences waited
 5088.6 ms` (renderwork.h's VulkanPart: SDL_CreateGPUTexture with the new texture's levels cleared; the submits, where SDL
-defragments its memory; the waits for the frames in flight, the card's own work behind them), and each performance line, and
+defragments its memory; the waits for the frames in flight, the card's own work behind them and SDL's destroying of the
+textures released, THE LIST 97), and each performance line, and
 each frame of a second or more, is followed by `memory: the program 1.34 GB (0.59 GB of it in RAM), the PC's RAM 6.8 GB free of
 15.9; the texture pack's images held 0, 0.00 GB, on the graphics card 155, 0.12 GB; video memory 0.71 GB of a 10.97 GB budget
 (NVIDIA GeForce RTX 4070 SUPER), 0.08 GB in shared memory` (the program's committed memory and working set; the pack's images
@@ -727,9 +728,28 @@ API, its budget and what it moved to shared memory; Linux has the RAM only). Mea
 at 3x with the player's pack copy) and `compare\tools\vram_run.py` taking the port from roof01 through the rooftop, the bus
 chase, the beach, the hub and back to roof01: Vulkan stopped 5107 ms in roof01, 5088.6 ms of it waiting on the card (the
 textures made 2.0 ms, the submits 0.8 ms: neither SDL's allocations nor its defragmenting); OpenGL on the same way, under the
-same pressure, 660 ms at most (the beach's loading, in the GS). Without the hog neither stops. SDL 3.4.18 can't be asked for
+same pressure, 660 ms at most (the beach's loading, in the GS). Without the hog neither stopped in those runs (but Vulkan's stop
+was another thing: THE LIST 97, below). SDL 3.4.18 can't be asked for
 VK_EXT_pageable_device_local_memory (it chains only the core features' structures, not an extension's), so with Vulkan the
 answer is less video memory (THE LIST 25: the pack's textures kept compressed) or OpenGL.
+
+Vulkan's stops of 4-6 s (THE LIST 97) weren't the card. Without any memory pressure, on vram_run.py's way (ROUTE=steady), 1.3.0
+stopped in 5 runs of 6 (4.1-5.8 s) and 1.4.0 before the fix in 2 of 6, in roof01, cogpa08 and highpath, mostly in the first
+frame of play after a loading or a restart. `$TWIN_VULKAN_STALLS=1` showed the command buffer waited for done after 4-14 ms
+while SDL_WaitForGPUFences took 4.1-4.3 s: after vkWaitForFences, under its submit lock, SDL destroys the textures released
+since (SDL_gpu_vulkan.c 3.4.18, VULKAN_INTERNAL_PerformPendingDestroys), and each colour target view it destroys looks through
+every framebuffer it keeps (VULKAN_INTERNAL_RemoveFramebuffersContainingView), about one a texture level cleared (each new
+texture's levels are, by a render pass) or drawn into. Every stop came right after hwgs.cpp dropped its cache of textures
+decoded on the card, past 4096: 4100 textures released, 28,422 levels, against some 31,000 framebuffers.
+`compare\tools\sdl_destroy_bench.exe` does the same outside the game: 4096 textures of 64x64 with 7 levels cleared by render
+passes take 3520 ms to destroy (1 level 71 ms, 2048 with 1 level 16 ms: the views times the framebuffers), zeroed by uploads
+instead 13 ms. SDL's main branch still does it (2026-11-19). So the Vulkan backend keeps a texture it lets go of as a spare
+(sdlgpu.cpp's LetGo, up to 256 MB; a block-compressed one, which has no colour target views, is released), and the next one
+made with its format, size and levels takes it, its levels cleared again: nothing is destroyed when the cache is dropped and
+made again. The drop's spares came to 181-197 MB (4096 of them, taken back as the cache fills again); the same way four times,
+the drop in each, no frame over 1 s (the slowest 34 ms without a pack, the beach's loading 527 ms with the PNG pack, as 1.3.0's
+539-618 ms there); and twice with vram_hog.exe 10 as THE LIST 92's run, which stopped 5107 ms, none either: 92's stop was most
+likely this one.
 
 The graphics card's time (graphics/gputime.cpp) tells a render thread slow on the processor from one waiting on the card: the
 render thread's own time has the driver's work in it, and its waits for the card (a picture read back, a full queue), so 25 ms
@@ -851,7 +871,11 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   layers (the Vulkan SDK installed), their messages in the log, the textures named ("texture 141 64x64 format 0 levels 7"); run
   it with `SDL_ASSERT=always_ignore`, or SDL's assert dialogs open on the screen. In debug mode SDL refuses a viewport past the
   target, so the draws' far bigger viewport makes those runs draw differently. `$TWIN_VULKAN_LIST_BYTES=N`: Vulkan's list played
-  in pieces of N bytes (4 MB).
+  in pieces of N bytes (4 MB). `$TWIN_VULKAN_STALLS=1` (THE LIST 97): a wait on the card of a second or more logs the command
+  buffers it was behind, when each was seen done and the textures released since (`graphics: Vulkan: the renderer's thread
+  waited 4265 ms for the card (...); #13148 the renderer's, 291 draws, 5.2 MB uploaded, submitted 0.0 ms before the wait, seen
+  done at +14 ms; since the last: 4100 textures released, 28422 levels, ...`), and the renderer's texture caches dropped and the
+  spare textures kept are logged ("Vulkan's stops of 4-6 s", under "The log").
 - `$TWIN_HW_BATCH_HASH=FIRST:LAST`: two backends compared batch by batch. Each batch flushed while the GS's primitive count is in
   that range is read back after it and its target's colour and depth hashed (`batchhash 166576 p35910: into 800 program 4009 ...
   colour 57c15f8b21f33875 depth 0 2048x2048`); each picture logs its count (`shown 300 primitives 35948`: picture 300's

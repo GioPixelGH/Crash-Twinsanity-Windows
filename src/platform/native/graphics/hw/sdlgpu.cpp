@@ -39,13 +39,16 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <condition_variable>
 #include <cstdio>
 #include <deque>
 #include <functional>
 #include <mutex>
+#include <string>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 
 namespace Hw
 {
@@ -776,6 +779,204 @@ u32 g_Devices = 0;
 std::mutex g_RecordingLock;
 std::atomic<bool> g_WindowClaimed{false};
 
+// THE LIST 97 ($TWIN_VULKAN_STALLS): the command buffers submitted with a fence, both backends', and a watchdog thread that notes
+// when each one is seen done (it looks every 20 ms); a wait on the card of a second or more then logs those not done when it
+// began, in their submitting's order (the queue runs them in that order: the first not done is what the card was busy with or,
+// a presenting one, waiting for the swapchain's picture), and the textures released since. A wait whose command buffers were all
+// done long before it ended was SDL's own work after vkWaitForFences, under its submit lock: the textures' destroying (LetGo)
+struct Flight
+{
+    u64 number = 0;
+    u64 submitted = 0;
+    u64 done = 0;
+    SDL_GPUDevice* device = nullptr;
+    bool window = false;
+    bool presenting = false;
+    u32 draws = 0;
+    size_t uploaded = 0;
+};
+std::mutex g_FlightLock;
+std::unordered_map<SDL_GPUFence*, Flight> g_Flights;
+u64 g_FlightNumber = 0;
+std::atomic<u64> g_AcquireStart{0};
+std::atomic<u64> g_LastAcquire{0};
+
+bool TracingStalls()
+{
+    static const bool tracing = std::getenv("TWIN_VULKAN_STALLS") != nullptr;
+    return tracing;
+}
+
+// (The trace's count of SDL's framebuffers: the levels of each texture a render pass has begun on, cleared or drawn into; and the
+// textures released, with their levels' views, since the last wait logged)
+std::unordered_map<SDL_GPUTexture*, u64> g_TargetLevels;  // (levels cleared in the low half, drawn into in the high)
+u64 g_ReleasedTextures = 0;
+u64 g_ReleasedViews = 0;
+u64 g_ReleasedTargets = 0;
+
+void NoteTarget(SDL_GPUTexture* texture, u32 level, bool drawn)
+{
+    if (TracingStalls() && texture != nullptr)
+    {
+        std::lock_guard<std::mutex> lock(g_FlightLock);
+        g_TargetLevels[texture] |= (1ull << std::min<u32>(level, 31)) << (drawn ? 32 : 0);
+    }
+}
+
+void ReleaseTexture(SDL_GPUDevice* device, SDL_GPUTexture* texture, u32 levels)
+{
+    if (TracingStalls() && texture != nullptr)
+    {
+        std::lock_guard<std::mutex> lock(g_FlightLock);
+        auto found = g_TargetLevels.find(texture);
+        if (found != g_TargetLevels.end())
+        {
+            g_ReleasedTargets += static_cast<u64>(__builtin_popcount(static_cast<u32>(found->second | found->second >> 32)));
+            g_TargetLevels.erase(found);
+        }
+
+        g_ReleasedTextures++;
+        g_ReleasedViews += levels;
+    }
+
+    SDL_ReleaseGPUTexture(device, texture);
+}
+
+void Watchdog()
+{
+    for (;;)
+    {
+        SDL_Delay(20);
+        std::lock_guard<std::mutex> lock(g_FlightLock);
+        for (auto& entry : g_Flights)
+        {
+            if (entry.second.done == 0 && SDL_QueryGPUFence(entry.second.device, entry.first))
+            {
+                entry.second.done = SDL_GetTicksNS();
+            }
+        }
+    }
+}
+
+void TrackFlight(SDL_GPUFence* fence, SDL_GPUDevice* device, bool window, bool presenting, u32 draws, size_t uploaded)
+{
+    if (fence == nullptr || !TracingStalls())
+    {
+        return;
+    }
+
+    static std::once_flag started;
+    std::call_once(started, [] { std::thread(Watchdog).detach(); });
+    std::lock_guard<std::mutex> lock(g_FlightLock);
+    Flight& f = g_Flights[fence];
+    f = Flight{};
+    f.number = ++g_FlightNumber;
+    f.submitted = SDL_GetTicksNS();
+    f.device = device;
+    f.window = window;
+    f.presenting = presenting;
+    f.draws = draws;
+    f.uploaded = uploaded;
+}
+
+void ReleaseFence(SDL_GPUDevice* device, SDL_GPUFence* fence)
+{
+    if (TracingStalls())
+    {
+        std::lock_guard<std::mutex> lock(g_FlightLock);
+        g_Flights.erase(fence);
+    }
+
+    SDL_ReleaseGPUFence(device, fence);
+}
+
+// SDL_WaitForGPUFences for one, with the stall's command buffers logged when it took a second or more
+void WaitForCard(SDL_GPUDevice* device, SDL_GPUFence* fence, bool window)
+{
+    if (!TracingStalls())
+    {
+        SDL_WaitForGPUFences(device, true, &fence, 1);
+        return;
+    }
+
+    const u64 start = SDL_GetTicksNS();
+    SDL_WaitForGPUFences(device, true, &fence, 1);
+    const u64 end = SDL_GetTicksNS();
+    if (end - start < 1'000'000'000)
+    {
+        return;
+    }
+
+    std::vector<std::pair<u64, std::string>> lines;
+    char released[200];
+    {
+        std::lock_guard<std::mutex> lock(g_FlightLock);
+        u64 targets = 0;
+        u64 drawn = 0;
+        for (const auto& entry : g_TargetLevels)
+        {
+            targets += static_cast<u64>(__builtin_popcount(static_cast<u32>(entry.second | entry.second >> 32)));
+            drawn += static_cast<u64>(__builtin_popcount(static_cast<u32>(entry.second >> 32)));
+        }
+
+        std::snprintf(released, sizeof(released),
+                      "; since the last: %llu textures released, %llu levels, %llu of them render targets; %llu texture levels "
+                      "render targets now (%llu drawn into, the others only cleared)",
+                      static_cast<unsigned long long>(g_ReleasedTextures), static_cast<unsigned long long>(g_ReleasedViews),
+                      static_cast<unsigned long long>(g_ReleasedTargets), static_cast<unsigned long long>(targets),
+                      static_cast<unsigned long long>(drawn));
+        g_ReleasedTextures = 0;
+        g_ReleasedViews = 0;
+        g_ReleasedTargets = 0;
+        for (const auto& entry : g_Flights)
+        {
+            const Flight& f = entry.second;
+            if (f.submitted > end || (f.done != 0 && f.done < start))
+            {
+                continue;
+            }
+
+            char line[200];
+            std::snprintf(line, sizeof(line), "#%llu %s%s, %u draws, %.1f MB uploaded, submitted %.1f ms %s the wait, ",
+                          static_cast<unsigned long long>(f.number), f.window ? "the window's" : "the renderer's",
+                          f.presenting ? " presenting" : "", f.draws, static_cast<double>(f.uploaded) / 1e6,
+                          std::abs(static_cast<double>(f.submitted) - static_cast<double>(start)) / 1e6,
+                          f.submitted <= start ? "before" : "into");
+            char done[48] = "not seen done";
+            if (f.done != 0)
+            {
+                std::snprintf(done, sizeof(done), "seen done at +%.0f ms",
+                              (static_cast<double>(f.done) - static_cast<double>(start)) / 1e6);
+            }
+
+            lines.emplace_back(f.number, std::string(line) + done);
+        }
+    }
+
+    std::sort(lines.begin(), lines.end());
+    std::string text;
+    for (const auto& line : lines)
+    {
+        text += "; " + line.second;
+    }
+
+    const u64 acquiring = g_AcquireStart.load();
+    char acquire[96];
+    if (acquiring != 0)
+    {
+        std::snprintf(acquire, sizeof(acquire), "the window's thread taking a swapchain picture for %.0f ms",
+                      static_cast<double>(end - acquiring) / 1e6);
+    }
+    else
+    {
+        std::snprintf(acquire, sizeof(acquire), "the window's last swapchain picture taken in %.1f ms",
+                      static_cast<double>(g_LastAcquire.load()) / 1e6);
+    }
+
+    std::fprintf(stderr, "graphics: Vulkan: the %s's thread waited %.0f ms for the card (%s)%s%s\n",
+                 window ? "window" : "renderer", static_cast<double>(end - start) / 1e6, acquire, text.c_str(), released);
+}
+
 // A device of SDL GPU's Vulkan (null when there's none: the reason printed)
 SDL_GPUDevice* MakeDevice()
 {
@@ -912,7 +1113,7 @@ public:
     {
         if (fence != nullptr)
         {
-            SDL_ReleaseGPUFence(device_, static_cast<SDL_GPUFence*>(fence));
+            ReleaseFence(device_, static_cast<SDL_GPUFence*>(fence));
         }
     }
     void ParallelCompiles() override {}
@@ -939,6 +1140,14 @@ private:
     void SubmitWork(bool wait, bool presenting = false);
     bool MakeTexture(Texture& t, u32 format, s32 width, s32 height, u32 levels);
     void EnsureLevels(Texture& t, u32 levels);
+    // THE LIST 97: a texture let go of kept as a spare for the next one made of its format, size and levels, rather than released
+    // (SDL destroys a colour target's views each looking through every framebuffer it keeps, SDL_gpu_vulkan.c 3.4.18's
+    // VULKAN_INTERNAL_RemoveFramebuffersContainingView, about one a texture level ever cleared or drawn into: the renderer's 4097
+    // textures decoded on the card, dropped at once by hwgs.cpp past 4096, took 4 s of the next wait or submit, under SDL's submit
+    // lock, and the frame stopped). Kept up to SpareBytes, the rest released
+    void LetGo(SDL_GPUTexture* texture, u32 format, s32 width, s32 height, u32 levels);
+    SDL_GPUTexture* TakeSpare(u32 format, u32 width, u32 height, u32 levels);
+    void ReleaseSpares();
     SDL_GPUSampler* SamplerFor(Texture& t);
     bool MakeShaders(Program& p);
     SDL_GPUShader* FactorShader(Program& p);
@@ -965,6 +1174,10 @@ private:
     bool recordingLocked_ = false;
     std::vector<Texture> textures_;
     std::vector<u32> freeTextures_;
+    // The spares (LetGo), by format, levels, width and height, and their size
+    std::unordered_map<u64, std::vector<SDL_GPUTexture*>> spares_;
+    size_t spareBytes_ = 0;
+    size_t spareCount_ = 0;
     std::vector<Framebuffer> framebuffers_;
     std::vector<u32> freeFramebuffers_;
     std::vector<std::unique_ptr<Program>> programs_;
@@ -1044,7 +1257,7 @@ VulkanBackend::~VulkanBackend()
 
         for (SDL_GPUFence* f : inFlight_)
         {
-            SDL_ReleaseGPUFence(device_, f);
+            ReleaseFence(device_, f);
         }
 
         for (auto& entry : pipelines_)
@@ -1064,6 +1277,8 @@ VulkanBackend::~VulkanBackend()
                 SDL_ReleaseGPUTexture(device_, t.texture);
             }
         }
+
+        ReleaseSpares();
     }
 
     compilers_.Stop();
@@ -1564,6 +1779,8 @@ bool VulkanBackend::BeginRender(u32 framebuffer)
 
     render_ = SDL_BeginGPURenderPass(Commands(), colour != nullptr ? &target : nullptr, colour != nullptr ? 1 : 0,
                                      depth != nullptr ? &depthTarget : nullptr);
+    NoteTarget(colour != nullptr ? colour->texture : nullptr, static_cast<u32>(f.colourLevel), true);
+    NoteTarget(depth != nullptr ? depth->texture : nullptr, 0, true);
     renderFramebuffer_ = framebuffer;
     renderColourFormat_ = colour != nullptr ? colour->format : NoColourFormat;
     renderDepth_ = depth != nullptr;
@@ -1598,6 +1815,7 @@ void VulkanBackend::SubmitWork(bool wait, bool presenting)
         fence = SDL_SubmitGPUCommandBufferAndAcquireFence(commands_);
     }
 
+    TrackFlight(fence, device_, window_ != nullptr, presenting, draws_, uploaded_);
     commands_ = nullptr;
     draws_ = 0;
     uploaded_ = 0;
@@ -1616,13 +1834,13 @@ void VulkanBackend::SubmitWork(bool wait, bool presenting)
     {
         {
             VulkanPartSpan part(NativeGraphics::VulkanPart::InFlight);
-            SDL_WaitForGPUFences(device_, true, &fence, 1);
+            WaitForCard(device_, fence, window_ != nullptr);
         }
 
-        SDL_ReleaseGPUFence(device_, fence);
+        ReleaseFence(device_, fence);
         for (SDL_GPUFence* f : inFlight_)
         {
-            SDL_ReleaseGPUFence(device_, f);
+            ReleaseFence(device_, f);
         }
 
         inFlight_.clear();
@@ -1633,10 +1851,89 @@ void VulkanBackend::SubmitWork(bool wait, bool presenting)
     while (inFlight_.size() > 2)
     {
         VulkanPartSpan part(NativeGraphics::VulkanPart::InFlight);
-        SDL_WaitForGPUFences(device_, true, &inFlight_.front(), 1);
-        SDL_ReleaseGPUFence(device_, inFlight_.front());
+        WaitForCard(device_, inFlight_.front(), window_ != nullptr);
+        ReleaseFence(device_, inFlight_.front());
         inFlight_.pop_front();
     }
+}
+
+// The spares' key: format, levels, width, height
+u64 SpareKey(u32 format, u32 width, u32 height, u32 levels)
+{
+    return (static_cast<u64>(format) << 56) | (static_cast<u64>(levels & 0xFF) << 48) | (static_cast<u64>(width & 0xFFFFFF) << 24) |
+           (height & 0xFFFFFF);
+}
+
+// Its levels' bytes
+size_t TextureBytes(u32 format, u32 width, u32 height, u32 levels)
+{
+    size_t bytes = 0;
+    for (u32 level = 0; level < levels; level++)
+    {
+        bytes += static_cast<size_t>(std::max(width >> level, 1u)) * std::max(height >> level, 1u) * TexelBytes[format];
+    }
+
+    return bytes;
+}
+
+// (The most kept: the 4097 textures decoded on the card the renderer drops at once came to 181-196 MB)
+constexpr size_t SpareBytes = 256u << 20;
+
+void VulkanBackend::LetGo(SDL_GPUTexture* texture, u32 format, s32 width, s32 height, u32 levels)
+{
+    if (texture == nullptr)
+    {
+        return;
+    }
+
+    // (A block-compressed texture, a pack's, has no colour target views: released at no cost)
+    const u32 w = static_cast<u32>(std::max(width, 1));
+    const u32 h = static_cast<u32>(std::max(height, 1));
+    const size_t bytes = TextureBytes(format, w, h, levels);
+    if (CompressedFormat(format) || spareBytes_ + bytes > SpareBytes)
+    {
+        ReleaseTexture(device_, texture, levels);
+        return;
+    }
+
+    spares_[SpareKey(format, w, h, levels)].push_back(texture);
+    spareBytes_ += bytes;
+    spareCount_++;
+    if (TracingStalls() && spareCount_ % 1024 == 0)
+    {
+        std::fprintf(stderr, "graphics: Vulkan: %zu spare textures, %.1f MB\n", spareCount_, static_cast<double>(spareBytes_) / 1048576.0);
+    }
+}
+
+SDL_GPUTexture* VulkanBackend::TakeSpare(u32 format, u32 width, u32 height, u32 levels)
+{
+    auto found = spares_.find(SpareKey(format, width, height, levels));
+    if (found == spares_.end() || found->second.empty())
+    {
+        return nullptr;
+    }
+
+    SDL_GPUTexture* texture = found->second.back();
+    found->second.pop_back();
+    spareBytes_ -= TextureBytes(format, width, height, levels);
+    spareCount_--;
+    return texture;
+}
+
+void VulkanBackend::ReleaseSpares()
+{
+    for (auto& entry : spares_)
+    {
+        const u32 levels = static_cast<u32>((entry.first >> 48) & 0xFF);
+        for (SDL_GPUTexture* texture : entry.second)
+        {
+            ReleaseTexture(device_, texture, levels);
+        }
+    }
+
+    spares_.clear();
+    spareBytes_ = 0;
+    spareCount_ = 0;
 }
 
 bool VulkanBackend::MakeTexture(Texture& t, u32 format, s32 width, s32 height, u32 levels)
@@ -1644,7 +1941,7 @@ bool VulkanBackend::MakeTexture(Texture& t, u32 format, s32 width, s32 height, u
     VulkanPartSpan part(NativeGraphics::VulkanPart::Textures);
     if (t.texture != nullptr && !t.taken)
     {
-        SDL_ReleaseGPUTexture(device_, t.texture);
+        LetGo(t.texture, t.format, t.width, t.height, t.levels);
     }
 
     t.texture = nullptr;
@@ -1665,20 +1962,46 @@ bool VulkanBackend::MakeTexture(Texture& t, u32 format, s32 width, s32 height, u
     info.sample_count = SDL_GPU_SAMPLECOUNT_1;
     // (With the validation layers on, named as the renderer knows it: their messages say which)
     static const bool debug = std::getenv("TWIN_VULKAN_DEBUG") != nullptr;
+    char name[64] = {};
     if (debug)
     {
-        char name[64];
         std::snprintf(name, sizeof(name), "texture %u %dx%d format %u levels %u", static_cast<u32>(&t - textures_.data()), width, height, format,
                       info.num_levels);
-        info.props = SDL_CreateProperties();
-        SDL_SetStringProperty(info.props, SDL_PROP_GPU_TEXTURE_CREATE_NAME_STRING, name);
     }
 
-    t.texture = SDL_CreateGPUTexture(device_, &info);
-    if (info.props != 0)
+    // A spare of its kind (LetGo), else a new one; with no room for a new one, the spares released first
+    t.texture = TakeSpare(format, info.width, info.height, info.num_levels);
+    if (t.texture != nullptr && debug)
     {
-        SDL_DestroyProperties(info.props);
+        SDL_SetGPUTextureName(device_, t.texture, name);
     }
+
+    for (int attempt = 0; attempt < 2 && t.texture == nullptr; attempt++)
+    {
+        if (attempt == 1)
+        {
+            if (spareCount_ == 0)
+            {
+                break;
+            }
+
+            ReleaseSpares();
+        }
+
+        if (debug)
+        {
+            info.props = SDL_CreateProperties();
+            SDL_SetStringProperty(info.props, SDL_PROP_GPU_TEXTURE_CREATE_NAME_STRING, name);
+        }
+
+        t.texture = SDL_CreateGPUTexture(device_, &info);
+        if (info.props != 0)
+        {
+            SDL_DestroyProperties(info.props);
+            info.props = 0;
+        }
+    }
+
     t.format = format;
     t.width = static_cast<s32>(info.width);
     t.height = static_cast<s32>(info.height);
@@ -1760,6 +2083,7 @@ bool VulkanBackend::MakeTexture(Texture& t, u32 format, s32 width, s32 height, u
 
         SDL_GPURenderPass* clear = SDL_BeginGPURenderPass(Commands(), isDepth ? nullptr : &colour, isDepth ? 0 : 1, isDepth ? &depth : nullptr);
         SDL_EndGPURenderPass(clear);
+        NoteTarget(t.texture, level, false);
     }
 
     return true;
@@ -1791,7 +2115,7 @@ void VulkanBackend::EnsureLevels(Texture& t, u32 levels)
                                     static_cast<Uint32>(std::max(t.height >> level, 1)), 1, false);
     }
 
-    SDL_ReleaseGPUTexture(device_, old);
+    LetGo(old, t.format, t.width, t.height, oldLevels);
 }
 
 SDL_GPUSampler* VulkanBackend::SamplerFor(Texture& t)
@@ -2713,7 +3037,7 @@ void VulkanBackend::Play(const CommandList& list)
 
                 if (t->texture != nullptr && !t->taken)
                 {
-                    SDL_ReleaseGPUTexture(device_, t->texture);
+                    LetGo(t->texture, t->format, t->width, t->height, t->levels);
                 }
 
                 if (t->taken)
@@ -2887,6 +3211,7 @@ void* VulkanBackend::Fence()
         fence = SDL_SubmitGPUCommandBufferAndAcquireFence(commands_);
     }
 
+    TrackFlight(fence, device_, window_ != nullptr, false, draws_, uploaded_);
     commands_ = nullptr;
     draws_ = 0;
     uploaded_ = 0;
@@ -2973,7 +3298,12 @@ void VulkanBackend::ShowWindow()
     SDL_GPUTexture* swapchain = nullptr;
     Uint32 width = 0;
     Uint32 height = 0;
-    if (!SDL_WaitAndAcquireGPUSwapchainTexture(commands, window_, &swapchain, &width, &height))
+    const u64 acquireStart = SDL_GetTicksNS();
+    g_AcquireStart = acquireStart;
+    const bool acquired = SDL_WaitAndAcquireGPUSwapchainTexture(commands, window_, &swapchain, &width, &height);
+    g_AcquireStart = 0;
+    g_LastAcquire = SDL_GetTicksNS() - acquireStart;
+    if (!acquired)
     {
         if (told_++ < 3)
         {

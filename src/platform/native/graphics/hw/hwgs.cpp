@@ -2376,6 +2376,13 @@ u32 HwGs::DecodeOnGpu(const Gs::Gs::DrawState& state, s32 left, s32 top, s32 rig
         {
             if (gpuTextures_.size() > 4096)
             {
+                // ($TWIN_VULKAN_STALLS, THE LIST 97: logged)
+                static const bool tracing = std::getenv("TWIN_VULKAN_STALLS") != nullptr;
+                if (tracing)
+                {
+                    std::fprintf(stderr, "graphics: the %zu textures decoded on the card dropped (more than 4096)\n", gpuTextures_.size());
+                }
+
                 Flush();
                 Gpu& gpu = gpu_;
                 for (auto& e : gpuTextures_)
@@ -4737,7 +4744,13 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
             }
             if (textures_.size() > 4096)
             {
-                // Too many: they're made again as they're needed
+                // Too many: they're made again as they're needed ($TWIN_VULKAN_STALLS, THE LIST 97: logged)
+                static const bool tracing = std::getenv("TWIN_VULKAN_STALLS") != nullptr;
+                if (tracing)
+                {
+                    std::fprintf(stderr, "graphics: the %zu textures made from GS memory dropped (more than 4096)\n", textures_.size());
+                }
+
                 Flush();
                 for (auto& entry : textures_)
                 {
