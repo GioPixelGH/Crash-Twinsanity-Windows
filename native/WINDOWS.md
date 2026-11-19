@@ -314,6 +314,28 @@ Vulkan this time"). Either way the setting changes to the API taken, so the next
 the one in use. A start with `$TWIN_GPU_API` set leaves both alone. A build without Vulkan (the AppImage before 1.3.0) hides the
 row and keeps OpenGL. A black screen whose pictures are shown, black, isn't caught: only a start that never shows any.
 
+### The render thread by kind of drawing (THE LIST 74)
+
+The fast renderer's map (`$TWIN_RENDER_SPLIT`, graphics/rendersplit.cpp; compare/runs_b74/split.sh). Each record the render
+thread plays is timed against what sent it: a kick against the VU1 program whose XGKICK it was (the dispatcher knows which
+translated program micro memory holds there: `Ee::Vu1ProgramAt`, its address in .vutext from vu1_translate.py's
+`g_ProgramAddresses`), a transfer against its GIF path; and against the frame's bucket (LinkRenderBuckets tells where each starts
+in the chain). Every run of VU1 starts at the renderer's program 1 (0x2DB0E0), which goes on through the entries VIF1 unpacked
+to the material's shader type's program, where the kicks are; a skin's part is a run of program 1 after a blend program's
+run (renderer/skins.cpp), so its kicks are told apart. Measured 2026-11-19 (perf.py, one run of 40 s, two cores, 1x, OpenGL);
+the render thread's milliseconds a frame, of them each kind's, and its primitives:
+
+| Where | Render thread | Type 01 (0x2DF700) | Path 2 (textures) | Then | Skins (characters) |
+| --- | --- | --- | --- | --- | --- |
+| The beach | 14.4 ms | 5.84 ms, 33,400 | 2.28 ms | type 04 1.62, 02 1.16, 17 1.00, 1A 0.78 | 0.21 ms, 1,000 |
+| The Academy's hub | 12.2 ms | 4.99 ms, 26,500 | 2.59 ms | type 02 2.49, 0A 0.41, 04 0.39 | 0.17 ms, 1,000 |
+| Amberly's fight | 6.1 ms | 2.14 ms, 12,700 | 1.65 ms | type 04 0.46, 02 0.43, 12 0.34 | 0.15 ms, 750 |
+
+By bucket the opaque materials' take 45-70% (the beach 8.6 of 13.2 ms), the startup chunk's objects 9-17%. So the scenery and
+the placed objects are what the GS's emulation spends its time on, the type 01 program's above all (the source shader family
+TwinsanityEvolved's prepared meshes draw, with 0A); the characters are 1 to 3% of it. THE LIST 75 (the scenery) comes first, as
+planned, and the textures' transfers (path 2) are the next largest part after the kinds of drawing.
+
 ### Hitches
 
 THE LIST 19 (#23: frames of 0.25-1.8 s as new areas load, GNRTX-3's i7-2600 and GT 730 on NVIDIA 472.12, his first 1.1.0
@@ -852,6 +874,11 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   the same place every time: a bug seen there is measured in the window as shown and in the picture drawn at once.
 - `$TWIN_FRAME_STATS`: each frame's time, VU1's work, the primitives, the render thread's time and the GPU renderer's batches, texture decodes, uploads, downloads and copies.
 - `$TWIN_GL_CALLS`: after each performance line, the render thread's OpenGL calls a frame by kind and the most called, the GPU renderer's counts, the card's time by kind and by the GPU renderer's pass ("The performance measure (perf.py)", under "Speed").
+- `$TWIN_RENDER_SPLIT=1` (THE LIST 74, graphics/rendersplit.cpp): after each performance line, the render thread's time,
+  primitives and records a frame by kind of drawing (`render split by kind`: the VU1 program whose XGKICK sent the packets,
+  named as renderer/vuprograms.cpp registers it, with its address in .vutext; the GIF's paths 2 and 3; the work queued) and by
+  the renderer's frame bucket they were sent in (`render split by bucket`), the busiest first. Needs the render thread. With
+  perf.py: `--env TWIN_RENDER_SPLIT=1` (compare/runs_b74/split.sh runs the beach, the Academy's hub and Amberly's fight).
 - `$TWIN_HW_DECODE_TRACE=1`: each texture the hardware renderer decodes from GS memory's copy, to stderr (the log): its place,
   format and size, the region the draw asked for ("(whole)" when the strips' rule widened it), the stale tiles' box, their
   pages and count (`decode: #62858054 2c00/4 psm 27 1024x1024 levels 1, asked 0,0-33,257 (whole), stale 0,0-263,263, 37 pages,

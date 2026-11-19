@@ -34,4 +34,12 @@ struct Vu1TranslationStats
     u64 differences = 0;
 };
 const Vu1TranslationStats& GetVu1TranslationStats();
+
+// The translated VU1 program micro memory holds at an instruction's address, as the dispatcher last told it (the one running,
+// while it runs), or -1 (none told: TWIN_VU1=interpret, or code no translation has); and a program's address in the retail
+// executable's .vutext (0 for none). VU1's thread's (the VU stage's with three threads)
+s32 Vu1ProgramAt(u32 pc);
+// The translated program where VU1's run now (its MSCAL or MSCNT) started, or -1
+s32 Vu1RunEntryProgram();
+u32 Vu1ProgramAddress(s32 program);
 }

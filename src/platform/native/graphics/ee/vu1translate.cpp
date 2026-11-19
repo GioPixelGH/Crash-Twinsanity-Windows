@@ -300,6 +300,9 @@ public:
         return t_.signatures[id];
     }
 
+    // The translated program micro memory holds at pc as last told (-1: none told there)
+    s32 ProgramAt(u32 pc) const { return owner_[pc & t_.codeMask]; }
+
 private:
     // The translated program at pc (its number, where it starts in micro memory, pc's offset in it and its first variant
     // there)
@@ -464,6 +467,10 @@ private:
     std::array<u32, 2048> base_ = {};
     u64 version_ = ~0ull;
 };
+
+// VU1's (Vu1ProgramAt; it lives as long as the program), and where VU1's run now started (Vu1RunEntryProgram)
+Dispatcher* g_Vu1Dispatcher = nullptr;
+u32 g_Vu1RunStart = 0;
 
 // TWIN_VU1_PROFILE's times: in the dispatcher's entries from the interpreter's state, in translated code (less XGKICK's
 // packets), in going from one translated program to the next, in leaving translated code, in the interpreter
@@ -1104,11 +1111,15 @@ void AttachVu1Translation(Vu& vu1)
     }
 
     auto dispatcher = std::make_shared<Dispatcher>(Vu1Table);
+    g_Vu1Dispatcher = dispatcher.get();
     if (mode == "verify")
     {
         std::fprintf(stderr, "graphics: VU1 translated and checked against the interpreter (TWIN_VU1=verify)\n");
         auto verifier = std::make_shared<Verifier>(vu1);
-        vu1.runner = [dispatcher, verifier](u32 start) { verifier->Run(*dispatcher, start); };
+        vu1.runner = [dispatcher, verifier](u32 start) {
+            g_Vu1RunStart = start;
+            verifier->Run(*dispatcher, start);
+        };
         std::atexit([] {
             std::fprintf(stderr, "vu1 verify: %llu runs, %llu kicks compared, %llu differences\n",
                          static_cast<unsigned long long>(g_Stats.verifiedRuns),
@@ -1119,7 +1130,10 @@ void AttachVu1Translation(Vu& vu1)
     }
 
     Vu* vu = &vu1;
-    vu1.runner = [dispatcher, vu](u32 start) { RunTranslated(*vu, *dispatcher, start); };
+    vu1.runner = [dispatcher, vu](u32 start) {
+        g_Vu1RunStart = start;
+        RunTranslated(*vu, *dispatcher, start);
+    };
 }
 
 void AttachVu0Translation(Vu& vu0)
@@ -1155,5 +1169,26 @@ void AttachVu0Translation(Vu& vu0)
 const Vu1TranslationStats& GetVu1TranslationStats()
 {
     return g_Stats;
+}
+
+s32 Vu1ProgramAt(u32 pc)
+{
+    if (g_Vu1Dispatcher == nullptr)
+    {
+        return -1;
+    }
+
+    const s32 program = g_Vu1Dispatcher->ProgramAt(pc);
+    return program >= 0 ? program : -1;
+}
+
+s32 Vu1RunEntryProgram()
+{
+    return Vu1ProgramAt(g_Vu1RunStart);
+}
+
+u32 Vu1ProgramAddress(s32 program)
+{
+    return program >= 0 && static_cast<u32>(program) < g_ProgramCount ? g_ProgramAddresses[program] : 0;
 }
 }

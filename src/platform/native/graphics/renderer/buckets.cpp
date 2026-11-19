@@ -6,6 +6,7 @@
 #include "platform/graphics.h"
 
 #include "../hardware.h"
+#include "../rendersplit.h"
 
 #include <cstdint>
 
@@ -229,7 +230,20 @@ extern "C"
         u8* const* buffers = g_MovieBuckets != 0 ? first.movieBuffers : first.buffers;
         RendererDmaChannel& vif1 = g_RendererDma[Vif1Channel];
         vif1.sending = 1;
+        if (NativeGraphics::RenderSplitOn())
+        {
+            // THE LIST 74's split by kind: where each bucket starts in the chain
+            const u8* firsts[FrameBucketCount];
+            for (u32 i = 0; i < FrameBucketCount; i++)
+            {
+                firsts[i] = reinterpret_cast<const u8*>(bucket[i].first);
+            }
+
+            NativeGraphics::SplitFrameBuckets(firsts, FrameBucketCount);
+        }
+
         NativeGraphics::SendVif1Chain(buffers[first.buffer]);
+        NativeGraphics::SplitFrameBuckets(nullptr, 0);
         vif1.sending = 0;
 
         StartFrameBuckets(buckets);

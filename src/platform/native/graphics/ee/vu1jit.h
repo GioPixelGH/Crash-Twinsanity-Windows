@@ -478,6 +478,8 @@ extern const Signature g_Signatures[];
 extern const u32 g_SignatureCount;
 extern const Program g_Programs[];
 extern const u32 g_ProgramCount;
+// Each program's address in the retail executable's .vutext
+extern const u32 g_ProgramAddresses[];
 // VU0's (its decal program: vu1_translate.py --vu0)
 extern const Signature g_SignaturesVu0[];
 extern const u32 g_SignatureCountVu0;

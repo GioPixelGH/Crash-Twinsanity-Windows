@@ -1108,6 +1108,11 @@ def generate(root, output):
                                                                          tr.index, tr.index, len(tr.variants)))
     out.append('};')
     out.append('const u32 g_ProgramCount%s = %d;' % (TABLE, len(translators)))
+    # Each program's address in the retail executable's .vutext (VU0's sets: 0), for the logs (THE LIST 74's split by kind)
+    out.append('const u32 g_ProgramAddresses%s[] = {' % TABLE)
+    for tr in translators:
+        out.append('    %#x,' % (VUTEXT_ADDRESS + tr.start * 8 if tr.start is not None else 0))
+    out.append('};')
     out.append('}')
     write_if_changed(output, '\n'.join(out) + '\n')
     total = sum(len(tr.variants) for tr in translators)

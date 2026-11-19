@@ -14,4 +14,7 @@ namespace Ee
 {
 // A chain started at its first tag: each piece (the tag's VIF words when tagWords, then its data) goes to the sink
 void RunDmaChain(const u8* firstTag, bool tagWords, const std::function<void(const u32* words, u32 count)>& sink);
+// The same, with each tag shown to onTag before its pieces go to the sink (THE LIST 74's split by kind: where a bucket starts)
+void RunDmaChain(const u8* firstTag, bool tagWords, const std::function<void(const u32* words, u32 count)>& sink,
+                 const std::function<void(const u8* tag)>& onTag);
 }

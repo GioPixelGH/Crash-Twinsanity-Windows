@@ -1,6 +1,7 @@
 #include "renderthread.h"
 
 #include "hardware.h"
+#include "rendersplit.h"
 #include "renderwork.h"
 #include "ee/gif.h"
 #include "ee/vif.h"
@@ -329,6 +330,7 @@ void RenderThread::WaitFrame(u64 frame)
 void RenderThread::Play(Chunk& chunk)
 {
     Ee::Gif& gif = *GetHardware().gif;
+    const bool split = RenderSplitOn();
     const u8* at = chunk.bytes;
     const u8* end = chunk.bytes + chunk.size;
     while (at < end)
@@ -361,6 +363,13 @@ void RenderThread::Play(Chunk& chunk)
             continue;
         }
 
+        // THE LIST 74's split by kind ($TWIN_RENDER_SPLIT, rendersplit.h)
+        SplitMark mark = {};
+        if (split)
+        {
+            mark = SplitStart();
+        }
+
         switch (header.kind)
         {
         case RecordTransfer:
@@ -377,6 +386,11 @@ void RenderThread::Play(Chunk& chunk)
             break;
         default:
             break;
+        }
+
+        if (split)
+        {
+            SplitStop(mark, header.kind, header.value);
         }
 
         at += static_cast<size_t>(header.quadwords) * 16;

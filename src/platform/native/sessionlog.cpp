@@ -15,6 +15,7 @@
 #include "graphics/hw/gl.h"
 #include "graphics/hw/hwgs.h"
 #include "graphics/hw/replace.h"
+#include "graphics/rendersplit.h"
 #include "graphics/renderthread.h"
 #include "graphics/renderwork.h"
 #include "graphics/window.h"
@@ -598,6 +599,7 @@ void LogPerformance()
     g_MinuteProgramNanoseconds = programNanoseconds;
     LogMemory();
     LogRendererCounts(g_Minute.frames);
+    NativeGraphics::LogRenderSplit(g_Minute.frames);
 }
 
 // A frame of play over SlowFrameSeconds: where its time went, the game thread's (its background loading, of it the chunks', their

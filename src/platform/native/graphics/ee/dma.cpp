@@ -27,6 +27,12 @@ constexpr u32 MaxTags = 4000000;
 
 void RunDmaChain(const u8* firstTag, bool tagWords, const std::function<void(const u32* words, u32 count)>& sink)
 {
+    RunDmaChain(firstTag, tagWords, sink, {});
+}
+
+void RunDmaChain(const u8* firstTag, bool tagWords, const std::function<void(const u32* words, u32 count)>& sink,
+                 const std::function<void(const u8* tag)>& onTag)
+{
     const u8* tag = firstTag;
     const u8* stack[2] = {};
     u32 depth = 0;
@@ -37,6 +43,11 @@ void RunDmaChain(const u8* firstTag, bool tagWords, const std::function<void(con
         u32 quadwords = words[0] & 0xFFFF;
         u32 id = (words[0] >> 28) & 7;
         u32 address = words[1];
+        if (onTag)
+        {
+            onTag(tag);
+        }
+
         if (tagWords)
         {
             sink(words + 2, 2);
