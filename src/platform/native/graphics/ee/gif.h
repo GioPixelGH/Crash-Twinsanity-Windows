@@ -62,7 +62,7 @@ public:
     using Tap = void (*)(u32 path, const u8* data, u32 quadwords);
     static inline Tap tap = nullptr;
     // Whether a kick's primitives are drawn in runs (Gs::StartRun; by its source, as KickNow and KickRow are given it): the fast
-    // renderer's ($TWIN_FAST_KICKS, graphics/fastrenderer.h); null: none are
+    // renderer's (graphics/fastrenderer.h); null: none are
     using Runs = bool (*)(u32 source);
     static inline Runs runsKick = nullptr;
     // Path 1's XGKICK: packets read from VU1's memory (a 16 KB ring) from a quadword address until one ends with EOP; source is

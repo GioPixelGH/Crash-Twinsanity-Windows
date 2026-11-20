@@ -379,8 +379,61 @@ void Gs::PlayStrip(u64 prim, const u8* vertexes, u32 count)
         stripKicks_[i] = in.kick;
     }
 
+    FinishStrip(count);
+}
+
+bool Gs::TakePackedStrip(u32 prim, u32 registerList, const u8* data, u32 count)
+{
+    if (!collecting_ || (prim & 7) != PrimTriangleStrip || count < 3 || count > StripCapacity)
+    {
+        return false;
+    }
+
+    // The tag's PRE (WriteRegister's: the run so far drawn, the state's cache made stale, the queue emptied)
+    WriteRegister(PRIM, prim & 0x7FF);
+    const bool fogged = registerList == 0x412;
+    // Each vertex as WritePacked's ST, RGBAQ (the ST's Q) and XYZ2 or XYZF2 make it (ADC set: XYZ3 or XYZF3, queued, not drawn)
+    Vertex* made = strip_;
+    for (u32 i = 0; i < count; i++)
+    {
+        u32 q[12];
+        std::memcpy(q, data + static_cast<size_t>(i) * 48, 48);
+        Vertex next = {};
+        next.s = std::bit_cast<f32>(q[0]);
+        next.t = std::bit_cast<f32>(q[1]);
+        next.q = std::bit_cast<f32>(q[2]);
+        next.r = static_cast<u8>(q[4]);
+        next.g = static_cast<u8>(q[5]);
+        next.b = static_cast<u8>(q[6]);
+        next.a = static_cast<u8>(q[7]);
+        next.x = q[8] & 0xFFFF;
+        next.y = q[9] & 0xFFFF;
+        if (fogged)
+        {
+            next.z = (q[10] >> 4) & 0xFFFFFF;
+            fog_ = static_cast<u8>(q[11] >> 4);
+        }
+        else
+        {
+            next.z = q[10];
+        }
+
+        next.u = u_;
+        next.v = v_;
+        next.f = fog_;
+        made[i] = next;
+        stripKicks_[i] = ((q[11] >> 15) & 1) == 0;
+    }
+
+    FinishStrip(count);
+    return true;
+}
+
+void Gs::FinishStrip(u32 count)
+{
     // The registers as the last vertex's writes leave them, and the queue as a strip's kicks leave it (its last two vertexes, the
     // last also in the third place)
+    Vertex* made = strip_;
     const Vertex& last = made[count - 1];
     s_ = last.s;
     t_ = last.t;

@@ -562,6 +562,11 @@ public:
     // write makes it (vertexes included), or the PACKED ST's Q (packedQ_) the next PACKED RGBAQ takes, or a strip (PreparedStrip:
     // PlayStrip). count: quadwords
     void PlayWrites(const u8* entries, u32 count);
+    // A raw kick's strip while a run is being collected (THE LIST 75): a PACKED tag with PRE whose loops are ST, RGBAQ and XYZ2
+    // (registerList 0x512) or XYZF2 (0x412) a vertex, count vertexes, all of them in data (count * 3 quadwords). Played as the
+    // tag's PRIM and quadwords would be (WritePacked's), a triangle strip's triangles drawn at once (DrawStripPrimitives). False:
+    // not a triangle strip, no run, or too long, and nothing written (the tag goes the usual way)
+    bool TakePackedStrip(u32 prim, u32 registerList, const u8* data, u32 count);
     // Whether the backend changed the draw's state while drawing the last primitive (DrawRun stops after such a one)
     bool stateTouched() const { return stateTouched_; }
 
@@ -702,6 +707,9 @@ private:
     // vertexes in place and drawn at once (DrawStripPrimitives) while a run is being collected; else (another primitive's type,
     // the debugging switches) the writes made one by one
     void PlayStrip(u64 prim, const u8* vertexes, u32 count);
+    // A strip's end (PlayStrip's and TakePackedStrip's, the vertexes in strip_ and stripKicks_): the registers as the last
+    // vertex's writes leave them, the queue as the strip's kicks leave it, and its triangles drawn
+    void FinishStrip(u32 count);
     // A triangle strip's triangles (triangle t: vertexes t to t + 2, drawn when kicks[t + 2] is set), with the state the
     // registers make now: DrawPrimitives' work, the backend's DrawStrip
     void DrawStripPrimitives(const Vertex* vertexes, const u8* kicks, u32 count);

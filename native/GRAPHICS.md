@@ -397,8 +397,8 @@ The passage a kind's prepared path goes through (THE LIST 74 step 3), in place b
   makes the draw's state once and calls the backend's DrawRun, which makes its context current and takes the CPU side's writes
   once, then draws each primitive as Draw would (DrawLikeLast, or the whole way), stopping at one it leaves to the software
   rasteriser or one whose drawing changed the state. The primitives, their order and their state are the same, so the pictures
-  are: `$TWIN_FAST_KICKS=all` (or programs' addresses) draws those kicks in runs in the fast mode, and the 25 pictures stayed
-  1.3.0's byte for byte with OpenGL and with Vulkan. With every kick in runs the GS's time at the beach (perf.py, two cores,
+  are. With `$TWIN_FAST_KICKS=all` (every kick in runs, the fast mode's default since THE LIST 75 step 3; programs' addresses
+  narrow it) the 25 pictures stayed 1.3.0's byte for byte with OpenGL and with Vulkan. With every kick in runs the GS's time at the beach (perf.py, two cores,
   OpenGL, 2026-11-20) fell by 0.6 to 1.1 ms a frame (11.2 to 10.4-10.6 ms beside the runs before and after it), the card's
   draws and batches the same: what a prepared kind saves on the GS's side, before its VU1 and GIF work.
 - The prepared batch (Gs::PreparedWrite, gs.h). A kind's function hands the GS its register writes as entries laid out as A+D
@@ -453,3 +453,17 @@ at 1x on two cores, OpenGL, 2026-11-20, accurate A and fast B in one session A B
 (A 65.3, B 70.5 on average), the render thread 2.0 to 2.6 ms less (13.2 to 10.9), VU1's thread level (10.0 and 10.1), the
 game's 0.5 to 1.0 ms less, the three threads' sum (which two cores share) 2.2 to 3.7 ms less (32.5 to 29.5). The render
 thread's 8.5 ms aim needs more kinds than this one (the split's next at the beach: the type 04 and 02 programs, 1.6 and 1.2 ms).
+
+Every kick in runs, and the raw kicks' strips (THE LIST 75 step 3). The fast mode draws every VU1 kick in the GS's runs, not only
+the prepared batches (fastrenderer.cpp's FastKickRuns; `$TWIN_FAST_KICKS` narrows it to programs), and the GIF hands a raw
+kick's strip to the GS whole. At a PACKED tag with PRE whose registers are ST, RGBAQ and XYZ2 or XYZF2 and whose quadwords are
+all in the data at hand, while a run is collected, Gs::TakePackedStrip makes the vertexes as WritePacked's writes would (the
+RGBAQ's Q the vertex's ST's, ADC as XYZ3 or XYZF3), leaves the registers and the vertex queue as they would, and draws the
+triangles through the same DrawStrip as a prepared strip (else the tag goes the usual way). At the beach these tags carry nearly
+every vertex the other programs kick (in 1500 frames 57.7 million vertexes in 1.8 million tags; 0.18 million outside them, UV
+RGBAQ XYZ2 triangles and fans), so the type 04, 02, 17 and 1A programs' strips are drawn at once with VU1 left as it is. Verify
+over the 25 pictures (OpenGL) compared 2,113,536 runs, 234,651 declined, with no difference, and checked 1,878,884 pending
+strips; the fast mode's pictures are 1.3.0's with OpenGL and Vulkan. Measured (perf.py, the beach at 1x on two cores, OpenGL,
+2026-11-20, step 2's fast mode A against this one B, A B B A A B B A): frames a second +4.9 to +6.1 (A 67.1, B 72.6 on
+average), the render thread 2.8 to 3.0 ms less (11.3 to 8.5, the aim's 8.5 ms), VU1's thread level (10.7 and 10.8, now the
+longest of the three), the game's 0.5 to 0.9 ms less, the three threads' sum 3.2 to 3.7 ms less (30.9 to 27.4).

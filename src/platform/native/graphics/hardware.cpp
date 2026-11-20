@@ -54,11 +54,8 @@ Hardware& GetHardware()
         };
         // VU1's programs run translated (ee/vu1translate.h)
         Ee::AttachVu1Translation(*made.vu1);
-        if (FastKicksAsked())
-        {
-            // THE LIST 74 step 3's test: the kicks $TWIN_FAST_KICKS names drawn in runs (fastrenderer.h)
-            Ee::Gif::runsKick = &FastKickRuns;
-        }
+        // The fast renderer draws the kicks in runs (fastrenderer.h: all of them, or those $TWIN_FAST_KICKS names)
+        Ee::Gif::runsKick = &FastKickRuns;
 
         if (RenderSplitOn())
         {

@@ -145,7 +145,9 @@ bool FastKickRuns(u32 source)
         return false;
     }
 
-    if (kicks.all)
+    // Every kick unless the variable narrows them (THE LIST 75: 769454f measured every kick in runs 0.6-1.1 ms of GS a frame
+    // less, the pictures the same)
+    if (!kicks.asked || kicks.all)
     {
         return true;
     }

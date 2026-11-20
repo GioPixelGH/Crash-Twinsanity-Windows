@@ -50,6 +50,22 @@ u32 Gif::TransferTaken(u32 index, const u8* data, u32 quadwords, bool stopAtEnd)
             if (path.loops > 0)
             {
                 gs_.StartTag();
+                // A strip's tag (ST, RGBAQ, XYZ2 or XYZF2 a vertex), its quadwords all here: drawn at once while the GS collects a
+                // run (the fast renderer's kicks: Gs::TakePackedStrip)
+                const u32 registerList = high & 0xFFF;
+                if (pre && path.format == Packed && path.registerCount == 3 && (registerList == 0x512 || registerList == 0x412) &&
+                    path.loops * 3 <= quadwords - taken && gs_.TakePackedStrip(prim, registerList, at + 16, path.loops))
+                {
+                    taken += path.loops * 3;
+                    path.loops = 0;
+                    if (path.endOfPacket && stopAtEnd)
+                    {
+                        return taken;
+                    }
+
+                    continue;
+                }
+
                 if (pre && path.format == Packed)
                 {
                     gs_.WriteRegister(Gs::PRIM, prim);

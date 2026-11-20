@@ -31,9 +31,9 @@ FastMode FastRendererMode();
 // Whether the fast renderer knows any kind of drawing (the setting's row shown)
 bool FastRendererHasKinds();
 
-// THE LIST 74 step 3's GS side, the test of its runs: $TWIN_FAST_KICKS=all, or VU1 programs' addresses (hex, comma-separated:
-// the retail executable's .vutext addresses $TWIN_RENDER_SPLIT's lines name them by), has those programs' kicks drawn in runs
-// (Gs::StartRun: the state made once, the backend called once for a run of primitives) when the mode isn't accurate. Asked:
+// THE LIST 74 step 3's GS side: when the mode isn't accurate every kick is drawn in runs (Gs::StartRun: the state made once, the
+// backend called once for a run of primitives), or with $TWIN_FAST_KICKS=VU1 programs' addresses (hex, comma-separated: the
+// retail executable's .vutext addresses $TWIN_RENDER_SPLIT's lines name them by) only those programs' kicks ("all": every one). Asked:
 // whether the variable is set (the kicks' sources then carry their program, rendersplit.h's SplitKickSource); FastKickRuns is
 // the GIF's hook (ee/gif.h's runsKick), on the render thread
 bool FastKicksAsked();
