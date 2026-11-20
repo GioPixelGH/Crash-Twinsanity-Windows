@@ -882,6 +882,13 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
 - `$TWIN_FAST_RENDERER=0`, `1` or `verify` (THE LIST 74, graphics/fastrenderer.h): the renderer's kind over the setting
   (Display > Renderer > Renderer, `fast_renderer`, shown once the fast renderer knows a kind of drawing): accurate, fast, or both
   ways with their results compared.
+- `$TWIN_FAST_KICKS=all`, or VU1 programs' addresses in .vutext (hex, comma-separated, as `$TWIN_RENDER_SPLIT` names them:
+  `2df700`), with `$TWIN_FAST_RENDERER=1` (THE LIST 74 step 3, GRAPHICS.md "The fast renderer"): those programs' kicks drawn in
+  the GS's runs (a run of primitives with one state drawn by one call of the backend); the pictures must stay the same.
+- `$TWIN_FAST_PREPARE=all`, or programs' addresses as above, with `$TWIN_FAST_RENDERER=1` or `verify`: those programs handed to
+  the test's stand-in for a prepared function (the program itself, interpreted, its kicks converted into a batch of the GS's
+  writes): fast draws the batches, verify draws the program and compares the stand-in's batch and VU1's state with it ("fast
+  verify:" lines, the first 50, and their count at exit). Interpreted VU1 is slow (the beach at about 9 fps with `all`).
 - `$TWIN_HW_DECODE_TRACE=1`: each texture the hardware renderer decodes from GS memory's copy, to stderr (the log): its place,
   format and size, the region the draw asked for ("(whole)" when the strips' rule widened it), the stale tiles' box, their
   pages and count (`decode: #62858054 2c00/4 psm 27 1024x1024 levels 1, asked 0,0-33,257 (whole), stale 0,0-263,263, 37 pages,

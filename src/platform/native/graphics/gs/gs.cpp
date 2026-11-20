@@ -146,7 +146,8 @@ void Gs::ResetQueue()
 
 void Gs::WriteRegister(u32 address, u64 value)
 {
-    // Every register but the vertexes' and the transfers' is part of a primitive's DrawState (SetUpState): its cache made stale
+    // Every register but the vertexes' and the transfers' is part of a primitive's DrawState (SetUpState): its cache made stale.
+    // A run being collected (StartRun) is drawn before any but a vertex's register changes
     switch (address)
     {
     case RGBAQ:
@@ -157,13 +158,16 @@ void Gs::WriteRegister(u32 address, u64 value)
     case XYZ2:
     case XYZ3:
     case FOG:
+        break;
     case BITBLTBUF:
     case TRXPOS:
     case TRXREG:
     case TRXDIR:
     case TEXFLUSH:
+        FlushRun();
         break;
     default:
+        FlushRun();
         stateGeneration_++;
         break;
     }
@@ -455,7 +459,7 @@ void Gs::Kick(bool draw, bool)
     case PrimPoint:
         if (draw)
         {
-            DrawPrimitive(queue_, 1);
+            Emit(queue_, 1);
         }
 
         queued_ = 0;
@@ -466,7 +470,7 @@ void Gs::Kick(bool draw, bool)
         {
             if (draw)
             {
-                DrawPrimitive(queue_, 2);
+                Emit(queue_, 2);
             }
 
             queued_ = 0;
@@ -478,7 +482,7 @@ void Gs::Kick(bool draw, bool)
         {
             if (draw)
             {
-                DrawPrimitive(queue_, 2);
+                Emit(queue_, 2);
             }
 
             queue_[0] = queue_[1];
@@ -491,7 +495,7 @@ void Gs::Kick(bool draw, bool)
         {
             if (draw)
             {
-                DrawPrimitive(queue_, 3);
+                Emit(queue_, 3);
             }
 
             queued_ = 0;
@@ -503,7 +507,7 @@ void Gs::Kick(bool draw, bool)
         {
             if (draw)
             {
-                DrawPrimitive(queue_, 3);
+                Emit(queue_, 3);
             }
 
             queue_[0] = queue_[1];
@@ -520,7 +524,7 @@ void Gs::Kick(bool draw, bool)
                 drawn[0] = queue_[0];
                 drawn[1] = queue_[1];
                 drawn[2] = queue_[2];
-                DrawPrimitive(drawn, 3);
+                Emit(drawn, 3);
             }
 
             queue_[1] = queue_[2];
@@ -704,6 +708,7 @@ void Gs::LoadClut(const RegTex0& tex0)
 // TRXPOS's destination corner (wrapping at 2048)
 void Gs::WriteImage(const u8* data, u32 bytes)
 {
+    FlushRun();
     NextGeneration();
     if (!transferring_)
     {

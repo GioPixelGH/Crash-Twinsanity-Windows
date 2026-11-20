@@ -192,18 +192,38 @@ void Gs::SetUpState(DrawState& state, const Vertex*)
     }
 }
 
+namespace
+{
+// The state made from the registers kept while none of them is written (a strip's triangles, a mesh's): the GS's of this thread,
+// by generation (Gs::WriteRegister). DrawPrimitive's and DrawPrimitives'
+struct StateCache
+{
+    const Gs* gs = nullptr;
+    u64 generation = 0;
+    Gs::DrawState state;
+};
+thread_local constinit StateCache t_StateCache{};
+
+bool StateCaching()
+{
+    static const bool caching = std::getenv("TWIN_GS_STATE_CACHE") == nullptr || std::getenv("TWIN_GS_STATE_CACHE")[0] != '0';
+    return caching;
+}
+
+// The debugging switches DrawPrimitive looks at before and after each primitive (no runs while one is on: Gs::StartRun)
+bool GsDebugging()
+{
+    static const bool debugging = std::getenv("TWIN_GS_VERTEX_CHECK") != nullptr || std::getenv("TWIN_GS_DUMP_AT") != nullptr ||
+                                  std::getenv("TWIN_GS_TRACE") != nullptr || std::getenv("TWIN_PIXEL_WATCH") != nullptr ||
+                                  std::getenv("TWIN_FILTER_PROBE") != nullptr;
+    return debugging;
+}
+}
+
 void Gs::DrawPrimitive(const Vertex* vertexes, u32 count)
 {
-    // The state made from the registers kept while none of them is written (a strip's triangles, a mesh's): the GS's of this
-    // thread, by generation (Gs::WriteRegister)
-    struct StateCache
-    {
-        const Gs* gs = nullptr;
-        u64 generation = 0;
-        DrawState state;
-    };
-    thread_local constinit StateCache cache{};
-    static const bool caching = std::getenv("TWIN_GS_STATE_CACHE") == nullptr || std::getenv("TWIN_GS_STATE_CACHE")[0] != '0';
+    StateCache& cache = t_StateCache;
+    static const bool caching = StateCaching();
     // The backend draws from the cache's own state, not a copy (copying its 800 bytes a primitive was a twelfth of the render
     // thread's time); a backend that changes it (a glyph's texture swapped in, the texture's levels decoded: stateTouched_)
     // leaves the cache to be made again, and the software rasteriser draws from a copy of its own (below)
@@ -219,9 +239,7 @@ void Gs::DrawPrimitive(const Vertex* vertexes, u32 count)
     primitivesDrawn++;
     // The debugging switches (TWIN_GS_VERTEX_CHECK, TWIN_GS_DUMP_AT, TWIN_GS_TRACE, TWIN_PIXEL_WATCH) and the software path are
     // out of line: this runs for every primitive, and their registers and stack were saved and made at each call
-    static const bool debugging = std::getenv("TWIN_GS_VERTEX_CHECK") != nullptr || std::getenv("TWIN_GS_DUMP_AT") != nullptr ||
-                                  std::getenv("TWIN_GS_TRACE") != nullptr || std::getenv("TWIN_PIXEL_WATCH") != nullptr ||
-                                  std::getenv("TWIN_FILTER_PROBE") != nullptr;
+    static const bool debugging = GsDebugging();
     s32 watch[2] = {-1, -1};
     if (debugging)
     {
@@ -253,6 +271,77 @@ void Gs::DrawPrimitive(const Vertex* vertexes, u32 count)
     if (watch[0] >= 0)
     {
         ReportWatch(state, vertexes, count, watch);
+    }
+}
+
+void Gs::StartRun()
+{
+    // (Not with a debugging switch: they look at each primitive in DrawPrimitive; nor without the state's cache, which the run's
+    // single making of the state is)
+    collecting_ = backend_ != nullptr && !GsDebugging() && StateCaching();
+}
+
+void Gs::EndRun()
+{
+    FlushRun();
+    collecting_ = false;
+}
+
+void Gs::PlayWrites(const u8* entries, u32 count)
+{
+    for (u32 n = 0; n < count; n++)
+    {
+        PreparedWrite write;
+        std::memcpy(&write, entries + static_cast<size_t>(n) * sizeof(PreparedWrite), sizeof(write));
+        if (write.address == PreparedPackedQ)
+        {
+            packedQ_ = std::bit_cast<f32>(static_cast<u32>(write.value));
+        }
+        else
+        {
+            WriteRegister(write.address, write.value);
+        }
+    }
+}
+
+// A run's primitives (count vertexes each), all with the state the registers make now: DrawPrimitive's work for each, the state
+// made once and the backend called once for as many as it draws in a row
+void Gs::DrawPrimitives(const Vertex* vertexes, u32 count, u32 runLength)
+{
+    StateCache& cache = t_StateCache;
+    u32 done = 0;
+    while (done < runLength)
+    {
+        const Vertex* first = vertexes + static_cast<size_t>(done) * count;
+        if (!(cache.gs == this && cache.generation == stateGeneration_))
+        {
+            SetUpState(cache.state, &first[count - 1]);
+            cache.gs = this;
+            cache.generation = stateGeneration_;
+        }
+
+        DrawState& state = cache.state;
+        // The backend counts each primitive in primitivesDrawn before drawing it, as DrawPrimitive does
+        stateTouched_ = false;
+        bool refused = false;
+        const u32 drawn = backend_->DrawRun(state, first, count, runLength - done, refused);
+        primitives += drawn;
+        done += drawn;
+        if (refused)
+        {
+            const bool touched = stateTouched_;
+            if (touched)
+            {
+                cache.generation = ~0ull;
+            }
+
+            DrawOwnState(state, vertexes + static_cast<size_t>(done) * count, count, touched);
+            done++;
+        }
+        else if (stateTouched_)
+        {
+            cache.generation = ~0ull;
+        }
     }
 }
 

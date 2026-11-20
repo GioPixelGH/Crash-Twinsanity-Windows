@@ -15,6 +15,7 @@
 #include <bitset>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <vector>
 
@@ -440,6 +441,18 @@ struct Vertex
     u32 v;
 };
 
+// An entry of a fast renderer's prepared batch (Gs::PlayWrites): a register written as an A+D write writes it (the quadword's
+// layout: the value, then the register's address), or with the address PreparedPackedQ the Q a PACKED ST leaves for the next
+// PACKED RGBAQ (the value's low word, a float's bits)
+struct PreparedWrite
+{
+    u64 value;
+    u32 address;
+    u32 unused;
+};
+static_assert(sizeof(PreparedWrite) == 16);
+constexpr u32 PreparedPackedQ = 0x100;
+
 // One drawing context's registers
 struct Context
 {
@@ -501,6 +514,19 @@ public:
     void StartTag() { packedQ_ = 1.0f; }
     // IMAGE data of a host to local memory transfer (whole quadwords)
     void WriteImage(const u8* data, u32 bytes);
+
+    // The fast renderer's GS side (THE LIST 74 step 3, graphics/fastrenderer.h): between StartRun and EndRun (a kick of a kind
+    // the fast renderer takes, or a prepared batch) the primitives the vertexes make are collected into a run instead of drawn
+    // one by one, and the run is drawn at once (DrawPrimitives: the draw's state made once, Backend::DrawRun) before any register
+    // other than a vertex's is written, before image data, when the run is full, and at EndRun. The same primitives in the same
+    // order with the same state: only the calls between them are fewer
+    void StartRun();
+    void EndRun();
+    // The fast renderer's prepared batch (fastrenderer.h's PreparedWrite entries, in order): each a register write as an A+D
+    // write makes it (vertexes included), or the PACKED ST's Q (packedQ_) the next PACKED RGBAQ takes
+    void PlayWrites(const u8* entries, u32 count);
+    // Whether the backend changed the draw's state while drawing the last primitive (DrawRun stops after such a one)
+    bool stateTouched() const { return stateTouched_; }
 
     // The privileged registers (the PCRTC's: PMODE, SMODE2, DISPFB1/2, DISPLAY1/2, BGCOLOR)
     RegPmode pmode = {};
@@ -608,6 +634,34 @@ private:
     void Kick(bool draw, bool fog);
     void ResetQueue();
     void DrawPrimitive(const Vertex* vertexes, u32 count);
+    // A primitive drawn now, or added to the run (StartRun)
+    void Emit(const Vertex* vertexes, u32 count)
+    {
+        if (!collecting_)
+        {
+            DrawPrimitive(vertexes, count);
+            return;
+        }
+
+        if (runPrimitives_ == RunCapacity || (runPrimitives_ != 0 && runCount_ != count))
+        {
+            FlushRun();
+        }
+
+        std::memcpy(&run_[runPrimitives_ * count], vertexes, sizeof(Vertex) * count);
+        runCount_ = count;
+        runPrimitives_++;
+    }
+    void FlushRun()
+    {
+        if (runPrimitives_ != 0)
+        {
+            const u32 primitives = runPrimitives_;
+            runPrimitives_ = 0;
+            DrawPrimitives(run_, runCount_, primitives);
+        }
+    }
+    void DrawPrimitives(const Vertex* vertexes, u32 count, u32 primitives);
     void DrawSoftware(DrawState& state, const Vertex* vertexes, u32 count);
     [[gnu::noinline]] void DebugBeforeDraw(const DrawState& state, const Vertex* vertexes, u32 count, s32 watch[2]);
     [[gnu::noinline]] void ReportWatch(const DrawState& state, const Vertex* vertexes, u32 count, const s32 watch[2]);
@@ -690,6 +744,13 @@ private:
     Vertex queue_[3] = {};
     u32 queued_ = 0;
     u32 fanFirst_ = 0;
+
+    // The run being collected (StartRun): its primitives' vertexes one after another, count of them each
+    static constexpr u32 RunCapacity = 512;
+    bool collecting_ = false;
+    u32 runCount_ = 0;
+    u32 runPrimitives_ = 0;
+    Vertex run_[RunCapacity * 3];
 
     // The colour lookup table's buffer (16 bit halves: a 32 bit entry's low half at i, its high one at i + 256) and its
     // load condition's saved bases

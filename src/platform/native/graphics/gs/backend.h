@@ -40,6 +40,11 @@ public:
 
     // A primitive: true when the backend drew it; false leaves it to the software rasteriser, local memory made current for it
     virtual bool Draw(Gs::DrawState& state, const Vertex* vertexes, u32 count) = 0;
+    // A run of primitives with the same state (Gs::DrawPrimitives: count vertexes each, one after another), each drawn as Draw
+    // draws it and counted in the GS's primitivesDrawn before it is, as Gs::DrawPrimitive counts it. The primitives drawn in a
+    // row from the first: it stops after one whose drawing changed the state (Gs::stateTouched: the state is made again for the
+    // rest), or at one it leaves to the software rasteriser (refused set, local memory made current for it, as Draw's false)
+    virtual u32 DrawRun(Gs::DrawState& state, const Vertex* vertexes, u32 count, u32 primitives, bool& refused) = 0;
     // Local memory's pages about to be read, or written, by the CPU side: made current
     virtual void BeforeCpuRead(const PageSet& pages) = 0;
     virtual void BeforeCpuWrite(const PageSet& pages) = 0;

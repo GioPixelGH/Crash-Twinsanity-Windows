@@ -1,6 +1,7 @@
 #include "gif.h"
 
 #include <algorithm>
+#include <bit>
 
 #include "../gs/gs.h"
 
@@ -128,6 +129,12 @@ void Gif::KickNow(const u8* vuMemory, u32 address, u32 source)
 
     inKick_ = true;
     gs_.traceSource = source;
+    const bool run = runsKick != nullptr && runsKick(source);
+    if (run)
+    {
+        gs_.StartRun();
+    }
+
     // Path 1 starts a packet fresh at each kick
     paths_[0] = Path{};
     // (as far as the memory's end at a time: Transfer stops at the packet's end)
@@ -146,6 +153,11 @@ void Gif::KickNow(const u8* vuMemory, u32 address, u32 source)
         }
     }
 
+    if (run)
+    {
+        gs_.EndRun();
+    }
+
     gs_.traceSource = ~0u;
     inKick_ = false;
 }
@@ -160,7 +172,17 @@ void Gif::KickRow(const u8* quadwords, u32 count, u32 source)
     inKick_ = true;
     gs_.traceSource = source;
     paths_[0] = Path{};
-    TransferNow(0, quadwords, count, true);
+    if (runsKick != nullptr && runsKick(source))
+    {
+        gs_.StartRun();
+        TransferNow(0, quadwords, count, true);
+        gs_.EndRun();
+    }
+    else
+    {
+        TransferNow(0, quadwords, count, true);
+    }
+
     gs_.traceSource = ~0u;
     inKick_ = false;
 }
@@ -194,5 +216,185 @@ u32 Gif::KickLength(const u8* vuMemory, u32 address)
     }
 
     return std::min(length, Ring);
+}
+}
+
+namespace Ee
+{
+void Gif::PreparedNow(const u8* entries, u32 count, u32 source)
+{
+    if (tap != nullptr)
+    {
+        // A GS dump gets the batch as the A+D packet it stands for (the PACKED ST's Q left out: a dump's next tag sets it again)
+        std::vector<u8> packet;
+        packet.reserve((static_cast<size_t>(count) + 1) * 16);
+        u32 writes = 0;
+        for (u32 n = 0; n < count; n++)
+        {
+            Gs::PreparedWrite write;
+            std::memcpy(&write, entries + static_cast<size_t>(n) * 16, 16);
+            if (write.address != Gs::PreparedPackedQ)
+            {
+                writes++;
+            }
+        }
+
+        const u64 tag[2] = {static_cast<u64>(writes) | 1ull << 15 | static_cast<u64>(Packed) << 58 | 1ull << 60, 0xE};
+        packet.insert(packet.end(), reinterpret_cast<const u8*>(tag), reinterpret_cast<const u8*>(tag) + 16);
+        for (u32 n = 0; n < count; n++)
+        {
+            Gs::PreparedWrite write;
+            std::memcpy(&write, entries + static_cast<size_t>(n) * 16, 16);
+            if (write.address != Gs::PreparedPackedQ)
+            {
+                const u64 quadword[2] = {write.value, write.address & 0xFF};
+                packet.insert(packet.end(), reinterpret_cast<const u8*>(quadword), reinterpret_cast<const u8*>(quadword) + 16);
+            }
+        }
+
+        tap(0, packet.data(), static_cast<u32>(packet.size() / 16));
+    }
+
+    inKick_ = true;
+    gs_.traceSource = source;
+    gs_.StartRun();
+    gs_.PlayWrites(entries, count);
+    gs_.EndRun();
+    gs_.traceSource = ~0u;
+    inKick_ = false;
+}
+
+bool Gif::ConvertKick(const u8* vuMemory, u32 address, std::vector<u8>& batch)
+{
+    const size_t kept = batch.size();
+    auto add = [&batch](u32 reg, u64 value) {
+        const Gs::PreparedWrite write = {value, reg, 0};
+        const u8* bytes = reinterpret_cast<const u8*>(&write);
+        batch.insert(batch.end(), bytes, bytes + sizeof(write));
+    };
+    auto quadword = [vuMemory](u32 at, u32 q[4]) { std::memcpy(q, vuMemory + (at & 0x3FF) * 16, 16); };
+
+    // KickNow's walk through the packets: each tag, then its loops' quadwords (at most the ring)
+    constexpr u32 Ring = 0x400;
+    u32 at = address & (Ring - 1);
+    u32 read = 0;
+    bool tagged = false;
+    f32 packedQ = 1.0f;
+    while (read < Ring)
+    {
+        u64 low;
+        u64 high;
+        std::memcpy(&low, vuMemory + ((at + read) & (Ring - 1)) * 16, 8);
+        std::memcpy(&high, vuMemory + ((at + read) & (Ring - 1)) * 16 + 8, 8);
+        read++;
+        const u32 loops = low & 0x7FFF;
+        const bool endOfPacket = (low >> 15) & 1;
+        const bool pre = (low >> 46) & 1;
+        const u32 prim = (low >> 47) & 0x7FF;
+        const u32 format = (low >> 58) & 3;
+        u32 registers = (low >> 60) & 0xF;
+        if (registers == 0)
+        {
+            registers = 16;
+        }
+
+        if (loops > 0)
+        {
+            // Gs::StartTag
+            tagged = true;
+            packedQ = 1.0f;
+            if (pre && format == Packed)
+            {
+                add(Gs::PRIM, prim);
+            }
+        }
+
+        if (format == Packed)
+        {
+            for (u32 loop = 0; loop < loops; loop++)
+            {
+                for (u32 r = 0; r < registers && read < Ring; r++, read++)
+                {
+                    u32 q[4];
+                    quadword(at + read, q);
+                    const u32 descriptor = (high >> (r * 4)) & 0xF;
+                    switch (descriptor)
+                    {
+                    case Gs::PRIM:
+                        add(Gs::PRIM, q[0] & 0x7FF);
+                        break;
+                    case Gs::RGBAQ:
+                        add(Gs::RGBAQ, static_cast<u64>(q[0] & 0xFF) | static_cast<u64>(q[1] & 0xFF) << 8 |
+                                           static_cast<u64>(q[2] & 0xFF) << 16 | static_cast<u64>(q[3] & 0xFF) << 24 |
+                                           static_cast<u64>(std::bit_cast<u32>(packedQ)) << 32);
+                        break;
+                    case Gs::ST:
+                        add(Gs::ST, static_cast<u64>(q[0]) | static_cast<u64>(q[1]) << 32);
+                        packedQ = std::bit_cast<f32>(q[2]);
+                        break;
+                    case Gs::UV:
+                        add(Gs::UV, static_cast<u64>(q[0] & 0x3FFF) | static_cast<u64>(q[1] & 0x3FFF) << 16);
+                        break;
+                    case Gs::XYZF2:
+                        add((q[3] >> 15) & 1 ? Gs::XYZF3 : Gs::XYZF2,
+                            static_cast<u64>(q[0] & 0xFFFF) | static_cast<u64>(q[1] & 0xFFFF) << 16 |
+                                static_cast<u64>((q[2] >> 4) & 0xFFFFFF) << 32 | static_cast<u64>((q[3] >> 4) & 0xFF) << 56);
+                        break;
+                    case Gs::XYZ2:
+                        add((q[3] >> 15) & 1 ? Gs::XYZ3 : Gs::XYZ2,
+                            static_cast<u64>(q[0] & 0xFFFF) | static_cast<u64>(q[1] & 0xFFFF) << 16 | static_cast<u64>(q[2]) << 32);
+                        break;
+                    case Gs::FOG:
+                        add(Gs::FOG, static_cast<u64>((q[3] >> 4) & 0xFF) << 56);
+                        break;
+                    case 0xE:
+                        add(q[2] & 0xFF, static_cast<u64>(q[0]) | static_cast<u64>(q[1]) << 32);
+                        break;
+                    case 0xF:
+                        break;
+                    default:
+                        add(descriptor, static_cast<u64>(q[0]) | static_cast<u64>(q[1]) << 32);
+                        break;
+                    }
+                }
+            }
+        }
+        else if (format == RegList)
+        {
+            u32 reg = 0;
+            for (u32 n = 0; n < loops * registers; n++)
+            {
+                u64 value;
+                std::memcpy(&value, vuMemory + ((at + read + n / 2) & (Ring - 1)) * 16 + (n & 1) * 8, 8);
+                const u32 descriptor = (high >> (reg * 4)) & 0xF;
+                if (descriptor < 0xE)
+                {
+                    add(descriptor, value);
+                }
+
+                reg = reg + 1 == registers ? 0 : reg + 1;
+            }
+
+            read += (loops * registers + 1) / 2;
+        }
+        else if (loops > 0)
+        {
+            // IMAGE data: not a register write
+            batch.resize(kept);
+            return false;
+        }
+
+        if (endOfPacket)
+        {
+            break;
+        }
+    }
+
+    if (tagged)
+    {
+        add(Gs::PreparedPackedQ, std::bit_cast<u32>(packedQ));
+    }
+
+    return true;
 }
 }

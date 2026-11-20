@@ -6,6 +6,8 @@
 
 #include "vu1translate.h"
 
+#include "../fastrenderer.h"
+
 #include "rounding.h"
 #include "vif.h"
 #include "vu.h"
@@ -274,6 +276,14 @@ public:
         }
 
         const Program& code = t_.programs[program];
+        if (anyPrepared_ && offset == 0 && prepared_[program] != nullptr &&
+            NativeGraphics::FastRendererMode() != NativeGraphics::FastMode::Accurate)
+        {
+            // A program the fast renderer has a prepared function for: translated code leaves here for RunTranslated to hand
+            // it over
+            return false;
+        }
+
         for (u32 v = first; v < code.variantCount && code.variants[v].offset == offset; v++)
         {
             if (code.variants[v].signature == slots.exitSignature)
@@ -302,6 +312,30 @@ public:
 
     // The translated program micro memory holds at pc as last told (-1: none told there)
     s32 ProgramAt(u32 pc) const { return owner_[pc & t_.codeMask]; }
+
+    // The fast renderer's prepared functions by program (graphics/fastrenderer.h; VU1's only, none unless one is known or asked
+    // for): Next leaves translated code at the entry of a program that has one when the mode isn't accurate, and RunTranslated
+    // hands the program over there (PreparedAt)
+    void SetPrepared(std::vector<NativeGraphics::PreparedFunction> byProgram)
+    {
+        prepared_ = std::move(byProgram);
+        anyPrepared_ = std::any_of(prepared_.begin(), prepared_.end(), [](auto function) { return function != nullptr; });
+    }
+    bool anyPrepared() const { return anyPrepared_; }
+    bool PreparedAt(Vu& vu, u32 pc, NativeGraphics::PreparedFunction& function, u32& base, u32& size)
+    {
+        s32 program;
+        u32 offset, first;
+        if (!Locate(vu, pc, program, base, offset, first) || offset != 0 || prepared_[program] == nullptr ||
+            NativeGraphics::FastRendererMode() == NativeGraphics::FastMode::Accurate)
+        {
+            return false;
+        }
+
+        function = prepared_[program];
+        size = t_.programs[program].size;
+        return true;
+    }
 
 private:
     // The translated program at pc (its number, where it starts in micro memory, pc's offset in it and its first variant
@@ -466,6 +500,8 @@ private:
     std::array<s32, 2048> owner_;
     std::array<u32, 2048> base_ = {};
     u64 version_ = ~0ull;
+    std::vector<NativeGraphics::PreparedFunction> prepared_;
+    bool anyPrepared_ = false;
 };
 
 // VU1's (Vu1ProgramAt; it lives as long as the program), and where VU1's run now started (Vu1RunEntryProgram)
@@ -615,6 +651,31 @@ void RunTranslated(Vu& vu, Dispatcher& dispatcher, u32 start)
     {
         Target target;
         bool clean = st.branch == 0 && st.ebit == 0 && !st.delayBranch;
+        if (clean && dispatcher.anyPrepared())
+        {
+            // The fast renderer's prepared function in the program's place (graphics/fastrenderer.h)
+            NativeGraphics::PreparedFunction function;
+            u32 base, size;
+            bool ended = false;
+            if (dispatcher.PreparedAt(vu, st.pc, function, base, size) &&
+                NativeGraphics::RunPrepared(function, vu, st, base, size, ended))
+            {
+                lap(g_Times.code);
+                if (ended)
+                {
+                    break;
+                }
+
+                if (runaway())
+                {
+                    ReportRunaway(vu, st, start);
+                    break;
+                }
+
+                continue;
+            }
+        }
+
         if (clean && dispatcher.Enter(vu, st, slots, target))
         {
             lap(g_Times.enter);
@@ -1112,6 +1173,18 @@ void AttachVu1Translation(Vu& vu1)
 
     auto dispatcher = std::make_shared<Dispatcher>(Vu1Table);
     g_Vu1Dispatcher = dispatcher.get();
+    if (mode != "verify")
+    {
+        // The fast renderer's prepared functions (not under TWIN_VU1=verify: its interpreted copy runs every program)
+        std::vector<NativeGraphics::PreparedFunction> prepared(Vu1Table.programCount, nullptr);
+        for (u32 p = 0; p < Vu1Table.programCount && p < g_ProgramCount; p++)
+        {
+            prepared[p] = NativeGraphics::PreparedFor(g_ProgramAddresses[p]);
+        }
+
+        dispatcher->SetPrepared(std::move(prepared));
+    }
+
     if (mode == "verify")
     {
         std::fprintf(stderr, "graphics: VU1 translated and checked against the interpreter (TWIN_VU1=verify)\n");

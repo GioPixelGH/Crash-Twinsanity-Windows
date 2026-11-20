@@ -1238,6 +1238,9 @@ public:
 
     bool Init();
     bool Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count) override;
+    u32 DrawRun(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count, u32 primitives, bool& refused) override;
+    // Draw's work once the context is current and the CPU's writes taken (Draw's and DrawRun's)
+    [[gnu::always_inline]] inline bool DrawOne(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count);
     // A primitive drawn as the one before it was (its state, targets and texture as they were: HwGs::DrawLikeLast), and the
     // end of every primitive's drawing (its batch, its vertexes, the pages it draws)
     bool DrawLikeLast(const Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count, Rect rect);
@@ -4027,6 +4030,35 @@ bool HwGs::Draw(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
 {
     MakeCurrent();
     ProcessWrites();
+    return DrawOne(state, vertexes, count);
+}
+
+u32 HwGs::DrawRun(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count, u32 primitives, bool& refused)
+{
+    // (Nothing between a run's primitives writes local memory from the CPU's side: a primitive left to the software rasteriser
+    // ends the run, and the next run's call takes the pages it wrote)
+    MakeCurrent();
+    ProcessWrites();
+    for (u32 done = 0; done < primitives; done++)
+    {
+        gs_.primitivesDrawn++;
+        if (!DrawOne(state, vertexes + static_cast<size_t>(done) * count, count))
+        {
+            refused = true;
+            return done;
+        }
+
+        if (gs_.stateTouched())
+        {
+            return done + 1;
+        }
+    }
+
+    return primitives;
+}
+
+bool HwGs::DrawOne(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
+{
     // The colour target's pixels a PS2 pixel (set when it's known)
     s32 n = 1;
 

@@ -1,5 +1,6 @@
 #include "rendersplit.h"
 
+#include "fastrenderer.h"
 #include "hardware.h"
 #include "renderthread.h"
 
@@ -251,7 +252,9 @@ bool RenderSplitOn()
 u32 SplitKickSource(u32 kickPc)
 {
     const u32 source = kickPc * 8;
-    if (!RenderSplitOn())
+    // (Also for the fast renderer's $TWIN_FAST_KICKS, which picks kicks by their program)
+    static const bool programs = RenderSplitOn() || FastKicksAsked();
+    if (!programs)
     {
         return source;
     }
@@ -330,6 +333,8 @@ void SplitStop(const SplitMark& mark, u32 kind, u32 value)
         slot = TransferSlot + std::min(value, 3u);
         break;
     case 1:
+    case 4:
+        // (A kick, or the fast renderer's prepared batch in a kick's place: renderthread.cpp's kinds)
         slot = (value >> 28 & 1) * ProgramSlots * ProgramSlots + (value >> 22 & 0x3F) * ProgramSlots + (value >> 16 & 0x3F);
         break;
     case 2:

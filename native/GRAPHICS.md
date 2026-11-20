@@ -388,3 +388,30 @@ Which kind first: the render thread's time by kind of drawing (WINDOWS.md, "The 
 `$TWIN_RENDER_SPLIT`) puts the scenery and the placed objects first, the type 01 shader's program (0x2DF700) above all: 36 to
 42% of the render thread at the beach, the Academy's hub and Amberly's fight, against 1 to 3% for the characters' skins. The
 setting's row stays hidden until the fast renderer knows a kind (THE LIST 75, the scenery).
+
+The passage a kind's prepared path goes through (THE LIST 74 step 3), in place before any kind has one:
+
+- The GS's runs (gs/gs.h's StartRun). While a kick of a kind the fast renderer takes is played, and every prepared batch,
+  Gs::Kick collects the primitives its vertexes make into a run instead of drawing each, and the run is drawn at once before
+  any register but a vertex's is written, before image data, when 512 primitives wait, and at the kick's end. Gs::DrawPrimitives
+  makes the draw's state once and calls the backend's DrawRun, which makes its context current and takes the CPU side's writes
+  once, then draws each primitive as Draw would (DrawLikeLast, or the whole way), stopping at one it leaves to the software
+  rasteriser or one whose drawing changed the state. The primitives, their order and their state are the same, so the pictures
+  are: `$TWIN_FAST_KICKS=all` (or programs' addresses) draws those kicks in runs in the fast mode, and the 25 pictures stayed
+  1.3.0's byte for byte with OpenGL and with Vulkan. With every kick in runs the GS's time at the beach (perf.py, two cores,
+  OpenGL, 2026-11-20) fell by 0.6 to 1.1 ms a frame (11.2 to 10.4-10.6 ms beside the runs before and after it), the card's
+  draws and batches the same: what a prepared kind saves on the GS's side, before its VU1 and GIF work.
+- The prepared batch (Gs::PreparedWrite, gs.h). A kind's function hands the GS its register writes as entries laid out as A+D
+  quadwords (the value, then the register), the PACKED ST's Q an entry of its own, sent through the GIF in a kick's place
+  (Gif::Prepared; the render thread's queue keeps it in its place among the data) and played by Gs::PlayWrites in runs.
+  Gif::ConvertKick makes the same entries of a program's kick (PACKED's registers as A+D's, RGBAQ with the Q the last ST left,
+  XYZ with ADC as XYZ3, a tag's PRE as a PRIM write, REGLIST's as they are; IMAGE data isn't a register write), so a program and
+  its function can be compared. A GS dump gets a batch as the A+D packet it stands for.
+- The dispatcher's hook (ee/vu1translate.cpp). VU1's dispatcher knows each program's prepared function by its address in
+  .vutext (fastrenderer.cpp's PreparedFor: none yet). When the mode isn't accurate, translated code leaves at such a program's
+  entry and RunTranslated hands the program over: fast runs the function, which leaves VU1 (registers, flags, memory, where it
+  goes on) as the program would where control leaves the program's code, and sends its batch; verify runs the program
+  (interpreted, its kicks drawn as ever, so the picture is the program's) and the function on a copy of VU1, and compares their
+  batches (the program's kicks converted) and VU1's state where each left ("fast verify:" lines, the first 50, and a count at
+  exit). `$TWIN_FAST_PREPARE=all` (or programs' addresses) gives those programs the test's stand-in, the program itself
+  interpreted with its kicks converted, which proves the way from the dispatcher to the picture before a real function exists.

@@ -1,6 +1,7 @@
 #include "hardware.h"
 
 #include "capture.h"
+#include "fastrenderer.h"
 #include "rendersplit.h"
 #include "renderthread.h"
 #include "ee/dma.h"
@@ -40,8 +41,25 @@ Hardware& GetHardware()
             Ee::RoundToNearest rounding;
             gif->Kick(vu1->data(), address, SplitKickSource(vu1->kickPc));
         };
+        // The fast renderer's batches in a kick's place (fastrenderer.h), the same way
+        made.vu1->prepared = [gif](const u8* entries, u32 count, u32 pc) {
+            if (gif->forwarding() && !OnRenderThread())
+            {
+                gif->Prepared(entries, count, SplitKickSource(pc));
+                return;
+            }
+
+            Ee::RoundToNearest rounding;
+            gif->Prepared(entries, count, SplitKickSource(pc));
+        };
         // VU1's programs run translated (ee/vu1translate.h)
         Ee::AttachVu1Translation(*made.vu1);
+        if (FastKicksAsked())
+        {
+            // THE LIST 74 step 3's test: the kicks $TWIN_FAST_KICKS names drawn in runs (fastrenderer.h)
+            Ee::Gif::runsKick = &FastKickRuns;
+        }
+
         if (RenderSplitOn())
         {
             // THE LIST 74's split by kind: each run's start told (a skin's part's runs)

@@ -9,6 +9,14 @@
 
 #include "common.h"
 
+#include <vector>
+
+namespace Ee
+{
+class Vu;
+struct VuMicroState;
+}
+
 namespace NativeGraphics
 {
 enum class FastMode
@@ -22,6 +30,41 @@ enum class FastMode
 FastMode FastRendererMode();
 // Whether the fast renderer knows any kind of drawing (the setting's row shown)
 bool FastRendererHasKinds();
+
+// THE LIST 74 step 3's GS side, the test of its runs: $TWIN_FAST_KICKS=all, or VU1 programs' addresses (hex, comma-separated:
+// the retail executable's .vutext addresses $TWIN_RENDER_SPLIT's lines name them by), has those programs' kicks drawn in runs
+// (Gs::StartRun: the state made once, the backend called once for a run of primitives) when the mode isn't accurate. Asked:
+// whether the variable is set (the kicks' sources then carry their program, rendersplit.h's SplitKickSource); FastKickRuns is
+// the GIF's hook (ee/gif.h's runsKick), on the render thread
+bool FastKicksAsked();
+bool FastKickRuns(u32 source);
+
+// A kind's prepared path (THE LIST 74 step 3, the dispatcher's side: ee/vu1translate.cpp): VU1 at a program's entry handed to a
+// function in the program's place. It runs from st (no branch pending) to where control leaves the program's code (base, size
+// instructions) or the program ends (ended set), leaves VU1's registers, flags, memory and st as the program would, and appends
+// to batch the GS's register writes the program's kicks would make (Gs::PreparedWrite entries: a kick pending when it starts is
+// sent first, as the program's first XGKICK would; one pending when it leaves stays pending). False: it can't, and nothing
+// changed (the program runs)
+struct PreparedRun
+{
+    Ee::Vu& vu;
+    Ee::VuMicroState& st;
+    u32 base;
+    u32 size;
+    std::vector<u8>& batch;
+    bool ended;
+};
+using PreparedFunction = bool (*)(PreparedRun& run);
+
+// The prepared function for a VU1 program (its address in the retail executable's .vutext), or null: the kinds the fast renderer
+// knows (none yet: THE LIST 75 brings the scenery's), and with $TWIN_FAST_PREPARE=all or programs' addresses (hex,
+// comma-separated) the test's stand-in for those, the program's own run (interpreted) with its kicks converted (Gif::ConvertKick)
+PreparedFunction PreparedFor(u32 programAddress);
+// The dispatcher's hook at the entry of a program that has a prepared function, when the mode isn't accurate. Fast: the function
+// runs in the program's place and its batch is sent (Vu::prepared). Verify: the program runs (interpreted, its kicks sent as ever:
+// the picture is the program's) and the function on a copy of VU1, their batches (the program's kicks converted) and VU1's state
+// where each left compared; the differences logged (the first 50) and counted. False: nothing ran (the function couldn't)
+bool RunPrepared(PreparedFunction function, Ee::Vu& vu, Ee::VuMicroState& st, u32 base, u32 size, bool& ended);
 }
 
 // The settings' row shown (ui/settings.cpp)

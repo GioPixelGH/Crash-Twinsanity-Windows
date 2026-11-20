@@ -6,6 +6,8 @@
 
 #include "common.h"
 
+#include <vector>
+
 namespace Gs
 {
 class Gs;
@@ -28,6 +30,8 @@ public:
         // Path 1's packets of a kick, the quadwords KickNow would read, laid out in a row (KickLength of them); the VU1 code's
         // address it was kicked from (for TWIN_GS_TRACE)
         virtual void Kick(const u8* vuMemory, u32 address, u32 quadwords, u32 source) = 0;
+        // The fast renderer's prepared batch in place of path 1's kicks (Gs::PreparedWrite entries, count of them)
+        virtual void Prepared(const u8* entries, u32 count, u32 source) = 0;
     };
     void SetForward(Forward* forward) { forward_ = forward; }
     bool forwarding() const { return forward_ != nullptr; }
@@ -57,6 +61,10 @@ public:
     // Given every path's quadwords as the GS takes them (a path 1 kick's in a row, once): capture.cpp's GS dump while it records
     using Tap = void (*)(u32 path, const u8* data, u32 quadwords);
     static inline Tap tap = nullptr;
+    // Whether a kick's primitives are drawn in runs (Gs::StartRun; by its source, as KickNow and KickRow are given it): the fast
+    // renderer's ($TWIN_FAST_KICKS, graphics/fastrenderer.h); null: none are
+    using Runs = bool (*)(u32 source);
+    static inline Runs runsKick = nullptr;
     // Path 1's XGKICK: packets read from VU1's memory (a 16 KB ring) from a quadword address until one ends with EOP; source is
     // the kicking VU1 code's address for TWIN_GS_TRACE
     void Kick(const u8* vuMemory, u32 address, u32 source = ~0u)
@@ -74,6 +82,26 @@ public:
     void KickRow(const u8* quadwords, u32 count, u32 source);
     // How many quadwords from the address KickNow reads: its packets' tags and data up to the one with EOP (at most the ring)
     static u32 KickLength(const u8* vuMemory, u32 address);
+
+    // The fast renderer's prepared batch (fastrenderer.h; Gs::PreparedWrite entries, count of them) in place of path 1's kicks:
+    // to the render thread's queue in its place among the data, or played now (the GS's registers written as an A+D packet
+    // writes them, the primitives drawn in runs). source: as a kick's
+    void Prepared(const u8* entries, u32 count, u32 source)
+    {
+        if (forward_ != nullptr)
+        {
+            forward_->Prepared(entries, count, source);
+            return;
+        }
+
+        PreparedNow(entries, count, source);
+    }
+    void PreparedNow(const u8* entries, u32 count, u32 source);
+    // A kick's packets (from VU1's memory, as KickNow reads them) as the register writes the GS makes of them, appended to a
+    // batch: PACKED's registers as A+D's (RGBAQ with the Q the last ST left, XYZ with ADC as XYZ3, FOG's value in its top byte),
+    // a tag's PRE as a PRIM write, REGLIST's as they are, and the PACKED ST's Q left at the end (PreparedPackedQ). False (the
+    // batch as it was) for IMAGE data, which isn't a register write
+    static bool ConvertKick(const u8* vuMemory, u32 address, std::vector<u8>& batch);
 
     Gs::Gs& gs() { return gs_; }
 

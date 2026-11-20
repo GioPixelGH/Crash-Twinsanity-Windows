@@ -38,12 +38,14 @@ enum RecordKind : u32
     RecordKick,
     RecordCall,
     RecordVif1,
+    // The fast renderer's prepared batch (Gif::Prepared): Gs::PreparedWrite entries, a quadword each
+    RecordPrepared,
 };
 
 struct Header
 {
     u32 kind;
-    // Transfer: the path; Kick: the kicking code's address (TWIN_GS_TRACE); Call: the work's index
+    // Transfer: the path; Kick and Prepared: the kicking code's address (TWIN_GS_TRACE); Call: the work's index
     u32 value;
     u32 quadwords;
     u32 unused;
@@ -91,6 +93,7 @@ public:
     // The game's side
     void Transfer(u32 path, const u8* data, u32 quadwords) override;
     void Kick(const u8* vuMemory, u32 address, u32 quadwords, u32 source) override;
+    void Prepared(const u8* entries, u32 count, u32 source) override;
     void Call(std::function<void()> work);
     void Vif1(const u32* words, u32 count);
     void Flush();
@@ -251,6 +254,28 @@ void RenderThread::Kicked(const u8* row, u32 quadwords, u32 source)
     std::memcpy(Record(RecordKick, source, quadwords), row, static_cast<size_t>(quadwords) * 16);
 }
 
+void RenderThread::Prepared(const u8* entries, u32 count, u32 source)
+{
+    if (t_OnRenderThread)
+    {
+        GetHardware().gif->PreparedNow(entries, count, source);
+        return;
+    }
+
+    if (t_OnVuThread && next_ != nullptr)
+    {
+        next_->Prepared(entries, count, source);
+        return;
+    }
+
+    if (count == 0)
+    {
+        return;
+    }
+
+    std::memcpy(Record(RecordPrepared, source, count), entries, static_cast<size_t>(count) * 16);
+}
+
 void RenderThread::Call(std::function<void()> work)
 {
     // (the chunk taken first: the work's index is in the chunk its record is in)
@@ -355,6 +380,9 @@ void RenderThread::Play(Chunk& chunk)
             case RecordVif1:
                 GetHardware().vif1->Process(reinterpret_cast<const u32*>(at), header.value);
                 break;
+            case RecordPrepared:
+                next_->Prepared(at, header.quadwords, header.value);
+                break;
             default:
                 break;
             }
@@ -383,6 +411,9 @@ void RenderThread::Play(Chunk& chunk)
             break;
         case RecordVif1:
             GetHardware().vif1->Process(reinterpret_cast<const u32*>(at), header.value);
+            break;
+        case RecordPrepared:
+            gif.PreparedNow(at, header.quadwords, header.value);
             break;
         default:
             break;

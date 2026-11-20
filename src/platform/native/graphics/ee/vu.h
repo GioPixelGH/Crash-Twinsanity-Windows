@@ -130,6 +130,9 @@ public:
     // their last two vertices' colours 2 and 5 cycles after): the packet is sent at the next XGKICK or when the program stops
     // (FlushKick), with what the program wrote into it by then ($TWIN_VU1_KICK_AT_ONCE=1: at the XGKICK, as before)
     std::function<void(u32 address)> xgkick;
+    // The fast renderer's prepared batch sent on path 1 in place of kicks (graphics/fastrenderer.h: Gs::PreparedWrite entries,
+    // count of them; pc, the program's place in micro memory, as a kick's for the traces): the GIF's, set as xgkick is
+    std::function<void(const u8* entries, u32 count, u32 pc)> prepared;
     void Kick(u32 address);
     void FlushKick();
     // What runs a program instead of the interpreter (VU1's translations, vu1translate.h)
