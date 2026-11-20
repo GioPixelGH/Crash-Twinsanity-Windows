@@ -185,14 +185,18 @@ SCENARIOS = [
                   r"game: the player in levels\\ice\\hub\\labext", r"hop: waiting 5 s in levels\\ice\\hub\\labext"])),
     # Issue #23 (THE LIST 59): after the angry skunk's scene watched in full, a player's camera stopped following Crash (once, at
     # 47 fps; not seen here: the scene played straight or reached through huba and hubb, at 60 fps or uneven 40-60, Crash put
-    # where that player stood). The follow camera shown in play after it, near the player wherever it's put
+    # where that player stood). The follow camera shown in play after it, near the player wherever it's put: far from him in two
+    # of the trace's lines in a row (a second apart) is the camera left behind; one alone is the trace's line in the frame the
+    # hop put the player somewhere, before the camera has followed (2026-11-20, 74.1 units once in 26 runs)
     ("The skunk's scene watched, the camera follows Crash after it (#23)", "Levels\\Earth\\Hub\\highpath", 50,
      "idle,goto:-9:-4:-50,wait16,goto:-22.3:-3.7:-58.1,wait4,goto:-18.1:-3.7:-54.7,wait4",
      dict(options="retail_fixes=1\n", env={"TWIN_CAMERA_TRACE": "1"},
           expect=[r"cutscene skip: watched, \d+ agents: .*act_ANGRY_SKUNK_CUTSCENE_DIRECTOR",
                   r"hop: the player put at \(-18\.1[\s\S]*camera trace: state 12, camera 0 at [^\n]*the player \S+ at \(-1[6-9]\.\d, "
                   r"[^\n]* \d\.\d units apart"],
-          forbid=[r"camera trace: state 12, camera [1-9]", r"camera trace: state 12, .* (?:1[2-9]|[2-9]\d|\d{3,})\.\d units apart"])),
+          forbid=[r"camera trace: state 12, camera [1-9]",
+                  r"camera trace: state 12, [^\n]* (?:1[2-9]|[2-9]\d|\d{3,})\.\d units apart[^\n]*\n"
+                  r"(?:(?![^\n]*camera trace: state)[^\n]*\n)*[^\n]*camera trace: state 12, [^\n]* (?:1[2-9]|[2-9]\d|\d{3,})\.\d units apart"])),
     # Issue #52 (THE LIST 59 again): the scene #52's video shows is the high path's training scene (duck and crawl, the swinging
     # log), not the angry skunk's. Reached as that player came (from HubA through HubB: HubA's Crash and Coco and HubB's log in it),
     # the follow camera shown after it on its rig, the view moving with Crash in the scripted play after it (the detailed log's
