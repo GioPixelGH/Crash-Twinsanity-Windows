@@ -22,6 +22,7 @@
 
 #include "ee/vu.h"
 #include "ee/vu1jit.h"
+#include "gs/gs.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -85,9 +86,10 @@ struct LastVertexes
     V4u thirdLastColour;
 };
 
-// One instance's strip: the packet written at out (count vertexes from top), the sticky flags of every FMAC result added
+// One instance's strip: the packet written at out (count vertexes from top), the sticky flags of every FMAC result added; with
+// strip set, also the vertexes as the GIF would take them from the packet (Gs::StripVertex: XYZF2's when fogged)
 void TransformStrip(u8* mem, u16 top, u16 out, u32 count, V4u m0, V4u m1, V4u m2, V4u m3, V4u scroll, Sticky& sticky,
-                    LastVertexes& last)
+                    LastVertexes& last, u8* strip, bool fogged)
 {
     const V4u one = Splat(One);
     Store(At(mem, out), Load(At(mem, top)));
@@ -134,6 +136,27 @@ void TransformStrip(u8* mem, u16 top, u16 out, u32 count, V4u m0, V4u m1, V4u m2
         Store(At(mem, out + 2u + 3u * k), colourRaw);
         const V4u xyz = Blend<7>(colourRaw, screen);
         Store(At(mem, out + 3u + 3u * k), xyz);
+        if (strip != nullptr)
+        {
+            // The GIF's reading of the vertex's PACKED ST, RGBAQ and XYZ2 or XYZF2 (Gif::ConvertKick's)
+            Gs::StripVertex made;
+            made.x = xyz[0] & 0xFFFF;
+            made.y = xyz[1] & 0xFFFF;
+            made.z = fogged ? (xyz[2] >> 4) & 0xFFFFFF : xyz[2];
+            made.r = static_cast<u8>(colourRaw[0]);
+            made.g = static_cast<u8>(colourRaw[1]);
+            made.b = static_cast<u8>(colourRaw[2]);
+            made.a = static_cast<u8>(colourRaw[3]);
+            made.s = texturedResult[0];
+            made.t = texturedResult[1];
+            made.q = texturedResult[2];
+            made.fog = fogged ? static_cast<u8>(xyz[3] >> 4) : 0;
+            made.kick = (xyz[3] >> 15) & 1 ? 0 : 1;
+            made.unused[0] = 0;
+            made.unused[1] = 0;
+            std::memcpy(strip + static_cast<size_t>(k) * sizeof(made), &made, sizeof(made));
+        }
+
         if (k + 3 == count)
         {
             last.thirdLastScreen = xyz;
@@ -220,6 +243,32 @@ bool Type01(PreparedRun& run)
         }
     }
 
+    // The strips' prepared form (Gs::PreparedStrip) when their GIF tag (the strip's at TOP, copied into each packet) is the one it
+    // stands for: NLOOP the vertexes, EOP, PRE, PACKED, three registers ST, RGBAQ and XYZ2 or XYZF2; and when no packet is written
+    // over before the GIF reads it (at the next kick: the next instance's packet is written first), the output buffers one after
+    // another apart, the first apart from the pending kick's prepared packet
+    u64 tag[2];
+    std::memcpy(tag, At(mem, top), 16);
+    const u32 registerList = tag[1] & 0xFFF;
+    const bool fogged = registerList == 0x412;
+    bool strips = (tag[0] & 0x7FFF) == count && ((tag[0] >> 15) & 1) != 0 && ((tag[0] >> 46) & 1) != 0 && ((tag[0] >> 58) & 3) == 0 &&
+                  ((tag[0] >> 60) & 0xF) == 3 && (registerList == 0x512 || fogged);
+    for (u32 n = 0; strips && n + 1 < headerCount && n < 4; n++)
+    {
+        strips = !Overlap(Word(mem, 1, n), outputSize, Word(mem, 1, (n + 1) & 3), outputSize);
+    }
+
+    if (vu.kickPending && !vu.kickPendingBatch.empty())
+    {
+        Gs::PreparedWrite pending;
+        std::memcpy(&pending, vu.kickPendingBatch.data(), sizeof(pending));
+        if (Overlap(vu.kickPendingAddress, 1 + 3 * pending.unused, Word(mem, 1, 0), outputSize))
+        {
+            // (Read from memory when sent, as the GIF would, after this run's first packet is written)
+            vu.kickPendingBatch.clear();
+        }
+    }
+
     // The run goes ahead: what's in flight lands first (it would before any of the routine's own results)
     st.cycle += 16;
     vu.FlushPipes(st);
@@ -229,8 +278,17 @@ bool Type01(PreparedRun& run)
         const u32 pc = (run.base + offset) & codeMask;
         if (vu.kickPending)
         {
+            // The pending kick sent: its prepared form, or its packet read from memory
             vu.kickPending = false;
-            PreparedSend(run, vu.kickPendingAddress, vu.kickPendingPc);
+            if (!vu.kickPendingBatch.empty())
+            {
+                run.batch.insert(run.batch.end(), vu.kickPendingBatch.begin(), vu.kickPendingBatch.end());
+                vu.kickPendingBatch.clear();
+            }
+            else
+            {
+                PreparedSend(run, vu.kickPendingAddress, vu.kickPendingPc);
+            }
         }
 
         vu.kickPending = true;
@@ -244,6 +302,8 @@ bool Type01(PreparedRun& run)
     const V4u scrollRaw = Load(At(mem, vi14 + 2u));
     const V4u scroll = Clamp(scrollRaw);
     const bool registers = Word(mem, vi14, 3) != 0;
+    thread_local std::vector<u8> strip;
+    const u64 stripPrim = ((tag[0] >> 47) & 0x7FF) | (fogged ? 1ull << 32 : 0);
     V4u rows[4];
     V4u rotated = {};
     u16 out = 0;
@@ -255,14 +315,28 @@ bool Type01(PreparedRun& run)
         }
 
         out = Word(mem, 1, 0);
+        u8* stripVertexes = nullptr;
+        if (strips)
+        {
+            strip.resize(sizeof(Gs::PreparedWrite) + static_cast<size_t>(count) * sizeof(Gs::StripVertex));
+            const Gs::PreparedWrite header = {stripPrim, Gs::PreparedStrip, count};
+            std::memcpy(strip.data(), &header, sizeof(header));
+            stripVertexes = strip.data() + sizeof(header);
+        }
+
         TransformStrip(mem, top, out, count, Clamp(rows[0]), Clamp(rows[1]), Clamp(rows[2]), Clamp(rows[3]), scroll, sticky,
-                       last);
+                       last, stripVertexes, fogged);
         if (registers)
         {
             kick(vi14 + 3u, RegistersKickOffset);
         }
 
         kick(out, PacketKickOffset);
+        if (strips)
+        {
+            // The packet's prepared form kept with the pending kick (its batch empty after kick sent the one before)
+            vu.kickPendingBatch.swap(strip);
+        }
         // LQ vf06, 1(vi00); MR32; SQ: the next output buffer
         rotated = VU1_SHUFFLE(Load(At(mem, 1)), 1, 2, 3, 0);
         Store(At(mem, 1), rotated);

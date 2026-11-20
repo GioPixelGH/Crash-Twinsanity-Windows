@@ -429,8 +429,27 @@ bits from every result, the last DIV's bits, the output written, the packet's ki
 routine's tail still in the FMAC pipeline, which the next program's entry sees). A run with any clipped instance (the routine
 calls the clipping routine 4(vi00) names) is declined and the program runs; so is one whose output would overlap what it reads.
 Over the 25 pictures verify compared 2,113,536 runs, 234,651 of them declined (11%), with no difference, and the fast mode's
-pictures are 1.3.0's with OpenGL and Vulkan. Not faster yet (perf.py, the beach at 1x on two cores, OpenGL, 2026-11-20, the same
-build accurate and fast A B B A A B B A): frames a second level (-1.3 to +1.9 beside each A), the render thread 0.1 ms more to
-0.8 ms less, VU1's thread 0.2 to 0.8 ms more. The batches are still played a register write at a time and drawn a primitive at
-a time (DrawRun's DrawOne: each triangle's rectangle, pages and vertexes), and their kicks are converted on VU1's thread
-(Gif::ConvertKick reading the packet back) instead of read by the GIF on the render thread: the next step draws a strip at once.
+pictures are 1.3.0's with OpenGL and Vulkan. That alone wasn't faster (perf.py, the beach at 1x on two cores, OpenGL,
+2026-11-20, the same build accurate and fast A B B A A B B A: frames a second level, the three threads' time the same): the
+batches were played a register write at a time and drawn a primitive at a time, their kicks converted on VU1's thread
+(Gif::ConvertKick reading the packet back), and the profile showed most of the type 01 strips still reaching the render thread
+as raw kicks: the packet a run's last instance leaves pending, which VU1 sends when the program stops.
+
+The strips (THE LIST 75 step 2). The function makes each instance's strip in its prepared form as it transforms it
+(Gs::PreparedStrip and Gs::StripVertex: the tag's PRIM, then the vertexes as the GIF would take them from the packet, two
+quadwords each, when the tag is PACKED ST, RGBAQ and XYZ2 or XYZF2 with PRE and EOP and no packet is written over before the
+GIF reads it), and keeps it with the kick it leaves pending (Vu::kickPendingBatch): the next kick sends it in the packet's
+place, the function's own (in its batch) or VU1's (FlushKick: the program's next XGKICK or its stop). A declined run drops it
+(the program reads the packet from memory then), and verify checks each one against the packet in memory when VU1 sends the
+kick. On the render thread Gs::PlayStrip leaves the registers and the vertex queue as the packet's writes would, makes the
+strip's vertexes once and hands the triangles (each three vertexes in a row, drawn when the third isn't ADC) to the backend's
+DrawStrip: HwGs draws the first the whole way, then the rest at once where each would be drawn as the last one was
+(DrawStripLikeLast: DrawLikeLast's tests made once, the targets' pages tested for the union of the triangles' rectangles, each
+vertex placed once, the empty and clipped triangles left out as before), else a triangle at a time
+(`$TWIN_HW_NO_FAST_STRIPS=1`: always). The same primitives in the same order with the same state: over the 25 pictures verify
+compared 2,113,536 runs, 234,651 declined, no difference, and checked 1,878,884 pending strips when sent; the fast mode's
+pictures are 1.3.0's with OpenGL and Vulkan (Vulkan's verify 2,097,152 runs, 1,864,340 strips). Measured (perf.py, the beach
+at 1x on two cores, OpenGL, 2026-11-20, accurate A and fast B in one session A B B A A B B A): frames a second +3.4 to +7.0
+(A 65.3, B 70.5 on average), the render thread 2.0 to 2.6 ms less (13.2 to 10.9), VU1's thread level (10.0 and 10.1), the
+game's 0.5 to 1.0 ms less, the three threads' sum (which two cores share) 2.2 to 3.7 ms less (32.5 to 29.5). The render
+thread's 8.5 ms aim needs more kinds than this one (the split's next at the beach: the type 04 and 02 programs, 1.6 and 1.2 ms).

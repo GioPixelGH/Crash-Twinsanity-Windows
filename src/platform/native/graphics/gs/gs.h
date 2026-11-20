@@ -453,6 +453,42 @@ struct PreparedWrite
 static_assert(sizeof(PreparedWrite) == 16);
 constexpr u32 PreparedPackedQ = 0x100;
 
+// A strip in a prepared batch (THE LIST 75 step 2): a GIF packet whose tag's PRE writes PRIM and whose loops are PACKED ST,
+// RGBAQ and XYZ2 (or XYZF2) a vertex, as the scenery's VU1 programs write theirs, made by the program's prepared function
+// with the packet. A PreparedWrite entry with the address PreparedStrip, its value the PRIM (bit 32 set: the vertexes are
+// XYZF2's) and its unused word the vertex count, then the vertexes, a StripVertex (two quadwords) each. Played as the packet's
+// register writes would be (Gs::PlayWrites), its triangles drawn at once
+constexpr u32 PreparedStrip = 0x102;
+struct StripVertex
+{
+    // XYZ's: x and y (the PACKED quadword's low 16 bits), z (XYZ2's 32 bits, XYZF2's 24)
+    u32 x;
+    u32 y;
+    u32 z;
+    u8 r;
+    u8 g;
+    u8 b;
+    u8 a;
+    // ST's S, T and Q (floats' bits): RGBAQ's Q too
+    u32 s;
+    u32 t;
+    u32 q;
+    // XYZF2's fog; whether the vertex draws (XYZ2 or XYZF2: 1) or only goes in the queue (the ADC bit's XYZ3 or XYZF3: 0)
+    u8 fog;
+    u8 kick;
+    u8 unused[2];
+};
+static_assert(sizeof(StripVertex) == 32);
+// A prepared batch's entry's quadwords (a strip's with its vertexes)
+inline u32 PreparedEntryQuadwords(const PreparedWrite& entry)
+{
+    return entry.address == PreparedStrip ? 1 + entry.unused * 2 : 1;
+}
+// The register writes a prepared batch stands for, appended to writes (PreparedWrite entries: its strips as the writes Gif's
+// ConvertKick makes of their packets, the PRIM, then ST, RGBAQ and XYZ a vertex, then the PACKED ST's Q): a GS dump's packet
+// of a batch, and the fast renderer's verify
+void ExpandPrepared(const u8* entries, u32 count, std::vector<u8>& writes);
+
 // One drawing context's registers
 struct Context
 {
@@ -523,7 +559,8 @@ public:
     void StartRun();
     void EndRun();
     // The fast renderer's prepared batch (fastrenderer.h's PreparedWrite entries, in order): each a register write as an A+D
-    // write makes it (vertexes included), or the PACKED ST's Q (packedQ_) the next PACKED RGBAQ takes
+    // write makes it (vertexes included), or the PACKED ST's Q (packedQ_) the next PACKED RGBAQ takes, or a strip (PreparedStrip:
+    // PlayStrip). count: quadwords
     void PlayWrites(const u8* entries, u32 count);
     // Whether the backend changed the draw's state while drawing the last primitive (DrawRun stops after such a one)
     bool stateTouched() const { return stateTouched_; }
@@ -660,6 +697,14 @@ private:
         }
     }
     void DrawPrimitives(const Vertex* vertexes, u32 count, u32 primitives);
+    // A prepared strip (PreparedStrip: its PRIM entry's value, the vertexes' StripVertex entries, count of them) played: the
+    // registers, the vertex queue and the drawing as the packet's writes leave them. A triangle strip's triangles made from the
+    // vertexes in place and drawn at once (DrawStripPrimitives) while a run is being collected; else (another primitive's type,
+    // the debugging switches) the writes made one by one
+    void PlayStrip(u64 prim, const u8* vertexes, u32 count);
+    // A triangle strip's triangles (triangle t: vertexes t to t + 2, drawn when kicks[t + 2] is set), with the state the
+    // registers make now: DrawPrimitives' work, the backend's DrawStrip
+    void DrawStripPrimitives(const Vertex* vertexes, const u8* kicks, u32 count);
     void DrawSoftware(DrawState& state, const Vertex* vertexes, u32 count);
     [[gnu::noinline]] void DebugBeforeDraw(const DrawState& state, const Vertex* vertexes, u32 count, s32 watch[2]);
     [[gnu::noinline]] void ReportWatch(const DrawState& state, const Vertex* vertexes, u32 count, const s32 watch[2]);
@@ -749,6 +794,10 @@ private:
     u32 runCount_ = 0;
     u32 runPrimitives_ = 0;
     Vertex run_[RunCapacity * 3];
+    // A prepared strip's vertexes as the queue makes them, and whether each draws (PlayStrip; longer strips are written one by one)
+    static constexpr u32 StripCapacity = 1024;
+    Vertex strip_[StripCapacity];
+    u8 stripKicks_[StripCapacity];
 
     // The colour lookup table's buffer (16 bit halves: a 32 bit entry's low half at i, its high one at i + 256) and its
     // load condition's saved bases

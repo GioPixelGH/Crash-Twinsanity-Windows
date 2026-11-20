@@ -247,16 +247,20 @@ const FastKicks& AskedPrepared()
     return programs;
 }
 
-// Verify's counts, said at exit once verify has run: the runs compared, those the function declined, the differences
+// Verify's counts, said at exit once verify has run: the runs compared, those the function declined, the differences, the
+// pending kicks' prepared forms checked when sent
 std::atomic<u64> g_Verified{0};
 std::atomic<u64> g_Declined{0};
 std::atomic<u64> g_Differences{0};
+std::atomic<u64> g_PendingChecked{0};
 
 void SayCounts()
 {
-    std::fprintf(stderr, "fast verify: %llu runs of prepared functions compared, %llu declined, %llu differences\n",
+    std::fprintf(stderr,
+                 "fast verify: %llu runs of prepared functions compared, %llu declined, %llu differences, %llu pending kicks' "
+                 "prepared forms checked\n",
                  static_cast<unsigned long long>(g_Verified.load()), static_cast<unsigned long long>(g_Declined.load()),
-                 static_cast<unsigned long long>(g_Differences.load()));
+                 static_cast<unsigned long long>(g_Differences.load()), static_cast<unsigned long long>(g_PendingChecked.load()));
 }
 
 // What the next program's entry reads of the pipelines (the dispatcher's signature) once what's due has landed: the FMAC
@@ -304,6 +308,26 @@ InFlight InFlightOf(Ee::Vu& vu, Ee::VuMicroState& st)
     std::fprintf(stderr, "\n");
 }
 
+// Verify's check of a pending kick's prepared form (Vu::kickPendingBatch) when VU1 sends the kick: the packet in memory then, as
+// the GIF reads it, against the writes the prepared form stands for
+void CheckPending(Ee::Vu& vu, u32 address, const std::vector<u8>& batch)
+{
+    g_PendingChecked++;
+    std::vector<u8> sent;
+    if (!Ee::Gif::ConvertKick(vu.data(), address, sent))
+    {
+        AddRawKick(sent, address);
+    }
+
+    std::vector<u8> expanded;
+    Gs::ExpandPrepared(batch.data(), static_cast<u32>(batch.size() / 16), expanded);
+    if (sent != expanded)
+    {
+        ReportDifference(vu.kickPc, "the pending kick's prepared form at %#x differs from its packet when sent (%zu and %zu writes)",
+                         address, expanded.size() / 16, sent.size() / 16);
+    }
+}
+
 bool Verify(PreparedFunction function, Ee::Vu& vu, Ee::VuMicroState& st, u32 base, u32 size, bool& ended)
 {
     static const bool counting = [] {
@@ -320,10 +344,22 @@ bool Verify(PreparedFunction function, Ee::Vu& vu, Ee::VuMicroState& st, u32 bas
     shadow.kickPending = vu.kickPending;
     shadow.kickPendingAddress = vu.kickPendingAddress;
     shadow.kickPendingPc = vu.kickPendingPc;
+    shadow.kickPendingBatch = vu.kickPendingBatch;
     Ee::VuMicroState shadowState = st;
     std::vector<u8> made;
     PreparedRun run{shadow, shadowState, base, size, made, false};
     const bool ran = function(run);
+    if (!ran)
+    {
+        // (As the fast mode's: the program reads the pending kick's packet from memory)
+        vu.kickPendingBatch.clear();
+    }
+
+    // VU1's sends of the prepared forms the fast mode would make are checked against the packets
+    if (!vu.checkPending)
+    {
+        vu.checkPending = [&vu](u32 address, const std::vector<u8>& batch) { CheckPending(vu, address, batch); };
+    }
 
     // The program on VU1 itself, interpreted: its kicks sent as ever, and converted
     std::vector<u8> expected;
@@ -359,6 +395,10 @@ bool Verify(PreparedFunction function, Ee::Vu& vu, Ee::VuMicroState& st, u32 bas
         return true;
     }
 
+    // (The function's strips as the writes they stand for)
+    std::vector<u8> madeWrites;
+    Gs::ExpandPrepared(made.data(), static_cast<u32>(made.size() / 16), madeWrites);
+    made.swap(madeWrites);
     if (made != expected)
     {
         size_t at = 0;
@@ -423,8 +463,11 @@ bool Verify(PreparedFunction function, Ee::Vu& vu, Ee::VuMicroState& st, u32 bas
     {
         ReportDifference(base, "%s differ (left at %#x/%#x, ended %d/%d)", what, shadowState.pc, st.pc, run.ended ? 1 : 0,
                          ended ? 1 : 0);
+        return true;
     }
 
+    // The kick left pending: its prepared form, as the fast mode keeps it, checked when VU1 sends it
+    vu.kickPendingBatch = shadow.kickPendingBatch;
     return true;
 }
 }
@@ -452,6 +495,8 @@ bool RunPrepared(PreparedFunction function, Ee::Vu& vu, Ee::VuMicroState& st, u3
     PreparedRun run{vu, st, base, size, batch, false};
     if (!function(run))
     {
+        // The program runs: the pending kick's packet read from memory when it's sent (the program may write it first)
+        vu.kickPendingBatch.clear();
         return false;
     }
 

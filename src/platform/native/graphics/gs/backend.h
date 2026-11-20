@@ -45,6 +45,13 @@ public:
     // row from the first: it stops after one whose drawing changed the state (Gs::stateTouched: the state is made again for the
     // rest), or at one it leaves to the software rasteriser (refused set, local memory made current for it, as Draw's false)
     virtual u32 DrawRun(Gs::DrawState& state, const Vertex* vertexes, u32 count, u32 primitives, bool& refused) = 0;
+    // A triangle strip's triangles from first to before end, with the same state (Gs::DrawStripPrimitives: triangle t is vertexes
+    // t, t + 1 and t + 2, a primitive when kicks[t + 2] is set, as the GS's queue makes them), each drawn as DrawRun draws a run's
+    // (counted in the GS's primitivesDrawn before it's drawn; drawn: how many the backend drew). Returns the triangle it stopped
+    // before: end, the one after a primitive whose drawing changed the state, or one it leaves to the software rasteriser
+    // (refused set, local memory made current for it)
+    virtual u32 DrawStrip(Gs::DrawState& state, const Vertex* vertexes, const u8* kicks, u32 first, u32 end, u32& drawn,
+                          bool& refused) = 0;
     // Local memory's pages about to be read, or written, by the CPU side: made current
     virtual void BeforeCpuRead(const PageSet& pages) = 0;
     virtual void BeforeCpuWrite(const PageSet& pages) = 0;

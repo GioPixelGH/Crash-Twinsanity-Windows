@@ -289,10 +289,18 @@ void Gs::EndRun()
 
 void Gs::PlayWrites(const u8* entries, u32 count)
 {
-    for (u32 n = 0; n < count; n++)
+    for (u32 n = 0; n < count;)
     {
         PreparedWrite write;
         std::memcpy(&write, entries + static_cast<size_t>(n) * sizeof(PreparedWrite), sizeof(write));
+        if (write.address == PreparedStrip)
+        {
+            const u32 vertexes = std::min(write.unused, (count - n - 1) / 2);
+            PlayStrip(write.value, entries + static_cast<size_t>(n + 1) * sizeof(PreparedWrite), vertexes);
+            n += 1 + vertexes * 2;
+            continue;
+        }
+
         if (write.address == PreparedPackedQ)
         {
             packedQ_ = std::bit_cast<f32>(static_cast<u32>(write.value));
@@ -301,6 +309,177 @@ void Gs::PlayWrites(const u8* entries, u32 count)
         {
             WriteRegister(write.address, write.value);
         }
+
+        n++;
+    }
+}
+
+void Gs::PlayStrip(u64 prim, const u8* vertexes, u32 count)
+{
+    // The tag's PRIM (WriteRegister's: the run so far drawn, the state's cache made stale, the queue emptied)
+    WriteRegister(PRIM, prim & 0x7FF);
+    const bool fogged = (prim >> 32) & 1;
+    if (!collecting_ || prim_.prim != PrimTriangleStrip || count < 3 || count > StripCapacity)
+    {
+        // The packet's writes one by one: ST (its Q the PACKED RGBAQ's), RGBAQ, XYZ
+        for (u32 i = 0; i < count; i++)
+        {
+            StripVertex in;
+            std::memcpy(&in, vertexes + static_cast<size_t>(i) * sizeof(StripVertex), sizeof(in));
+            s_ = std::bit_cast<f32>(in.s);
+            t_ = std::bit_cast<f32>(in.t);
+            packedQ_ = std::bit_cast<f32>(in.q);
+            RegRgbaq colour = {};
+            colour.r = in.r;
+            colour.g = in.g;
+            colour.b = in.b;
+            colour.a = in.a;
+            colour.q = in.q;
+            rgbaq_ = colour;
+            const u64 xy = static_cast<u64>(in.x) | static_cast<u64>(in.y) << 16;
+            if (fogged)
+            {
+                WriteRegister(in.kick ? XYZF2 : XYZF3, xy | static_cast<u64>(in.z) << 32 | static_cast<u64>(in.fog) << 56);
+            }
+            else
+            {
+                WriteRegister(in.kick ? XYZ2 : XYZ3, xy | static_cast<u64>(in.z) << 32);
+            }
+        }
+
+        return;
+    }
+
+    // The vertexes as the XYZ writes make them (their UV the registers', their fog XYZF2's or the register's), the queue's
+    Vertex* made = strip_;
+    for (u32 i = 0; i < count; i++)
+    {
+        StripVertex in;
+        std::memcpy(&in, vertexes + static_cast<size_t>(i) * sizeof(StripVertex), sizeof(in));
+        if (fogged)
+        {
+            fog_ = in.fog;
+        }
+
+        Vertex next = {};
+        next.x = in.x;
+        next.y = in.y;
+        next.z = in.z;
+        next.r = in.r;
+        next.g = in.g;
+        next.b = in.b;
+        next.a = in.a;
+        next.q = std::bit_cast<f32>(in.q);
+        next.s = std::bit_cast<f32>(in.s);
+        next.t = std::bit_cast<f32>(in.t);
+        next.u = u_;
+        next.v = v_;
+        next.f = fog_;
+        made[i] = next;
+        stripKicks_[i] = in.kick;
+    }
+
+    // The registers as the last vertex's writes leave them, and the queue as a strip's kicks leave it (its last two vertexes, the
+    // last also in the third place)
+    const Vertex& last = made[count - 1];
+    s_ = last.s;
+    t_ = last.t;
+    packedQ_ = last.q;
+    RegRgbaq colour = {};
+    colour.r = last.r;
+    colour.g = last.g;
+    colour.b = last.b;
+    colour.a = last.a;
+    colour.q = std::bit_cast<u32>(last.q);
+    rgbaq_ = colour;
+    queue_[0] = made[count - 2];
+    queue_[1] = last;
+    queue_[2] = last;
+    queued_ = 2;
+    DrawStripPrimitives(made, stripKicks_, count);
+}
+
+void Gs::DrawStripPrimitives(const Vertex* vertexes, const u8* kicks, u32 count)
+{
+    StateCache& cache = t_StateCache;
+    const u32 end = count - 2;
+    u32 at = 0;
+    while (at < end)
+    {
+        if (!(cache.gs == this && cache.generation == stateGeneration_))
+        {
+            SetUpState(cache.state, &vertexes[at + 2]);
+            cache.gs = this;
+            cache.generation = stateGeneration_;
+        }
+
+        DrawState& state = cache.state;
+        stateTouched_ = false;
+        bool refused = false;
+        u32 drawn = 0;
+        at = backend_->DrawStrip(state, vertexes, kicks, at, end, drawn, refused);
+        primitives += drawn;
+        if (refused)
+        {
+            const bool touched = stateTouched_;
+            if (touched)
+            {
+                cache.generation = ~0ull;
+            }
+
+            DrawOwnState(state, vertexes + at, 3, touched);
+            at++;
+        }
+        else if (stateTouched_)
+        {
+            cache.generation = ~0ull;
+        }
+    }
+}
+
+void ExpandPrepared(const u8* entries, u32 count, std::vector<u8>& writes)
+{
+    auto add = [&writes](u32 reg, u64 value) {
+        const PreparedWrite write = {value, reg, 0};
+        const u8* bytes = reinterpret_cast<const u8*>(&write);
+        writes.insert(writes.end(), bytes, bytes + sizeof(write));
+    };
+    for (u32 n = 0; n < count;)
+    {
+        PreparedWrite write;
+        std::memcpy(&write, entries + static_cast<size_t>(n) * sizeof(PreparedWrite), sizeof(write));
+        if (write.address != PreparedStrip)
+        {
+            add(write.address, write.value);
+            n++;
+            continue;
+        }
+
+        const u32 vertexes = std::min(write.unused, (count - n - 1) / 2);
+        const bool fogged = (write.value >> 32) & 1;
+        add(PRIM, write.value & 0x7FF);
+        u32 q = std::bit_cast<u32>(1.0f);
+        for (u32 i = 0; i < vertexes; i++)
+        {
+            StripVertex in;
+            std::memcpy(&in, entries + static_cast<size_t>(n + 1 + i * 2) * sizeof(PreparedWrite), sizeof(in));
+            q = in.q;
+            add(ST, static_cast<u64>(in.s) | static_cast<u64>(in.t) << 32);
+            add(RGBAQ, static_cast<u64>(in.r) | static_cast<u64>(in.g) << 8 | static_cast<u64>(in.b) << 16 |
+                           static_cast<u64>(in.a) << 24 | static_cast<u64>(in.q) << 32);
+            const u64 xy = static_cast<u64>(in.x) | static_cast<u64>(in.y) << 16;
+            if (fogged)
+            {
+                add(in.kick ? XYZF2 : XYZF3, xy | static_cast<u64>(in.z) << 32 | static_cast<u64>(in.fog) << 56);
+            }
+            else
+            {
+                add(in.kick ? XYZ2 : XYZ3, xy | static_cast<u64>(in.z) << 32);
+            }
+        }
+
+        add(PreparedPackedQ, q);
+        n += 1 + vertexes * 2;
     }
 }
 

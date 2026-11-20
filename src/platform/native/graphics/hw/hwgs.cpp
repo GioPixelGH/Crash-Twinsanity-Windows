@@ -1244,6 +1244,18 @@ public:
     // A primitive drawn as the one before it was (its state, targets and texture as they were: HwGs::DrawLikeLast), and the
     // end of every primitive's drawing (its batch, its vertexes, the pages it draws)
     bool DrawLikeLast(const Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count, Rect rect);
+    // A triangle strip's triangles (Gs::Backend::DrawStrip)
+    u32 DrawStrip(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, const u8* kicks, u32 first, u32 end, u32& drawn,
+                  bool& refused) override;
+    // The kicked triangles of a strip from first to before end drawn at once, as DrawLikeLast would draw each (the same tests,
+    // made once for all of them where they can be, and the same batch's vertexes, each vertex placed once): how many, or 0 when
+    // they can't be (nothing done)
+    u32 DrawStripLikeLast(const Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, const u8* kicks, u32 first, u32 end);
+    // The rectangle a primitive can draw in (the PS2's pixels, inclusive; empty: none)
+    Rect PrimitiveRect(const Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count) const;
+    // DrawStripLikeLast's triangles' rectangles and placed vertexes
+    std::vector<Rect> stripRects_;
+    std::vector<Vertex> stripPlaced_;
     void AddPrimitive(const Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, const Rect& rect, Target* colour, Target* depth,
                       s32 n, bool shaderBlend, const Gs::PageSet& drawnPages, const Gs::PageSet& depthPages,
                       const FewPages* drawnFew = nullptr, const FewPages* depthFew = nullptr);
@@ -4057,46 +4069,266 @@ u32 HwGs::DrawRun(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 coun
     return primitives;
 }
 
+Rect HwGs::PrimitiveRect(const Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count) const
+{
+    s32 minX = 0x7FFFFFFF;
+    s32 minY = 0x7FFFFFFF;
+    s32 maxX = -0x7FFFFFFF;
+    s32 maxY = -0x7FFFFFFF;
+    for (u32 i = 0; i < count; i++)
+    {
+        s32 x = static_cast<s32>(vertexes[i].x) - state.offsetX;
+        s32 y = static_cast<s32>(vertexes[i].y) - state.offsetY;
+        minX = std::min(minX, x);
+        minY = std::min(minY, y);
+        maxX = std::max(maxX, x);
+        maxY = std::max(maxY, y);
+    }
+
+    // The GS's pixels: from the ceiling of the start to before the ceiling of the end (points and lines: the pixels their ends
+    // are in). At a higher scale every pixel the primitive reaches into from its start: a primitive thinner than a pixel between
+    // two of the GS's sample points draws none of the PS2's pixels but some of the scale's samples (left out, the characters'
+    // thinnest triangles, along a nose or an eye, let what's behind show through as black lines)
+    Rect rect;
+    const bool thin = scale_ > 1 && ThinPrimitives();
+    rect.left = std::max(thin ? minX >> 4 : (minX + 15) >> 4, state.scissorLeft);
+    rect.top = std::max(thin ? minY >> 4 : (minY + 15) >> 4, state.scissorTop);
+    rect.right = std::min(((maxX + 15) >> 4) - 1, state.scissorRight);
+    rect.bottom = std::min(((maxY + 15) >> 4) - 1, state.scissorBottom);
+    if (state.type == Gs::PrimPoint || state.type == Gs::PrimLine || state.type == Gs::PrimLineStrip)
+    {
+        rect.left = std::max(minX >> 4, state.scissorLeft);
+        rect.top = std::max(minY >> 4, state.scissorTop);
+        rect.right = std::min(maxX >> 4, state.scissorRight);
+        rect.bottom = std::min(maxY >> 4, state.scissorBottom);
+    }
+
+    return rect;
+}
+
+u32 HwGs::DrawStrip(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, const u8* kicks, u32 first, u32 end, u32& drawn,
+                    bool& refused)
+{
+    // DrawRun's way a triangle at a time, but for the rest of the strip at once where each would be drawn as the last one was
+    // (DrawStripLikeLast): tried at the first triangle (the state's not the last's after a strip's PRIM, mostly), and after the
+    // first drawn the whole way
+    MakeCurrent();
+    ProcessWrites();
+    u32 tries = 0;
+    for (u32 at = first; at < end; at++)
+    {
+        if (!kicks[at + 2])
+        {
+            continue;
+        }
+
+        if (tries < 2)
+        {
+            tries++;
+            const u32 made = DrawStripLikeLast(state, vertexes, kicks, at, end);
+            if (made != 0)
+            {
+                gs_.primitivesDrawn += made;
+                drawn += made;
+                return end;
+            }
+        }
+
+        gs_.primitivesDrawn++;
+        if (!DrawOne(state, vertexes + at, 3))
+        {
+            refused = true;
+            return at;
+        }
+
+        drawn++;
+        if (gs_.stateTouched())
+        {
+            return at + 1;
+        }
+    }
+
+    return end;
+}
+
+u32 HwGs::DrawStripLikeLast(const Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, const u8* kicks, u32 first, u32 end)
+{
+    // DrawLikeLast's tests that are the same for every triangle (its targets' heights and pages below, for all of them at once);
+    // not with a batch blended by the shader (each primitive's rectangle against the batch's) nor the colour filter's depth
+    // copies (their pages kept a primitive at a time) ($TWIN_HW_NO_FAST_STRIPS: never)
+    static const bool off = std::getenv("TWIN_HW_NO_FAST_DRAW") != nullptr || std::getenv("TWIN_HW_NO_FAST_STRIPS") != nullptr;
+    const LastDraw& last = last_;
+    if (off || !last.valid || last.generation != gs_.stateGeneration() || last.clut != gs_.clutVersion() ||
+        last.targetsVersion != targetsVersion_ || last.filterMode != g_FilterMode || last.ditherMode != g_DitherMode ||
+        last.anisotropy != g_Anisotropy || last.shaderBlend || drawIsDepthCopy_ || depthCopyPages_.any() ||
+        state.ztst == Gs::ZtstNever)
+    {
+        return 0;
+    }
+
+    if (last.texture != nullptr)
+    {
+        const GpuTexture& t = *last.texture;
+        if (!t.complete || t.checkedEpoch != epoch_ || t.shown == 0 || t.shown != last.textureId || (t.pages & newestMask_).any() ||
+            (t.pages & scaledPages_).any())
+        {
+            return 0;
+        }
+    }
+
+    // Each triangle's rectangle (DrawOne's: none, those that draw no pixel; DrawLikeLast's: the right side within the colour
+    // target), and their union: no taller than the targets, and its pages already current and the targets' own, so that the
+    // triangles' EnsureValid and MarkDrawn would each find nothing to do
+    Target* colour = last.colour;
+    Target* depth = last.depth;
+    if (stripRects_.size() < end - first)
+    {
+        stripRects_.resize(end - first);
+        stripPlaced_.resize(end - first + 2);
+    }
+
+    Rect* rects = stripRects_.data();
+    Rect all = {0x7FFFFFFF, 0x7FFFFFFF, -0x7FFFFFFF, -0x7FFFFFFF};
+    u32 made = 0;
+    for (u32 at = first; at < end; at++)
+    {
+        if (!kicks[at + 2])
+        {
+            continue;
+        }
+
+        made++;
+        Rect rect = PrimitiveRect(state, vertexes + at, 3);
+        if (rect.right < rect.left || rect.bottom < rect.top)
+        {
+            rects[at - first] = rect;
+            continue;
+        }
+
+        if (static_cast<u32>(rect.bottom + 1) > colour->height || (depth != nullptr && static_cast<u32>(rect.bottom + 1) > depth->height))
+        {
+            return 0;
+        }
+
+        if (static_cast<u32>(rect.right) >= colour->width)
+        {
+            rect.right = static_cast<s32>(colour->width) - 1;
+        }
+
+        rects[at - first] = rect;
+        if (rect.right < rect.left)
+        {
+            continue;
+        }
+
+        all.left = std::min(all.left, rect.left);
+        all.top = std::min(all.top, rect.top);
+        all.right = std::max(all.right, rect.right);
+        all.bottom = std::max(all.bottom, rect.bottom);
+    }
+
+    if (all.right >= all.left)
+    {
+        Gs::PageSet pages;
+        RectPages(colour, all, pages);
+        if ((pages & colour->pages & ~(colour->valid & colour->owned)).any())
+        {
+            return 0;
+        }
+
+        if (depth != nullptr)
+        {
+            Gs::PageSet depthPages;
+            RectPages(depth, all, depthPages);
+            const Gs::PageSet& kept = state.zWritten ? depth->valid & depth->owned : depth->valid;
+            if ((depthPages & depth->pages & ~kept).any())
+            {
+                return 0;
+            }
+        }
+    }
+
+    // The triangles drawn: AddPrimitive's for each, its vertexes placed once each
+    const s32 n = static_cast<s32>(colour->scale);
+    const f32 nudge = VertexNudge();
+    const u32 placedCount = end - first + 2;
+    Vertex* placed = stripPlaced_.data();
+    for (u32 i = 0; i < placedCount; i++)
+    {
+        const Gs::Vertex& v = vertexes[first + i];
+        Vertex& out = placed[i];
+        out.x = static_cast<f32>(static_cast<s32>(v.x) - state.offsetX) / 16.0f * static_cast<f32>(n) + 0.5f + nudge;
+        out.y = static_cast<f32>(static_cast<s32>(v.y) - state.offsetY) / 16.0f * static_cast<f32>(n) + 0.5f + nudge;
+        out.z = v.z;
+        out.r = v.r;
+        out.g = v.g;
+        out.b = v.b;
+        out.a = v.a;
+        if (state.uv)
+        {
+            out.s = static_cast<f32>(v.u) / 16.0f;
+            out.t = static_cast<f32>(v.v) / 16.0f;
+            out.q = 1.0f;
+        }
+        else
+        {
+            out.s = v.s;
+            out.t = v.t;
+            out.q = v.q;
+        }
+
+        out.fog = static_cast<f32>(v.f);
+    }
+
+    std::vector<Vertex>& list = gpu_.list().vertexes;
+    list.reserve(list.size() + static_cast<size_t>(made) * 3);
+    for (u32 at = first; at < end; at++)
+    {
+        if (!kicks[at + 2])
+        {
+            continue;
+        }
+
+        stats.drawn++;
+        const Rect& rect = rects[at - first];
+        if (rect.right < rect.left || rect.bottom < rect.top)
+        {
+            continue;
+        }
+
+        batching_ = true;
+        const Vertex* in = placed + (at - first);
+        if (state.gouraud)
+        {
+            list.insert(list.end(), in, in + 3);
+        }
+        else
+        {
+            Vertex out[3] = {in[0], in[1], in[2]};
+            for (u32 i = 0; i < 2; i++)
+            {
+                out[i].r = out[2].r;
+                out[i].g = out[2].g;
+                out[i].b = out[2].b;
+                out[i].a = out[2].a;
+            }
+
+            list.insert(list.end(), out, out + 3);
+        }
+    }
+
+    // (What DrawLikeLast leaves for the statistics of the next CPU access)
+    cpuReason = depth != nullptr ? "depth" : "frame";
+    return made;
+}
+
 bool HwGs::DrawOne(Gs::Gs::DrawState& state, const Gs::Vertex* vertexes, u32 count)
 {
     // The colour target's pixels a PS2 pixel (set when it's known)
     s32 n = 1;
 
     // The rectangle the primitive can draw in (the PS2's pixels, inclusive)
-    Rect rect;
-    {
-        s32 minX = 0x7FFFFFFF;
-        s32 minY = 0x7FFFFFFF;
-        s32 maxX = -0x7FFFFFFF;
-        s32 maxY = -0x7FFFFFFF;
-        for (u32 i = 0; i < count; i++)
-        {
-            s32 x = static_cast<s32>(vertexes[i].x) - state.offsetX;
-            s32 y = static_cast<s32>(vertexes[i].y) - state.offsetY;
-            minX = std::min(minX, x);
-            minY = std::min(minY, y);
-            maxX = std::max(maxX, x);
-            maxY = std::max(maxY, y);
-        }
-
-        // The GS's pixels: from the ceiling of the start to before the ceiling of the end (points and lines: the pixels their
-        // ends are in). At a higher scale every pixel the primitive reaches into from its start: a primitive thinner than a
-        // pixel between two of the GS's sample points draws none of the PS2's pixels but some of the scale's samples (left
-        // out, the characters' thinnest triangles, along a nose or an eye, let what's behind show through as black lines)
-        const bool thin = scale_ > 1 && ThinPrimitives();
-        rect.left = std::max(thin ? minX >> 4 : (minX + 15) >> 4, state.scissorLeft);
-        rect.top = std::max(thin ? minY >> 4 : (minY + 15) >> 4, state.scissorTop);
-        rect.right = std::min(((maxX + 15) >> 4) - 1, state.scissorRight);
-        rect.bottom = std::min(((maxY + 15) >> 4) - 1, state.scissorBottom);
-        if (state.type == Gs::PrimPoint || state.type == Gs::PrimLine || state.type == Gs::PrimLineStrip)
-        {
-            rect.left = std::max(minX >> 4, state.scissorLeft);
-            rect.top = std::max(minY >> 4, state.scissorTop);
-            rect.right = std::min(maxX >> 4, state.scissorRight);
-            rect.bottom = std::min(maxY >> 4, state.scissorBottom);
-        }
-    }
-
+    Rect rect = PrimitiveRect(state, vertexes, count);
     if (rect.right < rect.left || rect.bottom < rect.top || state.ztst == Gs::ZtstNever)
     {
         stats.drawn++;

@@ -180,6 +180,12 @@ public:
     bool kickPending = false;
     u32 kickPendingAddress = 0;
     u32 kickPendingPc = 0;
+    // The fast renderer's prepared form of the pending kick's packet (graphics/fastrenderer.h: batch entries, a strip), made by a
+    // prepared function with the packet: FlushKick sends it in the packet's place (prepared), the memory being as the function
+    // left it; with checkPending set (the fast renderer's verify) the packet is sent as ever, checkPending told first. Empty:
+    // none, the packet read from memory
+    std::vector<u8> kickPendingBatch;
+    std::function<void(u32 address, const std::vector<u8>& batch)> checkPending;
     // Bumped when code written into micro memory changes it, and the instructions changed since TakeCodeChanges last took them
     u64 codeVersion() const { return codeVersion_; }
     std::bitset<2048> TakeCodeChanges()

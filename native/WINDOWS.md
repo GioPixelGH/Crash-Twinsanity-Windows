@@ -890,11 +890,15 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   writes) in place of any real one: fast draws the batches, verify draws the program and compares the stand-in's batch and VU1's
   state with it. Interpreted VU1 is slow (the beach at about 9 fps with `all`).
 - Verify's lines (`$TWIN_FAST_RENDERER=verify`, the real prepared functions or the stand-in): "fast verify: N runs of prepared
-  functions compared, D declined, M differences" at the first run, every 16384 and at exit (a declined run is one the function
-  left to the program, which then ran as in the fast mode), and the first 50 differences, each naming what differs: the GS's
-  writes (from which entry), data memory, the VF or VI registers, ACC, Q P I or R, the flags, where it left, the kick left
-  pending, or the pipelines' state the next program's entry reads (the FMAC entries and the division in flight, the integer
-  loads, the branch rule, the pending flags).
+  functions compared, D declined, M differences, P pending kicks' prepared forms checked" at the first run, every 16384 and at
+  exit (a declined run is one the function left to the program, which then ran as in the fast mode; a pending kick's prepared
+  form is the strip a function leaves with the kick it leaves pending, checked against the packet in memory when VU1 sends the
+  kick), and the first 50 differences, each naming what differs: the GS's writes (from which entry: a function's strips as the
+  writes they stand for), data memory, the VF or VI registers, ACC, Q P I or R, the flags, where it left, the kick left
+  pending, the pipelines' state the next program's entry reads (the FMAC entries and the division in flight, the integer
+  loads, the branch rule, the pending flags), or a pending kick's prepared form against its packet.
+- `$TWIN_HW_NO_FAST_STRIPS=1`: the hardware renderer draws a prepared strip's triangles one at a time (DrawOne, as a run's)
+  instead of at once where each would be drawn as the last one was (HwGs::DrawStripLikeLast, THE LIST 75 step 2).
 - `$TWIN_HW_DECODE_TRACE=1`: each texture the hardware renderer decodes from GS memory's copy, to stderr (the log): its place,
   format and size, the region the draw asked for ("(whole)" when the strips' rule widened it), the stale tiles' box, their
   pages and count (`decode: #62858054 2c00/4 psm 27 1024x1024 levels 1, asked 0,0-33,257 (whole), stale 0,0-263,263, 37 pages,

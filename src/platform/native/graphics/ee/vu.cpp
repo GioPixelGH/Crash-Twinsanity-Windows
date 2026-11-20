@@ -1203,7 +1203,40 @@ void Vu::FlushKick()
     kickPending = false;
     const u32 pc = kickPc;
     kickPc = kickPendingPc;
-    Send(*this, kickPendingAddress);
+    if (kickPendingBatch.empty())
+    {
+        Send(*this, kickPendingAddress);
+    }
+    else
+    {
+        // The packet's prepared form in its place (or under verify, checked against the packet sent)
+        if (checkPending)
+        {
+            checkPending(kickPendingAddress, kickPendingBatch);
+            Send(*this, kickPendingAddress);
+        }
+        else if (prepared)
+        {
+            if (!timing)
+            {
+                prepared(kickPendingBatch.data(), static_cast<u32>(kickPendingBatch.size() / 16), kickPc);
+            }
+            else
+            {
+                auto began = std::chrono::steady_clock::now();
+                prepared(kickPendingBatch.data(), static_cast<u32>(kickPendingBatch.size() / 16), kickPc);
+                kickNanoseconds +=
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - began).count();
+            }
+        }
+        else
+        {
+            Send(*this, kickPendingAddress);
+        }
+
+        kickPendingBatch.clear();
+    }
+
     kickPc = pc;
 }
 

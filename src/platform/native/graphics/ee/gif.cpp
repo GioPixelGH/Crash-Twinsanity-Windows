@@ -225,14 +225,18 @@ void Gif::PreparedNow(const u8* entries, u32 count, u32 source)
 {
     if (tap != nullptr)
     {
-        // A GS dump gets the batch as the A+D packet it stands for (the PACKED ST's Q left out: a dump's next tag sets it again)
+        // A GS dump gets the batch as the A+D packet it stands for (its strips as their writes; the PACKED ST's Q left out: a
+        // dump's next tag sets it again)
+        std::vector<u8> expanded;
+        Gs::ExpandPrepared(entries, count, expanded);
+        const u32 expandedCount = static_cast<u32>(expanded.size() / 16);
         std::vector<u8> packet;
-        packet.reserve((static_cast<size_t>(count) + 1) * 16);
+        packet.reserve((static_cast<size_t>(expandedCount) + 1) * 16);
         u32 writes = 0;
-        for (u32 n = 0; n < count; n++)
+        for (u32 n = 0; n < expandedCount; n++)
         {
             Gs::PreparedWrite write;
-            std::memcpy(&write, entries + static_cast<size_t>(n) * 16, 16);
+            std::memcpy(&write, expanded.data() + static_cast<size_t>(n) * 16, 16);
             if (write.address != Gs::PreparedPackedQ)
             {
                 writes++;
@@ -241,10 +245,10 @@ void Gif::PreparedNow(const u8* entries, u32 count, u32 source)
 
         const u64 tag[2] = {static_cast<u64>(writes) | 1ull << 15 | static_cast<u64>(Packed) << 58 | 1ull << 60, 0xE};
         packet.insert(packet.end(), reinterpret_cast<const u8*>(tag), reinterpret_cast<const u8*>(tag) + 16);
-        for (u32 n = 0; n < count; n++)
+        for (u32 n = 0; n < expandedCount; n++)
         {
             Gs::PreparedWrite write;
-            std::memcpy(&write, entries + static_cast<size_t>(n) * 16, 16);
+            std::memcpy(&write, expanded.data() + static_cast<size_t>(n) * 16, 16);
             if (write.address != Gs::PreparedPackedQ)
             {
                 const u64 quadword[2] = {write.value, write.address & 0xFF};
