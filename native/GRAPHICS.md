@@ -460,10 +460,37 @@ kick's strip to the GS whole. At a PACKED tag with PRE whose registers are ST, R
 all in the data at hand, while a run is collected, Gs::TakePackedStrip makes the vertexes as WritePacked's writes would (the
 RGBAQ's Q the vertex's ST's, ADC as XYZ3 or XYZF3), leaves the registers and the vertex queue as they would, and draws the
 triangles through the same DrawStrip as a prepared strip (else the tag goes the usual way). At the beach these tags carry nearly
-every vertex the other programs kick (in 1500 frames 57.7 million vertexes in 1.8 million tags; 0.18 million outside them, UV
-RGBAQ XYZ2 triangles and fans), so the type 04, 02, 17 and 1A programs' strips are drawn at once with VU1 left as it is. Verify
-over the 25 pictures (OpenGL) compared 2,113,536 runs, 234,651 declined, with no difference, and checked 1,878,884 pending
-strips; the fast mode's pictures are 1.3.0's with OpenGL and Vulkan. Measured (perf.py, the beach at 1x on two cores, OpenGL,
+every vertex the other programs kick (in 1500 frames 57.7 million vertexes in 1.8 million tags; the other drawing tags had
+0.18 million loops, UV RGBAQ XYZ2 tags of nine registers and fans), so the type 04, 02, 17 and 1A programs' strips are drawn
+at once with VU1 left as it is. Verify over the 25 pictures (OpenGL) compared 2,113,536 runs, 234,651 declined, with no
+difference, and checked 1,878,884 pending strips; the fast mode's pictures are 1.3.0's with OpenGL and Vulkan. Measured (perf.py, the beach at 1x on two cores, OpenGL,
 2026-11-20, step 2's fast mode A against this one B, A B B A A B B A): frames a second +4.9 to +6.1 (A 67.1, B 72.6 on
 average), the render thread 2.8 to 3.0 ms less (11.3 to 8.5, the aim's 8.5 ms), VU1's thread level (10.7 and 10.8, now the
 longest of the three), the game's 0.5 to 0.9 ms less, the three threads' sum 3.2 to 3.7 ms less (30.9 to 27.4).
+
+Where THE LIST 75 ended (2026-11-20). No prepared functions for the type 04 and 02 programs: their strips are already drawn at
+once (step 3), and the native type 01 function costs VU1's thread about what its translated program did (a profile of each
+mode against the materials' parameter program, which both run the same: type 01 was 0.93 of it accurate and 1.05 fast, the
+strips' making included), so a function for 04 or 02 would only move their strips' reading from the render thread (under 1 ms
+in all) to VU1's. VU1's thread is now the longest; what's left there (the dispatcher, VIF1's masked unpacks, the kicks'
+forwarding, each about 0.5 to 1 ms) is THE LIST 104. The proof in the levels: the level sweep (131 chunks, 30 s each,
+OpenGL) with `$TWIN_FAST_RENDERER=verify` compared 50,888,704 runs, 17,972,578 declined (35%: the levels have more clipped
+instances than the 25 pictures), with no difference, and checked 32,916,062 pending strips; that sweep and the same in fast
+mode ended every chunk as the last sweep did (no crash, no stray free). The beach at the user's own settings (4x, a texture
+pack of 635 replacements, SMAA) gave the same pictures accurate and fast with OpenGL and Vulkan. Measured against 1.3.0
+(perf.py, the beach at 1x, OpenGL, 2026-11-20, 1.3.0 A against this build B, A B B A A B B A, in one session):
+
+| This build | Cores | Frames a second, 1.3.0 -> this build | Render thread | VU1's thread | Game's thread | Their sum |
+| --- | --- | --- | --- | --- | --- | --- |
+| Fast | two (0x5) | 60.6 -> 68.8 (pairs +9.8, +6.5) | 14.0 -> 9.0 ms | 10.7 -> 11.4 ms | 9.8 -> 8.4 ms | 34.5 -> 28.9 ms |
+| Accurate | two (0x5) | 61.7 -> 59.5 (pairs -2.5, -1.9) | 13.9 -> 14.8 ms | 10.8 -> 11.0 ms | 9.7 -> 10.0 ms | 34.4 -> 35.8 ms |
+| Accurate | all (0xFFF) | 84.6 -> 88.7 (pairs +4.4, +3.8) | 11.9 -> 11.2 ms | 9.6 -> 8.9 ms | 6.0 -> 5.5 ms | 27.4 -> 25.6 ms |
+
+The accurate mode on two cores isn't explained: a second series in the same session gave pairs of -0.1 and -2.6 frames a
+second (four pairs of two series, all at or under 1.3.0's), while on all cores, where the threads don't take turns on two,
+each thread did less work than 1.3.0's in both pairs, and the accurate mode draws what 1.3.0 draws (the 25 pictures byte for
+byte, the card's draws and batches the same). One thing the bench adds on two cores: perf.py starts each run with new
+settings, so the disc image is hashed in the background (disc_identity.txt) for the run's first 28 to 30 s, over the first
+of the measured performance lines, in both programs (the hashing's code is 1.3.0's); a player's later starts don't hash. The fast mode's render thread at the beach on two cores is
+9.0 ms on average (8.4 to 9.4; step 3's session 8.5), near the plan's aim of 8.5 and about a third less than 1.3.0's, with 8
+frames a second more.

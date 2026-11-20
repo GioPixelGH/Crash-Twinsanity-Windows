@@ -131,6 +131,26 @@ are big the game's thread went from about 17.5 ms a frame to 9 (VU1 was half of 
 and rooftops went from 57 to 60 frames a second. `$TWIN_RENDER_THREAD=gs` puts VIF1 and VU1 back on the game's thread.
 `$TWIN_FRAME_STATS`' `game` is the game's thread's work between its waits for the vertical blank.
 
+The fast renderer (1.4.0, THE LIST 74 and 75, GRAPHICS.md "The fast renderer"): Display > Renderer > Renderer, fast
+(experimental), draws the scenery's strips at once instead of the GS's primitives one by one, with the same pictures. The
+beach at 1x, OpenGL, 1.3.0 (dist) A against this build B in one session, A B B A A B B A (perf.py; 2026-11-20,
+compare/runs_b75 perf5 to perf7); frames a second, then the render thread, VU1's and the game's thread and their sum, the
+averages:
+
+| Where | 1.3.0 | This build |
+| --- | --- | --- |
+| The beach, fast, two cores (0x5) | 60.6; 14.0, 10.7, 9.8 ms (sum 34.5) | 68.8; 9.0, 11.4, 8.4 ms (sum 28.9) |
+| The beach, accurate, two cores | 61.7; 13.9, 10.8, 9.7 ms (sum 34.4) | 59.5; 14.8, 11.0, 10.0 ms (sum 35.8) |
+| The beach, accurate, all cores (0xFFF) | 84.6; 11.9, 9.6, 6.0 ms | 88.7; 11.2, 8.9, 5.5 ms |
+
+On two cores the three threads take turns, so their sum is the measure beside the frames a second; the fast mode takes 5.6 ms
+off it. The accurate mode on two cores is unexplained: its four pairs in two series (perf5, perf8) were -2.5, -1.9, -0.1
+and -2.6 frames a second, while on all cores each thread did less than 1.3.0's in both pairs; the bench drifts up to 17% in
+minutes (THE LIST 74's speed question, compare/runs_b74/speed_question.txt), and perf.py's runs, with new settings each,
+hash the disc image in the background for their first 28 to 30 s, over the first measured line (a profile on two cores,
+compare/runs_b75/prof8: that thread busy in both programs). Seeding disc_identity.txt in perf.py's settings would take it
+out of the next measure. VU1's thread is the fast mode's longest now (THE LIST 104).
+
 Comparing two builds' pictures: `$TWIN_FIXED_TIME=1` with `$TWINSANITY_AUDIO=frames` (the sound made in step with the frames)
 gives the same frames run after run (with the sound in real time, a run's speed changes what the game does with it after a
 few hundred frames).
