@@ -196,6 +196,7 @@ Your saves stay ones the original game could make.
 | Draw distance | Short, original (the default, the PS2's), medium, long or unlimited. Farther settings draw the grass and small things before you get close, and the detailed models of trees and statues from farther away. They also draw more: unlimited draws about twice as much on the beach, which is slower on an older PC. Short draws less. |
 | Texture packs, scanlines | As their names say. |
 | Graphics API | Under **Renderer**. OpenGL (the default) or Vulkan (new in 1.3.0). A change is used from the next start. If one doesn't start on your PC, the game uses the other one and changes this setting. |
+| Renderer | Under **Renderer**, new in 1.4.0. Accurate (the default) draws as the PS2 does. Fast (experimental) draws the scenery more directly, which is quicker on older processors. It should look the same. A change is used at once. |
 
 The volumes are in **Audio**.
 **Master volume**, its first row, turns all the sound up or down together.

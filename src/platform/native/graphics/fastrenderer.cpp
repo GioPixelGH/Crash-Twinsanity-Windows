@@ -52,9 +52,9 @@ FastMode FastRendererMode()
 
 bool FastRendererHasKinds()
 {
-    // The scenery's program has its prepared function (fastscenery.cpp), but the fast mode isn't faster yet: its batches are
-    // still drawn a primitive at a time (THE LIST 75's next step draws a strip at once). The row stays hidden until it is
-    return false;
+    // The scenery's program has its prepared function (fastscenery.cpp), its strips drawn at once: faster than the accurate mode
+    // at the beach (THE LIST 75 step 2, GRAPHICS.md "The fast renderer"), so the row is shown
+    return true;
 }
 
 namespace

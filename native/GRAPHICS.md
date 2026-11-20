@@ -387,7 +387,7 @@ compares them.
 Which kind first: the render thread's time by kind of drawing (WINDOWS.md, "The render thread by kind of drawing",
 `$TWIN_RENDER_SPLIT`) puts the scenery and the placed objects first, the type 01 shader's program (0x2DF700) above all: 36 to
 42% of the render thread at the beach, the Academy's hub and Amberly's fight, against 1 to 3% for the characters' skins. The
-setting's row stays hidden until the fast mode is faster than the accurate one (below: not yet with the first kind alone).
+setting's row is shown since the fast mode is faster than the accurate one (THE LIST 75 step 2, below).
 
 The passage a kind's prepared path goes through (THE LIST 74 step 3), in place before any kind has one:
 
