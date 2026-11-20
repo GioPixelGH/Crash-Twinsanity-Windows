@@ -56,9 +56,17 @@ struct PreparedRun
 };
 using PreparedFunction = bool (*)(PreparedRun& run);
 
+// A prepared function's kick sent (the GIF reading the packet at address now, as the XGKICK after it or the program's stop
+// would): converted into the batch (Gif::ConvertKick), or, a packet that can't be (IMAGE data), on VU1 itself the batch so far
+// sent and then the packet (pc: its XGKICK's place, for the traces), on verify's copy a marker in the batch
+void PreparedSend(PreparedRun& run, u32 address, u32 pc);
+
+// The prepared functions the fast renderer knows, by program (fastscenery.cpp: the type 01 shader's, 0x2DF700), or null
+PreparedFunction KnownPreparedFunction(u32 programAddress);
+
 // The prepared function for a VU1 program (its address in the retail executable's .vutext), or null: the kinds the fast renderer
-// knows (none yet: THE LIST 75 brings the scenery's), and with $TWIN_FAST_PREPARE=all or programs' addresses (hex,
-// comma-separated) the test's stand-in for those, the program's own run (interpreted) with its kicks converted (Gif::ConvertKick)
+// knows (KnownPreparedFunction), and with $TWIN_FAST_PREPARE=all or programs' addresses (hex, comma-separated) the test's
+// stand-in in their place for those, the program's own run (interpreted) with its kicks converted (Gif::ConvertKick)
 PreparedFunction PreparedFor(u32 programAddress);
 // The dispatcher's hook at the entry of a program that has a prepared function, when the mode isn't accurate. Fast: the function
 // runs in the program's place and its batch is sent (Vu::prepared). Verify: the program runs (interpreted, its kicks sent as ever:

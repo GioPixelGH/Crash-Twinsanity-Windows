@@ -544,7 +544,8 @@ public:
     Backend* backend() const { return backend_; }
     // Local memory written without telling the backend (the backend's own copies going back to local memory)
     void SetBackendQuiet(bool quiet) { backendQuiet_ = quiet; }
-    // For the backend: the draw's textures decoded (vertexes null: the whole levels), and a glyph image's sprite made the image's
+    // For the backend: the draw's textures decoded (vertexes null: the whole levels), and a glyph image's sprite made the image's.
+    // (DrawState: what a primitive draws with, gsdraw.cpp)
     struct DrawState;
     void DecodeForBackend(DrawState& state, const Vertex* vertexes, u32 count);
     bool GlyphForBackend(DrawState& state, Vertex* vertexes, u32 count) const;
@@ -593,9 +594,6 @@ public:
     // Statistics of the drawing since the last reset (primitives, pixels tested)
     u64 primitives = 0;
     u64 pixels = 0;
-
-    // What a primitive draws with (gsdraw.cpp)
-    struct DrawState;
 
     // Drawing at a multiple of the PS2's resolution (1 to 4): every primitive is drawn as the PS2 draws it into local memory,
     // and drawn again with its places scaled into a buffer of scale times scale samples a pixel kept beside each frame and depth

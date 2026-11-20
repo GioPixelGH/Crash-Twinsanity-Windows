@@ -52,7 +52,8 @@ FastMode FastRendererMode()
 
 bool FastRendererHasKinds()
 {
-    // No kind of drawing has its prepared path yet (THE LIST 75 brings the scenery's)
+    // The scenery's program has its prepared function (fastscenery.cpp), but the fast mode isn't faster yet: its batches are
+    // still drawn a primitive at a time (THE LIST 75's next step draws a strip at once). The row stays hidden until it is
     return false;
 }
 
@@ -202,33 +203,39 @@ void AddRawKick(std::vector<u8>& batch, u32 address)
     batch.insert(batch.end(), bytes, bytes + sizeof(marker));
 }
 
-// $TWIN_FAST_PREPARE's stand-in prepared function: the program's own run, interpreted, its kicks converted into the batch. On
-// VU1 itself (it has the GIF's xgkick) a kick that can't be converted sends the batch so far and itself; on verify's copy it's
-// marked
+// A kick sent from a prepared run: converted, or on VU1 itself (it has the GIF's xgkick: send) the batch so far and the packet
+// sent, or on verify's copy marked
+void SendFromRun(PreparedRun& run, const std::function<void(u32)>& send, u32 address, u32 pc)
+{
+    if (Ee::Gif::ConvertKick(run.vu.data(), address, run.batch))
+    {
+        return;
+    }
+
+    if (!send)
+    {
+        AddRawKick(run.batch, address);
+        return;
+    }
+
+    if (!run.batch.empty() && run.vu.prepared)
+    {
+        run.vu.prepared(run.batch.data(), static_cast<u32>(run.batch.size() / 16), run.base);
+        run.batch.clear();
+    }
+
+    const u32 kickPc = run.vu.kickPc;
+    run.vu.kickPc = pc;
+    send(address);
+    run.vu.kickPc = kickPc;
+}
+
+// $TWIN_FAST_PREPARE's stand-in prepared function: the program's own run, interpreted, its kicks converted into the batch
 bool RunConverted(PreparedRun& run)
 {
     Ee::Vu& vu = run.vu;
     auto original = vu.xgkick;
-    vu.xgkick = [&run, &original](u32 address) {
-        if (Ee::Gif::ConvertKick(run.vu.data(), address, run.batch))
-        {
-            return;
-        }
-
-        if (!original)
-        {
-            AddRawKick(run.batch, address);
-            return;
-        }
-
-        if (!run.batch.empty() && run.vu.prepared)
-        {
-            run.vu.prepared(run.batch.data(), static_cast<u32>(run.batch.size() / 16), run.base);
-            run.batch.clear();
-        }
-
-        original(address);
-    };
+    vu.xgkick = [&run, &original](u32 address) { SendFromRun(run, original, address, run.vu.kickPc); };
     run.ended = RunUntilLeaving(vu, run.st, run.base, run.size);
     vu.xgkick = original;
     return true;
@@ -240,9 +247,47 @@ const FastKicks& AskedPrepared()
     return programs;
 }
 
-// Verify's counts, said at exit once verify has run
+// Verify's counts, said at exit once verify has run: the runs compared, those the function declined, the differences
 std::atomic<u64> g_Verified{0};
+std::atomic<u64> g_Declined{0};
 std::atomic<u64> g_Differences{0};
+
+void SayCounts()
+{
+    std::fprintf(stderr, "fast verify: %llu runs of prepared functions compared, %llu declined, %llu differences\n",
+                 static_cast<unsigned long long>(g_Verified.load()), static_cast<unsigned long long>(g_Declined.load()),
+                 static_cast<unsigned long long>(g_Differences.load()));
+}
+
+// What the next program's entry reads of the pipelines (the dispatcher's signature) once what's due has landed: the FMAC
+// entries and the division still in flight, the integer loads not ready, the branch rule's register, whether any FMAC entry was
+// made, and the pending flags
+struct InFlight
+{
+    u32 fmac;
+    bool fdiv;
+    bool efu;
+    u32 ialu;
+    u32 backup;
+    bool anyEntry;
+    u32 pendingMac;
+    u32 pendingStatus;
+
+    bool operator==(const InFlight&) const = default;
+};
+
+InFlight InFlightOf(Ee::Vu& vu, Ee::VuMicroState& st)
+{
+    vu.FlushPipes(st);
+    u32 ialu = 0;
+    for (u32 n = 0; n < 4; n++)
+    {
+        ialu += st.pipes.ialuReady[n] > st.cycle ? 1 : 0;
+    }
+
+    return {st.pipes.fmacCount, st.pipes.fdiv, st.pipes.efu, ialu, st.backupCycles > 0 ? st.backupReg : 0, st.anyEntry,
+            st.pending.mac, st.pending.status};
+}
 
 [[gnu::format(printf, 2, 3)]] void ReportDifference(u32 base, const char* format, ...)
 {
@@ -262,10 +307,7 @@ std::atomic<u64> g_Differences{0};
 bool Verify(PreparedFunction function, Ee::Vu& vu, Ee::VuMicroState& st, u32 base, u32 size, bool& ended)
 {
     static const bool counting = [] {
-        std::atexit([] {
-            std::fprintf(stderr, "fast verify: %llu runs of prepared functions compared, %llu differences\n",
-                         static_cast<unsigned long long>(g_Verified.load()), static_cast<unsigned long long>(g_Differences.load()));
-        });
+        std::atexit(SayCounts);
         return true;
     }();
     (void)counting;
@@ -301,15 +343,19 @@ bool Verify(PreparedFunction function, Ee::Vu& vu, Ee::VuMicroState& st, u32 bas
     vu.xgkick = original;
     // (The counts said at the first run and every 16384 too: the level sweep's runs end with _Exit, which skips atexit)
     const u64 verified = ++g_Verified;
+    if (!ran)
+    {
+        // Declined: the program ran in its place, as in the fast mode
+        g_Declined++;
+    }
+
     if (verified == 1 || verified % 16384 == 0)
     {
-        std::fprintf(stderr, "fast verify: %llu runs of prepared functions compared, %llu differences\n",
-                     static_cast<unsigned long long>(verified), static_cast<unsigned long long>(g_Differences.load()));
+        SayCounts();
     }
 
     if (!ran)
     {
-        ReportDifference(base, "the function couldn't run");
         return true;
     }
 
@@ -326,6 +372,9 @@ bool Verify(PreparedFunction function, Ee::Vu& vu, Ee::VuMicroState& st, u32 bas
         return true;
     }
 
+    // (What's due lands on both first: the flags compared as the next instruction sees them)
+    const InFlight shadowFlight = InFlightOf(shadow, shadowState);
+    const InFlight flight = InFlightOf(vu, st);
     const char* what = nullptr;
     if (std::memcmp(shadow.data(), vu.data(), vu.dataSize()) != 0)
     {
@@ -359,6 +408,16 @@ bool Verify(PreparedFunction function, Ee::Vu& vu, Ee::VuMicroState& st, u32 bas
     {
         what = "the kick left pending";
     }
+    else if (!(shadowFlight == flight))
+    {
+        ReportDifference(base,
+                         "the pipelines' state differs: FMAC %u/%u, FDIV %d/%d, EFU %d/%d, integer loads %u/%u, branch rule %u/%u, "
+                         "any entry %d/%d, pending MAC %#x/%#x and status %#x/%#x",
+                         shadowFlight.fmac, flight.fmac, shadowFlight.fdiv, flight.fdiv, shadowFlight.efu, flight.efu,
+                         shadowFlight.ialu, flight.ialu, shadowFlight.backup, flight.backup, shadowFlight.anyEntry, flight.anyEntry,
+                         shadowFlight.pendingMac, flight.pendingMac, shadowFlight.pendingStatus, flight.pendingStatus);
+        return true;
+    }
 
     if (what != nullptr)
     {
@@ -370,10 +429,15 @@ bool Verify(PreparedFunction function, Ee::Vu& vu, Ee::VuMicroState& st, u32 bas
 }
 }
 
+void PreparedSend(PreparedRun& run, u32 address, u32 pc)
+{
+    SendFromRun(run, run.vu.xgkick, address, pc);
+}
+
 PreparedFunction PreparedFor(u32 programAddress)
 {
-    // No kind of drawing has its prepared function yet (THE LIST 75 brings the scenery's); the test's stand-in where asked
-    return AskedPrepared().Names(programAddress) ? &RunConverted : nullptr;
+    // The test's stand-in where asked, else the kinds known
+    return AskedPrepared().Names(programAddress) ? &RunConverted : KnownPreparedFunction(programAddress);
 }
 
 bool RunPrepared(PreparedFunction function, Ee::Vu& vu, Ee::VuMicroState& st, u32 base, u32 size, bool& ended)

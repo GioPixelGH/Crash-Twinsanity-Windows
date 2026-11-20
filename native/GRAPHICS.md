@@ -387,7 +387,7 @@ compares them.
 Which kind first: the render thread's time by kind of drawing (WINDOWS.md, "The render thread by kind of drawing",
 `$TWIN_RENDER_SPLIT`) puts the scenery and the placed objects first, the type 01 shader's program (0x2DF700) above all: 36 to
 42% of the render thread at the beach, the Academy's hub and Amberly's fight, against 1 to 3% for the characters' skins. The
-setting's row stays hidden until the fast renderer knows a kind (THE LIST 75, the scenery).
+setting's row stays hidden until the fast mode is faster than the accurate one (below: not yet with the first kind alone).
 
 The passage a kind's prepared path goes through (THE LIST 74 step 3), in place before any kind has one:
 
@@ -415,3 +415,22 @@ The passage a kind's prepared path goes through (THE LIST 74 step 3), in place b
   batches (the program's kicks converted) and VU1's state where each left ("fast verify:" lines, the first 50, and a count at
   exit). `$TWIN_FAST_PREPARE=all` (or programs' addresses) gives those programs the test's stand-in, the program itself
   interpreted with its kicks converted, which proves the way from the dispatcher to the picture before a real function exists.
+
+The first kind (THE LIST 75, graphics/fastscenery.cpp): the type 01 shader's program (0x2DF700), the placed objects' and the
+chunk's meshes. Program 1 calls its first routine for each type 01 entry VIF1 unpacked; the routine goes through the instances'
+headers (2(vi00): a matrix each, and whether the instance is clipped) and for each transforms the strip VIF1 unpacked at TOP (a
+GIF tag, the vertex count, then four quadwords a vertex: the position, the texture coordinates whose low bytes are also the
+vertex colour, and two the lit shaders use), divides by w, adds the shader's scroll, writes the packet (ST and Q, RGBA, XYZ a
+vertex) into the output buffer 1(vi00) rotates through, and kicks the shader's registers (when it has them) and the packet. Its
+prepared function does that for the instances wholly in view (a header's first word 0): each value made in the program's order
+of operations with the VU's float rules (vu1jit.h's helpers, the run rounding toward zero, never fused), and VU1 left as the
+software-pipelined loop leaves it (the last vertexes' registers, ACC, Q, the MAC flag of the last MULq, the status flag's sticky
+bits from every result, the last DIV's bits, the output written, the packet's kick left pending, and the two empty MOVEs of the
+routine's tail still in the FMAC pipeline, which the next program's entry sees). A run with any clipped instance (the routine
+calls the clipping routine 4(vi00) names) is declined and the program runs; so is one whose output would overlap what it reads.
+Over the 25 pictures verify compared 2,113,536 runs, 234,651 of them declined (11%), with no difference, and the fast mode's
+pictures are 1.3.0's with OpenGL and Vulkan. Not faster yet (perf.py, the beach at 1x on two cores, OpenGL, 2026-11-20, the same
+build accurate and fast A B B A A B B A): frames a second level (-1.3 to +1.9 beside each A), the render thread 0.1 ms more to
+0.8 ms less, VU1's thread 0.2 to 0.8 ms more. The batches are still played a register write at a time and drawn a primitive at
+a time (DrawRun's DrawOne: each triangle's rectangle, pages and vertexes), and their kicks are converted on VU1's thread
+(Gif::ConvertKick reading the packet back) instead of read by the GIF on the render thread: the next step draws a strip at once.
