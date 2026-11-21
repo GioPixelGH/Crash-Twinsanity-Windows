@@ -28,6 +28,8 @@ EXPECTED = {
     "STARTUP/FONTS/CRASH_EURO": "PAL",  # gamecontroller.cpp's FontFile
     "STARTUP/FONTS/CRASH": "USA",  # its NorthAmericanFontFile
     "STARTUP/FONTS/CRASH.PSF": "USA",  # xboxart.cpp's, read from the Xbox disc (the same name as the US disc's)
+    "STARTUP/FONTS/CRASH_EURO.PSF": "PAL",  # the ui self-test's look at the disc's font (commands.cpp's FontCharacters)
+    "LANGUAGE/CODE/AMERICAN.TXT": "USA",  # the ui self-test's sign of the North American disc (commands.cpp's DiscLanguages)
 }
 # Each disc's languages (the game's names: g_LanguageNames on PAL, gamecontext.cpp's NorthAmericanLanguages) and the files the
 # game makes from a language's name

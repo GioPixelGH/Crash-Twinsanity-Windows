@@ -158,7 +158,10 @@ SCENARIOS = [
      "idle,wait2,goto:75.3:2.6:-100.8,wait2,goto:62.49:1.6:-100.8,wait4,objects",
      dict(options="skip_cutscenes=1\nretail_fixes=1\n", env={"TWIN_ROUTE_TRACE": "1", "TWIN_SWEEP_GAME_TIME": "1"},
           expect=[r"route trace: \S*EVILCRASH, step 1 .*the step itself taken \(bug fixes\)",
-                  r"hop:   \S*EVILCRASH at \((4\d|5\d|6[0-5])\."])),
+                  r"hop:   \S*EVILCRASH at \((4\d|5\d|6[0-5])\."],
+          # (The North American disc's data has no such step: he follows Cortex with Bug fixes off too, THE LIST 31c)
+          expect_usa=[r"hop:   \S*EVILCRASH at \((4\d|5\d|6[0-5])\."],
+          forbid_usa=[r"route trace: \S*EVILCRASH"])),
     # Issue #32 (THE LIST 16): Ant Agony's walls and doors, 32 bit textures uploaded to 2800/4 each frame, were read from the
     # buffer bossarea's sky is drawn into there (a target of that address and width left from earlier play), its clamped edge
     # streaking their repeats; only a target's own drawing is a texture's source now (hwgs.cpp: Target::drawn). bossarea
@@ -749,7 +752,7 @@ def disc_identity(exe, work):
     """The disc images recognised (discidentity.cpp, --identify-disc: each hashed whole, a fresh settings folder each): local.json's
     PAL image and, when it names one, the NTSC-U v2.00 image ("disc_image_usa"), each a retail disc of redump.org's:
     (passed, what happened)"""
-    images = [("PAL", disc_image(), r"disc: the retail disc, SLES-52568 v1\.01 PAL .*redump\.org's disc 4514 \(checked in ([\d.]+) s\)")]
+    images = [("PAL", disc_image(pal=True), r"disc: the retail disc, SLES-52568 v1\.01 PAL .*redump\.org's disc 4514 \(checked in ([\d.]+) s\)")]
     usa = other_disc_image("disc_image_usa")
     if usa:
         images.append(("NTSC-U", usa, r"disc: the retail disc, SLUS-20909 v2\.00 NTSC-U .*redump\.org's disc 13689 \(checked in ([\d.]+) s\)"))
@@ -773,8 +776,14 @@ def disc_identity(exe, work):
     return True, ", ".join(said)
 
 
-def disc_image(root=HERE):
-    """The disc image local.json names"""
+# The disc the checks play: None for local.json's PAL image, else --disc usa's (local.json's disc_image_usa, THE LIST 31)
+DISC = None
+
+
+def disc_image(root=HERE, pal=False):
+    """The disc image local.json names (--disc usa: its North American one, unless pal)"""
+    if DISC and not pal:
+        return DISC
     local = root / "local.json"
     if not local.exists():
         sys.exit(f"{local} is missing: it names the disc image (local.example.json)")
@@ -784,15 +793,15 @@ def disc_image(root=HERE):
     return image
 
 
-def run_game(exe, folder, arguments, environment=None, timeout=900, options=None):
-    """The program run with a settings folder of its own (the disc image remembered there, and options.txt's lines if given), its
-    log in folder/log.txt: (exit status, log)"""
+def run_game(exe, folder, arguments, environment=None, timeout=900, options=None, image=None):
+    """The program run with a settings folder of its own (the disc image remembered there, the checks' or image, and options.txt's
+    lines if given), its log in folder/log.txt: (exit status, log)"""
     folder = Path(folder)
     if folder.exists():
         shutil.rmtree(folder)
     settings = folder / "settings" / "Crash Twinsanity"
     settings.mkdir(parents=True)
-    (settings / "disc_image.txt").write_text(disc_image() + "\n")
+    (settings / "disc_image.txt").write_text((image or disc_image()) + "\n")
     options = without_mouse(options, arguments)
     if options:
         (settings / "options.txt").write_text(options)
@@ -831,8 +840,11 @@ def scenarios(exe, work):
         fatal = [line for line in log.splitlines() if line.startswith("[native] fatal")]
         played = any("sweep:" in line and (": ran (" in line or ": game over (" in line) for line in log.splitlines())
         problems = [line for line in log.splitlines() if any(problem in line for problem in MEMORY_PROBLEMS)]
-        missing = [pattern for pattern in more.get("expect", []) if not re.search(pattern, log)]
-        found = [line for pattern in more.get("forbid", []) for line in log.splitlines() if re.search(pattern, line)]
+        # (--disc usa: a scenario's expect_usa and forbid_usa, where that disc's data plays otherwise, instead of its own)
+        usa = "_usa" if DISC else ""
+        missing = [pattern for pattern in more.get("expect" + usa, more.get("expect", [])) if not re.search(pattern, log)]
+        found = [line for pattern in more.get("forbid" + usa, more.get("forbid", [])) for line in log.splitlines()
+                 if re.search(pattern, line)]
         if fatal:
             return name, False, fatal[0].replace("[native] ", "")
         if problems:
@@ -845,7 +857,7 @@ def scenarios(exe, work):
             return name, False, f"the log has {found[0].replace('[native] ', '')!r}"
         return name, True, "no crash, no memory problem" + (", the skips' ends as expected" if more else "")
     with ThreadPoolExecutor(3) as pool:
-        return list(pool.map(one, SCENARIOS))
+        return list(pool.map(one, [scenario for scenario in SCENARIOS if not (DISC and scenario[0] in NOT_ON_USA)]))
 
 
 def menu_hints(exe, work, shots=None):
@@ -903,21 +915,26 @@ def mouse_look(exe, work):
     return status == 0 and last == "pass", f"{last} ({', '.join(turns)} degrees a second)"
 
 
+def physics_jumps(exe, folder, rate, image=None):
+    """The beach's jumps at a rate of PHYSICS_RATES (physicstest.cpp): {move: {"air", "along", "high"}}, or what went wrong"""
+    name, frames, refresh = rate
+    status, log = run_game(exe, folder, ["--quick", "--headless", "--quiet-stubs"],
+                           {"TWIN_PHYSICS_TEST": "jumps", "TWIN_FIXED_TIME": frames, "TWIN_PHYSICS_WAY": "-90"}, timeout=900,
+                           options=f"refresh_60hz={refresh}\npause_on_focus_loss=0\n", image=image)
+    lines = [line.split("physics test: ", 1)[1] for line in log.splitlines() if "physics test: " in line]
+    moves = {}
+    for line in lines:
+        measure = re.match(r"(.+): ([\d.]+) s in the air, ([\d.]+) along the ground, ([\d.]+) high", line)
+        if measure:
+            moves[measure[1]] = {"air": float(measure[2]), "along": float(measure[3]), "high": float(measure[4])}
+    last = lines[-1] if lines else f"exit {status}, no result"
+    return moves if status == 0 and last == "done" else last
+
+
 def physics(exe, work):
     """The jumps and the lift's hop at each of PHYSICS_RATES (physicstest.cpp) against 60 Hz's: [(name, passed, what happened)]"""
     def jumps(rate):
-        name, frames, refresh = rate
-        status, log = run_game(exe, work / f"physics-jumps-{frames.replace(',', '-')}", ["--quick", "--headless", "--quiet-stubs"],
-                               {"TWIN_PHYSICS_TEST": "jumps", "TWIN_FIXED_TIME": frames, "TWIN_PHYSICS_WAY": "-90"}, timeout=900,
-                               options=f"refresh_60hz={refresh}\npause_on_focus_loss=0\n")
-        lines = [line.split("physics test: ", 1)[1] for line in log.splitlines() if "physics test: " in line]
-        moves = {}
-        for line in lines:
-            measure = re.match(r"(.+): ([\d.]+) s in the air, ([\d.]+) along the ground, ([\d.]+) high", line)
-            if measure:
-                moves[measure[1]] = {"air": float(measure[2]), "along": float(measure[3]), "high": float(measure[4])}
-        last = lines[-1] if lines else f"exit {status}, no result"
-        return moves if status == 0 and last == "done" else last
+        return physics_jumps(exe, work / f"physics-jumps-{rate[1].replace(',', '-')}", rate)
 
     def lift(rate):
         name, frames, refresh = rate
@@ -1875,10 +1892,12 @@ def outcome_class(result):
 
 
 def sweep(exe, work):
-    """Every level chunk (level_sweep.py) against native/sweep/results_windows.json: (counts, [differences])"""
+    """Every level chunk (level_sweep.py) against native/sweep/results_windows.json: (counts, [differences]); with --disc usa
+    the North American disc's chunks against the PAL disc's sweep (the same program: a chunk's outcome another is its data's)"""
     out = work / "sweep"
+    env = dict(os.environ, TWINSANITY_ISO=DISC) if DISC else None
     subprocess.run([sys.executable, str(TOOLS / "level_sweep.py"), str(out), "--app", str(exe), "--jobs", "4"],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
     results = json.loads((out / "results.json").read_text())
     baseline = json.loads((HERE / "native" / "sweep" / "results_windows.json").read_text())
     counts, differences = {}, []
@@ -1916,7 +1935,17 @@ def main():
                              "player's start (the variable not set), or vulkan")
     parser.add_argument("--graphics-api", action="store_true",
                         help="only the graphics API's check (the setting, the other API taken when one can't start: windows)")
+    parser.add_argument("--disc", choices=["pal", "usa"], default="pal",
+                        help="the disc the checks play: pal (local.json's disc_image) or usa, the North American v2.00 "
+                             "(disc_image_usa: its own checks, THE LIST 31; with --sweep its chunks against the PAL sweep)")
     arguments = parser.parse_args()
+    if arguments.disc == "usa":
+        global DISC
+        DISC = other_disc_image("disc_image_usa")
+        if DISC is None:
+            sys.exit("--disc usa: local.json names no North American image (disc_image_usa) or it isn't there")
+        if arguments.work == parser.get_default("work"):
+            arguments.work = str(HERE / "build/native/check-usa")
     if arguments.api == "vulkan":
         os.environ["TWIN_GPU_API"] = "vulkan"
     else:
@@ -1973,7 +2002,12 @@ def main():
         for name, ok, what in results:
             print(f"graphics api    {'ok' if ok else 'FAILED'} {name}: {what}")
         sys.exit(0 if all(ok for _, ok, _ in results) else 1)
-    print(f"checking        {exe} with {'Vulkan' if arguments.api == 'vulkan' else 'OpenGL'}")
+    print(f"checking        {exe} with {'Vulkan' if arguments.api == 'vulkan' else 'OpenGL'}"
+          + (f" on the North American disc ({DISC})" if DISC else ""))
+    if DISC:
+        failed = report_usa(exe, work, arguments.sweep)
+        print(f"details in      {work}")
+        sys.exit(1 if failed else 0)
     failed = report(exe, Path(arguments.reference) if arguments.reference else None, work, arguments.sweep)
     print(f"details in      {work}")
     sys.exit(1 if failed else 0)
@@ -2121,6 +2155,88 @@ def report(exe, reference, work, with_sweep, reference_name=None):
         summary = ", ".join(f"{count} {kind}" for kind, count in sorted(counts.items()))
         print(f"sweep           {summary}; {'as the last sweep' if not differences else 'differences:'}")
         for difference in differences[:20]:
+            print(f"  {difference}")
+        failed |= any("problem" in difference.split(": ")[1] for difference in differences)
+    return failed
+
+
+# The scenarios that don't apply to the North American disc (--disc usa), and why
+NOT_ON_USA = {}
+
+
+def physics_vs_pal(exe, work):
+    """The beach's jumps at 60 Hz on the North American disc against the PAL disc's at 60 Hz (crashwoc 0.8.1's lesson: their NTSC
+    disc's 60 Hz jumped higher): (passed, what happened)"""
+    rate = PHYSICS_RATES[0]
+    with ThreadPoolExecutor(2) as pool:
+        pal = pool.submit(physics_jumps, exe, work / "physics-jumps-pal", rate, disc_image(pal=True))
+        usa = pool.submit(physics_jumps, exe, work / "physics-jumps-usa", rate, DISC)
+        pal, usa = pal.result(), usa.result()
+    if isinstance(pal, str) or isinstance(usa, str):
+        return False, f"PAL: {pal if isinstance(pal, str) else 'measured'}; North American: {usa if isinstance(usa, str) else 'measured'}"
+    worst, worst_what = 0.0, "every jump the same"
+    for move, measures in pal.items():
+        ours = usa.get(move)
+        if ours is None:
+            return False, f"{move} not measured on the North American disc"
+        for kind, value in measures.items():
+            share, least = PHYSICS_TOLERANCE[kind]
+            apart = abs(ours[kind] - value) / max(share * value, least)
+            if apart > worst:
+                worst, worst_what = apart, f"{move} {ours[kind]:.2f} {kind} (PAL {value:.2f})"
+    same = sum(usa.get(move) == measures for move, measures in pal.items())
+    return worst <= 1.0, f"{same} of {len(pal)} jumps measured the same; the most apart: {worst_what}"
+
+
+def report_usa(exe, work, with_sweep):
+    """The North American disc's checks (--disc usa, THE LIST 31; native/WINDOWS.md, "The North American disc"): what its files and
+    data reach. The program's own checks (the pictures, the window, the settings, the APIs, portable mode) are the PAL disc's: the
+    program is one. Returns whether any failed."""
+    failed = False
+    found = subprocess.run([sys.executable, str(TOOLS / "disc_paths.py"), "--pal", disc_image(pal=True), "--usa", DISC],
+                           capture_output=True, text=True)
+    lines = found.stdout.strip().splitlines()
+    print(f"disc paths      {'ok' if found.returncode == 0 else 'FAILED'}: {lines[-1] if lines else 'no result'}")
+    for line in lines[:-1][:10]:
+        print(f"  {line}")
+    failed |= found.returncode != 0
+
+    tests = self_tests(exe, work)
+    passed = [name for name, ok, _ in tests if ok]
+    print(f"self-tests      {len(passed)}/{len(tests)} pass")
+    for name, ok, last in tests:
+        if not ok:
+            failed = True
+            print(f"  FAILED {name}: {last}")
+
+    status, log = run_game(exe, work / "recipes", ["--headless", "--quick", "--quiet-stubs"], {"TWIN_FIXES_TEST": "recipes"},
+                           timeout=600)
+    last = [line.split("recipes self-test: ", 1)[1] for line in log.splitlines() if "recipes self-test: " in line]
+    ok = status == 0 and bool(last) and last[-1].startswith("passed")
+    print(f"level recipes   {'ok' if ok else 'FAILED'}: {(last[-1] if last else f'exit {status}, no result')[:160]}")
+    failed |= not ok
+
+    played = [result for result in scenarios(exe, work)]
+    print(f"scenarios       {sum(ok for _, ok, _ in played)}/{len(played)} without a crash or a memory problem (and as expected)"
+          + (f"; {len(NOT_ON_USA)} not for this disc" if NOT_ON_USA else ""))
+    for name, ok, what in played:
+        if not ok:
+            failed = True
+            print(f"  FAILED {name}: {what}")
+
+    ok, what = physics_vs_pal(exe, work)
+    print(f"physics         {'ok' if ok else 'FAILED'} 60 Hz as the PAL disc's: {what}")
+    failed |= not ok
+
+    ok, what = disc_identity(exe, work)
+    print(f"disc identity   {'ok' if ok else 'FAILED'}: {what}")
+    failed |= not ok
+
+    if with_sweep:
+        counts, differences = sweep(exe, work)
+        summary = ", ".join(f"{count} {kind}" for kind, count in sorted(counts.items()))
+        print(f"sweep           {summary}; {'as the PAL disc' + chr(39) + 's sweep' if not differences else 'differences from the PAL disc' + chr(39) + 's sweep:'}")
+        for difference in differences[:30]:
             print(f"  {difference}")
         failed |= any("problem" in difference.split(": ")[1] for difference in differences)
     return failed
