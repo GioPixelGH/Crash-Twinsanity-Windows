@@ -8,7 +8,8 @@ layout checks hold there) and for the host give every field's place on both, num
 and every pointer becomes a fixup applied at start-up (NativeApplyDataFixups) before the game runs. The bytes themselves aren't
 in the build: data.cpp has where each run of them comes from in the retail executable, and the program reads them from the
 player's disc image at start-up (NativeLoadRetailData, before the fixups). The converter checks that the executable's bytes laid
-out that way give exactly the objects it made. An object the C++ doesn't
+out that way give exactly the objects it made. Another release's executable (the North American v2.00's SLUS_209.09) is laid out
+at the PAL one's file offsets through its map (native/discs, read_releases below) and read the same way (NativeLoadRetailDataAs). An object the C++ doesn't
 name but other data points at gets its type from the pointer's type; one nothing reaches is left out. Nothing is guessed: an
 object whose layout can't be worked out exactly is reported, and the build stops on it unless it's listed in KNOWN_RAW below.
 
@@ -808,13 +809,144 @@ def make_recipe(results, objects, recipes, marks, problems):
     data_hash = FNV_BASIS
     for label, (t, out, align, fixups) in results.items():
         data_hash = fnv1a(out, data_hash)
-    return copies, widens, (len(elf), fnv1a(elf), data_hash)
+    return copies, widens, (len(elf), fnv1a(elf), data_hash), segments
+
+# ------------------------------------------------------------------------------------------ the other releases (THE LIST 31)
+# Another release's program runs as the PAL one does, on its own data: its executable's bytes laid out at the PAL executable's
+# file offsets through its map's segments (native/discs/region_map_<serial>.json, native/tools/region_map.py: addresses, sizes
+# and hashes only), the laid out image checked by its hash, then the same runs copied from it. The map's differences in the
+# bytes the program reads are decided here one by one, by the native object they land in: the release's own bytes taken (None,
+# and why), or the PAL's value kept (a number written here, checked against the PAL executable when the data is converted: the
+# build still has none of the game's bytes). A map whose read differences reach an object not decided here stops the build.
+DISCS = HERE / "native" / "discs"
+DECISIONS = {
+    "SLUS-20909": {
+        # Its own bytes, as the map gives them: decided one by one in THE LIST 31b's next step
+        **{label: (None, "its own bytes, as the map gives them") for label in (
+            "D_002E70F8", "D_002E80E0", "D_002F4840", "D_003098A8", "D_003098B0", "D_003098B8", "D_003098C0", "D_003098C8",
+            "D_00309AE8", "D_00309AEC")},
+    },
+}
+
+def read_releases(copies, widens, pal_segments, results, problems):
+    """The other releases' maps: [{"program", "serial", "version", "size", "hash", "image": (from, to, hash), "segments":
+    [(PAL file offset, its file offset, bytes)], "keeps": [(label, native offset, bytes, value)]}]"""
+    releases = []
+    for path in sorted(DISCS.glob("region_map_*.json")):
+        doc = json.loads(path.read_text())
+        if doc.get("kind") != "region-map-native":
+            continue
+        serial = doc["serial"]
+        decided = DECISIONS.get(serial)
+        if decided is None:
+            problems.append(f"{path.name}: {serial}'s differences aren't decided in DECISIONS")
+            continue
+        loads = [(int(v, 16), int(o, 16), int(n, 16)) for v, o, n in doc["elf"]["loads"]]
+
+        def theirs(address, size):
+            for v, o, n in loads:
+                if v <= address and address + size <= v + n:
+                    return o + address - v
+            raise LookupError(f"{path.name}: {address:#x} (+{size:#x}) isn't in {doc['executable']}'s loaded segments")
+
+        start, end = int(doc["image"]["pal_start"], 16), int(doc["image"]["pal_bss_start"], 16)
+        # (the image ends at .bss's start, a little past the file's bytes: zero there, as in the map's hash)
+        image_from = file_offset(pal_segments, start, 1)
+        image_to = image_from + end - start
+        segments = []
+        for pal, other, n in doc["segments"]:
+            pal, other = int(pal, 16), int(other, 16)
+            lo, hi = max(pal, start), min(pal + n, end)
+            if lo < hi:
+                segments.append((file_offset(pal_segments, lo, hi - lo), theirs(other + lo - pal, hi - lo), hi - lo))
+        # Every byte the program reads comes from the image (zero where no segment reaches)
+        reads = [(label, offset, n) for label, _, offset, n in copies] + [(label, offset, 4) for label, _, offset, _ in widens]
+        for label, offset, n in reads:
+            if offset < image_from or offset + n > image_to:
+                problems.append(f"{path.name}: {label}'s run at file offset {offset:#x} is outside the image the map lays out")
+        # The read differences' objects, each decided
+        read_by = {at: label for label, offset, n in reads for at in range(offset, offset + n)}
+        reached = set()
+        for difference in doc["differences"]:
+            if not difference["read"]:
+                continue
+            a = file_offset(pal_segments, int(difference["pal"], 16), difference["bytes"])
+            reached |= {read_by[at] for at in range(a, a + difference["bytes"]) if at in read_by}
+        for label in sorted(reached - set(decided)):
+            problems.append(f"{path.name}: {serial}'s bytes differ in {label}, which the program reads: decide it in DECISIONS")
+        keeps = []
+        for label, (value, why) in decided.items():
+            if label not in reached:
+                problems.append(f"{path.name}: DECISIONS has {label} for {serial}, whose map has no read difference there")
+            if value is None:
+                continue
+            out = results[label][1]
+            if len(out) > 4 or bytes(out) != value.to_bytes(len(out), "little"):
+                problems.append(f"{label}: the PAL value kept for {serial} ({value:#x}) isn't the PAL executable's")
+            keeps.append((label, 0, len(out), value))
+        releases.append({"program": doc["executable"], "serial": serial, "version": doc["version"],
+                         "size": int(doc["elf"]["bytes"]), "hash": int(doc["elf"]["fnv1a64"], 16),
+                         "image": (image_from, image_to, int(doc["image"]["fnv1a64"], 16)), "segments": segments,
+                         "keeps": keeps})
+    return releases
+
+def write_releases(lines, releases):
+    """data.cpp's table of the other releases and their loader, NativeLoadRetailDataAs"""
+    lines.append("// The other releases (convert_data.py's DECISIONS, native/discs/*.json): their executable's bytes laid out at the PAL\n"
+                 "// executable's file offsets through their map's segments, then read as the PAL executable's are; the values kept PAL's\n"
+                 "struct Segment\n{\n    uint32_t pal;\n    uint32_t other;\n    uint32_t size;\n};\n\n"
+                 "struct Keep\n{\n    unsigned char* at;\n    uint32_t size;\n    uint32_t value;\n};\n\n"
+                 "struct Release\n{\n    const char* program;\n    const char* serial;\n    const char* version;\n    uint64_t size;\n"
+                 "    uint64_t hash;\n    uint32_t imageFrom;\n    uint32_t imageTo;\n    uint64_t imageHash;\n"
+                 "    const Segment* segments;\n    const Keep* keeps;\n};\n")
+    for release in releases:
+        name = re.sub(r"\W", "_", release["serial"])
+        lines.append(f"const Segment g_Segments_{name}[] = {{")
+        for pal, other, n in release["segments"]:
+            lines.append(f"    {{{pal:#x}, {other:#x}, {n}}},")
+        lines.append(f"    {{0, 0, 0}},\n}};\n\nconst Keep g_Keeps_{name}[] = {{")
+        for label, at, n, value in release["keeps"]:
+            lines.append(f"    {{x_{cxx_escape(label)} + {at}, {n}, {value:#x}}},")
+        lines.append("    {nullptr, 0, 0},\n};\n")
+    lines.append("const Release g_Releases[] = {")
+    for release in releases:
+        name = re.sub(r"\W", "_", release["serial"])
+        image_from, image_to, image_hash = release["image"]
+        lines.append(f'    {{"{release["program"]}", "{release["serial"]}", "{release["version"]}", {release["size"]}, '
+                     f'{release["hash"]:#x}ull, {image_from:#x}, {image_to:#x}, {image_hash:#x}ull, g_Segments_{name}, g_Keeps_{name}}},')
+    lines.append("    {nullptr, nullptr, nullptr, 0, 0, 0, 0, 0, nullptr, nullptr},\n};\n}\n")
+    lines.append("// The other releases' programs this build plays (SLUS_209.09), with their serial and version: nullptr past the last\n"
+                 'extern "C" const char* NativeOtherRelease(uint32_t index, const char** serial, const char** version)\n{\n'
+                 "    for (uint32_t i = 0; g_Releases[i].program != nullptr; i++)\n    {\n        if (i == index)\n        {\n"
+                 "            *serial = g_Releases[i].serial;\n            *version = g_Releases[i].version;\n"
+                 "            return g_Releases[i].program;\n        }\n    }\n\n    return nullptr;\n}\n")
+    lines.append("// Another release's executable (its program read from the disc image) laid out into the objects, before the fixups: 0\n"
+                 "// when done, 1 when it isn't the executable the map is for (another version of the release, or changed), 2 when its\n"
+                 "// image laid out doesn't come out as the map says\n"
+                 'extern "C" int NativeLoadRetailDataAs(const char* program, const unsigned char* executable, uint64_t size)\n{\n'
+                 "    const Release* release = g_Releases;\n"
+                 "    while (release->program != nullptr && strcmp(release->program, program) != 0)\n    {\n        release++;\n    }\n\n"
+                 "    if (release->program == nullptr || size != release->size || Fnv1a(executable, size, FnvBasis) != release->hash)\n"
+                 "    {\n        return 1;\n    }\n\n"
+                 "    unsigned char* laid = static_cast<unsigned char*>(calloc(ExecutableSize, 1));\n"
+                 "    if (laid == nullptr)\n    {\n        return 2;\n    }\n\n"
+                 "    for (const Segment* segment = release->segments; segment->size != 0; segment++)\n    {\n"
+                 "        if (segment->other + uint64_t(segment->size) > size || segment->pal + uint64_t(segment->size) > ExecutableSize)\n"
+                 "        {\n            free(laid);\n            return 2;\n        }\n\n"
+                 "        memcpy(laid + segment->pal, executable + segment->other, segment->size);\n    }\n\n"
+                 "    if (Fnv1a(laid + release->imageFrom, release->imageTo - release->imageFrom, FnvBasis) != release->imageHash)\n"
+                 "    {\n        free(laid);\n        return 2;\n    }\n\n"
+                 "    LayOut(laid);\n    free(laid);\n"
+                 "    for (const Keep* keep = release->keeps; keep->at != nullptr; keep++)\n    {\n"
+                 "        memcpy(keep->at, &keep->value, keep->size);\n    }\n\n    return 0;\n}\n")
 
 def write_cpp(results, objects, aliases, recipes, marks, problems):
-    copies, widens, (executable_size, executable_hash, data_hash) = make_recipe(results, objects, recipes, marks, problems)
+    copies, widens, (executable_size, executable_hash, data_hash), pal_segments = make_recipe(results, objects, recipes, marks,
+                                                                                               problems)
+    releases = read_releases(copies, widens, pal_segments, results, problems)
     lines = ["// Generated by native/tools/convert_data.py from the split's data: don't edit. None of the game's bytes are here: the",
              "// objects start zero and NativeLoadRetailData lays the executable's bytes (from the player's disc) out into them",
-             "#include <stdint.h>", "#include <string.h>", "",
+             "#include <stdint.h>", "#include <stdlib.h>", "#include <string.h>", "",
              "// The retail names as symbols (common.h's RETAIL): Mach-O's start with an underscore",
              "#ifdef __APPLE__", '#define SYMBOL(name) "_" name', "#else", "#define SYMBOL(name) name", "#endif", ""]
     symbols = sorted({s for (_, _, _, fx) in results.values() for _, s, _ in fx})
@@ -864,12 +996,9 @@ def write_cpp(results, objects, aliases, recipes, marks, problems):
     lines.append(f"constexpr uint64_t DataHash = {data_hash:#x}ull;\nconstexpr uint64_t FnvBasis = {FNV_BASIS:#x}ull;\n")
     lines.append("uint64_t Fnv1a(const unsigned char* bytes, uint64_t size, uint64_t hash)\n{\n"
                  "    for (uint64_t i = 0; i < size; i++)\n    {\n"
-                 f"        hash = (hash ^ bytes[i]) * {FNV_PRIME:#x}ull;\n    }}\n\n    return hash;\n}}\n}}\n")
-    lines.append("// The retail executable's bytes (SLES_525.68, read from the disc image) laid out into the objects, before the fixups:\n"
-                 "// 0 when done, 1 when it isn't the executable this build is for (another version, or changed), 2 when the objects\n"
-                 "// don't come out as the build made them\n"
-                 'extern "C" int NativeLoadRetailData(const unsigned char* executable, uint64_t size)\n{\n'
-                 "    if (size != ExecutableSize || Fnv1a(executable, size, FnvBasis) != ExecutableHash)\n    {\n        return 1;\n    }\n\n"
+                 f"        hash = (hash ^ bytes[i]) * {FNV_PRIME:#x}ull;\n    }}\n\n    return hash;\n}}\n")
+    lines.append("// The executable's bytes (the PAL one's, or another release's laid out as it) copied into the objects, widened, marked\n"
+                 "void LayOut(const unsigned char* executable)\n{\n"
                  "    for (const Copy* copy = g_Copies; copy->at != nullptr; copy++)\n    {\n"
                  "        memcpy(copy->at, executable + copy->from, copy->size);\n    }\n\n"
                  "    for (const Widen* widen = g_Widens; widen->at != nullptr; widen++)\n    {\n"
@@ -878,7 +1007,14 @@ def write_cpp(results, objects, aliases, recipes, marks, problems):
                  "        memcpy(widen->at, &wide, sizeof(wide));\n    }\n\n"
                  "    for (const Mark* mark = g_Marks; mark->at != nullptr; mark++)\n    {\n"
                  "        uint16_t index;\n        memcpy(&index, mark->at, sizeof(index));\n"
-                 "        index = static_cast<uint16_t>(index | mark->bits);\n        memcpy(mark->at, &index, sizeof(index));\n    }\n\n"
+                 "        index = static_cast<uint16_t>(index | mark->bits);\n        memcpy(mark->at, &index, sizeof(index));\n    }\n}\n")
+    write_releases(lines, releases)
+    lines.append("// The retail executable's bytes (SLES_525.68, read from the disc image) laid out into the objects, before the fixups:\n"
+                 "// 0 when done, 1 when it isn't the executable this build is for (another version, or changed), 2 when the objects\n"
+                 "// don't come out as the build made them\n"
+                 'extern "C" int NativeLoadRetailData(const unsigned char* executable, uint64_t size)\n{\n'
+                 "    if (size != ExecutableSize || Fnv1a(executable, size, FnvBasis) != ExecutableHash)\n    {\n        return 1;\n    }\n\n"
+                 "    LayOut(executable);\n"
                  "    uint64_t hash = FnvBasis;\n    for (const Object* object = g_Objects; object->at != nullptr; object++)\n    {\n"
                  "        hash = Fnv1a(object->at, object->size, hash);\n    }\n\n"
                  "    return hash == DataHash ? 0 : 2;\n}\n")
@@ -887,7 +1023,8 @@ def write_cpp(results, objects, aliases, recipes, marks, problems):
     (BUILD / "data.cpp").write_text("\n".join(lines) + "\n")
     print(f"build/native/data.cpp: {len(results)} objects, {len(aliases)} inside others, "
           f"{sum(len(r[3]) for r in results.values())} fixups, {len(copies)} runs of the executable's bytes "
-          f"({sum(c[3] for c in copies)} bytes), {len(widens)} widened")
+          f"({sum(c[3] for c in copies)} bytes), {len(widens)} widened; other releases: "
+          f"{', '.join(r['program'] + ' (' + r['serial'] + ' v' + r['version'] + ')' for r in releases) or 'none'}")
 
 
 if __name__ == "__main__":

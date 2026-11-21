@@ -287,12 +287,20 @@ void Native::Fatal(const char* format, ...)
 }
 
 // ---------------------------------------------------------------------------------------------------- the disc and its data
-// The build's data (build/native/data.cpp, native/tools/convert_data.py): the retail executable's bytes laid out into it
+// The build's data (build/native/data.cpp, native/tools/convert_data.py): the retail executable's bytes laid out into it, the PAL
+// one's or another release's this build has a map for (native/discs, THE LIST 31: the North American v2.00's)
 extern "C" int NativeLoadRetailData(const unsigned char* executable, uint64_t size);
+extern "C" int NativeLoadRetailDataAs(const char* program, const unsigned char* executable, uint64_t size);
+extern "C" const char* NativeOtherRelease(uint32_t index, const char** serial, const char** version);
 
 namespace
 {
 std::string g_DiscImage;
+// The release whose program the disc has (CheckDiscImage's): its serial, PAL's until a disc is checked
+constexpr const char* PalSerial = "SLES-52568";
+std::string g_DiscSerial = PalSerial;
+// What the program plays, for the messages
+constexpr const char* DiscsPlayed = "the PAL release (Europe/Australia, SLES-52568) or the North American version 2.00 (SLUS-20909)";
 
 std::string Format(const char* format, ...) __attribute__((format(printf, 1, 2)));
 std::string Format(const char* format, ...)
@@ -321,8 +329,8 @@ void Tell(SDL_MessageBoxFlags kind, const std::string& message)
     Native::Fatal("%s", message.c_str());
 }
 
-// The disc image opened and checked, its data laid out: "" when it's the PAL disc with the executable this build is for, else
-// what's wrong (the image closed again)
+// The disc image opened and checked, its data laid out: "" when it's the PAL disc with the executable this build is for, or another
+// release's this build has a map for (the North American v2.00), else what's wrong (the image closed again)
 std::string CheckDiscImage(const std::string& image)
 {
     if (!Native::Disc::Open(image.c_str()))
@@ -336,32 +344,64 @@ std::string CheckDiscImage(const std::string& image)
         return Format("%s can't be read as a disc image.", image.c_str());
     }
 
+    // The PAL program, else another release's
+    const char* program = "SLES_525.68";
+    const char* serial = PalSerial;
+    const char* version = "1.01";
     Native::Disc::Entry executable;
-    if (!Native::Disc::Find("SLES_525.68", &executable))
+    bool found = Native::Disc::Find(program, &executable);
+    for (uint32_t index = 0; !found; index++)
+    {
+        program = NativeOtherRelease(index, &serial, &version);
+        if (program == nullptr)
+        {
+            break;
+        }
+
+        found = Native::Disc::Find(program, &executable);
+    }
+
+    if (!found)
     {
         Native::LogRefusedDisc(image);
         Native::Disc::Close();
-        return Format("%s isn't the PAL Crash Twinsanity disc (SLES-52568): there's no SLES_525.68 on it.", image.c_str());
+        return Format("%s isn't a Crash Twinsanity disc this program plays (%s): there's no SLES_525.68 or SLUS_209.09 on it.",
+                      image.c_str(), DiscsPlayed);
     }
 
     std::vector<u8> bytes(executable.size);
     if (Native::Disc::Read(executable.offset, bytes.data(), executable.size) != executable.size)
     {
         Native::Disc::Close();
-        return Format("SLES_525.68 can't be read from %s.", image.c_str());
+        return Format("%s can't be read from %s.", program, image.c_str());
     }
 
-    switch (NativeLoadRetailData(bytes.data(), bytes.size()))
+    const bool pal = std::strcmp(serial, PalSerial) == 0;
+    switch (pal ? NativeLoadRetailData(bytes.data(), bytes.size()) : NativeLoadRetailDataAs(program, bytes.data(), bytes.size()))
     {
     case 0:
+        g_DiscSerial = serial;
+        if (!pal)
+        {
+            Native::Log("disc: %s's program, %s v%s's, played as the PAL release's on its own data (native/discs' map)", program,
+                        serial, version);
+        }
+
         return {};
     case 1:
         Native::LogRefusedDisc(image);
         Native::Disc::Close();
-        return Format("%s is another version of Crash Twinsanity, or a changed copy: this program needs the PAL release "
-                      "(Europe/Australia, SLES-52568), whose SLES_525.68 has the SHA-1 "
-                      "d41b8d53f733f930cf03d8ea944bec24429fe57c.",
-                      image.c_str());
+        if (!pal)
+        {
+            return Format("%s has another version of %s's program, or a changed copy: this program plays its version %s, whose "
+                          "%s has the SHA-1 9637769b520f137a2225eb1a24b35d602ca2c79d (redump.org's disc 13689), and the PAL "
+                          "release (Europe/Australia, SLES-52568).",
+                          image.c_str(), serial, version, program);
+        }
+
+        return Format("%s is another version of Crash Twinsanity, or a changed copy: this program plays %s; the PAL release's "
+                      "SLES_525.68 has the SHA-1 d41b8d53f733f930cf03d8ea944bec24429fe57c.",
+                      image.c_str(), DiscsPlayed);
     default:
         Native::Disc::Close();
         return Format("The game's data read from %s isn't what this program was built for.", image.c_str());
@@ -420,15 +460,15 @@ void Native::OpenDiscImage()
         {
             if (!problem.empty())
             {
-                Tell(SDL_MESSAGEBOX_WARNING, problem + "\n\nPick your disc image of Crash Twinsanity's PAL release (SLES-52568).");
+                Tell(SDL_MESSAGEBOX_WARNING, problem + "\n\nPick your disc image of Crash Twinsanity: " + DiscsPlayed + ".");
             }
 
             image = PickDiscImage();
             if (image.empty())
             {
-                DiscImageFatal(problem.empty() ? "No disc image was chosen. Crash Twinsanity needs an image of your own PAL disc "
-                                                 "(SLES-52568): pick it when asked, or give --iso PATH, $TWINSANITY_ISO or "
-                                                 "local.json's \"disc_image\"."
+                DiscImageFatal(problem.empty() ? std::string("No disc image was chosen. Crash Twinsanity needs an image of your own "
+                                                             "disc (") + DiscsPlayed + "): pick it when asked, or give --iso PATH, "
+                                                 "$TWINSANITY_ISO or local.json's \"disc_image\"."
                                                : problem);
             }
         }
@@ -465,6 +505,16 @@ void Native::OpenDiscImage()
     Mods::Scan();
     // Its texts' languages by their content, and the voices' (languages.cpp)
     NativeUi::LogLanguages();
+}
+
+const std::string& Native::DiscSerial()
+{
+    return g_DiscSerial;
+}
+
+bool Native::PalDisc()
+{
+    return g_DiscSerial == PalSerial;
 }
 
 // ---------------------------------------------------------------------------------------------------------- the system

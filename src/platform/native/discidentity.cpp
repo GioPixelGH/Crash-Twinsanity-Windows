@@ -52,7 +52,8 @@ constexpr Dump Dumps[] = {
      "1d2a05d871c867223885f0a3a52f1ab07bd52658", false},
 };
 
-// The retail programs known by their bytes (the file SYSTEM.CNF boots, from the dumps above)
+// The retail programs known by their bytes (the file SYSTEM.CNF boots, from the dumps above): both played (system.cpp's
+// CheckDiscImage: the NTSC-U 2.00 one's data through its map, native/discs, THE LIST 31); NTSC-U 1.00's and NTSC-J's aren't
 struct Program
 {
     const char* sha1;

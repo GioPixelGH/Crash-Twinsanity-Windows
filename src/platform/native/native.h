@@ -64,9 +64,13 @@ std::string DiscImageFromSetting(const std::string& line);
 std::vector<std::string> DiscImagesBesideProgram();
 // The disc image (--iso, $TWINSANITY_ISO, local.json's, the one picked before, or one picked now) opened and checked to be the
 // PAL disc, and the retail executable's data read from its SLES_525.68 (build/native/data.cpp's NativeLoadRetailData: the build
-// has none of the game's bytes), once, before NativeApplyDataFixups. A remembered or picked image that's gone or wrong is asked
-// for again; a given one that is ends the program with a message
+// has none of the game's bytes), once, before NativeApplyDataFixups; or the North American v2.00 disc, its SLUS_209.09's data laid
+// out as the PAL executable's through its map (NativeLoadRetailDataAs, native/discs, THE LIST 31). A remembered or picked image
+// that's gone or wrong is asked for again; a given one that is ends the program with a message
 void OpenDiscImage();
+// The serial of the release whose program the disc has ("SLES-52568", the North American "SLUS-20909"), and whether it's PAL's
+const std::string& DiscSerial();
+bool PalDisc();
 // --snapshots DIR: the shown picture saved as a PNG every 2 seconds (snapshots.cpp), checked once a frame
 void SetSnapshotFolder(const char* folder);
 void SnapshotFrame();

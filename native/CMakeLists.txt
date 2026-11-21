@@ -132,7 +132,8 @@ set_source_files_properties(${ROOT}/src/platform/native/entry.cpp PROPERTIES
 
 # The retail data as C++, made again when the split, the converter or the C++'s declarations change
 set(DATA_CPP ${ROOT}/build/native/data.cpp)
-file(GLOB DATA_INPUTS CONFIGURE_DEPENDS ${ROOT}/asm/data/*.s ${ROOT}/include/*.h ${ROOT}/include/*/*.h)
+# (and the other releases' maps, native/discs: their executables' bytes laid out as the PAL one's, THE LIST 31)
+file(GLOB DATA_INPUTS CONFIGURE_DEPENDS ${ROOT}/asm/data/*.s ${ROOT}/include/*.h ${ROOT}/include/*/*.h ${ROOT}/native/discs/*.json)
 # Windows: every function taking floats with its integers declared RETAIL_N32 (System V's: include/abi.h's CallEabi)
 set(TWIN_CHECK_CONVENTIONS)
 if(WIN32)
