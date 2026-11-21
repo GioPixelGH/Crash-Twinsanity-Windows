@@ -44,4 +44,7 @@ s32 TextLanguageIndex(const char* language);
 const char* NativeTextFor(const NativeTextLine& line, s32 index, bool portuguese);
 // UTF-8 to the game's Windows-1252: false when a character has no code there
 bool ToGameText(const char* utf8, std::string* out);
+// Whether an entry replaces a line of a language's bank: its own language's, and for the North American disc's American (THE
+// LIST 31) the English entries too, but where American has its own
+bool TextOverrideApplies(const TextOverride& entry, const char* language);
 }

@@ -103,7 +103,8 @@ const Recognised& Recognise()
     }
 
     g_Recognised.done = true;
-    for (u32 option = 1; option < 6; option++)
+    // (The North American disc has none of the five banks: its one language is its own, American)
+    for (u32 option = 1; option < 6 && Native::PalDisc(); option++)
     {
         std::string text = ArchiveStart(std::string("Language\\Code\\") + OptionNames[option] + ".txt",
                                         static_cast<u32>(ps2r::app::language_probes::kProbeBytes));
@@ -149,6 +150,13 @@ bool TextBankPortuguese(const char* language)
 
 void LogLanguages()
 {
+    if (!Native::PalDisc())
+    {
+        Native::Log("languages: the %s disc's one, American (its texts and voices in English); the language options don't apply "
+                    "to it", Native::DiscSerial().c_str());
+        return;
+    }
+
     std::string unlike;
     for (s32 option = 1; option <= 5; option++)
     {

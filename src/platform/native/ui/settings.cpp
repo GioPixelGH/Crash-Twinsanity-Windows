@@ -434,8 +434,9 @@ void Build()
     // The game (THE LIST 64): the languages, the skip, the loading, the pause, the timer; then the program's own rows
     std::vector<Row>& game = g_Rows[TabGame];
     // The texts' language (and the voices', unless the next row chooses theirs: THE LIST 7). A slot whose texts are another
-    // language by their content (#25's Portuguese in the English slot: languages.cpp) is named by that language
-    game.push_back(Choice(
+    // language by their content (#25's Portuguese in the English slot: languages.cpp) is named by that language. Both rows only
+    // on the PAL disc: the North American disc has one language, its English (THE LIST 31)
+    Row language = Choice(
         TextGameLanguage, TextDescGameLanguage, [] { return GetOption(OptionLanguage); },
         [](s32 value) { SetOption(OptionLanguage, value); }, 5, [](s32 value) {
             constexpr u32 Names[] = {TextLanguageWindows, TextLanguageEnglish, TextLanguageFrench, TextLanguageGerman,
@@ -452,10 +453,14 @@ void Build()
             }
 
             return Text(Names[std::clamp(value, 0, 5)]);
-        }));
-    game.push_back(OptionChoice(TextSpeechLanguage, TextDescSpeechLanguage, OptionSpeechLanguage,
-                                {TextLanguageAsTexts, TextLanguageEnglish, TextLanguageFrench, TextLanguageGerman,
-                                 TextLanguageItalian, TextLanguageSpanish}));
+        });
+    language.shown = [] { return Native::PalDisc(); };
+    game.push_back(language);
+    Row speech = OptionChoice(TextSpeechLanguage, TextDescSpeechLanguage, OptionSpeechLanguage,
+                              {TextLanguageAsTexts, TextLanguageEnglish, TextLanguageFrench, TextLanguageGerman,
+                               TextLanguageItalian, TextLanguageSpanish});
+    speech.shown = [] { return Native::PalDisc(); };
+    game.push_back(speech);
     game.push_back(Toggle(TextSkipCutscenes, TextDescSkip, OptionSkipCutscenes));
     game.push_back(Toggle(TextFastLoading, TextDescFastLoading, OptionFastLoading));
     game.push_back(Toggle(TextPauseInactive, TextDescPauseInactive, OptionPauseOnFocusLoss));

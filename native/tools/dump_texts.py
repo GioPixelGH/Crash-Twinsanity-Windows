@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 import local_config  # noqa: E402
 
 FILES = ["Code", "AgentLab", "Credits"]
-LANGUAGES = ["English", "French", "German", "Spanish", "Italian"]
+LANGUAGES = ["English", "French", "German", "Spanish", "Italian", "American"]  # (American: the North American disc's one)
 SECTOR = 2048
 
 

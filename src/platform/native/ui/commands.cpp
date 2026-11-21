@@ -96,6 +96,61 @@ bool OpenArchive(Archive* archive)
     return !archive->files.empty();
 }
 
+// The disc's languages by its archive: the North American disc's one, American (THE LIST 31), else the PAL disc's five
+std::vector<const char*> DiscLanguages(const Archive& archive)
+{
+    if (archive.files.count(Upper("Language\\Code\\American.txt")) != 0)
+    {
+        return {"American"};
+    }
+
+    return std::vector<const char*>(g_TextLanguages, g_TextLanguages + TextLanguages);
+}
+
+// The characters the disc's font draws (Startup\Fonts\Crash_Euro.psf on the PAL disc, 32-252; Crash.psf on the North American,
+// 32-172 and no accents: THE LIST 31): its glyph table ends the file, its count and first character before it; a glyph of no size
+// draws nothing, a character past the table the first glyph (a space)
+std::set<unsigned char> FontCharacters(const Archive& archive)
+{
+    std::set<unsigned char> drawn;
+    for (const char* name : {"Startup\\Fonts\\Crash_Euro.psf", "Startup\\Fonts\\Crash.psf"})
+    {
+        auto found = archive.files.find(Upper(name));
+        if (found == archive.files.end())
+        {
+            continue;
+        }
+
+        std::vector<u8> bytes(found->second.second);
+        Native::Disc::Read(archive.data.offset + found->second.first, bytes.data(), static_cast<u32>(bytes.size()));
+        for (u32 count = 1; count < 0x100 && 16 * count + 8 <= bytes.size(); count++)
+        {
+            const size_t at = bytes.size() - 16 * count - 8;
+            if (Le32(&bytes[at]) != count)
+            {
+                continue;
+            }
+
+            const u32 first = Le32(&bytes[at + 4]);
+            for (u32 glyph = 0; glyph < count && first + glyph < 0x100; glyph++)
+            {
+                float size[2];
+                std::memcpy(size, &bytes[at + 8 + 16 * glyph + 8], sizeof(size));
+                if (size[0] != 0.0f && size[1] != 0.0f)
+                {
+                    drawn.insert(static_cast<unsigned char>(first + glyph));
+                }
+            }
+
+            break;
+        }
+
+        break;
+    }
+
+    return drawn;
+}
+
 // A language's text file's lines as ReadTextFile makes them: split at every line break, blank lines skipped (the text kept in
 // storage that stays)
 struct TextFile
@@ -199,7 +254,7 @@ int DumpTexts()
         return 1;
     }
 
-    for (const char* language : g_TextLanguages)
+    for (const char* language : DiscLanguages(archive))
     {
         for (u32 file = 0; file < TextFiles; file++)
         {
@@ -270,9 +325,14 @@ void TestTexts()
     }
 
     u32 replaced = 0;
-    // The characters the languages' files use (the game's one font has them), and the menus' value separator's colon
-    std::set<unsigned char> characters = {':'};
-    for (const char* language : g_TextLanguages)
+    // The characters the languages' files use (the game's one font has them) and the ones the font draws, and the menus' value
+    // separator's colon
+    std::set<unsigned char> characters = FontCharacters(archive);
+    Check(characters.count('a') != 0, "the disc's font's glyphs can't be read");
+    characters.insert(':');
+    // (The North American disc: the language rows, the only ones naming the languages, aren't shown there)
+    const bool american = DiscLanguages(archive).front() == std::string_view("American");
+    for (const char* language : DiscLanguages(archive))
     {
         for (u32 file = 0; file < TextFiles; file++)
         {
@@ -287,7 +347,7 @@ void TestTexts()
         }
     }
 
-    for (const char* language : g_TextLanguages)
+    for (const char* language : DiscLanguages(archive))
     {
         TextFile files[TextFiles];
         for (u32 file = 0; file < TextFiles; file++)
@@ -299,7 +359,7 @@ void TestTexts()
         for (u32 i = 0; i < g_TextOverrideCount; i++)
         {
             const TextOverride& entry = g_TextOverrides[i];
-            if (std::string_view(entry.language) != language)
+            if (!TextOverrideApplies(entry, language))
             {
                 continue;
             }
@@ -340,9 +400,9 @@ void TestTexts()
             {
                 size_t before = std::count(original.begin(), original.end(), glyph);
                 size_t after = std::count(replacement.begin(), replacement.end(), glyph);
-                // German's hoverboard hint named R1 in words: it gets the R1 glyph the other languages have
-                bool added = entry.file == AgentLabTexts && entry.line == 0x2E && std::string_view(language) == "German" &&
-                             glyph == '}';
+                // German's and American's hoverboard hint named R1 in words: it gets the R1 glyph the others have
+                bool added = entry.file == AgentLabTexts && entry.line == 0x2E &&
+                             (std::string_view(language) == "German" || std::string_view(language) == "American") && glyph == '}';
                 Check(after == before + (added ? 1 : 0), "%s %#x: glyph %c not kept", language, entry.line, glyph);
             }
 
@@ -369,7 +429,15 @@ void TestTexts()
                 for (u32 i = 0; i < g_NativeTextCount; i++)
                 {
                     const NativeTextLine& text = g_NativeTexts[i];
-                    Check(ToGameText(text.languages[TextLanguageIndex(language)], &converted) && converted == lines[text.text],
+                    if (american && ((text.text >= TextLanguageWindows && text.text <= TextLanguageSpanish) ||
+                                     text.text == TextLanguageAsTexts || text.text == TextLanguagePortuguese ||
+                                     text.text == TextLanguageDutch))
+                    {
+                        continue;
+                    }
+
+                    Check(ToGameText(NativeTextFor(text, TextLanguageIndex(language), false), &converted) &&
+                              converted == lines[text.text],
                           "%s's native text %#x isn't there", language, text.text);
                     for (char c : converted)
                     {
@@ -385,7 +453,15 @@ void TestTexts()
         }
     }
 
-    Check(replaced == g_TextOverrideCount, "%u of %u PC lines checked", replaced, g_TextOverrideCount);
+    // Every entry names a disc's language (one misspelt would never be checked): the PAL disc's five or the North American's
+    for (u32 i = 0; i < g_TextOverrideCount; i++)
+    {
+        const char* named = g_TextOverrides[i].language;
+        Check(TextLanguageIndex(named) >= 0 || std::string_view(named) == "American", "PC line %u names no disc's language: %s", i,
+              named);
+    }
+
+    Check(replaced != 0, "no PC lines checked");
 
     // A line that isn't the disc's is left alone
     const char* other[0x30] = {};

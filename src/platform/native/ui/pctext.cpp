@@ -106,6 +106,27 @@ const TextOverride g_TextOverrides[] = {
     {AgentLabTexts, "English", 0x41,
      "use the left analog stick to control the hover scooter.",
      "use the left stick to control the hover scooter."},
+    // The North American disc's one language (THE LIST 31): the English entries serve it where it has none here, its other lines
+    // being the PAL disc's English word for word; these six are worded otherwise on it (0x31 is PAL's 0xB7 there)
+    {CodeTexts, "American", 0x20,
+     "please insert a~dualshock@2~analog controller~into controller~port 1.",
+     "please connect~a controller~to the computer."},
+    {CodeTexts, "American", 0x26,
+     "use the directional buttons~or left analog stick~on the dualshock@2~analog controller~in controller port 1~to position the screen.",
+     "use the directional buttons~or left stick~on the controller~to position the screen."},
+    {CodeTexts, "American", 0x31,
+     "no memory card (ps2)~in memory card slot 1.~~(xxx)~requires (x)kb of free space~to save data.",
+     "save storage is~not available~on this computer.~~(xxx)~requires (x)kb of free space~to save data."},
+    {CodeTexts, "American", 0x5F,
+     "Do you really wish to~format memory card (ps2)~in memory card slot 1?",
+     "do you really wish to~prepare save storage~on this computer?"},
+    // (R1 named in words, as German's: it gets the glyph, which names the button in use)
+    {AgentLabTexts, "American", 0x2E,
+     "use the left analogue stick to steer the hoverboard~hold r1 to hover higher and slower",
+     "use the left stick to steer the hoverboard~hold the } button to hover higher and slower"},
+    {AgentLabTexts, "American", 0x41,
+     "use left analog stick to control the hover scooter.",
+     "use the left stick to control the hover scooter."},
     {CodeTexts, "French", 0x20,
      "branchez une manette~analogique (dualshock@2) ~dans le port de~manette n°1.",
      "branchez une manette~sur l'ordinateur."},
@@ -694,7 +715,7 @@ const NativeTextLine g_NativeTexts[] = {
     {TextDescPortable, {"settings, saves and mods in the game's own user folder, to carry it on a usb stick.", "réglages, sauvegardes et mods dans le dossier user du jeu, pour l'emporter sur une clé usb.", "einstellungen, spielstände und mods im user-ordner des spiels, für einen usb-stick.", "ajustes, partidas y mods en la carpeta user del juego, para llevarlo en un usb.", "impostazioni, salvataggi e mod nella cartella user del gioco, da portare su chiavetta usb."}},
     {TextPortableAskOn, {"copy your settings, saves and mods from appdata into the game's user folder and use them from there? the game closes when it's done.", "copier tes réglages, sauvegardes et mods d'appdata dans le dossier user du jeu et les utiliser de là ? le jeu se ferme une fois fini.", "deine einstellungen, spielstände und mods aus appdata in den user-ordner des spiels kopieren und von dort nutzen? danach schließt sich das spiel.", "¿copiar tus ajustes, partidas y mods de appdata a la carpeta user del juego y usarlos desde allí? el juego se cierra al terminar.", "copiare impostazioni, salvataggi e mod da appdata nella cartella user del gioco e usarli da lì? il gioco si chiude alla fine."}},
     {TextPortableAskOff, {"copy your settings, saves and mods from the game's user folder back to appdata and use them from there? the game closes when it's done.", "recopier tes réglages, sauvegardes et mods du dossier user du jeu dans appdata et les utiliser de là ? le jeu se ferme une fois fini.", "deine einstellungen, spielstände und mods aus dem user-ordner des spiels zurück nach appdata kopieren und von dort nutzen? danach schließt sich das spiel.", "¿copiar de nuevo tus ajustes, partidas y mods de la carpeta user del juego a appdata y usarlos desde allí? el juego se cierra al terminar.", "ricopiare impostazioni, salvataggi e mod dalla cartella user del gioco in appdata e usarli da lì? il gioco si chiude alla fine."}},
-    {TextPortableCopying, {"copying…", "copie…", "kopieren…", "copiando…", "copia in corso…", "copiando…"}},
+    {TextPortableCopying, {"copying...", "copie...", "kopieren...", "copiando...", "copia in corso...", "copiando..."}},
     {TextPortableDone, {"done. the game closes now: start it again.", "terminé. le jeu se ferme : relance-le.", "fertig. das spiel schließt sich jetzt: starte es neu.", "hecho. el juego se cierra ahora: vuelve a abrirlo.", "fatto. il gioco ora si chiude: riavvialo.", "pronto. o jogo vai fechar agora: reinicie-o."}},
     {TextPortableBackup, {"what was already there is kept in:", "ce qui s'y trouvait déjà est gardé dans :", "was schon dort war, liegt jetzt in:", "lo que ya había se guarda en:", "quello che c'era già è conservato in:", "o que já estava lá é mantido em:"}},
     {TextPortableRefused, {"the game's folder can't be written to (is it in program files?). move the game's folder somewhere else first.", "impossible d'écrire dans le dossier du jeu (est-il dans program files ?). déplace d'abord le dossier du jeu ailleurs.", "in den ordner des spiels kann nicht geschrieben werden (liegt er in program files?). verschiebe ihn zuerst woandershin.", "no se puede escribir en la carpeta del juego (¿está en program files?). mueve antes la carpeta del juego a otro sitio.", "nella cartella del gioco non si può scrivere (è in program files?). sposta prima la cartella del gioco altrove.", ""}},
@@ -964,6 +985,35 @@ void SetPromptLabels(const char* const labels[PromptGlyphCount], const char* men
     }
 }
 
+bool TextOverrideApplies(const TextOverride& entry, const char* language)
+{
+    if (language == nullptr)
+    {
+        return false;
+    }
+
+    if (std::string_view(entry.language) == language)
+    {
+        return true;
+    }
+
+    // The North American disc's American: the English entries but where it has its own
+    if (std::string_view(language) != "American" || std::string_view(entry.language) != "English")
+    {
+        return false;
+    }
+
+    for (const TextOverride& own : g_TextOverrides)
+    {
+        if (own.file == entry.file && own.line == entry.line && std::string_view(own.language) == language)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 const char** ApplyTextOverrides(u32 file, const char* language, const char** lines, u32 count)
 {
     s32 index = TextLanguageIndex(language);
@@ -979,7 +1029,7 @@ const char** ApplyTextOverrides(u32 file, const char* language, const char** lin
     std::string original;
     for (const TextOverride& entry : g_TextOverrides)
     {
-        if (entry.file != file || language == nullptr || std::string_view(entry.language) != language)
+        if (entry.file != file || !TextOverrideApplies(entry, language))
         {
             continue;
         }
