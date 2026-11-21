@@ -8,6 +8,7 @@
 #include "ee/vu.h"
 #include "gs/backend.h"
 #include "gs/gs.h"
+#include "native.h"
 
 #include <algorithm>
 #include <chrono>
@@ -200,10 +201,13 @@ void GsDumpShown(u64 number)
         std::vector<u8> registers;
         gs.WritePcsx2PrivilegedRegisters(registers);
         // 0xFFFFFFFF, the header's size (with the serial), the header: the state's version and size, the serial's place and
-        // size, the game's CRC (the retail executable's, as PCSX2 names it), no screenshot
-        static const char Serial[] = "SLES-52568";
-        const u32 serialSize = sizeof(Serial) - 1;
-        const u32 header[9] = {9, static_cast<u32>(state.size()), 36, serialSize, 0x1510E1D1u, 0, 0, 36 + serialSize, 0};
+        // size, the game's CRC (the retail executable's, as PCSX2 names it: its words XORed), no screenshot. The disc's: the
+        // PAL one's, or the North American v2.00's (THE LIST 31), so PCSX2 replays it with that release's fixes
+        const std::string& discSerial = Native::DiscSerial();
+        const char* Serial = discSerial.c_str();
+        const u32 serialSize = static_cast<u32>(discSerial.size());
+        const u32 crc = Native::PalDisc() ? 0x1510E1D1u : 0x8CFAB4EAu;
+        const u32 header[9] = {9, static_cast<u32>(state.size()), 36, serialSize, crc, 0, 0, 36 + serialSize, 0};
         const u32 lead[2] = {0xFFFFFFFFu, 36 + serialSize};
         std::fwrite(lead, sizeof(lead), 1, d.file);
         std::fwrite(header, sizeof(header), 1, d.file);

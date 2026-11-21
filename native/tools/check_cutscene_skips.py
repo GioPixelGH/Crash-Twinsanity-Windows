@@ -9,7 +9,7 @@ the skipped run holds a button in every cutscene ($TWIN_SKIP_TEST), the skip as 
 level's entry cutscenes are compared too; with --waits a third run skips every cutscene by the waits ($TWIN_SKIP_ALL_SCENES,
 $TWIN_SKIP_WAITS_FIRST: a cutscene not checked yet, or one a rule skips, tried). What each leaves is $TWIN_SCENE_STATE's, 0.5 s into the play after the cutscene and again a second later (what changed between the two goes on by itself).
 
-    python native/tools/check_cutscene_skips.py [NAME...] [--jobs 4] [--out ..\\compare\\skips] [--exe PATH]
+    python native/tools/check_cutscene_skips.py [NAME...] [--jobs 4] [--out ..\\compare\\skips] [--exe PATH] [--iso usa]
 
 NAME picks cutscenes by the census' names (03_bear) or a part of them; none: every one SCENES has. Prints a line a cutscene;
 the runs' logs are in OUT/NAME/watched and OUT/NAME/skipped."""
@@ -103,10 +103,15 @@ parser.add_argument("--exe", default=str(HERE / "build" / "native" / "cmake" / "
 parser.add_argument("--seconds", type=int, default=0, help="play this long instead of each scene's")
 parser.add_argument("--waits", action="store_true",
                     help="a third run, the waits' skip where a skip rule is polled too ($TWIN_SKIP_WAITS_FIRST): both compared")
+parser.add_argument("--iso", help="another disc image (usa: local.json's disc_image_usa, THE LIST 31), local.json's disc_image "
+                                  "by default")
 args = parser.parse_args()
 # Absolute: each run starts in its own folder, and a relative APPDATA there would miss the settings (the disc image dialog)
 args.out = str(Path(args.out).resolve())
 args.exe = str(Path(args.exe).resolve())
+if args.iso == "usa":
+    args.iso = local_config._setting("TWINSANITY_ISO_USA", "disc_image_usa")
+IMAGE = str(Path(args.iso).resolve()) if args.iso else local_config.disc_image()
 
 
 def run(scene, mode):
@@ -117,12 +122,12 @@ def run(scene, mode):
         shutil.rmtree(folder)
     settings = folder / "settings" / "Crash Twinsanity"
     settings.mkdir(parents=True)
-    (settings / "disc_image.txt").write_text(local_config.disc_image() + "\n", newline="\n")
+    (settings / "disc_image.txt").write_text(IMAGE + "\n", newline="\n")
     (settings / "options.txt").write_text("pause_on_focus_loss=0\nskip_cutscenes=1\n", newline="\n")
     env = dict(os.environ, APPDATA=str(folder / "settings"), HOME=str(folder / "settings"), TWIN_SWEEP_LEVEL=chunk,
                TWIN_SWEEP_SECONDS=str(seconds), TWIN_SWEEP_TIMEOUT="180", TWIN_SWEEP_IDLE="1", TWIN_FIXED_TIME="1",
                TWIN_DETAILED_LOG="1", TWIN_SCENE_STATE="0.5", TWIN_HOP=hops,
-               TWIN_SWEEP_GAME_TIME="1", TWINSANITY_AUDIO="frames", TWIN_TEST_PICK=local_config.disc_image())
+               TWIN_SWEEP_GAME_TIME="1", TWINSANITY_AUDIO="frames", TWIN_TEST_PICK=IMAGE)
     # The scene's own variables (all three runs: $TWIN_SWEEP_STORY), the skip's press among them ($TWIN_SKIP_TEST: later for a
     # part chained onto another's scene)
     own = dict(scene[4]) if len(scene) > 4 else {}

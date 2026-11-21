@@ -704,14 +704,20 @@ void Native::Mods::Scan()
     for (Mod& mod : g_Mods)
     {
         Count(&mod, ArchiveNames());
-        mod.usedNow = mod.on && mod.refusal.empty() && mod.discCount + mod.archiveCount > 0;
+        // (Never on another release's disc, THE LIST 31: a mod's files and its program changes are the PAL disc's)
+        mod.usedNow = mod.on && mod.refusal.empty() && mod.discCount + mod.archiveCount > 0 && PalDisc();
         if (mod.usedNow)
         {
             used.push_back(mod.id);
             g_Used.push_back(mod);
         }
 
-        LogMod(mod, !mod.refusal.empty() ? "refused" : !mod.on ? "off" : mod.usedNow ? "on" : "on, empty");
+        LogMod(mod, !mod.refusal.empty() ? "refused" : !mod.on ? "off" : mod.usedNow ? "on" : !PalDisc() ? "on, not used" : "on, empty");
+    }
+
+    if (!PalDisc() && !g_Mods.empty())
+    {
+        Log("mods: none used with the %s disc: they're made for the PAL disc's files (Options > Mods says so)", DiscSerial().c_str());
     }
 
     // A card of these mods' own while any is on (the player's saves never meet a mod's levels), else the disc's

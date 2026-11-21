@@ -338,6 +338,10 @@ void OpenModsFolder()
 // The Mods page: import (while there's something to), each mod off or on in its place (the first wins: "on · 1"), the folder
 void BuildMods(std::vector<Row>& rows)
 {
+    // (The North American disc: the mods are listed, never used, mods.cpp)
+    Row other = Note(TextNoteModsOtherDisc);
+    other.shown = [] { return !Native::PalDisc(); };
+    rows.push_back(other);
     Row import = Action(TextModsImport, TextDescModsImport, [] {
         StartImport();
         OpenDialog(DialogImporting);

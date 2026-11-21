@@ -390,6 +390,8 @@ enum NativeText : u32
     TextDescRendererKind,
     TextAccurate,
     TextFastExperimental,
+    // The Mods page's note on the North American disc (THE LIST 31): the mods aren't used there
+    TextNoteModsOtherDisc,
     NativeTextEnd,
 };
 

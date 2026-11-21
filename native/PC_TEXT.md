@@ -15,6 +15,8 @@ Line numbers are the game's text numbers (`GameText`: blank lines don't count). 
 | Italian | 25 | 4 | 29 |
 | **All** | 125 | 20 | 145 |
 
+The North American disc's one language, American (1.4.0, THE LIST 31), gets 29 lines too: the English entries where its line is the English one word for word, and the six of its own below ("American").
+
 Formatting lines (0x28, 0x32, 0x38, 0x3E, 0x5F, 0xB4) and the "no card" lines (0x31, 0xB7) belong to screens the native build never reaches (its storage is always there and ready, and the boot check is gone: see NATIVE.md, "Saves"); they're reworded anyway so that no console wording is left in the files.
 
 ## Left as they are
@@ -348,6 +350,7 @@ text can't hold, such as curly quotes, stays empty, as the ui self-test finds th
 | 0x22A | accurate draws as the ps2 does. fast draws the scenery more directly, quicker on older processors. | précis dessine comme la ps2. rapide dessine le décor plus directement, plus vite sur les vieux processeurs. | genau zeichnet wie die ps2. schnell zeichnet die umgebung direkter, flotter auf älteren prozessoren. | preciso dibuja como la ps2. rápido dibuja el escenario más directamente, más veloz en cpu antiguas. | accurato disegna come la ps2. veloce disegna lo scenario più direttamente, più rapido sulle cpu vecchie. |  |
 | 0x22B | accurate | précis | genau | preciso | accurato |  |
 | 0x22C | fast (experimental) | rapide (expérimental) | schnell (experimentell) | rápido (experimental) | veloce (sperimentale) |  |
+| 0x22D | mods are made for the pal disc. they aren't used with this disc. | les mods sont faits pour le disque pal. ils ne servent pas avec ce disque. | mods sind für die pal-disc gemacht. mit dieser disc werden sie nicht genutzt. | los mods están hechos para el disco pal. no se usan con este disco. | le mod sono fatte per il disco pal. con questo disco non si usano. |  |
 
 ## English (29 lines)
 
@@ -518,3 +521,16 @@ text can't hold, such as curly quotes, stays empty, as the ui self-test finds th
 | AgentLab | 0x2E | hint: the hoverboard | usa la levetta analogica sinistra per manovrare l' hoverboard<br>tieni premuto il tasto } per volare più in alto e più lentamente | usa la levetta sinistra per manovrare l' hoverboard<br>tieni premuto il tasto } per volare più in alto e più lentamente |
 | AgentLab | 0x41 | hint: the hover scooter | usa la levetta analogica sinistra per controllare lo scooter volante. | usa la levetta sinistra per controllare lo scooter volante. |
 | AgentLab | 0x18 | the cutscene skip's prompt (not console wording: the community mod's mod/text.txt, made "hold any button", in the unused line; NATIVE.md, "Bug fixes (optional)") | zzz | tieni premuto un tasto per saltare |
+
+## American (6 lines of its own)
+
+The North American disc's lines worded otherwise than the PAL disc's English; its 23 others are the English ones word for word and get the English replacements.
+
+| File | Line | What | Original | PC |
+|---|---|---|---|---|
+| Code | 0x20 | no controller notice | please insert a<br>dualshock@2<br>analog controller<br>into controller<br>port 1. | please connect<br>a controller<br>to the computer. |
+| Code | 0x26 | screen position help | use the directional buttons<br>or left analog stick<br>on the dualshock@2<br>analog controller<br>in controller port 1<br>to position the screen. | use the directional buttons<br>or left stick<br>on the controller<br>to position the screen. |
+| Code | 0x31 | save: no card at boot (its PAL 0xB7's words) | no memory card (ps2)<br>in memory card slot 1.<br><br>(xxx)<br>requires (x)kb of free space<br>to save data. | save storage is<br>not available<br>on this computer.<br><br>(xxx)<br>requires (x)kb of free space<br>to save data. |
+| Code | 0x5F | save: format question | Do you really wish to<br>format memory card (ps2)<br>in memory card slot 1? | do you really wish to<br>prepare save storage<br>on this computer? |
+| AgentLab | 0x2E | hint: the hoverboard (R1 in words: it gets the glyph, as German's) | use the left analogue stick to steer the hoverboard<br>hold r1 to hover higher and slower | use the left stick to steer the hoverboard<br>hold the } button to hover higher and slower |
+| AgentLab | 0x41 | hint: the hover scooter | use left analog stick to control the hover scooter. | use the left stick to control the hover scooter. |

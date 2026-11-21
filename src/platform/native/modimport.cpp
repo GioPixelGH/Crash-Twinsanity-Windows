@@ -523,6 +523,12 @@ bool ImportZip(const fs::path& source, const fs::path& folder, const Native::Mod
 std::vector<fs::path> Native::Mods::Importables()
 {
     std::vector<fs::path> found;
+    // (A disc image's mod is the changes from the disc in use: the PAL disc's only, THE LIST 31)
+    if (!PalDisc())
+    {
+        return found;
+    }
+
     std::error_code error;
     const fs::path folder = Folder();
     for (fs::directory_iterator it(folder, error), end; !error && it != end; it.increment(error))
