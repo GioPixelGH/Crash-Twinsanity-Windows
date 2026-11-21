@@ -9,13 +9,19 @@ extern "C"
 {
     extern const GccVTableEntry g_SaveDeviceVTable[] RETAIL(D_003065C8);
     extern const GccVTableEntry g_MemoryCardDeviceVTable[] RETAIL(D_003062D0);
+#ifdef TWIN_NATIVE
+    // The save's region and product code as the disc's program has them ("BESLES-52568", the North American "BASLUS-20909")
+    extern const char g_ProductCode[] RETAIL(D_002F4840);
+#endif
 }
 
 namespace
 {
+#ifndef TWIN_NATIVE
 // The game's region and product codes, which name its saves
 constexpr char Region[] = "BE";
 constexpr char Product[] = "SLES-52568";
+#endif
 
 using StorageOperation = Platform::Saves::Operation;
 
@@ -147,9 +153,19 @@ SaveDevice* SaveDevice::Construct(SaveDevice* device, u32 fileCount, SaveIconFil
     device->name = {nullptr, 0, 0};
     device->saveKilobytes = 0;
     device->fileSize = 0;
+#ifdef TWIN_NATIVE
+    // The disc's program's (its data's): the PAL program's two on its disc, the North American's "BA" and "SLUS-20909" on its own,
+    // so its saves' folder is its program's (THE LIST 31)
+    const char region[3] = {g_ProductCode[0], g_ProductCode[1], 0};
+    const char* product = g_ProductCode + 2;
+    Platform::Saves::Initialise(region, product);
+    StringAssign(&device->product, region);
+    StringAppend(&device->product, product);
+#else
     Platform::Saves::Initialise(Region, Product);
     StringAssign(&device->product, Region);
     StringAppend(&device->product, Product);
+#endif
     StringAssign(&device->name, name);
     return device;
 }

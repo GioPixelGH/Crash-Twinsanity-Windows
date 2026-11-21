@@ -825,7 +825,7 @@ DECISIONS = {
                              "channel, Complete 640x480); the map gives PAL's Vivendi its Vivendi, past its FMV\\Spyro"),
         "D_002E80E0": (None, "g_ScreenMessages: the start's no-card screen's message 11, whose text (0x31) its disc words as "
                              "PAL's 12 (0xB7)"),
-        "D_002F4840": (None, "g_ProductCode: BASLUS-20909, its saves' name"),
+        "D_002F4840": (None, "g_ProductCode: BASLUS-20909, its saves' name (savedevice.cpp names their folder from it too)"),
         "D_003098A8": (None, "the languages' names: not read on it, its languages are its program's own (gamecontext.cpp: "
                              "one, American)"),
         "D_003098B0": (None, "as D_003098A8"),

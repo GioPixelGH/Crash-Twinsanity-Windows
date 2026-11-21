@@ -633,7 +633,10 @@ land in (a new map with a read difference in an object not decided there stops t
   Vivendi); the map gives the PAL program's 20th, Vivendi, the North American Vivendi.
 - `g_ScreenMessages` (D_002E80E0): the start's no-card screen shows message 11 instead of PAL's 12. On its disc text 0x31 (11's)
   says what 0xB7 (12's) says, so nothing shown changes.
-- `g_ProductCode` (D_002F4840): BASLUS-20909, the North American saves' name.
+- `g_ProductCode` (D_002F4840): BASLUS-20909, the North American saves' name. `savedevice.cpp` takes their folder's region and
+  product from it too ("BASLUS-20909", the North American program's), and they go on a card of their own
+  (`memorycard-SLUS-20909` in the settings folder, `Native::DiscMemoryCard`; its level select's and mods' cards are named
+  from it), so its saves and the PAL disc's never meet.
 - The languages' names (D_003098A8 to D_003098C8): read, but not used. The North American program has one language, named as
   its archive's banks and voice bank are (`Language\Code\American.txt`, `CRASH6\AMERICAN.MB`), so `GameContext::StartGame`
   gives it that one language whatever the console's (the PAL program's five names' place holds other strings there).
@@ -646,7 +649,7 @@ Some differences the map marks as not read are constants of the program's own C+
 
 - The font: `StartUp\Fonts\Crash_Euro` on the PAL disc, `StartUp\Fonts\Crash` on the North American one (its archive has only
   that one). `GameController::LoadGlobalResources` reads the North American name on its disc.
-- The saves' region and product code (`BE` and `SLES-52568` in savedevice.cpp).
+- The saves' region and product code (`BE` and `SLES-52568` in savedevice.cpp): taken from `g_ProductCode` instead, above.
 - The rest are the PS2 build's disc check file (stream.cpp, not compiled natively), a library's version string and path
   separators moved with their neighbours.
 

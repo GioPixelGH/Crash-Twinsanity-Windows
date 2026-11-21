@@ -88,7 +88,8 @@ void StartLevel(u32 level)
     }
 
     // The play's saves on a card of their own from here (its progress isn't one a played game has)
-    Native::UseMemoryCard(Native::Mods::AnyUsed() ? (Native::Mods::CardName() + "-level-select").c_str() : "memorycard-level-select");
+    Native::UseMemoryCard(Native::Mods::AnyUsed() ? (Native::Mods::CardName() + "-level-select").c_str()
+                                                     : (Native::DiscMemoryCard() + "-level-select").c_str());
     g_Session = true;
     controller->saveController.Restore(0, &controller->progress, controller->chunkManager);
     controller->ResetGame(EntryNewGame);

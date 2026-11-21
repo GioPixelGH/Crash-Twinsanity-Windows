@@ -1,6 +1,7 @@
 // The memory cards (libmc's interface, src/platform/ps2/memorycard.h), for the game's own save manager (src/platform/ps2/saves.cpp,
 // which the native build compiles as it is). Port 0's card is always in, formatted, an 8 MB card whose files are the machine's: a
-// folder in the app's settings (Native::SettingsFolder()/memorycard), "/BESLES-52568CRASH/..." its saves as on the PS2. Port 1 is
+// folder in the app's settings (Native::SettingsFolder()/memorycard), "/BESLES-52568/..." its saves as on the PS2 (the North
+// American disc's memorycard-SLUS-20909, "/BASLUS-20909/..."). Port 1 is
 // empty. Each call does its work at once and leaves its result for the next Sync, which the save manager waits on or polls as it
 // does a real card's
 #include "../ps2/memorycard.h"
@@ -507,6 +508,11 @@ void Native::UseMemoryCard(const char* name)
 const char* Native::MemoryCardName()
 {
     return g_CardName.c_str();
+}
+
+std::string Native::DiscMemoryCard()
+{
+    return PalDisc() ? std::string("memorycard") : "memorycard-" + DiscSerial();
 }
 
 bool Native::MemoryCardHasSave()

@@ -127,7 +127,8 @@ int SelfTestSaves()
     bool read = Read(0, 0, save, file, back, sizeof(back)) && run(Operation::Read).succeeded == 1;
     bool same = std::memcmp(data, back, sizeof(data)) == 0;
     std::error_code ignored;
-    std::filesystem::remove_all(std::filesystem::path(Native::SettingsFolder()) / "memorycard" / "BESLES-52568SELFTEST", ignored);
+    std::filesystem::remove_all(std::filesystem::path(Native::SettingsFolder()) / Native::MemoryCardName() / "BESLES-52568SELFTEST",
+                                ignored);
     bool ok = ready && info.type == StorageMemoryCard && created && written && spaceTaken && found && size == sizeof(data) && read &&
               same;
     Native::Log("saves self-test: %s (card type %d, %d KB free, %d before the save, created %d, written %d, found %d size %d, read "

@@ -197,6 +197,9 @@ bool IsMod(u64 offset);
 // it's changed only where nothing is being saved (the main menu, a level's loading)
 void UseMemoryCard(const char* name);
 const char* MemoryCardName();
+// The disc's own card, whose name the others' start with: the PAL disc's "memorycard", another release's its serial's
+// ("memorycard-SLUS-20909": its saves and the PAL disc's never meet, THE LIST 31)
+std::string DiscMemoryCard();
 // Whether the card in use holds a save of the game's (its folder and the folder's file: the slots in it aren't read; looked at again
 // after the card changed): the improved menus' continue row (THE LIST 63a)
 bool MemoryCardHasSave();

@@ -559,7 +559,7 @@ std::string CardFor(const std::vector<std::string>& ids)
         safe.pop_back();
     }
 
-    return "memorycard-mods-" + safe;
+    return Native::DiscMemoryCard() + "-mods-" + safe;
 }
 
 void SaveOrder()
@@ -714,7 +714,8 @@ void Native::Mods::Scan()
         LogMod(mod, !mod.refusal.empty() ? "refused" : !mod.on ? "off" : mod.usedNow ? "on" : "on, empty");
     }
 
-    // A card of these mods' own while any is on (the player's saves never meet a mod's levels)
+    // A card of these mods' own while any is on (the player's saves never meet a mod's levels), else the disc's
+    g_Card = DiscMemoryCard();
     if (!used.empty())
     {
         std::sort(used.begin(), used.end());

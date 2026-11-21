@@ -127,7 +127,7 @@ std::filesystem::file_time_type LatestSave()
 {
     std::filesystem::file_time_type latest{};
     std::error_code error;
-    std::filesystem::path folder = std::filesystem::path(Native::SettingsFolder()) / "memorycard";
+    std::filesystem::path folder = std::filesystem::path(Native::SettingsFolder()) / Native::MemoryCardName();
     for (auto it = std::filesystem::recursive_directory_iterator(folder, error); !error && it != std::filesystem::recursive_directory_iterator();
          it.increment(error))
     {
