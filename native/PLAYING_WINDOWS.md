@@ -10,8 +10,9 @@ On Linux, see LINUX.md there.
 - 64-bit Windows 10 or 11.
 - A graphics card with OpenGL 3.3 or Vulkan.
   Any card from the last ten years has them.
-- A disc image of **your own** PAL copy of Crash Twinsanity (Europe/Australia, SLES-52568), as an `.iso`, `.bin` or `.img`.
-  Other versions (USA, Japan) don't work.
+- A disc image of **your own** copy of Crash Twinsanity, as an `.iso`, `.bin` or `.img`.
+  It can be the PAL disc (Europe/Australia, SLES-52568) or the North American disc, version 2.00 (SLUS-20909).
+  The North American version 1.00 and the Japanese disc don't work.
 
 Nothing else: the folder carries the libraries the game needs.
 
@@ -31,7 +32,27 @@ Good to know:
 - To pick another disc image, delete `disc_image.txt` from the settings folder (below).
   You can also start the game with `CrashTwinsanity.exe --iso "C:\path\to\game.iso"`.
 - If you move or rename the disc image, the game says so and asks for it again.
-- If the image isn't the PAL release (another game, or another version of Crash Twinsanity), a message says so and asks for another one.
+- If the image isn't one of those two discs (another game, or another version of Crash Twinsanity), a message says so and asks for another one.
+
+### The North American disc
+
+The North American disc plays as the PAL disc does, with these differences:
+
+- Its texts and voices are in English, the only language on that disc.
+  The two language rows in **Options > Game** don't show with it.
+- Its saves go on a memory card of their own, `memorycard-SLUS-20909` in the settings folder, so they never mix with the PAL disc's.
+- Mods don't work with it, because they're made for the PAL disc's files.
+  **Options > Mods** says so.
+- Its levels are that disc's own, so a few things happen a little differently from the PAL disc.
+
+<details>
+<summary>Why it plays the PAL disc's program</summary>
+
+The port is a decompilation of the PAL game's program.
+With the North American disc it runs that program on the North American disc's data, through a map of where each piece of data is in that disc's program.
+The two programs are almost the same, and the PAL one is two weeks newer, with a few fixes.
+The game runs at 60 Hz by default on both discs.
+</details>
 
 ## Where things are
 
@@ -41,11 +62,11 @@ In portable mode (below), it's the **User** folder beside the game instead.
 
 | What | Where |
 | --- | --- |
-| Saves (the game's memory card) | `memorycard\` |
+| Saves (the game's memory card) | `memorycard\` (the North American disc's in `memorycard-SLUS-20909\`) |
 | The options | `options.txt`, `resolution.txt` |
 | Your controls | `bindings.txt` |
 | The disc image's path | `disc_image.txt` |
-| Texture packs | `textures\SLES-52568\replacements\` (PCSX2's layout: a PCSX2 pack's `replacements` folder works as it is) |
+| Texture packs | `textures\SLES-52568\replacements\` (PCSX2's layout: a PCSX2 pack's `replacements` folder works as it is, and `SLUS-20909` works too) |
 | The log | `log.txt`, and the run before's `log.previous.txt` (when the game wasn't started from a terminal) |
 | Mods, their order and their switches (below) | `mods\`, `mods.txt` |
 | The graphics' shaders, made at each start so play doesn't stop for them (made again if deleted) | `shaders.txt` |

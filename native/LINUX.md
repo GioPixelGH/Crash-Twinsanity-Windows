@@ -14,7 +14,8 @@ It was tried on Debian 13, with an AMD graphics card on Mesa.
    In a terminal, run `chmod +x Crash-Twinsanity-Linux-x86_64.AppImage`.
    In a file manager, open the file's **Properties > Permissions** and tick **Is executable** (or **Allow executing file as program**).
 3. Run it.
-4. Pick the disc image of your own PAL copy (SLES-52568), as an `.iso`, `.bin` or `.img`.
+4. Pick the disc image of your own copy, as an `.iso`, `.bin` or `.img`.
+   It can be the PAL disc (SLES-52568) or the North American disc, version 2.00 (SLUS-20909).
    The game remembers it.
    You can also give it on the command line, with `--iso PATH`.
 

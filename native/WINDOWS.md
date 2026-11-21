@@ -656,6 +656,68 @@ Some differences the map marks as not read are constants of the program's own C+
 Tested (2026-11-21, `compare/runs_c/us_run.py`, the level sweep without a window): the beach loaded in 3.8 s and played 30 s
 at 59.9 fps, its first scene starting at 23.8 s, no fatal line.
 
+### The North American disc's files and checks (THE LIST 31c)
+
+What the North American disc's files mean for the PAL program, looked at one by one:
+
+- The files the C++ names: `native/tools/disc_paths.py` looks every string of `src/` that is a path in the disc's folders up
+  in both discs' files and archives, and the files each disc's languages are read from (`Language\Code\<name>.txt`,
+  `CRASH6\<name>.MB`...). The font is the only name one disc lacks (above). The North American archive has 612 files to
+  PAL's 697: one language, American, its own Euro-less font, `Credit01-03.psm` (read by its credits' text), and
+  `FMV\H04_A.PSS` and `FMV\SPYRO.PSS` besides.
+- The levels' data differs, and stays as it is (the reference for that disc is PCSX2 with its image, not the PAL disc). The
+  beach played by the sweep at a fixed time parts from the PAL disc's at one frame: the player dies, and the North American
+  disc restarts at the checkpoint a frame sooner, its first scene 0.2 s sooner. The PAL disc with that disc's
+  `COM_CRASH_DEFAULT_DEATH` script (beach.rm2's script 0x131F, an earlier version of it, 112 bytes shorter) put in its own
+  beach.rm2 plays frame for frame as the North American disc does; its other 200 different sections (most only the
+  padding's bytes) change nothing (`compare/runs_c/divergence_note.txt`).
+- The texts: one language, American, English texts and voices; the game reads no other there, so the settings' two language
+  rows are shown only on the PAL disc, and the log says "languages: the SLUS-20909 disc's one, American". The console's
+  wording becomes the PC's as on the PAL disc: the English entries of `pctext.cpp` serve American where its line is the same
+  (22 of 28), six entries of its own where it's worded otherwise. The port's own texts are English there. Its font has 141
+  glyphs (32 to 172, no accented letters; a character past them draws as a space), so the ui self-test checks each line's
+  characters against the disc's font's glyphs (`FontCharacters`, from the font file's glyph table).
+- The movies: TTIdent is 512x448 and Complete 640x480 (30 fps; Complete is another movie there, 76.5 s). The game stretches
+  a movie over the screen's area and skips rows only of one taller than the screen, so in the PAL program's 512-line frame
+  both show whole and in their 4:3 shape: Complete's lit band at 0.157-0.841 of the frame's height is its own picture's rows
+  76-403 of 480. So the screen keeps PAL's 512 lines: no data of that disc asks for 448. PCSX2 with that disc's image
+  agrees (`compare/runs_c/pcsx2_us_note.txt`): its start's movies fill the screen's height as the port's do, its loading
+  screen and its title stand at the same heights within 0.4% of the screen.
+- The sounds: every sound is the disc's data's, found by its number in the tables its own chunks load (levels, particles,
+  menus). The two numbers the C++ fixes, 0x10A (the extra life) and 0x1BF (the school's kid herd), are the same in the North
+  American program's same functions. Nothing is translated at load (a program that keeps PAL's tables in its code would
+  have to).
+- The level select's recipes: their self-test (`$TWIN_FIXES_TEST=recipes`) edits the same 117 scripts on that disc, none
+  failed, none missing.
+- The cutscene skip's table: every site and graph of its 51 cutscenes is a script of the same number in that disc's chunk.
+  `check_cutscene_skips.py --iso usa` (`compare/runs_c/skips_us`): 45 of 46 cutscenes end as on the PAL disc's last full
+  run (40 the same watched and skipped, 01, 29 and 34 different as there, 2 not ending from a chunk's start). The battleship's
+  switch thrower (09) leaves Crash 0.7 units from the watched scene's place 0.5 s after it, the same a second later. The
+  table stays the PAL disc's.
+- A PAL bug that disc hasn't: Bandicoot Pursuit's Evil Crash (THE LIST 37, Bug fixes) follows Cortex on the North American
+  disc with the fixes off too, his first route step not missed there. Its scenario has `expect_usa` and `forbid_usa`, the
+  expectations a scenario has on that disc where its data plays otherwise.
+- Mods: made for the PAL disc's files, so none is used with the North American disc (`Native::Mods::Scan`; the Mods page
+  lists them and says so in a note; a disc image's import, which compares with the disc in use, isn't offered).
+
+The checks for that disc: `check_windows.py --disc usa` (its work folder `build/native/check-usa`) checks the disc's paths,
+the four self-tests with its image, the level recipes, the scenarios, the beach's jumps at 60 Hz against the PAL disc's at
+60 Hz (crashwoc 0.8.1's North American 60 Hz jumped higher; here the five jumps measure the same) and the disc identity;
+with `--sweep` every chunk of its disc against the PAL disc's sweep. The program's own checks (the pictures, the window, the
+settings, the graphics APIs, portable mode, the log) are the PAL run's: the program is one. The scenarios play in real
+time, so a machine busy with other runs fails some of them (frames of 300 ms and more in their logs): run them alone.
+Measured 2026-11-21 (c435ff8): every line passes, scenarios 26/26, and the sweep's 131 chunks (108 played, 23 entered from
+a neighbour) end as the PAL disc's do.
+
+Which future changes reach the North American disc by themselves, and which to check there:
+
+- A change of the code reaches it by itself: the program is one.
+- A new read of the executable's data goes through the map: `convert_data.py` stops on a difference no decision names.
+- To check with `--disc usa` (and in PCSX2 with its image where the PS2's way isn't known): a change that depends on a level's
+  data (scripts, instances, a chunk's name), on sound numbers, on movies, on the cutscene skip's table, on the level select's
+  recipes, on a file name in the C++ (`disc_paths.py` then) or on the game's texts (the ui self-test). Before each release,
+  `--disc usa` once with `--sweep`.
+
 ## Checking a change
 
     .venv\Scripts\python.exe native\tools\check_windows.py [--build] [--sweep]

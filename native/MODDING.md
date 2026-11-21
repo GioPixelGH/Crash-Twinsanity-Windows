@@ -5,6 +5,7 @@ It covers what the port reads, the game's files, the community's tools for them,
 Playing with mods is also described, more briefly, in the players' guide ([PLAYING_WINDOWS.md](PLAYING_WINDOWS.md#mods)).
 
 The port runs the PAL disc's game (SLES-52568) from your own disc image.
+Mods are made for the PAL disc's files, so they work only with the PAL disc, not with the North American one.
 A mod changes the game's data files: levels, texts, pictures, sounds, music, movies.
 It can't change the game's program (see [Limits](#limits)).
 
