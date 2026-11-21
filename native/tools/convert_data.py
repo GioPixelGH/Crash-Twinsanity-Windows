@@ -821,10 +821,21 @@ def make_recipe(results, objects, recipes, marks, problems):
 DISCS = HERE / "native" / "discs"
 DECISIONS = {
     "SLUS-20909": {
-        # Its own bytes, as the map gives them: decided one by one in THE LIST 31b's next step
-        **{label: (None, "its own bytes, as the map gives them") for label in (
-            "D_002E70F8", "D_002E80E0", "D_002F4840", "D_003098A8", "D_003098B0", "D_003098B8", "D_003098C0", "D_003098C8",
-            "D_00309AE8", "D_00309AEC")},
+        "D_002E70F8": (None, "g_Movies: the movies' bits as its disc's files are (TTIdent 512x448, the story's movies one sound "
+                             "channel, Complete 640x480); the map gives PAL's Vivendi its Vivendi, past its FMV\\Spyro"),
+        "D_002E80E0": (None, "g_ScreenMessages: the start's no-card screen's message 11, whose text (0x31) its disc words as "
+                             "PAL's 12 (0xB7)"),
+        "D_002F4840": (None, "g_ProductCode: BASLUS-20909, its saves' name"),
+        "D_003098A8": (None, "the languages' names: not read on it, its languages are its program's own (gamecontext.cpp: "
+                             "one, American)"),
+        "D_003098B0": (None, "as D_003098A8"),
+        "D_003098B8": (None, "as D_003098A8"),
+        "D_003098C0": (None, "as D_003098A8"),
+        "D_003098C8": (None, "as D_003098A8"),
+        "D_00309AE8": (0x200, "g_ScreenHeight: PAL's 512 lines, as the PAL program runs at 60 Hz (the 60 Hz option never "
+                              "changes it; NTSC's 448 only if its data needs them, proved by pictures)"),
+        "D_00309AEC": (1, "g_Pal: PAL's, so the renderer, the clock and the particles start as the PAL program's at 60 Hz "
+                          "(the refresh rate option sets the pacing, 60 Hz by default)"),
     },
 }
 

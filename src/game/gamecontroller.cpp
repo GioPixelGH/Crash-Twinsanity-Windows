@@ -45,6 +45,7 @@
 #ifdef TWIN_NATIVE
 #include "cutsceneskip.h"
 #include "gameoptions.h"
+#include "native.h"
 #include "ui/nativeui.h"
 #endif
 
@@ -66,6 +67,10 @@ constexpr const char* SoundFolder = "Crash6\\";
 constexpr const char* MusicBank = "Crash6\\Music";
 constexpr const char* IconsFile = "StartUp\\Icons.psm";
 constexpr const char* FontFile = "StartUp\\Fonts\\Crash_Euro";
+#ifdef TWIN_NATIVE
+// The North American disc's (THE LIST 31): its program's name for it, the only font its archive has
+constexpr const char* NorthAmericanFontFile = "StartUp\\Fonts\\Crash";
+#endif
 constexpr const char* FrontEndFile = "StartUp\\Frontend.bin";
 constexpr const char* DefaultChunk = "StartUp\\Default";
 constexpr const char* TextFolders[TextFiles] = {"Code", "AgentLab"};
@@ -514,7 +519,11 @@ u32 GameController::LoadGlobalResources()
     sounds.vtable = g_SoundTableItemVTable;
     sounds.table = &frontEndSounds;
     sounds.objects = nullptr;
+#ifdef TWIN_NATIVE
+    font.Read(Native::PalDisc() ? FontFile : NorthAmericanFontFile);
+#else
     font.Read(FontFile);
+#endif
     renderer->font = &font;
     font.width = g_FontSize.x;
     font.height = g_FontSize.y;

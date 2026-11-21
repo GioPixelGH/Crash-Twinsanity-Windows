@@ -553,8 +553,8 @@ The game's C++ uses the retail executable's data: its tables, texts, numbers and
 doesn't carry those bytes, on every platform. `build/native/data.cpp` has every object zeroed, with where each run of its bytes
 comes from in `SLES_525.68`: 381 runs, 66 KB of the executable (53 KB of it the VU microcode), 1 address-sized integer widened to
 64 bits, and the 88 vtable entries' narrow-return marks. At start-up, before the fixups and before the game runs,
-`Native::LoadRetailData` (system.cpp) reads `SLES_525.68` from the player's disc image and `NativeLoadRetailData` (data.cpp) lays
-it out.
+`CheckDiscImage` (system.cpp) reads `SLES_525.68` from the player's disc image and `NativeLoadRetailData` (data.cpp) lays
+it out (the North American disc's `SLUS_209.09`: below, THE LIST 31b).
 
 The checks:
 
@@ -606,6 +606,52 @@ disc, 56 are other bytes and 72 have no counterpart (7 of them not zero on the P
 the memory card folder's name (its serial), the languages' names (the North American program has one), the screen's height
 (512 and 448 lines) and a PAL flag beside it, a table beside the languages' with the same height and another number in each
 entry, and one count in D_002E80E0. THE LIST 31b decides each one.
+
+### The North American disc's program (THE LIST 31b)
+
+The program plays the North American v2.00 disc as TwinsanityEvolved does: the PAL program's code (its own code changes are
+played the European way) on the North American executable's data. `CheckDiscImage` (system.cpp) looks for `SLES_525.68`, else
+for another release's program this build has a map for (`NativeOtherRelease`: `SLUS_209.09`). `convert_data.py` writes the
+maps of `native/discs/*.json` into data.cpp as a table of releases (the program, serial and version, the executable's size and
+FNV-1a, the image's file range and FNV-1a, the segments as file offsets), and `NativeLoadRetailDataAs` reads one:
+
+1. The executable's size and FNV-1a must be the map's (another version, v1.00, or a changed copy is refused with a message).
+2. A buffer the PAL executable's size gets the North American bytes at the PAL file offsets through the segments (zero where
+   no segment reaches). The image laid out that way must have the map's FNV-1a.
+3. The same runs, widened integers and vtable marks as the PAL executable's are read from that buffer (`LayOut`).
+4. The values kept PAL's are written over them.
+
+The objects' hash (`DataHash`) stays the PAL disc's check only: the North American differences change it, and the build doesn't
+read that executable. The image's hash checks every byte the program reads instead (all of them are inside the image: the
+converter checks it).
+
+The 24 differences in the bytes the program reads, decided one by one in `convert_data.py`'s `DECISIONS` by the object they
+land in (a new map with a read difference in an object not decided there stops the build):
+
+- `g_Movies` (D_002E70F8): the North American table, which says what its disc's movies are (TTIdent 512x448, the story's
+  movies with one sound channel, English, instead of five, Complete 640x480). Its table has 21 movies (FMV\Spyro before
+  Vivendi); the map gives the PAL program's 20th, Vivendi, the North American Vivendi.
+- `g_ScreenMessages` (D_002E80E0): the start's no-card screen shows message 11 instead of PAL's 12. On its disc text 0x31 (11's)
+  says what 0xB7 (12's) says, so nothing shown changes.
+- `g_ProductCode` (D_002F4840): BASLUS-20909, the North American saves' name.
+- The languages' names (D_003098A8 to D_003098C8): read, but not used. The North American program has one language, named as
+  its archive's banks and voice bank are (`Language\Code\American.txt`, `CRASH6\AMERICAN.MB`), so `GameContext::StartGame`
+  gives it that one language whatever the console's (the PAL program's five names' place holds other strings there).
+- `g_ScreenHeight` and `g_Pal` (D_00309AE8, D_00309AEC): PAL's 512 lines and 1 kept. The port's refresh rate option changes
+  only the pacing, never these two, so the PAL program has only ever run at 512 lines here. With PAL's values the North
+  American disc starts as the PAL program does at 60 Hz (the option's default for every disc). NTSC's 448 lines only if its
+  data needs them, proved by pictures (THE LIST 31c).
+
+Some differences the map marks as not read are constants of the program's own C++, which its disc names differently:
+
+- The font: `StartUp\Fonts\Crash_Euro` on the PAL disc, `StartUp\Fonts\Crash` on the North American one (its archive has only
+  that one). `GameController::LoadGlobalResources` reads the North American name on its disc.
+- The saves' region and product code (`BE` and `SLES-52568` in savedevice.cpp).
+- The rest are the PS2 build's disc check file (stream.cpp, not compiled natively), a library's version string and path
+  separators moved with their neighbours.
+
+Tested (2026-11-21, `compare/runs_c/us_run.py`, the level sweep without a window): the beach loaded in 3.8 s and played 30 s
+at 59.9 fps, its first scene starting at 23.8 s, no fatal line.
 
 ## Checking a change
 

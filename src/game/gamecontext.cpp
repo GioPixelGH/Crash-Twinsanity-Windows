@@ -31,6 +31,10 @@
 #include "platform/system.h"
 #include "retail/libc.h"
 
+#ifdef TWIN_NATIVE
+#include "native.h"
+#endif
+
 // The game's side of the application (GameContext's functions, at the start of .text)
 namespace
 {
@@ -41,6 +45,11 @@ constexpr s32 GameFrench = 1;
 constexpr s32 GameGerman = 2;
 constexpr s32 GameSpanish = 3;
 constexpr s32 GameItalian = 4;
+#ifdef TWIN_NATIVE
+// The North American disc's languages (THE LIST 31): its program's own, one, named as its archive's banks and its voice bank are
+// (Language\Code\American.txt, CRASH6\AMERICAN.MB); its data's names in the PAL program's five names' place aren't read
+const char* NorthAmericanLanguages[] = {"American"};
+#endif
 // The save code's messages' texts from the second message on (the first keeps the save code's own string)
 constexpr s32 SaveMessageTexts[] = {0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F, 0x30, 0x31, 0xB7, 0x32,
                                     0x5F, 0x33, 0x34, 0x35, 0x36, 0x37, 0xB8, 0xB4, 0xB5, 0xB6, 0x38, 0x39, 0x3A,
@@ -389,7 +398,16 @@ void GameContext::StartGame()
     unused.string = nullptr;
     unused.length = 0;
     unused.capacity = 0;
-    InitLanguages(Languages, g_GameLanguageNames);
+#ifdef TWIN_NATIVE
+    if (!Native::PalDisc())
+    {
+        InitLanguages(sizeof(NorthAmericanLanguages) / sizeof(NorthAmericanLanguages[0]), NorthAmericanLanguages);
+    }
+    else
+#endif
+    {
+        InitLanguages(Languages, g_GameLanguageNames);
+    }
     for (u32 index = 0; index < ReadersStorageCount; index++)
     {
         GameReadersStorage* storage = InitReadersStorage(index);
@@ -473,6 +491,11 @@ void GameContext::StartGame()
     G_VideoController = ConstructVideoController(MemoryAllocate(sizeof(VideoController)), instanceFactory, ObjectClock);
     g_DynamicSceneryClockIndex = ObjectClock;
     PreloadChunks();
+#ifdef TWIN_NATIVE
+    // The North American disc's one language whatever the console's
+    SetGameLanguage(Native::PalDisc() ? GameLanguageOf(Platform::System::Language()) : GameEnglish);
+#else
     SetGameLanguage(GameLanguageOf(Platform::System::Language()));
+#endif
     StringDestroy(&unused);
 }
