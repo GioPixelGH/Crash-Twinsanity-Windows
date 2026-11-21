@@ -12,6 +12,7 @@ What this port takes from it, each file keeping its copyright notice:
 | src/platform/native/ui/languageprobes.h (a text bank's language by its words) | engine/app/host/language_probes.h | NativeEE's MIT |
 | src/platform/native/modzip.h, .cpp (the mods' zips read: stored and deflated entries, ZIP64, every entry's CRC-32 checked; its file layer and CRC-32 ours, modzipio.h) | engine/app/host/mod_import/zip_reader.h, .cpp | NativeEE's MIT |
 | src/platform/native/modinflate.h, .cpp (DEFLATE decoded for the zips) | engine/app/host/mod_import/inflate.h, .cpp | NativeEE's MIT |
+| native/tools/region_map.py (the address map of another release's executable onto the PAL one; the changes for this port marked "Ours": this tree's paths, the disc read by iso_extract.py, the "native" command that writes native/discs/region_map_SLUS-20909.json) | tools/discs/elf_region_map.py (fd6840f) | TwinsanityEvolved's MIT |
 
 With menaman123's permission (menaman123/TwinsanityEvolved#19, 2026-11-06: "Sure! Sounds good to me!"), three files of its
 game/ tree and fixtures/ are used here under its MIT licence (LICENSE-TwinsanityEvolved.txt), and only these three:

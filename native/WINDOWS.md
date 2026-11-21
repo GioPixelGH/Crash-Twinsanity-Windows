@@ -581,6 +581,32 @@ Checked on the program: no 32-byte block of the executable's data is in `CrashTw
 repetitive); of its 16-byte blocks, two are, which are text of the program's own ("crash twinsanity", "Levels\Earth\Hub").
 `release_windows.py check` checks it again for every release ("Releasing").
 
+### The North American disc's map (THE LIST 31a)
+
+The North American v2.00 disc's `SLUS_209.09` is the same program linked again from slightly different sources: the same
+objects at other addresses, a few moved between sections, some with other contents. `native/tools/region_map.py` finds where
+it has each piece of the PAL executable's data. It is TwinsanityEvolved's `tools/discs/elf_region_map.py` (MIT, its notice
+kept; native/third_party/twinsanityevolved), with this port's changes marked "Ours". It aligns the two programs' code
+instruction by instruction (the addresses each instruction forms are votes for where a variable went) and their data by
+content, then writes `native/discs/region_map_SLUS-20909.json` for this program:
+
+    .venv\Scripts\python.exe native\tools\region_map.py native --pal-iso PAL.iso --other-iso USA.iso
+        --out native\discs\region_map_SLUS-20909.json [--full-out FULL.json] [--full FULL.json]
+
+The file holds addresses, sizes and hashes only: the 42 segments that lay the data image out at the PAL addresses, the North
+American executable's size, FNV-1a and SHA-256, the image laid out that way's FNV-1a, and every difference from the PAL image
+with whether this program reads it (build/native/data.cpp's runs say which bytes it reads; the pointers are the native
+build's own, so the map's pointer words, code pairs and fills aren't needed). `region_map.py selftest` checks the method on
+synthetic programs, with no game data.
+
+Measured (2026-11-21): the full map our run makes is TwinsanityEvolved's committed map exactly (42 segments, 197,990 of the
+image's 198,384 bytes aligned, 12,355 pointer words, 6,660 code pairs, 1,503 of 1,506 data symbols, 58 differences over 146
+bytes). Of the 66,069 bytes this program reads (381 runs and 1 widened integer), 65,941 are the same on the North American
+disc, 56 are other bytes and 72 have no counterpart (7 of them not zero on the PAL disc). Those are 24 of the 58 differences:
+the memory card folder's name (its serial), the languages' names (the North American program has one), the screen's height
+(512 and 448 lines) and a PAL flag beside it, a table beside the languages' with the same height and another number in each
+entry, and one count in D_002E80E0. THE LIST 31b decides each one.
+
 ## Checking a change
 
     .venv\Scripts\python.exe native\tools\check_windows.py [--build] [--sweep]
