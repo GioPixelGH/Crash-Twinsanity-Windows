@@ -28,11 +28,15 @@ its lines' average, the summary the runs' median with their range. The numbers:
     python native/tools/perf.py --show base.json --before old.json   # two saved measures compared, nothing run
     --cores 0xFFF (all), --scale 4, --chunk Levels\Earth\Academy\Hub\..., --threads one ($TWIN_RENDER_THREAD=0), --runs, --seconds
 
+Each run's settings folder gets the disc image's disc_identity.txt, as a played copy has it (the image's size, date, CRC-32 and
+SHA-1, hashed once by this script and kept in build/native/perf_disc_identity.txt): without it a new settings folder hashes the
+image in the background for its first 28-30 s, over the first measured line.
 Paths are made absolute (a relative --work would give the runs a relative APPDATA). The window opens on the screen: leave the PC
 alone while it runs (a run takes about --seconds + 30 s). Numbers from different PCs, or from runs with other programs busy, don't
 compare."""
 import argparse
 import ctypes
+import hashlib
 import json
 import os
 import re
@@ -41,6 +45,7 @@ import statistics
 import subprocess
 import sys
 import time
+import zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parents[2]
@@ -86,6 +91,26 @@ def set_affinity(process, mask):
         os.sched_setaffinity(process.pid, {bit for bit in range(64) if mask >> bit & 1})
 
 
+def disc_identity_line(image):
+    """discidentity.cpp's kept line for the image ("<bytes> <date> <crc> <sha1>", the date its last write time in ns), hashed once
+    and kept in build/native/perf_disc_identity.txt"""
+    stat = os.stat(image)
+    key = f"{stat.st_size} {stat.st_mtime_ns} "
+    cache = HERE / "build" / "native" / "perf_disc_identity.txt"
+    kept = cache.read_text().splitlines() if cache.exists() else []
+    for line in kept:
+        if line.startswith(key):
+            return line
+    crc, sha1 = 0, hashlib.sha1()
+    with open(image, "rb") as disc:
+        while block := disc.read(1 << 24):
+            crc = zlib.crc32(block, crc)
+            sha1.update(block)
+    line = f"{key}{crc:08x} {sha1.hexdigest()}"
+    cache.write_text("".join(f"{each}\n" for each in kept + [line]), newline="\n")
+    return line
+
+
 def one_run(args, index):
     folder = Path(args.work) / f"run{index}"
     if folder.exists():
@@ -93,6 +118,9 @@ def one_run(args, index):
     settings = folder / "settings" / "Crash Twinsanity"
     settings.mkdir(parents=True)
     (settings / "disc_image.txt").write_text(check_windows.disc_image() + "\n")
+    (settings / "disc_identity.txt").write_text("# Crash Twinsanity's disc images recognised (the log's \"disc:\" line): each image's "
+                                                "size in bytes, its date, its CRC-32 and SHA-1\n" +
+                                                disc_identity_line(check_windows.disc_image()) + "\n", newline="\n")
     (settings / "options.txt").write_text("pause_on_focus_loss=0\nmouse=0\nmouse_look=0\nrefresh_60hz=4\nvsync=0\n" +
                                           "".join(f"{option}\n" for option in args.option))
     (settings / "resolution.txt").write_text(f"scale={args.scale}\nwindow=1280x720\nfullscreen=0\n")

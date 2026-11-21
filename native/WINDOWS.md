@@ -144,12 +144,14 @@ averages:
 | The beach, accurate, all cores (0xFFF) | 84.6; 11.9, 9.6, 6.0 ms | 88.7; 11.2, 8.9, 5.5 ms |
 
 On two cores the three threads take turns, so their sum is the measure beside the frames a second; the fast mode takes 5.6 ms
-off it. The accurate mode on two cores is unexplained: its four pairs in two series (perf5, perf8) were -2.5, -1.9, -0.1
-and -2.6 frames a second, while on all cores each thread did less than 1.3.0's in both pairs; the bench drifts up to 17% in
-minutes (THE LIST 74's speed question, compare/runs_b74/speed_question.txt), and perf.py's runs, with new settings each,
-hash the disc image in the background for their first 28 to 30 s, over the first measured line (a profile on two cores,
-compare/runs_b75/prof8: that thread busy in both programs). Seeding disc_identity.txt in perf.py's settings would take it
-out of the next measure. VU1's thread is the fast mode's longest now (THE LIST 104).
+off it. The accurate mode's row on two cores was the bench. Its four pairs in two series (perf5, perf8) were -2.5, -1.9, -0.1
+and -2.6 frames a second, but perf.py's runs, with new settings each, hashed the disc image in the background for their
+first 28 to 30 s, over the first measured line (a profile on two cores, compare/runs_b75/prof8: that thread busy in both
+programs). perf.py now gives each run the image's disc_identity.txt, as a played copy has it, so no run hashes (every log
+says "checked before"). Measured again so (2026-11-21, compare/runs_c/perf1, A B B A A B B A on two cores, A 1.3.0, B this
+build accurate), the pairs fall on both sides of 0: +0.2 and -0.8 frames a second, the averages 66.8 and 66.5, the render
+thread 12.5 and 12.7 ms, VU1's 9.9 and 10.0 ms. The bench also drifts up to 17% in minutes (THE LIST 74's speed question,
+compare/runs_b74/speed_question.txt). VU1's thread is the fast mode's longest now (THE LIST 104).
 
 Comparing two builds' pictures: `$TWIN_FIXED_TIME=1` with `$TWINSANITY_AUDIO=frames` (the sound made in step with the frames)
 gives the same frames run after run (with the sound in real time, a run's speed changes what the game does with it after a
