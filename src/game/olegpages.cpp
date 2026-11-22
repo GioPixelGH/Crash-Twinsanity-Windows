@@ -244,14 +244,16 @@ void AddGalleries(GemExtrasPage* page, u32 text, const char* name, u32 pictures)
 // The native menu rows (THE LIST 79, 80: the main menu's level select, the pause menu's gems' pages and extras; 63a: the main
 // menu's continue) in storage of the native build's own, not the game's heap: the game's allocations stay 1.2.0's, which the
 // pictures' check compares byte for byte (other allocations moved the beach's particles a few pixels), and the pause page's and
-// the main menu's lists stay within their first ten
-alignas(16) u8 g_NativeRows[4][sizeof(ActionItem)];
+// the main menu's lists stay within their first ten. Made hidden: neither drawn nor selectable (enabled 0: a row only not shown
+// is drawn greyed, as the original's disable autosave; THE LIST 63c), improvedmenus.cpp shows them as their options say
+alignas(16) u8 g_NativeRows[5][sizeof(ActionItem)];
 
 ActionItem* NativeRow(u32 row, u32 text, u32 id, u32 action)
 {
     auto* item = reinterpret_cast<ActionItem*>(g_NativeRows[row]);
     ActionItem::Construct(item, text, id, action);
     item->shown = 0;
+    item->enabled = 0;
     return item;
 }
 #endif
@@ -399,6 +401,12 @@ MenuPage* ActionItem::Activate(u32 player, MenuPage* page)
         // (Then the load game page, its target, entered: the game's load, the newest save chosen for it)
         NativeUi::ContinueChosen();
         break;
+    case ActionMainMenuQuit:
+        NativeUi::AskQuitToDesktop();
+        break;
+    case ActionQuitToDesktop:
+        NativeUi::QuitToDesktop();
+        break;
     case ActionPlayLevel:
         NativeUi::PlayPickedLevel();
         break;
@@ -434,6 +442,10 @@ MainMenuPage* MainMenuPage::Construct(MainMenuPage* page)
     page->Add(continueRow);
 #endif
     page->Add(options);
+#ifdef TWIN_NATIVE
+    // Native: quit to desktop, last, with the improved menus (THE LIST 63c, #33: its confirmation on the quit screen)
+    page->Add(NativeRow(4, NativeUi::TextQuitDesktop, NativeItems::MainMenuQuit, ActionItem::ActionMainMenuQuit));
+#endif
     return page;
 }
 

@@ -399,6 +399,8 @@ enum NativeText : u32
     TextDiscChosen,
     TextDiscInUse,
     TextDiscRefused,
+    // The improved main menu's quit to desktop's confirmation (THE LIST 63c, #33; the row is TextQuitDesktop)
+    TextQuitDesktopAsk,
     NativeTextEnd,
 };
 
@@ -680,6 +682,10 @@ void OpenLevelsFromMainMenu();
 // The improved menus' main menu's continue (THE LIST 63a, #48): its row activated (the load it leads to takes the newest save:
 // savecode.cpp's NativeTakeContinue)
 void ContinueChosen();
+// The improved main menu's quit to desktop (THE LIST 63c, #33): its row asks on the quit screen ("quit to desktop?", no first),
+// its yes ends the program as the window's close button does
+void AskQuitToDesktop();
+void QuitToDesktop();
 void PickLevel(u32 area);
 // The gems' pages' levels' vtable (the link's, its activation PickLevel)
 const GccVTableEntry* LevelItemVTable();

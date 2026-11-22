@@ -406,15 +406,23 @@ have made itself (`src/platform/native/gameoptions.h`):
   shoulders' pages of each world's levels and their gems) and the extras are rows of it ("level select" with the level select
   on), and back from them comes back to the pause menu, on that row, instead of to play (the extras' resume reads "back" and
   does the same); quit game reads "return to title" and its confirmation asks so; resume goes (back and start still resume
-  play). Disable autosave stays the original's action, shown while an autosave waits (`StopSaving`: not a stored setting). The
-  pause page has the rows of both layouts (`PausePage::Construct`); each frame puts them in the chosen layout's order and shows
+  play). Since 1.4.0 (THE LIST 63c, #48: ichagas7, so the pause menu fits without scrolling) disable autosave and the greyed
+  resume are left out too: six rows, seven with restart checkpoint; the original menus keep the PS2's greyed disable autosave
+  (`StopSaving`, shown while an autosave waits). A row is left out with its `enabled` cleared as well as its `shown`: a row only
+  not shown is drawn greyed (the menu draws the enabled rows, the shown ones in the normal colour), so until 1.4.0 the default
+  menus showed the native rows greyed (the main menu's level select, the pause menu's gems, extras and restart checkpoint), and
+  the improved menus a greyed resume; the menus test's rows are the drawn ones now, a greyed one in parentheses. The improved
+  main menu's last row is quit to desktop (THE LIST 63c, #33: ichagas7's ask for it in the main menu, in the game's font and
+  look): it asks on the quit screen as the level select's confirmation does ("quit to desktop?", no first, its page in our
+  storage), yes ends the program as the window's close button does (`EndSession`), no or back shows the main menu again on that
+  row. The pause page has the rows of both layouts (`PausePage::Construct`); each frame puts them in the chosen layout's order and shows
   its rows. The new rows (the gems', the extras', the main menu's level select) are kept in the native build's own storage, not
   the game's heap, and the levels' items keep their size (their vtable a copy with its activation): with the game's
   allocations as 1.2.0's the pictures' check stays byte for byte (rows from the game's heap moved the beach's particles a few
   pixels from frame 1500 on). The shoulders still go round the pages. `$TWIN_MENUS_TEST=1` (with `level_select=1` and `improved_menus=1`, headless) goes through both: the main menu's
   level select row, a level picked on the gems' pages and played, the pause menu, the gems' pages and the extras from their
   rows and back, return to title asked and refused, then a level picked in play and played through the title, each step logged
-  ("menus test:").
+  ("menus test:"); since 1.4.0 it asks quit to desktop first and refuses it.
   Continue (THE LIST 63a, #48's part 1, its main menu half): with the improved menus the main menu's rows are continue, level
   select (with its option), new game, load game, options, as the PDF has them; continue is there while the card holds a save
   (`Native::MemoryCardHasSave`: a folder with its folder file, looked at again after the card changes) and selected first, new

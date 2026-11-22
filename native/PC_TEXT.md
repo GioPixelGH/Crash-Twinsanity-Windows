@@ -356,6 +356,7 @@ text can't hold, such as curly quotes, stays empty, as the ui self-test finds th
 | 0x230 | the game plays this disc image from the next start. | le jeu utilisera cette image disque au prochain lancement. | das spiel nutzt dieses disc-image ab dem nächsten start. | el juego usará esta imagen de disco al volver a abrirlo. | il gioco userà questa immagine del disco dal prossimo avvio. |  |
 | 0x231 | this is the disc image the game is playing. | c'est l'image disque que le jeu utilise. | das spiel nutzt dieses disc-image schon. | es la imagen de disco que el juego está usando. | è l'immagine del disco che il gioco sta usando. |  |
 | 0x232 | this file isn't a disc image the game plays. | ce fichier n'est pas une image disque que le jeu peut utiliser. | diese datei ist kein disc-image, das das spiel nutzen kann. | este archivo no es una imagen de disco que el juego pueda usar. | questo file non è un'immagine del disco che il gioco può usare. |  |
+| 0x233 | quit to desktop? | quitter vers le bureau ? | zum desktop beenden? | ¿salir al escritorio? | uscire al desktop? |  |
 
 ## English (29 lines)
 

@@ -195,9 +195,11 @@ Your saves stay ones the original game could make.
   Off is the original's free camera.
   A level's own fixed cameras still work as they did.
 - **Improved menus**: the main menu starts with Continue, which loads your newest save.
+  Its last row is Quit to Desktop.
   The pause menu starts at the top, with Restart Checkpoint second (if it's on, below).
   Gems and Extras are rows of it, and back from them brings you back to it.
   Quit Game is called Return to Title.
+  Resume and Disable Autosave are left out, so the pause menu fits on the screen.
 - **Restart checkpoint**: adds Restart Checkpoint to the pause menu.
   It takes you back to your last checkpoint.
   The PS2's pause menu doesn't have it, so it's off at first.

@@ -5,8 +5,14 @@
 // (the pause menu's shoulder pages: each world's levels with their gems) and the extras are rows of it (back from them comes back
 // to the pause menu, not to play; the extras' resume reads back), and quit game reads "return to title" (its confirmation asking
 // so); resume goes (back and start resume play, as before).
-// Disable autosave stays the original's action, shown while an autosave waits. The pause page has both layouts' rows
-// (olegpages.cpp's PausePage::Construct); each frame the layout chosen is shown.
+// Disable autosave and the greyed resume go (THE LIST 63c, #48: ichagas7, so the pause menu fits without scrolling); the original's
+// disable autosave stays as the PS2 has it, greyed but while an autosave waits. The pause page has both layouts' rows (olegpages.cpp's
+// PausePage::Construct); each frame the layout chosen is shown. A row left out is neither drawn nor selectable (its enabled 0):
+// one only not shown is drawn greyed (1.3.0's hidden rows were: the default menus showed the native rows greyed).
+//
+// Quit to desktop (THE LIST 63c, #33: ichagas7's ask, the main menu in the game's font and look): the improved main menu's last
+// row, asking on the quit screen as the level select's confirmation does ("quit to desktop?", no selected first); yes ends the
+// program as the window's close button does, no (or back) shows the main menu again on that row.
 //
 // The level select's gems' pages: with the level select on, every level's title shows on them and each level can be picked:
 // "play this level?" yes / no on the quit's confirmation screen (its menu given a page of ours and its title our text while it
@@ -56,11 +62,20 @@ u32 g_World = 0;
 // The level picked on them (-1 none)
 s32 g_Picked = -1;
 // The pause page a pause menu row asked for (a reason, ReasonNone none), the row (its ID), and the pause menu shown again from
-// its page (the row the one selected first); the main menu likewise from the gems' pages
+// its page (the row the one selected first); the main menu likewise from the gems' pages or quit to desktop's confirmation (the
+// row it came from: 0 none)
 u32 g_PausePageAsked = GameController::ReasonNone;
 u32 g_PauseRow = 0;
 bool g_PauseReturning = false;
-bool g_MainMenuReturning = false;
+u32 g_MainMenuReturning = 0;
+// Quit to desktop's confirmation up from the main menu (until the main menu's shown again), its page and vtable (the quit page's,
+// but its back), in storage of our own as the native rows are
+bool g_QuitAsking = false;
+OlegPage* g_QuitConfirmPage = nullptr;
+GccVTableEntry g_QuitConfirmVTable[10];
+alignas(16) u8 g_QuitConfirmStorage[sizeof(OlegPage)];
+alignas(16) u8 g_QuitYesStorage[sizeof(ActionItem)];
+alignas(16) u8 g_QuitNoStorage[sizeof(BackItem)];
 // The game's own: the quit screen's page, the main menu's first item, the levels screens' widgets (the select hint added with
 // the level select on)
 MenuPage* g_QuitPage = nullptr;
@@ -76,11 +91,11 @@ GccVTableEntry g_LevelItemVTable[15];
 bool g_Continue = false;
 // The pause page's rows in each layout's order (all of them: the hidden ones too), and the main menu's
 constexpr u32 PauseRows = 9;
-constexpr u32 MainMenuRows = 5;
+constexpr u32 MainMenuRows = 6;
 constexpr u32 ImprovedMainOrder[MainMenuRows] = {NativeItems::MainMenuContinue, NativeItems::MainMenuLevels, NativeItems::NewGame,
-                                                 NativeItems::LoadGame, NativeItems::Options};
-constexpr u32 OriginalMainOrder[MainMenuRows] = {NativeItems::NewGame, NativeItems::LoadGame, NativeItems::MainMenuLevels,
-                                                 NativeItems::MainMenuContinue, NativeItems::Options};
+                                                 NativeItems::LoadGame,          NativeItems::Options,        NativeItems::MainMenuQuit};
+constexpr u32 OriginalMainOrder[MainMenuRows] = {NativeItems::NewGame,          NativeItems::LoadGame, NativeItems::MainMenuLevels,
+                                                 NativeItems::MainMenuContinue, NativeItems::Options,  NativeItems::MainMenuQuit};
 constexpr u32 ImprovedOrder[PauseRows] = {NativeItems::Options,     NativeItems::RestartCheckpoint, NativeItems::Levels,
                                           NativeItems::SaveGame,    NativeItems::LoadGame,          NativeItems::DisableAutosave,
                                           NativeItems::Extras,      NativeItems::QuitGame,          NativeItems::Resume};
@@ -94,11 +109,13 @@ void ShowScreen(OLEG& oleg, u32 screen)
     oleg.Show(oleg.screens[screen], static_cast<s32>(g_ClockUnitsPerSecond * ScreenChangeSeconds), 0);
 }
 
+// A row shown, or left out: neither drawn nor selectable (THE LIST 63c: only shown 0 draws it greyed)
 void SetShown(MenuItem* item, bool shown)
 {
     if (item != nullptr)
     {
         item->shown = shown ? EveryPlayer : 0;
+        item->enabled = shown ? EveryPlayer : 0;
     }
 }
 
@@ -179,6 +196,45 @@ OlegPage* ConfirmPage()
     return page;
 }
 
+void LayOutMainMenu(OLEG& oleg);
+
+// Quit to desktop's confirmation's back (its no too): the main menu again, on its quit row
+u32 QuitConfirmBack(MenuPage*, u32)
+{
+    GameController* controller = G_GameController;
+    if (controller != nullptr)
+    {
+        g_MainMenuReturning = NativeItems::MainMenuQuit;
+        LayOutMainMenu(controller->oleg);
+        ShowScreen(controller->oleg, OLEG::ScreenMainMenu);
+    }
+
+    return 1;
+}
+
+OlegPage* QuitConfirmPage()
+{
+    if (g_QuitConfirmPage != nullptr)
+    {
+        return g_QuitConfirmPage;
+    }
+
+    std::memcpy(g_QuitConfirmVTable, g_QuitPageVTable, sizeof(g_QuitConfirmVTable));
+    g_QuitConfirmVTable[MenuPage::BackSlot].function = reinterpret_cast<void*>(&QuitConfirmBack);
+    auto* page = reinterpret_cast<OlegPage*>(g_QuitConfirmStorage);
+    OlegPage::ConstructTitled(page, TextQuitDesktopAsk, nullptr);
+    page->vtable = g_QuitConfirmVTable;
+    ActionItem* yes = ActionItem::Construct(reinterpret_cast<ActionItem*>(g_QuitYesStorage), NativeItems::YesText,
+                                            NativeItems::QuitDesktopYes, ActionItem::ActionQuitToDesktop);
+    BackItem* no = BackItem::Construct(reinterpret_cast<BackItem*>(g_QuitNoStorage), NativeItems::NoText, NativeItems::No, nullptr,
+                                       MenuPlayers);
+    page->Add(yes);
+    page->Add(no);
+    page->SetFirstItem(no->Id());
+    g_QuitConfirmPage = page;
+    return page;
+}
+
 // A page's items put in an order (by their IDs; nothing done unless it has exactly those)
 void Order(MenuPage* page, const u32* ids, u32 count)
 {
@@ -232,6 +288,13 @@ void LayOutPause(OLEG& oleg)
     SetShown(page->Find(NativeItems::RestartCheckpoint), IsOn(OptionRestartCheckpoint));
     SetText(page->Find(NativeItems::QuitGame), improved ? TextReturnToTitle : NativeItems::QuitGameText);
     SetShown(page->Find(NativeItems::Resume), !improved);
+    // Disable autosave left out with the improved menus (THE LIST 63c, #48); the original's greyed but while an autosave waits
+    // (PausePage::Frame sets its shown each frame: only its enabled here)
+    if (MenuItem* disableAutosave = page->Find(NativeItems::DisableAutosave))
+    {
+        disableAutosave->enabled = improved ? 0 : EveryPlayer;
+    }
+
     const u32 first = g_PauseReturning && g_PauseRow != 0 ? g_PauseRow : improved ? NativeItems::Options : NativeItems::Resume;
     page->SetFirstItem(first);
     // (The extras' resume reads back with the improved menus: it goes to the pause menu as their back does)
@@ -255,9 +318,10 @@ void LayOutMainMenu(OLEG& oleg)
     Order(page, improved ? ImprovedMainOrder : OriginalMainOrder, MainMenuRows);
     SetShown(page->Find(NativeItems::MainMenuLevels), IsOn(OptionLevelSelect));
     SetShown(page->Find(NativeItems::MainMenuContinue), continueShown);
-    if (g_MainMenuReturning)
+    SetShown(page->Find(NativeItems::MainMenuQuit), improved);
+    if (g_MainMenuReturning != 0)
     {
-        page->SetFirstItem(NativeItems::MainMenuLevels);
+        page->SetFirstItem(g_MainMenuReturning);
     }
     else if (improved)
     {
@@ -290,6 +354,8 @@ struct Test
     bool fromSave = false;
     // (fromSave: 0 the save loaded, 1 the level select's play, 2 the save loaded again)
     u32 round = 0;
+    // (the improved menus' test 1: quit to desktop 0 not chosen yet, 1 its confirmation waited for, 2 the main menu again, 3 done)
+    u32 quitRound = 0;
     u32 step = 0;
     u32 frame = 0;
     u32 stepFrame = 0;
@@ -314,7 +380,7 @@ MenuItem* Selected(MenuPage* page)
     return page != nullptr && page->selections != nullptr ? page->Item(page->selections[0]) : nullptr;
 }
 
-// A page's rows shown, the selected one in brackets
+// A page's rows drawn, the selected one in brackets, a greyed one (drawn, not selectable) in parentheses
 std::string Rows(MenuPage* page)
 {
     std::string rows;
@@ -322,13 +388,13 @@ std::string Rows(MenuPage* page)
     for (u32 i = 0; i < page->items.count; i++)
     {
         MenuItem* item = page->Item(static_cast<s32>(i));
-        if (!item->IsShownTo(0))
+        if (!item->CanSelect(0))
         {
             continue;
         }
 
         rows += rows.empty() ? "" : ", ";
-        rows += item == selected ? "[" + ItemName(item) + "]" : ItemName(item);
+        rows += item == selected ? "[" + ItemName(item) + "]" : !item->IsShownTo(0) ? "(" + ItemName(item) + ")" : ItemName(item);
     }
 
     return rows;
@@ -445,6 +511,31 @@ void TestFrame(GameController* controller)
                 Native::Log("menus test: continue chosen");
                 test.step = 18;
                 Next();
+            }
+
+            break;
+        }
+
+        // (The improved menus' first: quit to desktop asked, its confirmation's no, the main menu again on that row; THE LIST 63c)
+        if (IsOn(OptionImprovedMenus) && !test.toFirstPause && test.quitRound < 3)
+        {
+            if (test.quitRound == 0 && Shown(oleg.mainMenu) && Choose(oleg.mainMenu, NativeItems::MainMenuQuit))
+            {
+                test.quitRound = 1;
+                test.stepFrame = test.frame;
+            }
+            else if (test.quitRound == 1 && quit)
+            {
+                Native::Log("menus test: quit to desktop asks: %s %s", GameText(oleg.quitTitle.text), Rows(oleg.quitMenu.current).c_str());
+                Press(MenuSelectBit());
+                test.quitRound = 2;
+                test.stepFrame = test.frame;
+            }
+            else if (test.quitRound == 2 && Shown(oleg.mainMenu))
+            {
+                Native::Log("menus test: the main menu again: %s", Rows(oleg.mainMenu.current).c_str());
+                test.quitRound = 3;
+                test.stepFrame = test.frame;
             }
 
             break;
@@ -706,6 +797,26 @@ void ContinueChosen()
     Native::Log("continue: the newest save asked for, through load game's load");
 }
 
+void AskQuitToDesktop()
+{
+    GameController* controller = G_GameController;
+    if (controller == nullptr || controller->State() != GameController::StateMainMenu || g_QuitPage == nullptr)
+    {
+        return;
+    }
+
+    g_QuitAsking = true;
+    PointQuitScreen(controller->oleg, QuitConfirmPage(), TextQuitDesktopAsk);
+    ShowScreen(controller->oleg, OLEG::ScreenQuit);
+}
+
+void QuitToDesktop()
+{
+    // As the window's close button does (pads.cpp): the saves and settings are written as they're made
+    Native::EndSession("quit: to the desktop from the main menu");
+    std::_Exit(0);
+}
+
 void PickLevel(u32 area)
 {
     GameController* controller = G_GameController;
@@ -790,6 +901,16 @@ bool BackToPauseMenuInstead(MenuWidget* menu)
 bool MainMenuLevelsFrame()
 {
     GameController* controller = G_GameController;
+    // Quit to desktop's confirmation up (its no fading back to the main menu): the main menu's back to the title not taken meanwhile
+    if (g_QuitAsking && controller != nullptr)
+    {
+        g_QuitAsking = controller->State() == GameController::StateMainMenu && !Shown(controller->oleg.mainMenu);
+        if (g_QuitAsking)
+        {
+            return true;
+        }
+    }
+
     if (!g_FromMainMenu || controller == nullptr)
     {
         return false;
@@ -807,7 +928,7 @@ bool MainMenuLevelsFrame()
     {
         // Back: the main menu again, on its level select row
         g_FromMainMenu = false;
-        g_MainMenuReturning = true;
+        g_MainMenuReturning = NativeItems::MainMenuLevels;
         LayOutMainMenu(oleg);
         ShowScreen(oleg, OLEG::ScreenMainMenu);
         return true;
@@ -857,9 +978,9 @@ void ImprovedMenusFrame()
         g_PauseReturning = false;
     }
 
-    if (g_MainMenuReturning && oleg.mainMenu.current == oleg.mainMenu.firstPage)
+    if (g_MainMenuReturning != 0 && oleg.mainMenu.current == oleg.mainMenu.firstPage)
     {
-        g_MainMenuReturning = false;
+        g_MainMenuReturning = 0;
     }
 
     if (g_FromMainMenu && controller->State() != GameController::StateMainMenu)

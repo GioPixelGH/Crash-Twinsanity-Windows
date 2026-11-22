@@ -544,7 +544,9 @@ def game_options(exe, work):
     picked on the gems' pages and played, the pause menu from its first row, back from the gems' pages and the extras to their
     rows, return to title asked, a level picked in play played through the title, with the restart checkpoint row on (THE LIST
     85), with the outlined drop shadow none cast for the hidden character of the title returned to (THE LIST 89, #53), and the original
-    menus' first pause menu without it (the row's option off): (passed, what happened)"""
+    menus' first pause menu without it (the row's option off); the improved main menu's quit to desktop asked and refused, its pause
+    menu without disable autosave and resume, the original menus without the native rows their options leave out (THE LIST 63c,
+    #48, #33: the menus test's rows are the drawn ones, a greyed one in parentheses): (passed, what happened)"""
     fixed = {"TWIN_FIXED_TIME": "1", "TWINSANITY_AUDIO": "frames"}
     sea = run_for(exe, work / "game-options-sea",
                   ["infinite_lives=1", "speedrun_timer=1", "shadows_on_crates=1", "retail_fixes=0"],
@@ -576,8 +578,16 @@ def game_options(exe, work):
             "load game, [extras], return to title" in menus and "return to title asks: return to title?" in menus and
             "level select: level 5 (area 7)" in menus and "level select: level 1 (area 1)" in menus and
             "menus test: done" in menus),
+        "quit to desktop in the improved main menu (#33)": (
+            "menus test: quit to desktop asks: quit to desktop? yes, [no]" in menus and
+            "menus test: the main menu again: level select, new game, load game, options, [quit to desktop]" in menus),
+        "the improved pause menu without disable autosave and resume (#48)": all(
+            "disable autosave" not in line and "resume" not in line
+            for line in menus.splitlines() if "menus test: the pause menu" in line),
         "the original pause menu without restart checkpoint": (
-            "menus test: the pause menu: options, save game, load game" in original and
+            "menus test: the pause menu: options, save game, load game, (disable autosave), level select, quit game, [resume]" in original
+            and "menus test: the main menu: [new game], load game, level select, options" in original and
+            "quit to desktop" not in original and "continue" not in original and
             "restart checkpoint" not in original.split("menus test: the pause menu:")[-1] and "menus test: done" in original),
         "no drop shadow for the title's hidden character (#53)":
             "shadow trace: off the ground, the played character hidden, no drop shadow" in menus,

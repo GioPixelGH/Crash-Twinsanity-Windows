@@ -12,7 +12,7 @@ class Font;
 // The native menus' items (IDs no retail page uses) and the retail ones and texts the native menus touch (improvedmenus.cpp): the
 // pause menu's restart checkpoint, its row to the gems' pages (THE LIST 79's improved menus, and the level select's: THE LIST
 // 80), the improved menus' extras row, the main menu's level select, the level confirmation's yes, the main menu's continue
-// (THE LIST 63a); new game, the options, save game, load game, disable autosave, quit game, resume, the extras' resume and the
+// (THE LIST 63a), the improved main menu's quit to desktop and its confirmation's yes (THE LIST 63c, #33); new game, the options, save game, load game, disable autosave, quit game, resume, the extras' resume and the
 // confirmations' no; texts: quit game, its confirmation's title, extras, yes, no, back, resume
 namespace NativeItems
 {
@@ -22,6 +22,8 @@ constexpr u32 Extras = 0xF4;
 constexpr u32 MainMenuLevels = 0xF5;
 constexpr u32 PlayLevelYes = 0xF6;
 constexpr u32 MainMenuContinue = 0xF7;
+constexpr u32 MainMenuQuit = 0xF8;
+constexpr u32 QuitDesktopYes = 0xF9;
 constexpr u32 NewGame = 0;
 constexpr u32 Options = 0x1E;
 constexpr u32 SaveGame = 1;
@@ -107,6 +109,9 @@ struct ActionItem : LinkItem
         ActionPlayLevel = 0x105,
         // Native (THE LIST 63a): the main menu's continue, leading to the load game page as load game does
         ActionMainMenuContinue = 0x106,
+        // Native (THE LIST 63c, #33): the improved main menu's quit to desktop (its confirmation) and the confirmation's yes
+        ActionMainMenuQuit = 0x107,
+        ActionQuitToDesktop = 0x108,
 #endif
     };
 
