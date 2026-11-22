@@ -1104,7 +1104,12 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   OpenGL's own): to measure what the timing costs. `$TWIN_SETTINGS_LOG_TEST=1` (headless): the settings screen driven from the
   main menu through the log check's changes, then the program ends (settingsshots.cpp, beside `$TWIN_UI_SETTINGS_SHOTS`).
   `$TWIN_SETTINGS_PLAY_TEST=1` (with a level, a check_windows scenario): after 3 s of play F1 opens the settings over the game's
-  pause and their back resumes play ("settings play test: pass").
+  pause and their back resumes play ("settings play test: pass"). `$TWIN_SETTINGS_MOUSE_TEST=1` (headless, THE LIST 107): the
+  settings opened from the main menu on the Enhancements tab and the mouse driven as the window's events would (the wheel and
+  the left button's release through the screen's event watch): the wheel turned down and up over a choice's arrow, the track
+  clicked below the thumb, the thumb dragged past both ends, ten keys down, then on the audio tab the wheel over a slider and a
+  click at a quarter of its bar; no value changed but the slider's, the row under the pointer highlighted, the keys' row in view
+  ("settings mouse test: pass (...)" with the scrolls in reference pixels; check_windows' "settings mouse").
 - `$TWIN_SCREEN_TEST=1` (a window's run on a PC with two screens or more, THE LIST 88): every 120 frames the Monitor row's change
   made as the settings make it (the last screen, fullscreen, the first screen, the last again, windowed, automatic), each logged
   as the settings' closing logs it ("options: screen ..." and "display: screen N of M"), 60 frames later where the window is

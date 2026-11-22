@@ -27,6 +27,9 @@ enum class HitKind : u32
     // Portable mode's dialog: yes (or its one button, OK) and no
     DialogYes,
     DialogNo,
+    // The list's scrollbar (THE LIST 107): its track (a click pages) and its thumb (dragged), wider than they're drawn
+    ScrollTrack,
+    ScrollThumb,
 };
 
 struct HitRegion

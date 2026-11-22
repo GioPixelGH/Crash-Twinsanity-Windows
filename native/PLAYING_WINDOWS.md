@@ -158,6 +158,9 @@ There are seven tabs:
 On **Display** and **Accessibility** the game shows behind the options, so you see each change at once.
 Hold **H** (or the right trigger) to hide the options and see the whole picture.
 
+With the mouse, the wheel and the scrollbar scroll the list without changing anything.
+Click a setting, or its arrows, to change it.
+
 **Game**
 
 | Option | What it does |

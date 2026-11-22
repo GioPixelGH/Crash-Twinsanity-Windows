@@ -74,6 +74,13 @@ The defaults (`src/platform/native/ui/bindings.cpp`, `Infos`; rebound on the opt
   is drawn at two thirds of its size on the right through the overlay's transform (`OverlayFrame::Transform`, its hit regions
   moved with it), its description under it in lines. H, a pad's right trigger, or the mouse held on the bar's "hide (hold)"
   hides the whole screen while held (never over a question); the rows still take their keys meanwhile.
+- The mouse in the settings (1.4.0, THE LIST 107): the wheel scrolls the list, three rows a notch, and never changes a value
+  (1.3.0's stepped the choice or slider under the pointer, so scrolling the list changed settings by accident); the row under the
+  pointer is highlighted again as the rows move under it. The scrollbar's thumb is dragged, a click on its track pages (the rows
+  shown but one); both are taken wider than they're drawn (`HitKind::ScrollTrack`/`ScrollThumb`, after the rows). The list
+  brings the selected row into view only after a key or the controller (`SettingsView::keyMoves`), never after the mouse's
+  hover or scroll. A click is as before: a choice's arrows step it back or on, the row steps it on, a slider is set or dragged.
+  `$TWIN_SETTINGS_MOUSE_TEST` checks it (check_windows' "settings mouse").
 - Any of the mouse's buttons (left, right, middle, 4, 5) and the wheel's turns up and down can be bound to a key cell (a turn holds
   its key for one of the pad's reads). The mouse's buttons are keys only in play: in the menus the left button picks and the
   right goes back. A binding taken by another action swaps with it. A `bindings.txt` from before this scheme (no `version=2`)

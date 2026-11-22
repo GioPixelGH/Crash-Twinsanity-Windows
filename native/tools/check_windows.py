@@ -603,6 +603,17 @@ def disc_choice(exe, work):
     return not failed, what if not failed else "NOT: " + ", ".join(failed) + f" ({wrong[0][-1:]}, {chosen[0][-1:]})"
 
 
+def settings_mouse(exe, work):
+    """The mouse in the settings (THE LIST 107; $TWIN_SETTINGS_MOUSE_TEST, settings.cpp): on the Enhancements tab the wheel
+    turned over a choice's arrow scrolls the list down and back and changes no value, the row under the pointer highlighted; a
+    click on the scrollbar's track pages, its thumb dragged past both ends scrolls to the end and back; the keys bring their row
+    into view; on the audio tab the wheel over a slider leaves it, a click on its bar sets it: (passed, what happened)"""
+    log = run_for(exe, work / "settings-mouse", [], {"TWIN_SETTINGS_MOUSE_TEST": "1"}, ["--headless", "--quiet-stubs"], None,
+                  90)
+    said = re.findall(r"settings mouse test: (.*)", log)
+    return bool(said) and said[-1].startswith("pass"), said[-1] if said else "no answer"
+
+
 def level_select_saves(exe, work):
     """The level select from a loaded save (THE LIST 108, #38: "the level select overwrote my save"): a save made at the beach by
     the save test ($TWIN_SAVE_TEST=save), then with the improved menus and the level select on ($TWIN_MENUS_TEST=4) continue's
@@ -2205,6 +2216,10 @@ def report(exe, reference, work, with_sweep, reference_name=None):
 
     ok, what = disc_choice(exe, work)
     print(f"disc choice     {'ok' if ok else 'FAILED'}: {what}")
+    failed |= not ok
+
+    ok, what = settings_mouse(exe, work)
+    print(f"settings mouse  {'ok' if ok else 'FAILED'}: {what}")
     failed |= not ok
 
     ok, what = mods(exe, work)

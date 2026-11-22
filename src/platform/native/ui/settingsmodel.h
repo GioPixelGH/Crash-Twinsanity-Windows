@@ -128,7 +128,20 @@ struct SettingsView
     // aside; hidden, the screen draws nothing while its button is held (H, the right trigger, or the mouse on its prompt)
     bool preview;
     bool hidden;
+    // Changes by the keys or the controller (each brings the selected row into view; the mouse's hover and scroll never do:
+    // THE LIST 107)
+    u32 keyMoves;
 };
+
+// The list's scroll asked by the mouse since the last frame (THE LIST 107), taken once a frame by the view: the wheel's notches
+// (toward the top: three rows each), the track's pages (toward the bottom), the thumb dragged to (0-1 of its travel, -1 not)
+struct SettingsScrollAsk
+{
+    f32 notches;
+    s32 pages;
+    f32 thumbAt;
+};
+SettingsScrollAsk TakeSettingsScroll();
 
 SettingsView CurrentSettingsView();
 const std::vector<Row>& SettingsRows(u32 page);
@@ -139,8 +152,8 @@ u32 PageTitleText(u32 page);
 // A binding row's cell: its key's or button's name; whether it can be bound
 std::string BindingCellText(u32 function, u32 column);
 bool BindingCellBindable(u32 function, u32 column);
-// The list's first row shown (the view keeps the selection in its window)
-s32& SettingsScroll();
+// The list's scroll as the view last drew it (reference pixels from the list's top; the tests read it)
+f32& SettingsScroll();
 
 // The view (settingsview.cpp): the settings screen on the overlay (reference pixels), the game's menus' bar of prompts, the cursor;
 // each records its hit regions

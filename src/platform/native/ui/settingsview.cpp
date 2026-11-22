@@ -682,7 +682,10 @@ struct Animation
     u32 page = ~0u;
     u32 pageChanges = 0;
     f32 pageStart = -10.0f;
+    // The list's scroll and where it's going (the selection brought into view after a key, the wheel, the scrollbar)
     f32 scroll = 0.0f;
+    f32 scrollTarget = 0.0f;
+    u32 keyMoves = ~0u;
     f32 lastTime = 0.0f;
 };
 Animation g_Animation;
@@ -872,6 +875,8 @@ void DrawSettingsView(OverlayFrame& frame, std::vector<HitRegion>& regions)
     Animation& a = g_Animation;
     f32 delta = std::min(0.1f, std::max(0.0f, now - a.lastTime));
     a.lastTime = now;
+    bool keepSelectionInView = view.keyMoves != a.keyMoves;
+    a.keyMoves = view.keyMoves;
     if (view.pageChanges != a.pageChanges || view.page != a.page)
     {
         a.pageChanges = view.pageChanges;
@@ -879,6 +884,8 @@ void DrawSettingsView(OverlayFrame& frame, std::vector<HitRegion>& regions)
         a.pageStart = now;
         a.barY = -1.0f;
         a.scroll = 0.0f;
+        a.scrollTarget = 0.0f;
+        keepSelectionInView = true;
     }
 
     f32 fade = EaseOut((now - a.pageStart) / 0.12f);
@@ -904,36 +911,50 @@ void DrawSettingsView(OverlayFrame& frame, std::vector<HitRegion>& regions)
     f32 contentHeight = static_cast<f32>(visible.size()) * RowPitch;
     f32 maxScroll = std::max(0.0f, contentHeight - rowsHeight);
     f32 selectedTop = static_cast<f32>(selectedLine) * RowPitch;
-    f32 wantScroll = a.scroll;
-    // A row under the stuck header scrolls into view below it, and a section's first row with its title (or the line above it)
-    f32 headerAllowance = headerLine >= 0 && selectedLine > headerLine ? RowPitch : 0.0f;
-    for (s32 line = selectedLine - 1; line >= 0; line--)
+    // The selected row brought into view only after a key or the controller (THE LIST 107: the mouse's hover and scroll leave the
+    // list where it is). A row under the stuck header scrolls into view below it, and a section's first row with its title (or
+    // the line above it)
+    if (keepSelectionInView)
     {
-        RowKind above = rows[static_cast<size_t>(visible[static_cast<size_t>(line)])].kind;
-        if (above != RowSection && above != RowNote)
+        f32 headerAllowance = headerLine >= 0 && selectedLine > headerLine ? RowPitch : 0.0f;
+        for (s32 line = selectedLine - 1; line >= 0; line--)
         {
-            break;
+            RowKind above = rows[static_cast<size_t>(visible[static_cast<size_t>(line)])].kind;
+            if (above != RowSection && above != RowNote)
+            {
+                break;
+            }
+
+            headerAllowance = std::max(headerAllowance, static_cast<f32>(selectedLine - line) * RowPitch);
         }
-
-        headerAllowance = std::max(headerAllowance, static_cast<f32>(selectedLine - line) * RowPitch);
-    }
-    if (selectedTop - headerAllowance < a.scroll)
-    {
-        wantScroll = selectedTop - headerAllowance;
-    }
-    else if (selectedTop + RowHeight > a.scroll + rowsHeight)
-    {
-        wantScroll = selectedTop + RowHeight - rowsHeight;
+        if (selectedTop - headerAllowance < a.scrollTarget)
+        {
+            a.scrollTarget = selectedTop - headerAllowance;
+        }
+        else if (selectedTop + RowHeight > a.scrollTarget + rowsHeight)
+        {
+            a.scrollTarget = selectedTop + RowHeight - rowsHeight;
+        }
     }
 
-    wantScroll = std::min(maxScroll, std::max(0.0f, wantScroll));
-    a.scroll += (wantScroll - a.scroll) * std::min(1.0f, delta * 18.0f);
-    if (std::fabs(wantScroll - a.scroll) < 0.5f)
+    // The mouse's: the wheel three rows a notch, the track a page (the rows shown but one), the thumb where it's dragged (at once)
+    SettingsScrollAsk ask = TakeSettingsScroll();
+    a.scrollTarget -= ask.notches * RowPitch * 3.0f;
+    a.scrollTarget += static_cast<f32>(ask.pages) * std::max(RowPitch, rowsHeight - RowPitch);
+    if (ask.thumbAt >= 0.0f)
     {
-        a.scroll = wantScroll;
+        a.scrollTarget = ask.thumbAt * maxScroll;
+        a.scroll = a.scrollTarget;
     }
 
-    SettingsScroll() = static_cast<s32>(a.scroll / RowPitch);
+    a.scrollTarget = std::min(maxScroll, std::max(0.0f, a.scrollTarget));
+    a.scroll += (a.scrollTarget - a.scroll) * std::min(1.0f, delta * 18.0f);
+    if (std::fabs(a.scrollTarget - a.scroll) < 0.5f)
+    {
+        a.scroll = a.scrollTarget;
+    }
+
+    SettingsScroll() = a.scroll;
     frame.Clip(PanelX, rowsTop, PanelWidth, rowsHeight);
     f32 rowLeft = PanelX + PanelPadX;
     f32 rowWidth = PanelWidth - PanelPadX * 2.0f;
@@ -1138,16 +1159,22 @@ void DrawSettingsView(OverlayFrame& frame, std::vector<HitRegion>& regions)
 
     frame.NoClip();
 
-    // The scrollbar: thin and orange, when the rows overflow
+    // The scrollbar: thin and orange, when the rows overflow. Its track and thumb taken by the mouse wider than drawn, from the
+    // rows' right end past the panel's edge (THE LIST 107: after the rows, so they win there)
     if (maxScroll > 0.0f)
     {
+        f32 trackTop = rowsTop + 4.0f;
         f32 trackHeight = rowsHeight - 8.0f;
         f32 thumbHeight = std::max(30.0f, trackHeight * rowsHeight / contentHeight);
-        f32 thumbTop = rowsTop + 4.0f + (trackHeight - thumbHeight) * (a.scroll / maxScroll);
+        f32 thumbTop = trackTop + (trackHeight - thumbHeight) * (a.scroll / maxScroll);
         BoxStyle thumb;
         thumb.fill = Orange;
         thumb.radius = 3.0f;
         frame.Box(PanelX + PanelWidth - 9.0f, thumbTop, 5.0f, thumbHeight, thumb);
+        const f32 hitLeft = PanelX + PanelWidth - PanelPadX + 2.0f;
+        const f32 hitWidth = PanelPadX + 6.0f;
+        regions.push_back({HitKind::ScrollTrack, hitLeft, trackTop, hitWidth, trackHeight, -1, -1, -1});
+        regions.push_back({HitKind::ScrollThumb, hitLeft, thumbTop, hitWidth, thumbHeight, -1, -1, -1});
     }
 
     // The description of the highlighted row (or what's waited for)
