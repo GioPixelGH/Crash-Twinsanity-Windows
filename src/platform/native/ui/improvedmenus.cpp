@@ -26,6 +26,7 @@
 #include "native.h"
 
 #include "game/clock.h"
+#include "game/controllers.h"
 #include "game/gamecontroller.h"
 #include "game/language.h"
 #include "game/memory.h"
@@ -276,12 +277,19 @@ void LayOutMainMenu(OLEG& oleg)
 // logged ("menus test:"), "menus test: done" at the end, "menus test: stuck" if a step waits a minute. $TWIN_MENUS_TEST=2 ends
 // at the first pause menu (the original menus' rows: improved_menus=0 and level_select=1, restart_checkpoint on or off; THE LIST 85).
 // $TWIN_MENUS_TEST=3 (improved_menus=1, a card with saves; THE LIST 63a): the main menu's rows, continue chosen, the notice a load
-// brings answered, then 3 seconds of play and "menus test: done" (the slot it loaded is continue's own line)
+// brings answered, then 3 seconds of play and "menus test: done" (the slot it loaded is continue's own line).
+// $TWIN_MENUS_TEST=4 (improved_menus=1 and level_select=1, a card with saves; THE LIST 108, #38): the level select from a loaded
+// save as a player would. Continue's load, 3 seconds of play, the gems' pages from the pause menu and Jungle Bungle played
+// (through the title, the level select's card), an autosave there as a checkpoint's, then return to title, continue again and
+// 3 seconds of play. The progress logged at each ("menus test: the progress"); the player's card's files compared by the caller
 struct Test
 {
     bool on = false;
     bool toFirstPause = false;
     bool toContinue = false;
+    bool fromSave = false;
+    // (fromSave: 0 the save loaded, 1 the level select's play, 2 the save loaded again)
+    u32 round = 0;
     u32 step = 0;
     u32 frame = 0;
     u32 stepFrame = 0;
@@ -370,6 +378,28 @@ MenuWidget* ShownLevels(OLEG& oleg, u32* world)
     }
 
     return nullptr;
+}
+
+// (fromSave) The progress the game has: its gems and crystals, the story, the card in use and the autosave's slot
+void LogProgress(GameController* controller, const char* when)
+{
+    const GameProgress& progress = controller->progress;
+    u32 gems = 0;
+    u32 crystals = 0;
+    for (u32 level = 0; level < GameProgress::Levels; level++)
+    {
+        for (u32 gem = 0; gem < GameProgress::Gems; gem++)
+        {
+            gems += (progress.levels[level].gems >> gem) & 1;
+        }
+
+        crystals += progress.levels[level].crystal;
+    }
+
+    auto* saves = static_cast<SaveCode*>(g_SaveManager);
+    Native::Log("menus test: the progress %s: %u gems, %u crystals, story %u, the card %s, autosave %s, slot %u", when, gems, crystals,
+                static_cast<u32>(progress.play.story), Native::MemoryCardName(), saves->bits.savingDue != 0 ? "on" : "off",
+                static_cast<u32>(saves->results.slot) + 1);
 }
 
 void TestFrame(GameController* controller)
@@ -475,6 +505,30 @@ void TestFrame(GameController* controller)
         if (test.playFrames >= 150)
         {
             test.playFrames = 0;
+            if (test.step == 19 && test.fromSave)
+            {
+                LogProgress(controller, test.round == 0 ? "of the save loaded" : test.round == 1 ? "of the level select's play"
+                                                                                                    : "of the save loaded again");
+                if (test.round == 0)
+                {
+                    // To the gems' pages from the pause menu (steps 16 to 18), Jungle Bungle played, then here again
+                    test.round = 1;
+                    Press(PadBitStart);
+                    test.step = 15;
+                    Next();
+                    break;
+                }
+
+                if (test.round == 1)
+                {
+                    // An autosave as a checkpoint's (commandscharacters.cpp's), then return to title (steps 20 to 23)
+                    test.round = 2;
+                    Native::Log("menus test: an autosave asked for: %s", controller->Autosave(nullptr) != 0 ? "saving" : "autosave off");
+                    Next();
+                    break;
+                }
+            }
+
             if (test.step == 19)
             {
                 Native::Log("menus test: done");
@@ -550,6 +604,58 @@ void TestFrame(GameController* controller)
         if (pause)
         {
             Native::Log("menus test: the pause menu again: %s", Rows(oleg.pauseMenu.current).c_str());
+            Next();
+        }
+        break;
+    case 20:
+    {
+        // (fromSave) The autosave's end: the save code idle and play going on (a notice it brought answered), then paused
+        auto* saves = static_cast<SaveCode*>(g_SaveManager);
+        if (state == GameController::StatePaused && !pause && test.frame > test.buttonsUntil + 30)
+        {
+            Native::Log("menus test: paused after the autosave (pause reason %u), answered", static_cast<u32>(controller->states.pauseReason));
+            Press(MenuSelectBit());
+            break;
+        }
+
+        // (A save done leaves the step waiting: SavingWait, the storage not polled on a computer)
+        const u32 saving = static_cast<u32>(controller->states.savingStep);
+        const bool idle = (saving == GameController::SavingNone || saving == GameController::SavingWait) && saves->bits.operation == 0;
+        test.playFrames = idle && state == GameController::StatePlaying ? test.playFrames + 1 : 0;
+        if (test.playFrames >= 150)
+        {
+            test.playFrames = 0;
+            LogProgress(controller, "after the autosave");
+            Press(PadBitStart);
+            Next();
+        }
+        break;
+    }
+    case 21:
+        if (pause && Choose(oleg.pauseMenu, NativeItems::QuitGame))
+        {
+            Next();
+        }
+        break;
+    case 22:
+        // Return to title's yes (the quit page's, OlegPages' QuitYesItem)
+        if (quit && Choose(oleg.quitMenu, 0xB))
+        {
+            Native::Log("menus test: return to title: yes");
+            Next();
+        }
+        break;
+    case 23:
+        // At the title on to the main menu, there continue again (step 19 the last time)
+        if (state == GameController::StateTitle && test.frame > test.stepFrame + 60)
+        {
+            controller->SetNextState(GameController::StateMainMenu);
+        }
+        else if (state == GameController::StateMainMenu && Shown(oleg.mainMenu) &&
+                 Choose(oleg.mainMenu, NativeItems::MainMenuContinue))
+        {
+            Native::Log("menus test: continue chosen again: %s", Rows(oleg.mainMenu.current).c_str());
+            test.step = 18;
             Next();
         }
         break;
@@ -739,9 +845,10 @@ void ImprovedMenusFrame()
         }
 
         static const char* test = std::getenv("TWIN_MENUS_TEST");
-        g_Test.on = test != nullptr && (test[0] == '1' || test[0] == '2' || test[0] == '3');
+        g_Test.on = test != nullptr && (test[0] == '1' || test[0] == '2' || test[0] == '3' || test[0] == '4');
         g_Test.toFirstPause = g_Test.on && test[0] == '2';
-        g_Test.toContinue = g_Test.on && test[0] == '3';
+        g_Test.fromSave = g_Test.on && test[0] == '4';
+        g_Test.toContinue = g_Test.on && (test[0] == '3' || g_Test.fromSave);
     }
 
     // Back on the pause menu or the main menu: their first rows as usual again

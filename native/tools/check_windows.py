@@ -578,6 +578,38 @@ def game_options(exe, work):
     return not failed, ", ".join(checks) if not failed else "NOT: " + ", ".join(failed)
 
 
+def level_select_saves(exe, work):
+    """The level select from a loaded save (THE LIST 108, #38: "the level select overwrote my save"): a save made at the beach by
+    the save test ($TWIN_SAVE_TEST=save), then with the improved menus and the level select on ($TWIN_MENUS_TEST=4) continue's
+    load, the gems' pages from the pause menu, Jungle Bungle played on the level select's own card (new: its save slots' summaries
+    cleared, not the player's card's carried over), an autosave there, return to title and continue again: the player's card's
+    files byte for byte as before, the save loaded again with the progress it had: (passed, what happened)"""
+    status, log = run_game(exe, work / "level-select-saves-make", ["--headless", "--quick", "--quiet-stubs"],
+                           {"TWIN_SAVE_TEST": "save"}, timeout=400)
+    made = work / "level-select-saves-make" / "settings" / "Crash Twinsanity"
+    card = next((p for p in sorted(made.iterdir()) if p.is_dir() and p.name.startswith("memorycard") and
+                 not p.name.endswith("level-select")), None) if made.exists() else None
+    if status != 0 or card is None:
+        return False, f"no save made (the save test's exit {status})"
+    files = {str(path.relative_to(made)): path.read_bytes() for path in card.rglob("*") if path.is_file()}
+    log = run_for(exe, work / "level-select-saves", ["improved_menus=1", "level_select=1"], {"TWIN_MENUS_TEST": "4"},
+                  ["--headless", "--quiet-stubs"], None, 300, files=files)
+    settings = work / "level-select-saves" / "settings" / "Crash Twinsanity"
+    after = {str(path.relative_to(settings)): path.read_bytes() for path in (settings / card.name).rglob("*") if path.is_file()}
+    progress = re.findall(r"menus test: the progress of the save loaded(?: again)?: ([^,]+, [^,]+, story \d+)", log)
+    checks = {
+        "the play on the level select's card": "on the level select's own card" in log and "-level-select from now on" in log,
+        "its summaries not the player's card's": "the save slots' summaries cleared (no save on this card)" in log,
+        "the player's card again after": "level select: its play over, the player's own saves again" in log,
+        "the player's card as it was": after == files,
+        "the save loaded again as before": len(progress) == 2 and progress[0] == progress[1],
+        "done": "menus test: done" in log,
+    }
+    failed = [name for name, ok in checks.items() if not ok]
+    what = f"{', '.join(checks)} ({progress[0] if progress else 'no progress line'})"
+    return not failed, what if not failed else "NOT: " + ", ".join(failed)
+
+
 def archive_file(path):
     """A file of the disc's archive (CRASH6/CRASH.BD's, by CRASH.BH's table), read with iso_extract.py's reading"""
     sys.path.insert(0, str(HERE / "native" / "tools"))
@@ -2142,6 +2174,10 @@ def report(exe, reference, work, with_sweep, reference_name=None):
     print(f"game options    {'ok' if ok else 'FAILED'}: {what}")
     failed |= not ok
 
+    ok, what = level_select_saves(exe, work)
+    print(f"level select saves {'ok' if ok else 'FAILED'}: {what}")
+    failed |= not ok
+
     ok, what = mods(exe, work)
     print(f"mods            {'ok' if ok else 'FAILED'}: {what}")
     failed |= not ok
@@ -2226,6 +2262,10 @@ def report_usa(exe, work, with_sweep):
 
     ok, what = physics_vs_pal(exe, work)
     print(f"physics         {'ok' if ok else 'FAILED'} 60 Hz as the PAL disc's: {what}")
+    failed |= not ok
+
+    ok, what = level_select_saves(exe, work)
+    print(f"level select saves {'ok' if ok else 'FAILED'}: {what}")
     failed |= not ok
 
     ok, what = disc_identity(exe, work)

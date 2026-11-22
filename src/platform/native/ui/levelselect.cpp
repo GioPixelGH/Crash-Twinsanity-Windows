@@ -13,8 +13,10 @@
 #include "native.h"
 #include "mods.h"
 
+#include "game/controllers.h"
 #include "game/gamecontroller.h"
 #include "game/oleg.h"
+#include "game/savedevice.h"
 #include "game/string.h"
 
 #include <algorithm>
@@ -51,6 +53,14 @@ bool g_Session = false;
 // the title's frames waited first
 s32 g_FromPlay = -1;
 u32 g_TitleFrames = 0;
+
+// Whether the save code has no operation under way (nor its device)
+bool SaveCodeIdle()
+{
+    SaveCode* code = g_SaveManager;
+    return code == nullptr || code->device == nullptr ||
+           (code->bits.operation == 0 && code->device->flags.running == SaveDevice::OperationNone);
+}
 
 // The level's first area (-1 none)
 s32 FirstArea(u32 level)
@@ -141,9 +151,11 @@ void LevelSelectFrame()
         }
     }
 
-    if (g_Session && controller != nullptr && controller->State() == GameController::StateTitle)
+    // Back at the title: the player's card again, once the save code has nothing under way (an autosave the play asked for
+    // last is written on the level select's card, never the player's: THE LIST 108, #38); at the main menu whatever it's doing
+    if (g_Session && controller != nullptr &&
+        ((controller->State() == GameController::StateTitle && SaveCodeIdle()) || controller->State() == GameController::StateMainMenu))
     {
-        // Back at the title: the player's card again
         g_Session = false;
         Native::UseMemoryCard(Native::Mods::CardName().c_str());
         Native::Log("level select: its play over, the player's own saves again");

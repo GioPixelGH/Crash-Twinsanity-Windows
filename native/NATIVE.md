@@ -374,6 +374,14 @@ have made itself (`src/platform/native/gameoptions.h`):
   open areas raised to it; its play's saves go to a card of its own (`memorycard-level-select` in the settings folder,
   `Native::UseMemoryCard`) until the game is back at the title, so the player's saves never get a progress no played game has.
   `$TWIN_LEVEL_SELECT_TEST=N` starts level N from the main menu (the checks).
+  The save code keeps the card's save slots' summaries (its folder file, written with every slot's save, an autosave's too), so at
+  each change of card they're read again from the card now in use, or cleared on a card without the save
+  (`NativeTakeFolderSummaries`, THE LIST 108, #38): before 1.4.0 the level select's card got the player's summaries with its
+  first autosave, and its load page showed the player's saves over slots holding the level select's own plays. The player's card
+  comes back at the title once the save code has nothing under way. `$TWIN_MENUS_TEST=4` (improved menus and level select on, a
+  card with a save) loads the newest save, plays Jungle Bungle from the pause menu's gems' pages, autosaves there, returns to the
+  title and loads the save again, logging the progress each time; check_windows' "level select saves" compares the player's
+  card byte for byte.
   With it on, the gems' pages are a level select too (THE LIST 80, #48's Level Select Menu.pdf; `improvedmenus.cpp`): every
   level's title shows on them, the select hint too, and picking a level asks "play this level?" on the quit's confirmation
   screen (its menu given a page of ours and its title our text while it asks); yes starts the level the same way. They open

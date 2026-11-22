@@ -17,6 +17,12 @@
 #include <fstream>
 #include <map>
 #include <system_error>
+#include <iterator>
+#include <vector>
+
+// The save code's (savedevice.cpp, THE LIST 108): the save's folder name, and the slots' summaries taken from a card's folder file
+const char* NativeSaveFolderName();
+s32 NativeTakeFolderSummaries(const u8* bytes, u32 size);
 
 namespace fs = std::filesystem;
 
@@ -503,6 +509,21 @@ void Native::UseMemoryCard(const char* name)
     g_CurrentDirectory = "/";
     CardChanged();
     Log("memory card: the settings folder's %s from now on", name);
+    // The save code's slots' summaries this card's (savedevice.cpp, THE LIST 108): the other card's would be written onto it
+    if (const char* folder = NativeSaveFolderName())
+    {
+        std::vector<u8> bytes;
+        std::ifstream file(HostPath((std::string("/") + folder + "/" + folder).c_str()), std::ios::binary);
+        if (file)
+        {
+            bytes.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+        }
+
+        const s32 taken = NativeTakeFolderSummaries(bytes.empty() ? nullptr : bytes.data(), static_cast<u32>(bytes.size()));
+        Log("memory card: the save slots' summaries %s", taken > 0    ? "read from this card's save"
+                                                         : taken == 0 ? "cleared (no save on this card)"
+                                                                      : "left (the save code busy)");
+    }
 }
 
 const char* Native::MemoryCardName()

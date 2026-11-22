@@ -1,6 +1,7 @@
 #include "game/savedevice.h"
 
 #include "game/clock.h"
+#include "game/controllers.h"
 #include "game/memory.h"
 #include "game/stream.h"
 #include "retail/libc.h"
@@ -703,3 +704,41 @@ extern "C"
         to[3] = direction->w;
     }
 }
+
+#ifdef TWIN_NATIVE
+// The memory card in use changed (memorycard.cpp's UseMemoryCard: the level select's own card and back, THE LIST 108, #38). The
+// slots' summaries the save code keeps are the other card's, and a slot's save (an autosave too: StepWriteFile) writes the folder's
+// file with them, so this card's save pages would show the other card's saves over its own slots. The save's folder name (the
+// card's folder and its file, "BESLES-52568"), then the summaries taken from this card's folder file (nullptr, or a file that
+// isn't good: cleared, as for a card without the save). Returns 1 read, 0 cleared, -1 not done (no save code, or it's busy)
+const char* NativeSaveFolderName()
+{
+    SaveCode* code = g_SaveManager;
+    return code != nullptr && code->device != nullptr && code->device->product.string != nullptr ? code->device->product.string
+                                                                                                  : nullptr;
+}
+
+s32 NativeTakeFolderSummaries(const u8* bytes, u32 size)
+{
+    SaveCode* code = g_SaveManager;
+    SaveDevice* device = code != nullptr ? code->device : nullptr;
+    if (device == nullptr || device->folder == nullptr || code->bits.operation != 0 ||
+        device->flags.running != SaveDevice::OperationNone)
+    {
+        return -1;
+    }
+
+    FolderFile* folder = device->folder;
+    if (bytes != nullptr && size == folder->size && FileThrough(folder, SaveFile::BeginReadSlot) != 0)
+    {
+        RetailLibc::MemoryCopy(folder->stream->begin, bytes, size);
+        if (FileThrough(folder, SaveFile::EndReadSlot) != 0)
+        {
+            return 1;
+        }
+    }
+
+    folder->ClearSummaries();
+    return 0;
+}
+#endif
