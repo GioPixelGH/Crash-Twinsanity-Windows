@@ -22,9 +22,14 @@
 #ifdef TWIN_NATIVE
 #include "fixes.h"
 #include "native.h"
+#include "renderdistance.h"
 #include "ui/nativeui.h"
+#include "game/instances.h"
+#include "game/place.h"
+#include "game/player.h"
 
 #include <cstdlib>
+#include <cstring>
 #endif
 
 namespace
@@ -103,6 +108,38 @@ constexpr f32 NoSphere = -1.0f;
 constexpr f32 NotRunDistance = 0x1.E847E0p+19f;
 // The distance of a chunk not drawn this frame
 constexpr f32 NoViewDistance = 0x1.312D00p+23f;
+#ifdef TWIN_NATIVE
+// The particles by the played character kept with the farther draw distances (THE LIST 98, #60: the masks' trail, FX_AKUTRAIL,
+// cut off 25 units from the camera, so it went where a fixed camera looks at Crash from farther, on the PS2 too). With the draw
+// distance past the original (medium, long, unlimited) an emitter, or a block drawn, within its system's cut-off of the played
+// character (in its chunk) isn't cut off by the camera's distance; the original and short cut as the PS2 does. Only what's near
+// the character stays on, so the emitters on at once stay about as many (the particles' blocks are a pool shared by all)
+// ($TWIN_NEAR_PLAYER_PARTICLES=0 leaves the rule out, to compare)
+bool NearPlayedCharacter(const ChunkData* chunk, const f32* position, f32 radius)
+{
+    static const bool off = [] {
+        const char* value = std::getenv("TWIN_NEAR_PLAYER_PARTICLES");
+        return value != nullptr && value[0] == '0';
+    }();
+    if (off || !(radius > 0.0f) || Native::RenderDistanceScale() <= 1.0f || g_PlayerInstance == nullptr)
+    {
+        return false;
+    }
+
+    auto* player = static_cast<InstanceContext*>(g_PlayerInstance->object);
+    if (player == nullptr || !InstanceLive(player) || player->chunk != chunk || player->place == nullptr)
+    {
+        return false;
+    }
+
+    const ObjectPlace* place = player->place;
+    const bool moved = (place->bits.value & PlaceBits::MatrixMoved) != 0;
+    const f32 x = (moved ? place->matrix.m[3][0] : place->position.x) - position[0];
+    const f32 y = (moved ? place->matrix.m[3][1] : place->position.y) - position[1];
+    const f32 z = (moved ? place->matrix.m[3][2] : place->position.z) - position[2];
+    return x * x + y * y + z * z < radius * radius;
+}
+#endif
 // What the reader's set-up returns (nothing reads it)
 constexpr u32 ReaderSet = 0x65;
 
@@ -3024,7 +3061,12 @@ extern "C"
 
                 if (!(distance < system->drawCutOff))
                 {
-                    continue;
+#ifdef TWIN_NATIVE
+                    if (!NearPlayedCharacter(chunk, place, system->drawCutOff))
+#endif
+                    {
+                        continue;
+                    }
                 }
 
                 if (DrawsHexagons(system))
@@ -3301,10 +3343,29 @@ extern "C"
 
             s32 view = ParticleViewOf(views, runtime->chunk);
             runtime->cameraDistance = view == -1 ? NoViewDistance : Platform::Math::ViewDistance(view, runtime->position);
+            // (the distance the cut off radius is measured by: the camera's, or none by the played character with the farther draw
+            // distances: THE LIST 98)
+            f32 cutOffDistance = runtime->cameraDistance;
+#ifdef TWIN_NATIVE
+            if (view != -1 && NearPlayedCharacter(runtime->chunk, runtime->position, system->cutOffRadius))
+            {
+                cutOffDistance = 0.0f;
+                // $TWIN_PARTICLE_TRACE: a system's emitter kept on by the rule, the first time past its cut off from the camera
+                static const bool trace = std::getenv("TWIN_PARTICLE_TRACE") != nullptr;
+                static u8 traced[32] = {};
+                const u32 index = static_cast<u32>(runtime->system) & 0xFF;
+                if (trace && system->cutOffRadius < runtime->cameraDistance && (traced[index >> 3] & (1u << (index & 7))) == 0)
+                {
+                    traced[index >> 3] |= static_cast<u8>(1u << (index & 7));
+                    Native::Log("particle trace: %.16s kept on by the played character, %.1f from the camera (its cut off %.0f)",
+                                system->name, static_cast<double>(runtime->cameraDistance), static_cast<double>(system->cutOffRadius));
+                }
+            }
+#endif
             if (runtime->enabled != 0)
             {
                 if (runtime->cameraDistance < system->cutOnRadius ||
-                    (0.0f < system->cutOffRadius && system->cutOffRadius < runtime->cameraDistance))
+                    (0.0f < system->cutOffRadius && system->cutOffRadius < cutOffDistance))
                 {
                     runtime->enabled = 0;
                 }
@@ -3324,7 +3385,7 @@ extern "C"
             {
                 // Back on within the radiuses (no cut off radius: any distance past the cut on), not before the next time it's run
                 if (system->cutOnRadius <= runtime->cameraDistance &&
-                    (system->cutOffRadius == 0.0f || runtime->cameraDistance <= system->cutOffRadius))
+                    (system->cutOffRadius == 0.0f || cutOffDistance <= system->cutOffRadius))
                 {
                     runtime->enabled = 1;
                 }

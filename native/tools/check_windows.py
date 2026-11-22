@@ -147,6 +147,13 @@ SCENARIOS = [
                                           "TWIN_PAD_SCRIPT": "700-708:cross"},
           expect=[r"(?s)pad script: from read 700 .*the ring growing, off the ground.*the ring whole.*"
                   r"the ring shrinking, on the ground.*the ring gone"])),
+    # Issue #60 (THE LIST 98): Aku Aku's trail (FX_AKUTRAIL, cut off 25 units from the camera) kept on by the played character with
+    # a draw distance past the original (long): the camera stopped (unfollow) and Crash run away from it on the beach with a mask
+    ("Aku Aku's trail kept by Crash past 25 units from the camera with a farther draw distance (#60)", "Levels\\Earth\\Hub\\beach",
+     20, "idle,mask,wait2,unfollow,wait12",
+     dict(options="render_distance=3\n", env={"TWIN_PARTICLE_TRACE": "1", "TWIN_SWEEP_GAME_TIME": "1", "TWIN_FIXED_TIME": "1",
+                                              "TWIN_PAD_SCRIPT": "740-1100:ly=0"},
+          expect=[r"particle trace: FX_AKUTRAIL kept on by the played character, (2[5-9]|[3-9]\d)\.\d from the camera"])),
     # Issue #58 (THE LIST 95): alta's outline crates (an outline TNT beside a tower of outline Nitro and iron crates, their
     # collision and triggers' signals off until their "!" crate) left whole under Bug fixes by a body's knock and an explosion's
     # damage (the hop's knock: and damage: on the TNT; retail's TNT explodes and its ten Nitro with it, on the PS2 too); made solid

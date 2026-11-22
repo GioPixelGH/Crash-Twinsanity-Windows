@@ -1097,6 +1097,9 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   rather than decoding it from memory, logged once ("graphics: a 256x256 texture at 2800/4 (psm 0) read from the target ...");
   `$TWIN_HW_NO_TARGET_TEXTURES=1`: none, every texture decoded from memory's copy (an effect's buffer then at the PS2's
   resolution): to tell that way's drawing from the decoder's (GRAPHICS.md, "Ant Agony's walls and doors").
+- `$TWIN_NEAR_PLAYER_PARTICLES=0`: the farther draw distances' particles by the played character cut off by the camera's
+  distance as the original's are (THE LIST 98, NATIVE.md's "Draw distance"): to compare with the rule (cmp_options.py's A: and B:
+  variables); `$TWIN_PARTICLE_TRACE` logs each system the rule keeps on, the first time.
 - `$TWIN_RENDER_DISTANCE=far`: the draw distance's far plane its choice's even where the colour filter reads the depth
   (renderdistance.h, NATIVE.md's "Draw distance"): to see what it would change. The log's "render distance: the far plane Nx"
   lines say when the far plane moves.
