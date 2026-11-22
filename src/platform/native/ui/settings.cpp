@@ -33,6 +33,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <functional>
 #include <iterator>
 #include <mutex>
@@ -216,6 +217,59 @@ void SelectTab(u32 tab);
 void AskPortable(bool portable);
 void OpenDialog(PortableDialog dialog);
 void Close();
+
+std::string OverlayWords(const std::string& utf8);
+
+// The disc row's (THE LIST 31d): the file dialog asked for, and its answer taken while the settings are open (TakeDiscAnswer)
+bool g_DiscAsked = false;
+std::string g_DiscNote;
+
+// A release by its serial as the row names it: PAL's, the North American v2.00's
+std::string DiscName(const std::string& serial)
+{
+    return (serial == "SLES-52568" ? std::string("PAL") : std::string("NTSC-U")) + " \xB7 " + serial;
+}
+
+void AskDisc()
+{
+    g_DiscAsked = true;
+    Native::AskForDiscImage();
+}
+
+// The file dialog's answer: nothing when cancelled; else checked as the start checks an image (its data left as they are) and
+// remembered for the next start, or refused with what the start would have said; a dialog says which
+void TakeDiscAnswer()
+{
+    std::string image;
+    if (!g_DiscAsked || !Native::TakeAskedDiscImage(&image))
+    {
+        return;
+    }
+
+    g_DiscAsked = false;
+    if (image.empty())
+    {
+        Native::Log("disc image: none chosen (the file dialog cancelled)");
+        return;
+    }
+
+    std::string serial;
+    const std::string problem = Native::DiscImageGiven() ? std::string("This start's disc image is given by --iso, $TWINSANITY_ISO or "
+                                                                       "local.json: change it there.")
+                                                         : Native::CheckOtherDiscImage(image, &serial);
+    if (!problem.empty())
+    {
+        Native::Log("disc image: not chosen: %s", Native::WithoutProfile(problem).c_str());
+        g_DiscNote = OverlayWords(problem);
+        OpenDialog(DialogDiscRefused);
+        return;
+    }
+
+    Native::ChooseDiscImage(image, serial);
+    std::u8string name = std::filesystem::path(std::u8string(reinterpret_cast<const char8_t*>(image.data()), image.size())).filename().u8string();
+    g_DiscNote = DiscName(serial) + ": " + OverlayWords(std::string(name.begin(), name.end()));
+    OpenDialog(Native::NextDiscSerial().empty() ? DialogDiscInUse : DialogDiscChosen);
+}
 // The level select's level (its row's choice, kept while the program runs)
 s32 g_LevelSelectChoice = 0;
 
@@ -437,6 +491,10 @@ void Build()
     g_Built = true;
     // The game (THE LIST 64): the languages, the skip, the loading, the pause, the timer; then the program's own rows
     std::vector<Row>& game = g_Rows[TabGame];
+    // The disc in use (THE LIST 31d: its release and serial), and another image chosen with the file dialog, played from the next
+    // start: stepping the row (or selecting it) asks for one
+    game.push_back(Choice(
+        TextDisc, TextDescDisc, [] { return 0; }, [](s32) { AskDisc(); }, 1, [](s32) { return DiscName(Native::DiscSerial()); }));
     // The texts' language (and the voices', unless the next row chooses theirs: THE LIST 7). A slot whose texts are another
     // language by their content (#25's Portuguese in the English slot: languages.cpp) is named by that language. Both rows only
     // on the PAL disc: the North American disc has one language, its English (THE LIST 31)
@@ -1623,6 +1681,9 @@ void TakeDialogInput()
     case DialogCredits:
     case DialogImported:
     case DialogImportFailed:
+    case DialogDiscChosen:
+    case DialogDiscInUse:
+    case DialogDiscRefused:
         if (yes || no)
         {
             g_Dialog = DialogNone;
@@ -1636,6 +1697,7 @@ void TakeDialogInput()
 
 void TakeInput()
 {
+    TakeDiscAnswer();
     std::vector<Row>& rows = g_Rows[g_Tab];
     if (g_Capturing)
     {
@@ -1916,6 +1978,11 @@ SettingsView CurrentSettingsView()
         view.backup = OverlayWords(g_Import.source);
         view.failure = g_Import.failure;
     }
+    else if (g_Dialog == DialogDiscChosen || g_Dialog == DialogDiscInUse || g_Dialog == DialogDiscRefused)
+    {
+        view.backup = g_Dialog == DialogDiscRefused ? std::string() : g_DiscNote;
+        view.failure = g_Dialog == DialogDiscRefused ? g_DiscNote : std::string();
+    }
     else if (g_Dialog != DialogNone)
     {
         Native::PortableSwitchState(&view.copied, &view.copyTotal, &view.backup, &view.failure);
@@ -2064,9 +2131,53 @@ bool ScreenPositionClosed()
     return true;
 }
 
+// $TWIN_DISC_TEST (the checks, THE LIST 31d; $TWIN_TEST_PICK the image the file dialog answers): from the Vivendi logo to the
+// main menu, there the settings opened on the game's tab and the disc row stepped; the dialog its answer brings logged ("disc
+// test:"), then the program ends
+void DiscTestFrame()
+{
+    static const bool test = std::getenv("TWIN_DISC_TEST") != nullptr;
+    static u32 step = 0;
+    GameController* controller = G_GameController;
+    if (!test || controller == nullptr)
+    {
+        return;
+    }
+
+    if (step == 0 && controller->State() == GameController::StateVivendiLogo)
+    {
+        controller->SetNextState(GameController::StateMainMenu);
+    }
+    else if (step == 0 && controller->State() == GameController::StateMainMenu)
+    {
+        OpenSettings();
+        SelectTab(TabGame);
+        for (Row& row : g_Rows[TabGame])
+        {
+            if (row.label == TextDisc)
+            {
+                Native::Log("disc test: the disc row stepped, the disc in use %s", Native::DiscSerial().c_str());
+                Step(row, 1);
+                step = 1;
+            }
+        }
+    }
+    else if (step == 1 && g_Dialog != DialogNone)
+    {
+        Native::Log("disc test: %s, the next start's disc %s",
+                    g_Dialog == DialogDiscChosen    ? "chosen"
+                    : g_Dialog == DialogDiscInUse   ? "the one in use chosen"
+                    : g_Dialog == DialogDiscRefused ? "refused"
+                                                    : "another dialog",
+                    Native::NextDiscSerial().empty() ? "the one in use" : Native::NextDiscSerial().c_str());
+        std::exit(0);
+    }
+}
+
 // The update's part: the input taken against last frame's regions
 void SettingsFrame()
 {
+    DiscTestFrame();
     if (!g_Open || G_GameController == nullptr)
     {
         return;

@@ -578,6 +578,31 @@ def game_options(exe, work):
     return not failed, ", ".join(checks) if not failed else "NOT: " + ", ".join(failed)
 
 
+def disc_choice(exe, work):
+    """Options > Game > Disc (THE LIST 31d; $TWIN_DISC_TEST, $TWIN_TEST_PICK the file the dialog answers): a text file refused with
+    disc_image.txt as it was, then the other disc (local.json's North American image, else the one in use) chosen for the next
+    start, disc_image.txt naming it: (passed, what happened)"""
+    other = other_disc_image("disc_image_usa") if not DISC else disc_image(pal=True)
+    other = other or disc_image()
+    said = {}
+    for name, pick in (("wrong", None), ("other", other)):
+        folder = work / f"disc-choice-{name}"
+        settings = folder / "settings" / "Crash Twinsanity"
+        pick = pick or str(settings / "options.txt")
+        log = run_for(exe, folder, [], {"TWIN_DISC_TEST": "1", "TWIN_TEST_PICK": pick}, ["--headless", "--quiet-stubs"], None, 60)
+        remembered = (settings / "disc_image.txt").read_text().strip()
+        said[name] = (re.findall(r"disc test: (.*)", log), remembered)
+    wrong, chosen = said["wrong"], said["other"]
+    checks = {
+        "a text file refused": bool(wrong[0]) and wrong[0][-1].startswith("refused") and wrong[1] == disc_image(),
+        "the other disc chosen for the next start": bool(chosen[0]) and chosen[0][-1].startswith(("chosen", "the one in use"))
+                                                     and Path(chosen[1]).resolve() == Path(other).resolve(),
+    }
+    failed = [name for name, ok in checks.items() if not ok]
+    what = f"{', '.join(checks)} ({chosen[0][-1] if chosen[0] else 'no answer'})"
+    return not failed, what if not failed else "NOT: " + ", ".join(failed) + f" ({wrong[0][-1:]}, {chosen[0][-1:]})"
+
+
 def level_select_saves(exe, work):
     """The level select from a loaded save (THE LIST 108, #38: "the level select overwrote my save"): a save made at the beach by
     the save test ($TWIN_SAVE_TEST=save), then with the improved menus and the level select on ($TWIN_MENUS_TEST=4) continue's
@@ -2178,6 +2203,10 @@ def report(exe, reference, work, with_sweep, reference_name=None):
     print(f"level select saves {'ok' if ok else 'FAILED'}: {what}")
     failed |= not ok
 
+    ok, what = disc_choice(exe, work)
+    print(f"disc choice     {'ok' if ok else 'FAILED'}: {what}")
+    failed |= not ok
+
     ok, what = mods(exe, work)
     print(f"mods            {'ok' if ok else 'FAILED'}: {what}")
     failed |= not ok
@@ -2266,6 +2295,10 @@ def report_usa(exe, work, with_sweep):
 
     ok, what = level_select_saves(exe, work)
     print(f"level select saves {'ok' if ok else 'FAILED'}: {what}")
+    failed |= not ok
+
+    ok, what = disc_choice(exe, work)
+    print(f"disc choice     {'ok' if ok else 'FAILED'}: {what}")
     failed |= not ok
 
     ok, what = disc_identity(exe, work)

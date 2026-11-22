@@ -392,6 +392,13 @@ enum NativeText : u32
     TextFastExperimental,
     // The Mods page's note on the North American disc (THE LIST 31): the mods aren't used there
     TextNoteModsOtherDisc,
+    // The disc row (THE LIST 31d): the row, its description, and its dialogs' messages (chosen for the next start, the one in use,
+    // not a disc image the game plays)
+    TextDisc,
+    TextDescDisc,
+    TextDiscChosen,
+    TextDiscInUse,
+    TextDiscRefused,
     NativeTextEnd,
 };
 

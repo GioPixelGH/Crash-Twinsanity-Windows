@@ -71,6 +71,19 @@ void OpenDiscImage();
 // The serial of the release whose program the disc has ("SLES-52568", the North American "SLUS-20909"), and whether it's PAL's
 const std::string& DiscSerial();
 bool PalDisc();
+// Another disc image chosen in the game's options (Options > Game > Disc, THE LIST 31d), played from the next start as a picked
+// one is. AskForDiscImage opens the system's file dialog without waiting (the game goes on; $TWIN_TEST_PICK answers at once in
+// the tests); TakeAskedDiscImage gives its answer once there is one ("" cancelled). CheckOtherDiscImage reads an image's program
+// with its own handle (the disc played stays as it is) and checks it as the start does: "" when this program plays it (its
+// serial given), else what's wrong, in the start's words. ChooseDiscImage remembers it (disc_image.txt, relative in portable
+// mode) unless this start's image was given (--iso, $TWINSANITY_ISO, local.json: DiscImageGiven), and NextDiscSerial is the
+// serial the next start plays ("" none chosen)
+void AskForDiscImage();
+bool TakeAskedDiscImage(std::string* image);
+std::string CheckOtherDiscImage(const std::string& image, std::string* serial);
+bool DiscImageGiven();
+void ChooseDiscImage(const std::string& image, const std::string& serial);
+const std::string& NextDiscSerial();
 // --snapshots DIR: the shown picture saved as a PNG every 2 seconds (snapshots.cpp), checked once a frame
 void SetSnapshotFolder(const char* folder);
 void SnapshotFrame();

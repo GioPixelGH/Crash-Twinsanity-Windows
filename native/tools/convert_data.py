@@ -1029,6 +1029,16 @@ def write_cpp(results, objects, aliases, recipes, marks, problems):
                  "    uint64_t hash = FnvBasis;\n    for (const Object* object = g_Objects; object->at != nullptr; object++)\n    {\n"
                  "        hash = Fnv1a(object->at, object->size, hash);\n    }\n\n"
                  "    return hash == DataHash ? 0 : 2;\n}\n")
+    lines.append("// Whether a disc image's program (PROGRAM's bytes, read from it) is one this build plays, its data left as it is (the\n"
+                 "// game's options choosing another image for the next start, THE LIST 31d): 0 yes, 1 another version or a changed copy,\n"
+                 "// 2 a program this build has nothing for\n"
+                 'extern "C" int NativeCheckRetailData(const char* program, const unsigned char* executable, uint64_t size)\n{\n'
+                 '    if (strcmp(program, "SLES_525.68") == 0)\n    {\n'
+                 "        return size == ExecutableSize && Fnv1a(executable, size, FnvBasis) == ExecutableHash ? 0 : 1;\n    }\n\n"
+                 "    for (const Release* release = g_Releases; release->program != nullptr; release++)\n    {\n"
+                 "        if (strcmp(release->program, program) == 0)\n        {\n"
+                 "            return size == release->size && Fnv1a(executable, size, FnvBasis) == release->hash ? 0 : 1;\n"
+                 "        }\n    }\n\n    return 2;\n}\n")
     lines.append('extern "C" void NativeApplyDataFixups()\n{\n    for (const Fixup& fixup : g_Fixups)\n    {\n'
                  '        memcpy(fixup.at, &fixup.to, sizeof(fixup.to));\n    }\n}')
     (BUILD / "data.cpp").write_text("\n".join(lines) + "\n")

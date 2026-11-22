@@ -484,10 +484,15 @@ void DrawPortableDialog(OverlayFrame& frame, const SettingsView& view, const Box
                   : view.dialog == DialogImporting ? TextModsImporting
                   : view.dialog == DialogImported  ? TextModsImported
                   : view.dialog == DialogImportFailed ? TextModsImportFailed
+                  : view.dialog == DialogDiscChosen   ? TextDiscChosen
+                  : view.dialog == DialogDiscInUse    ? TextDiscInUse
+                  : view.dialog == DialogDiscRefused  ? TextDiscRefused
                                                  : TextPortableFailed;
     const bool importing = view.dialog == DialogImporting || view.dialog == DialogImported || view.dialog == DialogImportFailed;
+    const bool disc = view.dialog == DialogDiscChosen || view.dialog == DialogDiscInUse || view.dialog == DialogDiscRefused;
     const u32 heading = view.dialog == DialogQuit ? TextQuitDesktop : view.dialog == DialogCredits ? TextCredits
                         : importing                ? TextModsImport
+                        : disc                     ? TextDisc
                                                    : TextPortable;
     std::string text = Sentence(Text(message));
     if (view.dialog == DialogDone)
@@ -521,9 +526,14 @@ void DrawPortableDialog(OverlayFrame& frame, const SettingsView& view, const Box
         lines.push_back(Sentence(Text(TextPortableBackup)));
         lines.push_back("\"" + view.backup + "\"");
     }
-    else if ((view.dialog == DialogFailed || view.dialog == DialogImportFailed) && !view.failure.empty())
+    else if ((view.dialog == DialogFailed || view.dialog == DialogImportFailed || view.dialog == DialogDiscRefused) &&
+             !view.failure.empty())
     {
         notes = Wrapped(view.failure, textWidth, note);
+    }
+    else if ((view.dialog == DialogDiscChosen || view.dialog == DialogDiscInUse) && !view.backup.empty())
+    {
+        notes = Wrapped(view.backup, textWidth, note);
     }
     else if (view.dialog == DialogImporting && !view.backup.empty())
     {

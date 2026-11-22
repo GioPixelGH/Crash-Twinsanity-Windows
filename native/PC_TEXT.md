@@ -351,6 +351,11 @@ text can't hold, such as curly quotes, stays empty, as the ui self-test finds th
 | 0x22B | accurate | précis | genau | preciso | accurato |  |
 | 0x22C | fast (experimental) | rapide (expérimental) | schnell (experimentell) | rápido (experimental) | veloce (sperimentale) |  |
 | 0x22D | mods are made for the pal disc. they aren't used with this disc. | les mods sont faits pour le disque pal. ils ne servent pas avec ce disque. | mods sind für die pal-disc gemacht. mit dieser disc werden sie nicht genutzt. | los mods están hechos para el disco pal. no se usan con este disco. | le mod sono fatte per il disco pal. con questo disco non si usano. |  |
+| 0x22E | disc | disque | disc | disco | disco |  |
+| 0x22F | the disc image the game plays. choose another one to play it from the next start. | l'image disque que le jeu utilise. choisis-en une autre pour la jouer au prochain lancement. | das disc-image, das das spiel nutzt. wähle ein anderes, um es ab dem nächsten start zu spielen. | la imagen de disco que usa el juego. elige otra para usarla al volver a abrir el juego. | l'immagine del disco che il gioco usa. scegline un'altra per usarla dal prossimo avvio del gioco. |  |
+| 0x230 | the game plays this disc image from the next start. | le jeu utilisera cette image disque au prochain lancement. | das spiel nutzt dieses disc-image ab dem nächsten start. | el juego usará esta imagen de disco al volver a abrirlo. | il gioco userà questa immagine del disco dal prossimo avvio. |  |
+| 0x231 | this is the disc image the game is playing. | c'est l'image disque que le jeu utilise. | das spiel nutzt dieses disc-image schon. | es la imagen de disco que el juego está usando. | è l'immagine del disco che il gioco sta usando. |  |
+| 0x232 | this file isn't a disc image the game plays. | ce fichier n'est pas une image disque que le jeu peut utiliser. | diese datei ist kein disc-image, das das spiel nutzen kann. | este archivo no es una imagen de disco que el juego pueda usar. | questo file non è un'immagine del disco che il gioco può usare. |  |
 
 ## English (29 lines)
 

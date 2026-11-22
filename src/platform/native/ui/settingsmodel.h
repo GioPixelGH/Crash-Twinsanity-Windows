@@ -92,6 +92,11 @@ enum PortableDialog : u32
     DialogImporting,
     DialogImported,
     DialogImportFailed,
+    // The disc row's (THE LIST 31d): another image chosen for the next start, the one in use chosen, a file refused (failure what
+    // the start would have said, in English); the chosen one's name and disc in backup
+    DialogDiscChosen,
+    DialogDiscInUse,
+    DialogDiscRefused,
 };
 
 // What the view draws this frame

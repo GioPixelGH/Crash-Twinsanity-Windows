@@ -29,7 +29,9 @@ Nothing else: the folder carries the libraries the game needs.
 
 Good to know:
 
-- To pick another disc image, delete `disc_image.txt` from the settings folder (below).
+- **Options > Game > Disc** shows which disc the game is playing.
+  To play another disc image, select that row and pick the image.
+  The game checks it at once and plays it from the next start.
   You can also start the game with `CrashTwinsanity.exe --iso "C:\path\to\game.iso"`.
 - If you move or rename the disc image, the game says so and asks for it again.
 - If the image isn't one of those two discs (another game, or another version of Crash Twinsanity), a message says so and asks for another one.
@@ -160,6 +162,7 @@ Hold **H** (or the right trigger) to hide the options and see the whole picture.
 
 | Option | What it does |
 | --- | --- |
+| Disc | The disc the game is playing: PAL (SLES-52568) or NTSC-U (SLUS-20909, the North American disc). Select it to pick another disc image, which plays from the next start. |
 | Text language | English, French, German, Italian or Spanish. Windows' language by default. It applies from the next start. |
 | Voice language | The voices and the movies' sound. The same as the texts by default, or another one, from the next start. A translated disc image that keeps its texts in another language's place shows that language's name: Brazilian Portuguese texts in the English slot read "português". |
 | Skip cutscenes | Hold any button for a second to skip a cutscene. Off by default, as the PS2 game couldn't. |

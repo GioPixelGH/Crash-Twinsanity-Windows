@@ -20,8 +20,10 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -292,6 +294,7 @@ void Native::Fatal(const char* format, ...)
 extern "C" int NativeLoadRetailData(const unsigned char* executable, uint64_t size);
 extern "C" int NativeLoadRetailDataAs(const char* program, const unsigned char* executable, uint64_t size);
 extern "C" const char* NativeOtherRelease(uint32_t index, const char** serial, const char** version);
+extern "C" int NativeCheckRetailData(const char* program, const unsigned char* executable, uint64_t size);
 
 namespace
 {
@@ -327,6 +330,29 @@ void Tell(SDL_MessageBoxFlags kind, const std::string& message)
 {
     Tell(SDL_MESSAGEBOX_ERROR, message);
     Native::Fatal("%s", message.c_str());
+}
+
+// What's wrong with an image, in the start's words and the options' (CheckDiscImage, CheckOtherDiscImage): not one this program
+// plays, and another version of a release's program (or a changed copy)
+std::string NotTheGameMessage(const std::string& image)
+{
+    return Format("%s isn't a Crash Twinsanity disc this program plays (%s): there's no SLES_525.68 or SLUS_209.09 on it.",
+                  image.c_str(), DiscsPlayed);
+}
+
+std::string OtherVersionMessage(const std::string& image, bool pal, const char* serial, const char* version, const char* program)
+{
+    if (!pal)
+    {
+        return Format("%s has another version of %s's program, or a changed copy: this program plays its version %s, whose "
+                      "%s has the SHA-1 9637769b520f137a2225eb1a24b35d602ca2c79d (redump.org's disc 13689), and the PAL "
+                      "release (Europe/Australia, SLES-52568).",
+                      image.c_str(), serial, version, program);
+    }
+
+    return Format("%s is another version of Crash Twinsanity, or a changed copy: this program plays %s; the PAL release's "
+                  "SLES_525.68 has the SHA-1 d41b8d53f733f930cf03d8ea944bec24429fe57c.",
+                  image.c_str(), DiscsPlayed);
 }
 
 // The disc image opened and checked, its data laid out: "" when it's the PAL disc with the executable this build is for, or another
@@ -365,8 +391,7 @@ std::string CheckDiscImage(const std::string& image)
     {
         Native::LogRefusedDisc(image);
         Native::Disc::Close();
-        return Format("%s isn't a Crash Twinsanity disc this program plays (%s): there's no SLES_525.68 or SLUS_209.09 on it.",
-                      image.c_str(), DiscsPlayed);
+        return NotTheGameMessage(image);
     }
 
     std::vector<u8> bytes(executable.size);
@@ -391,17 +416,7 @@ std::string CheckDiscImage(const std::string& image)
     case 1:
         Native::LogRefusedDisc(image);
         Native::Disc::Close();
-        if (!pal)
-        {
-            return Format("%s has another version of %s's program, or a changed copy: this program plays its version %s, whose "
-                          "%s has the SHA-1 9637769b520f137a2225eb1a24b35d602ca2c79d (redump.org's disc 13689), and the PAL "
-                          "release (Europe/Australia, SLES-52568).",
-                          image.c_str(), serial, version, program);
-        }
-
-        return Format("%s is another version of Crash Twinsanity, or a changed copy: this program plays %s; the PAL release's "
-                      "SLES_525.68 has the SHA-1 d41b8d53f733f930cf03d8ea944bec24429fe57c.",
-                      image.c_str(), DiscsPlayed);
+        return OtherVersionMessage(image, pal, serial, version, program);
     default:
         Native::Disc::Close();
         return Format("The game's data read from %s isn't what this program was built for.", image.c_str());
@@ -517,6 +532,201 @@ const std::string& Native::DiscSerial()
 bool Native::PalDisc()
 {
     return g_DiscSerial == PalSerial;
+}
+
+// ------------------------------------------------------------------------- another disc image chosen in the options (THE LIST 31d)
+namespace
+{
+std::mutex g_AskLock;
+bool g_AskOpen = false;
+bool g_AskAnswered = false;
+std::string g_AskAnswer;
+std::string g_NextDiscSerial;
+
+u32 Le32(const u8* bytes)
+{
+    return static_cast<u32>(bytes[0]) | static_cast<u32>(bytes[1]) << 8 | static_cast<u32>(bytes[2]) << 16 |
+           static_cast<u32>(bytes[3]) << 24;
+}
+
+std::filesystem::path Utf8Path(const std::string& text)
+{
+    return std::filesystem::path(std::u8string(reinterpret_cast<const char8_t*>(text.data()), text.size()));
+}
+
+// A file of an image's root directory (an ISO 9660 image of 2048-byte sectors, as disc.cpp reads) read whole with a handle of
+// its own: 1 read, 0 not on it, -1 the image can't be read as one
+s32 ReadImageRootFile(const std::string& image, const char* name, std::vector<u8>* bytes)
+{
+    constexpr u32 Sector = 2048;
+    std::ifstream file(Utf8Path(image), std::ios::binary);
+    auto readAt = [&file](u64 offset, void* to, size_t size) {
+        file.clear();
+        file.seekg(static_cast<std::streamoff>(offset));
+        file.read(static_cast<char*>(to), static_cast<std::streamsize>(size));
+        return file.gcount() == static_cast<std::streamsize>(size);
+    };
+    u8 descriptor[Sector];
+    if (!file || !readAt(16ull * Sector, descriptor, Sector) || descriptor[0] != 1 || std::memcmp(descriptor + 1, "CD001", 5) != 0)
+    {
+        return -1;
+    }
+
+    const u32 rootSize = Le32(descriptor + 156 + 10);
+    std::vector<u8> root(rootSize);
+    if (rootSize == 0 || rootSize > (1u << 20) || !readAt(static_cast<u64>(Le32(descriptor + 156 + 2)) * Sector, root.data(), rootSize))
+    {
+        return -1;
+    }
+
+    for (u32 at = 0; at < rootSize;)
+    {
+        const u8 length = root[at];
+        if (length == 0)
+        {
+            // Records don't cross sectors: the rest of this one is empty
+            at = (at / Sector + 1) * Sector;
+            continue;
+        }
+
+        if (at + 33 > rootSize || at + length > rootSize || length < 33)
+        {
+            break;
+        }
+
+        const u8* record = &root[at];
+        std::string recordName(reinterpret_cast<const char*>(record + 33), std::min<u32>(record[32], length - 33u));
+        recordName = recordName.substr(0, recordName.find(';'));
+        for (char& c : recordName)
+        {
+            c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        }
+
+        if ((record[25] & 2) == 0 && recordName == name)
+        {
+            const u32 size = Le32(record + 10);
+            bytes->resize(size);
+            return size <= (64u << 20) && readAt(static_cast<u64>(Le32(record + 2)) * Sector, bytes->data(), size) ? 1 : -1;
+        }
+
+        at += length;
+    }
+
+    return 0;
+}
+}
+
+void Native::AskForDiscImage()
+{
+    {
+        std::lock_guard lock(g_AskLock);
+        if (g_AskOpen)
+        {
+            return;
+        }
+
+        // $TWIN_TEST_PICK: the tests' answer, without the dialog (empty: cancelled)
+        if (const char* test = std::getenv("TWIN_TEST_PICK"))
+        {
+            g_AskAnswer = test;
+            g_AskAnswered = true;
+            return;
+        }
+
+        g_AskOpen = true;
+        g_AskAnswered = false;
+    }
+
+    // (The lock let go: SDL may answer at once, on this thread)
+    static const SDL_DialogFileFilter filters[] = {{"PS2 disc image", "iso;bin;img"}, {"Any file", "*"}};
+    static std::string folder;
+    std::error_code ignored;
+    folder = std::filesystem::is_directory(Utf8Path(g_DiscImage).parent_path(), ignored) ? g_DiscImage : std::string();
+    Log("disc image: the file dialog asked for (Options > Game > Disc)");
+    SDL_ShowOpenFileDialog(
+        [](void*, const char* const* files, int) {
+            std::lock_guard lock(g_AskLock);
+            g_AskAnswer = files != nullptr && files[0] != nullptr ? files[0] : "";
+            g_AskAnswered = true;
+            g_AskOpen = false;
+        },
+        nullptr, SDL_GetKeyboardFocus(), filters, 2, folder.empty() ? nullptr : folder.c_str(), false);
+}
+
+bool Native::TakeAskedDiscImage(std::string* image)
+{
+    std::lock_guard lock(g_AskLock);
+    if (!g_AskAnswered)
+    {
+        return false;
+    }
+
+    g_AskAnswered = false;
+    *image = g_AskAnswer;
+    return true;
+}
+
+std::string Native::CheckOtherDiscImage(const std::string& image, std::string* serial)
+{
+    // The PAL program, else another release's, as CheckDiscImage looks
+    const char* program = "SLES_525.68";
+    const char* found = PalSerial;
+    const char* version = "1.01";
+    std::vector<u8> bytes;
+    s32 read = ReadImageRootFile(image, program, &bytes);
+    for (uint32_t index = 0; read == 0; index++)
+    {
+        program = NativeOtherRelease(index, &found, &version);
+        if (program == nullptr)
+        {
+            break;
+        }
+
+        read = ReadImageRootFile(image, program, &bytes);
+    }
+
+    if (read < 0)
+    {
+        return Format("%s can't be read as a disc image.", image.c_str());
+    }
+
+    if (read == 0)
+    {
+        return NotTheGameMessage(image);
+    }
+
+    const bool pal = std::strcmp(found, PalSerial) == 0;
+    if (NativeCheckRetailData(program, bytes.data(), bytes.size()) != 0)
+    {
+        return OtherVersionMessage(image, pal, found, version, program);
+    }
+
+    *serial = found;
+    return {};
+}
+
+bool Native::DiscImageGiven()
+{
+    return GetSettings().discImage != nullptr && !g_DiscImageRemembered;
+}
+
+void Native::ChooseDiscImage(const std::string& image, const std::string& serial)
+{
+    if (DiscImageGiven())
+    {
+        return;
+    }
+
+    RememberDiscImage(image);
+    std::error_code error;
+    const bool inUse = std::filesystem::equivalent(Utf8Path(image), Utf8Path(g_DiscImage), error) && !error;
+    g_NextDiscSerial = inUse ? std::string() : serial;
+    Log("disc image: %s chosen for the next start (%s%s)", LogPath(image).c_str(), serial.c_str(), inUse ? ", the one in use" : "");
+}
+
+const std::string& Native::NextDiscSerial()
+{
+    return g_NextDiscSerial;
 }
 
 // ---------------------------------------------------------------------------------------------------------- the system
