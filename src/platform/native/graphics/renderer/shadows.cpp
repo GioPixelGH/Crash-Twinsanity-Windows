@@ -339,11 +339,14 @@ namespace
 // The drop shadow's outline (drop_shadow 2, THE LIST 52, #11: the shadow alone hardly shows on dark ground), asked for by the game's
 // shadows while they're drawn (OutlineDropShadow) and drawn once they've been taken away from the screen: a yellow ring around
 // the ground's point (a strip of flat triangles, its colour only), depth tested at a height above the ground so the ground doesn't
-// hide it and nearer things (the character over it, a ledge in front) do
+// hide it and nearer things (the character over it, a ledge in front) do. While it grows or shrinks (THE LIST 101: amount below 1)
+// it's that much of its size (eased out) and blended over the screen by that much (its colour's alpha, ALPHA Cs - Cd by As, put
+// back as ApplyShadows leaves it after); whole it's drawn as before, unblended
 struct DropOutline
 {
     bool due;
     f32 radius;
+    f32 amount;
     Vector4 ground;
     Matrix4x4 chunkToWorld;
 };
@@ -361,6 +364,11 @@ constexpr u64 GsXyzZShift = 32;
 constexpr u32 OutlineSettingWrites = 14;
 const u64 OutlineColour = std::bit_cast<u64>(GS_RGBAQ{.r = 0xFF, .g = 0xD8, .b = 0x20, .a = 0x80, .q = 1.0f});
 const u64 OutlineStrip = std::bit_cast<u64>(GS_PRIM{.prim_type = GS_PRIM_TRI_STRIP, .ctxt = 1});
+const u64 FadingStrip = std::bit_cast<u64>(GS_PRIM{.prim_type = GS_PRIM_TRI_STRIP, .abe = 1, .ctxt = 1});
+const u64 SourceOverFrame = std::bit_cast<u64>(GS_ALPHA{.b = 1, .d = 1});
+// (ApplyShadows' QuarterTakenAway, the second context's ALPHA it leaves)
+const u64 ShadowsLeftAlpha = std::bit_cast<u64>(GS_ALPHA{.a = 2, .c = 2, .d = 1, .alpha = 0x20});
+constexpr u32 FadingWrites = 2;
 const u64 NearerOrSame = std::bit_cast<u64>(GS_TEST{.ztest_enable = 1, .ztest_method = GS_ZBUFF_GEQUAL});
 const u64 NoAlphaWritten = std::bit_cast<u64>(GS_FRAME{.draw_mask = 0xFF000000});
 
@@ -418,8 +426,16 @@ void DrawDropOutline()
     constexpr u32 Vertices = 2 * (OutlineSegments + 1);
     u64 xyz[Vertices];
     OutlineBounds bounds;
-    f32 inner = g_DropOutline.radius;
-    f32 outer = inner + OutlineWidth;
+    const f32 amount = g_DropOutline.amount;
+    const bool fading = amount < 1.0f;
+    const f32 grown = fading ? amount * (2.0f - amount) : 1.0f;
+    if (!(amount > 0.0f))
+    {
+        return;
+    }
+
+    f32 inner = g_DropOutline.radius * grown;
+    f32 outer = inner + OutlineWidth * grown;
     for (u32 step = 0; step <= OutlineSegments; step++)
     {
         f32 angle = static_cast<f32>(step) * (TwoPi / static_cast<f32>(OutlineSegments));
@@ -448,7 +464,7 @@ void DrawDropOutline()
 
     RenderBucket& bucket = g_FrameBuckets.buckets[BucketShadows];
     u32 pixels = width * height;
-    u32 pairCount = OutlineSettingWrites + Vertices;
+    u32 pairCount = OutlineSettingWrites + Vertices + (fading ? FadingWrites : 0);
     u32* tag = BeginPacket(bucket);
     tag[0] = (pairCount + 2) | CountTag;
     tag[1] = 0;
@@ -465,11 +481,28 @@ void DrawDropOutline()
     pairs.Write(screen, SecondContext(GsScissor));
     pairs.Write(frame | NoAlphaWritten, SecondContext(GsFrame));
     pairs.Write(NearerOrSame, SecondContext(GsTest));
-    pairs.Write(OutlineStrip, GsPrim);
-    pairs.Write(OutlineColour, GsRgbaq);
+    if (fading)
+    {
+        GS_RGBAQ colour = std::bit_cast<GS_RGBAQ>(OutlineColour);
+        colour.a = static_cast<u8>(static_cast<f32>(colour.a) * amount + 0.5f);
+        pairs.Write(SourceOverFrame, SecondContext(GsAlpha));
+        pairs.Write(FadingStrip, GsPrim);
+        pairs.Write(std::bit_cast<u64>(colour), GsRgbaq);
+    }
+    else
+    {
+        pairs.Write(OutlineStrip, GsPrim);
+        pairs.Write(OutlineColour, GsRgbaq);
+    }
+
     for (u64 vertex : xyz)
     {
         pairs.Write(vertex, GsXyz2);
+    }
+
+    if (fading)
+    {
+        pairs.Write(ShadowsLeftAlpha, SecondContext(GsAlpha));
     }
 
     pairs.Write(DepthAlways, SecondContext(GsTest));
@@ -506,10 +539,11 @@ void EndShadows()
     }
 }
 
-void OutlineDropShadow(const Vector4* ground, f32 radius, const Matrix4x4* chunkToWorld)
+void OutlineDropShadow(const Vector4* ground, f32 radius, f32 amount, const Matrix4x4* chunkToWorld)
 {
     g_DropOutline.due = true;
     g_DropOutline.radius = radius;
+    g_DropOutline.amount = amount;
     g_DropOutline.ground = *ground;
     g_DropOutline.chunkToWorld = *chunkToWorld;
 }

@@ -237,6 +237,7 @@ Music, effects and voices keep their own volumes under it.
   Off by default.
   Pick **outlined** to add a yellow ring around it.
   It shows on dark ground too.
+  The ring grows as you jump and shrinks as you land.
 - **Aku Aku's shadow**: the mask casts a round shadow while it follows you.
   While you wear it, with three masks, the shadow falls under your feet.
   Off by default.

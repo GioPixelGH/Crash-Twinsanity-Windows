@@ -21,6 +21,7 @@
 #include "gameoptions.h"
 #include "game/agents.h"
 #include "game/characters.h"
+#include "game/clock.h"
 #include "game/collision.h"
 #include "game/gamecontroller.h"
 #include "game/instances.h"
@@ -42,6 +43,14 @@ constexpr f32 DropReach = 20.0f;
 constexpr u8 OutlineMark = 1;
 constexpr f32 GroundCastRaise = 0.25f;
 constexpr u16 MostGround = 4;
+// The ring grows from nothing and fades in as the played character leaves the ground, and shrinks and fades out after it lands
+// (THE LIST 101, #11: as Crash 4's), over RingSeconds by the character's clock (paused with the game, the same at every frame
+// rate): its amount (0-255) in the entry's second spare byte; on the ground, while it shrinks, the ring is drawn alone (the third
+// spare byte RingAlone: the shadow itself isn't cast there)
+constexpr f32 RingSeconds = 0.2f;
+constexpr u8 RingAlone = 1;
+f32 g_RingAmount = 0.0f;
+const InstanceContext* g_RingOwner = nullptr;
 
 // How far below a point the ground is (straight down, as far as DropReach), or less than 0 when there's none
 f32 GroundBelow(InstanceContext* instance, const Vector4* point)
@@ -70,7 +79,7 @@ f32 GroundBelow(InstanceContext* instance, const Vector4* point)
     return -way.y - GroundCastRaise;
 }
 
-void CastDropShadow(InstanceContext* instance)
+void CastDropShadow(InstanceContext* instance, TimeClock* clock)
 {
     GameController* controller = G_GameController;
     if (!NativeGame::DropShadow() || controller == nullptr || instance == nullptr || instance->chunk == nullptr ||
@@ -81,7 +90,45 @@ void CastDropShadow(InstanceContext* instance)
 
     CharacterAgent* agent = CharacterAgentOf(instance);
     ChunkShadows* shadows = instance->chunk->shadows;
-    if (agent == nullptr || shadows == nullptr || static_cast<CharacterPart*>(agent->part)->flags.onGround != 0)
+    if (agent == nullptr || shadows == nullptr)
+    {
+        return;
+    }
+
+    // The ring's amount (THE LIST 101), up off the ground and down on it; $TWIN_SHADOW_TRACE logs it growing, whole, shrinking and
+    // gone
+    static const bool shadowTrace = std::getenv("TWIN_SHADOW_TRACE") != nullptr;
+    const bool outlined = NativeGame::DropShadowOutlined();
+    const bool inAir = static_cast<CharacterPart*>(agent->part)->flags.onGround == 0;
+    if (g_RingOwner != instance)
+    {
+        g_RingOwner = instance;
+        g_RingAmount = 0.0f;
+    }
+
+    const f32 was = g_RingAmount;
+    const f32 seconds = clock != nullptr ? static_cast<f32>(static_cast<s32>(clock->advance)) * g_SecondsPerClockUnit : 0.0f;
+    g_RingAmount = outlined && instance->flags.visible
+                       ? std::clamp(g_RingAmount + (inAir ? seconds : -seconds) / RingSeconds, 0.0f, 1.0f)
+                       : 0.0f;
+    if (shadowTrace && outlined)
+    {
+        static int tracedWay = 0;
+        const int way = g_RingAmount > was ? 1 : g_RingAmount < was ? -1 : 0;
+        if (way != 0 && way != tracedWay)
+        {
+            tracedWay = way;
+            Native::Log("shadow trace: the ring %s", way > 0 ? "growing, off the ground" : "shrinking, on the ground");
+        }
+
+        if (g_RingAmount != was && (g_RingAmount == 1.0f || g_RingAmount == 0.0f))
+        {
+            Native::Log("shadow trace: the ring %s", g_RingAmount == 1.0f ? "whole" : "gone");
+        }
+    }
+
+    // The shadow off the ground only; on the ground the ring alone while it shrinks
+    if (!inAir && g_RingAmount <= 0.0f)
     {
         return;
     }
@@ -89,9 +136,8 @@ void CastDropShadow(InstanceContext* instance)
     // Not while the played character is hidden (THE LIST 89, #53: on the title's opening scene the hidden character stands in the
     // sea, and its ring showed on the water), as the game's own shadows aren't (ShadowNode::Update) nor Aku Aku's (CastMaskShadow).
     // $TWIN_SHADOW_TRACE: off the ground, whether the played character is shown and the shadow cast, at each change
-    static const bool shadowTrace = std::getenv("TWIN_SHADOW_TRACE") != nullptr;
     static int tracedVisible = -1;
-    if (shadowTrace && static_cast<int>(instance->flags.visible) != tracedVisible)
+    if (shadowTrace && inAir && static_cast<int>(instance->flags.visible) != tracedVisible)
     {
         tracedVisible = static_cast<int>(instance->flags.visible);
         Native::Log("shadow trace: off the ground, the played character %s", tracedVisible != 0 ? "shown, the drop shadow cast"
@@ -105,6 +151,12 @@ void CastDropShadow(InstanceContext* instance)
 
     ObjectPlace* place = instance->place;
     RotateAndTranslate(place);
+    const f32 below = outlined ? GroundBelow(instance, RowOf(&place->matrix, 3)) : -1.0f;
+    if (!inAir && below < 0.0f)
+    {
+        return;
+    }
+
     const f32 offset[3] = {0.0f, 0.0f, 0.0f};
     f32 size[4] = {DropRadius, DropReach, DropRadius, 1.0f};
     ShadowEntry* entry = shadows->Add(ShadowCylinder, offset, size);
@@ -112,14 +164,12 @@ void CastDropShadow(InstanceContext* instance)
     {
         InitIdentityMatrix(&entry->frame);
         *RowOf(&entry->frame, 3) = *RowOf(&place->matrix, 3);
-        if (NativeGame::DropShadowOutlined())
+        if (below >= 0.0f)
         {
-            f32 below = GroundBelow(instance, RowOf(&place->matrix, 3));
-            if (below >= 0.0f)
-            {
-                entry->unused4D[0] = OutlineMark;
-                entry->unused5C = std::bit_cast<u32>(below);
-            }
+            entry->unused4D[0] = OutlineMark;
+            entry->unused4D[1] = static_cast<u8>(g_RingAmount * 255.0f + 0.5f);
+            entry->unused4D[2] = inAir ? 0 : RingAlone;
+            entry->unused5C = std::bit_cast<u32>(below);
         }
     }
 }
@@ -484,7 +534,7 @@ u32 ShadowNode::Update(TimeClock* clock)
 {
     InstanceContext* instance = owner;
 #ifdef TWIN_NATIVE
-    CastDropShadow(instance);
+    CastDropShadow(instance, clock);
 #endif
     ReferencedObjectFlags flags = instance->flags;
     if (!flags.shadowActive || !flags.visible || !flags.inDrawnCell)
@@ -858,13 +908,19 @@ void ChunkShadows::Draw(const Vector4* planes, const Matrix4x4*, const Matrix4x4
         VuMultiplyMatrices(&world, &g_ShadowToScreen, &toScreen);
         Matrix4x4 toCamera;
         VuMultiplyMatrices(&world, &g_ShadowToCamera, &toCamera);
-        DrawShadowEntry(entry, &toScreen, &toCamera, &world);
+#ifdef TWIN_NATIVE
+        // (the drop shadow's ring shrinking on the ground after a landing is drawn alone: THE LIST 101)
+        if (entry->unused4D[0] != OutlineMark || entry->unused4D[2] != RingAlone)
+#endif
+        {
+            DrawShadowEntry(entry, &toScreen, &toCamera, &world);
+        }
 #ifdef TWIN_NATIVE
         if (entry->unused4D[0] == OutlineMark)
         {
             Vector4 ground = *RowOf(&entry->frame, 3);
             ground.y = ground.y - std::bit_cast<f32>(entry->unused5C);
-            Platform::Graphics::OutlineDropShadow(&ground, DropRadius, view);
+            Platform::Graphics::OutlineDropShadow(&ground, DropRadius, static_cast<f32>(entry->unused4D[1]) / 255.0f, view);
         }
 #endif
     }

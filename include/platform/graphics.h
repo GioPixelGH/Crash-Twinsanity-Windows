@@ -280,8 +280,8 @@ void EndShadows();
 void DrawShadowMesh(RigidModel* mesh, const Matrix4x4* toScreen, const Matrix4x4* toCamera, const Matrix4x4* world);
 #ifdef TWIN_NATIVE
 // The drop shadow's outline (THE LIST 52, #11): a ring of a radius on the ground around a point of a chunk (its matrix to the
-// world), drawn over the screen once the shadows are (EndShadows)
-void OutlineDropShadow(const Vector4* ground, f32 radius, const Matrix4x4* chunkToWorld);
+// world), drawn over the screen once the shadows are (EndShadows); amount (0-1) how far it has grown and faded in (THE LIST 101)
+void OutlineDropShadow(const Vector4* ground, f32 radius, f32 amount, const Matrix4x4* chunkToWorld);
 #endif
 // The scene's screen models (the vehicles' skid marks): a triangle strip of coloured vertexes in a material, built a vertex at a
 // time. Begun (the default material, no vertexes), its material set (none keeps it), the colour of the vertexes that follow

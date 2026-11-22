@@ -139,6 +139,14 @@ SCENARIOS = [
     ("The longer invincibility: three masks' 20 s (#56)", "Levels\\Earth\\Hub\\huba", 30, "idle,mask,mask,mask,mask,wait24",
      dict(options="long_invincibility=1\n", env={"TWIN_MASK_TRACE": "1", "TWIN_SWEEP_GAME_TIME": "1"},
           expect=[r"invincibility over after 20\.0 s"])),
+    # Issue #11 (THE LIST 101): the outlined drop shadow's ring grows from nothing and fades in as Crash leaves the ground, and
+    # shrinks and fades out after he lands (0.2 s each, by the game's clock), as Crash 4's: a jump on the beach (the pad's cross)
+    ("The outlined drop shadow's ring grows off the ground and shrinks after landing (#11)", "Levels\\Earth\\Hub\\beach", 14,
+     "idle,wait10",
+     dict(options="drop_shadow=2\n", env={"TWIN_SHADOW_TRACE": "1", "TWIN_SWEEP_GAME_TIME": "1", "TWIN_FIXED_TIME": "1",
+                                          "TWIN_PAD_SCRIPT": "700-708:cross"},
+          expect=[r"(?s)pad script: from read 700 .*the ring growing, off the ground.*the ring whole.*"
+                  r"the ring shrinking, on the ground.*the ring gone"])),
     # Issue #58 (THE LIST 95): alta's outline crates (an outline TNT beside a tower of outline Nitro and iron crates, their
     # collision and triggers' signals off until their "!" crate) left whole under Bug fixes by a body's knock and an explosion's
     # damage (the hop's knock: and damage: on the TNT; retail's TNT explodes and its ten Nitro with it, on the PS2 too); made solid

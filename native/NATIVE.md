@@ -357,7 +357,13 @@ have made itself (`src/platform/native/gameoptions.h`):
   beach show it under Crash (a yellow ring, the pictures otherwise the same and the jumps' measures alike). Neither is cast while
   the played character is hidden (THE LIST 89, #53: the title's opening scene keeps it hidden in the sea, and 1.3.0 drew the
   ring on the water), as the game's own shadows and Aku Aku's aren't. Checked: the title's frames with "outlined" the same as
-  with the drop shadow off (1.3.0's showed the ring), and check_windows' game options run ($TWIN_SHADOW_TRACE).
+  with the drop shadow off (1.3.0's showed the ring), and check_windows' game options run ($TWIN_SHADOW_TRACE). Since 1.4.0
+  (THE LIST 101, #11, NitorikoSkye's video of Crash 4) the ring grows from nothing and fades in as the character leaves the
+  ground, and shrinks and fades out after it lands, 0.2 s each by the character's clock (paused with the game, alike at every
+  frame rate): its size eased out, its colour's alpha blended over the screen (ALPHA Cs - Cd by As, put back as ApplyShadows
+  leaves it); after a landing the ring is drawn alone (the shadow isn't cast on the ground). Whole, it's drawn as before. Checked:
+  a jump on the beach (check_windows' scenario, the trace's "the ring growing", "whole", "shrinking", "gone"), and its frames
+  against the plain drop shadow's (the ring 32 pixels across at 4x and faint at the takeoff, whole 0.2 s later).
 - Aku Aku's shadow (`mask_shadow`, THE LIST 84, #51: NormanTheFox noticed the masks were the only things without one): a round
   shadow straight down under the mask while it comes down to, follows or leaves the played character, and since THE LIST 86
   (NormanTheFox's follow-up on #51) while it's on its face during three masks' invincibility (not while the game is watched): a
