@@ -105,6 +105,8 @@ parser.add_argument("--waits", action="store_true",
                     help="a third run, the waits' skip where a skip rule is polled too ($TWIN_SKIP_WAITS_FIRST): both compared")
 parser.add_argument("--iso", help="another disc image (usa: local.json's disc_image_usa, THE LIST 31), local.json's disc_image "
                                   "by default")
+parser.add_argument("--rate", choices=["60", "144", "240"], default="60",
+                    help="the frames' rate: 144 or 240 Hz with a slow frame now and then, as check_windows' PHYSICS_RATES (THE LIST 29a)")
 args = parser.parse_args()
 # Absolute: each run starts in its own folder, and a relative APPDATA there would miss the settings (the disc image dialog)
 args.out = str(Path(args.out).resolve())
@@ -112,6 +114,8 @@ args.exe = str(Path(args.exe).resolve())
 if args.iso == "usa":
     args.iso = local_config._setting("TWINSANITY_ISO_USA", "disc_image_usa")
 IMAGE = str(Path(args.iso).resolve()) if args.iso else local_config.disc_image()
+# The --rate choices: options.txt's refresh_60hz and $TWIN_FIXED_TIME's frames
+RATES = {"60": (1, "1"), "144": (3, "144,144,60"), "240": (4, "240,240,240,40")}
 
 
 def run(scene, mode):
@@ -123,9 +127,10 @@ def run(scene, mode):
     settings = folder / "settings" / "Crash Twinsanity"
     settings.mkdir(parents=True)
     (settings / "disc_image.txt").write_text(IMAGE + "\n", newline="\n")
-    (settings / "options.txt").write_text("pause_on_focus_loss=0\nskip_cutscenes=1\n", newline="\n")
+    refresh, frames = RATES[args.rate]
+    (settings / "options.txt").write_text(f"pause_on_focus_loss=0\nskip_cutscenes=1\nrefresh_60hz={refresh}\n", newline="\n")
     env = dict(os.environ, APPDATA=str(folder / "settings"), HOME=str(folder / "settings"), TWIN_SWEEP_LEVEL=chunk,
-               TWIN_SWEEP_SECONDS=str(seconds), TWIN_SWEEP_TIMEOUT="180", TWIN_SWEEP_IDLE="1", TWIN_FIXED_TIME="1",
+               TWIN_SWEEP_SECONDS=str(seconds), TWIN_SWEEP_TIMEOUT="180", TWIN_SWEEP_IDLE="1", TWIN_FIXED_TIME=frames,
                TWIN_DETAILED_LOG="1", TWIN_SCENE_STATE="0.5", TWIN_HOP=hops,
                TWIN_SWEEP_GAME_TIME="1", TWINSANITY_AUDIO="frames", TWIN_TEST_PICK=IMAGE)
     # The scene's own variables (all three runs: $TWIN_SWEEP_STORY), the skip's press among them ($TWIN_SKIP_TEST: later for a

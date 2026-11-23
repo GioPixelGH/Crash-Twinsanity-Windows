@@ -455,6 +455,36 @@ void HopFrame()
         lastChunk = name;
     }
 
+    // $TWIN_WATCH=NAME[,NAME...]: every frame, the live instances whose object's name holds a NAME (any case, any chunk) logged
+    // with the sweep's clock (the game clock's with $TWIN_SWEEP_GAME_TIME), their place and the player's ("watch: frame F t T
+    // NAME#ID at (...), the player at (...)", ID the instance's address's low bits): the chases past 60 Hz (THE LIST 29a)
+    {
+        static const char* watched = std::getenv("TWIN_WATCH");
+        static u32 frame = 0;
+        frame++;
+        std::string names = watched != nullptr ? watched : "";
+        for (size_t start = 0; start < names.size();)
+        {
+            size_t comma = names.find(',', start);
+            comma = comma == std::string::npos ? names.size() : comma;
+            std::string lower = names.substr(start, comma - start);
+            start = comma + 1;
+            std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });
+            InstanceList list = {nullptr, lower, {}};
+            ForEachLiveInstance(ListInstance, &list);
+            player->place->SyncPosition();
+            for (InstanceContext* instance : list.found)
+            {
+                instance->place->SyncPosition();
+                Native::Log("watch: frame %u t %.4f %s#%04x at (%.2f, %.3f, %.2f), the player at (%.2f, %.2f, %.2f)", frame,
+                            std::chrono::duration<double>(Clock::now() - g_Start).count(), ObjectNameOf(instance),
+                            static_cast<u32>(reinterpret_cast<uiptr>(instance) & 0xFFFF),
+                            instance->place->position.x, instance->place->position.y, instance->place->position.z,
+                            player->place->position.x, player->place->position.y, player->place->position.z);
+            }
+        }
+    }
+
     if (next < targets.size() && name.size() >= targets[next].size() &&
         name.compare(name.size() - targets[next].size(), std::string::npos, targets[next]) == 0)
     {
@@ -838,13 +868,13 @@ void HopFrame()
         return;
     }
 
-    // "waitN": N seconds where it is before the next step
+    // "waitN": N seconds where it is before the next step (N may have a fraction: "wait2.5")
     if (targets[next].rfind("wait", 0) == 0)
     {
-        s32 seconds = std::atoi(targets[next].c_str() + 4);
-        Native::Log("hop: waiting %d s in %s", seconds, name.c_str());
+        double seconds = std::atof(targets[next].c_str() + 4);
+        Native::Log("hop: waiting %g s in %s", seconds, name.c_str());
         next++;
-        lastHop = now + std::chrono::seconds(seconds) - std::chrono::seconds(2);
+        lastHop = now + std::chrono::duration_cast<Clock::duration>(std::chrono::duration<double>(seconds)) - std::chrono::seconds(2);
         return;
     }
 
@@ -1815,17 +1845,22 @@ void SweepInput(BoundPad* pad)
 // $TWIN_PAD_SCRIPT=FROM-TO:WHAT[,WHAT...][;...]: from the pads' FROMth read to before their TOth (a game frame each since the
 // start; with $TWIN_FIXED_TIME the same frames every run) the pad holds WHAT: rx=N, ry=N, lx=N, ly=N (a stick's byte, 0x80 the
 // middle, up 0) or a button's name (cross, square, circle, triangle, l1, r1, l2, r2, l3, r3, start, select, up, down, left,
-// right). "FROM:WHAT" is one read. Each span logged as it starts
+// right). "FROM:WHAT" is one read. Each span logged as it starts. With $TWIN_PAD_SCRIPT_TIME=1 FROM and TO are seconds of the game
+// clock since play started ("10.5-11:cross"), the same moments at any frame rate (THE LIST 29a's chases at 60, 144 and 240 Hz)
 void PadScriptInput(BoundPad* pad)
 {
     struct Span
     {
-        u32 from;
-        u32 to;
+        double from;
+        double to;
         s32 sticks[4];
         u32 buttons;
+        bool logged;
     };
     static const char* script = std::getenv("TWIN_PAD_SCRIPT");
+    // ($TWIN_PAD_SCRIPT_TIME=1: FROM and TO are seconds of the game clock since play started, with fractions, the same moments at
+    // any frame rate; a span's read past play's start)
+    static const bool timed = std::getenv("TWIN_PAD_SCRIPT_TIME") != nullptr;
     if (script == nullptr)
     {
         return;
@@ -1857,11 +1892,10 @@ void PadScriptInput(BoundPad* pad)
                 continue;
             }
 
-            Span span = {0, 0, {-1, -1, -1, -1}, 0};
-            span.from = static_cast<u32>(std::strtoul(step.c_str(), nullptr, 10));
+            Span span = {0.0, 0.0, {-1, -1, -1, -1}, 0, false};
+            span.from = std::strtod(step.c_str(), nullptr);
             size_t dash = step.find('-');
-            span.to = dash != std::string::npos && dash < colon ? static_cast<u32>(std::strtoul(step.c_str() + dash + 1, nullptr, 10))
-                                                                  : span.from + 1;
+            span.to = dash != std::string::npos && dash < colon ? std::strtod(step.c_str() + dash + 1, nullptr) : span.from + 1;
             std::string what = step.substr(colon + 1);
             size_t w = 0;
             while (w < what.size())
@@ -1899,11 +1933,16 @@ void PadScriptInput(BoundPad* pad)
     static bool played = false;
     static bool watched = false;
     GameController* controller = G_GameController;
+    static double playedAt = 0.0;
+    const double clock = static_cast<double>(GameClockTicks()) / static_cast<double>(Platform::Time::TicksPerSecond);
     if (!played && controller != nullptr && controller->State() == GameController::StatePlaying)
     {
         played = true;
+        playedAt = clock;
         Native::Log("pad script: play starts at read %u", now);
     }
+
+    const double at = timed ? (played ? clock - playedAt : -1.0) : static_cast<double>(now);
 
     if (played && !watched && controller != nullptr && controller->State() == GameController::StateWatching)
     {
@@ -1911,16 +1950,17 @@ void PadScriptInput(BoundPad* pad)
         Native::Log("pad script: a cutscene starts at read %u", now);
     }
 
-    for (const Span& span : spans)
+    for (Span& span : spans)
     {
-        if (now < span.from || now >= span.to)
+        if (at < span.from || at >= span.to)
         {
             continue;
         }
 
-        if (now == span.from)
+        if (!span.logged)
         {
-            Native::Log("pad script: from read %u to %u", span.from, span.to);
+            span.logged = true;
+            Native::Log("pad script: from %g to %g (read %u)", span.from, span.to, now);
         }
 
         u8* sticks[4] = {&pad->leftX, &pad->leftY, &pad->rightX, &pad->rightY};

@@ -433,12 +433,28 @@ void CollideRigidBodyWithInstances(ObjectRigidBody* body, Vector4* sphere)
         return;
     }
 
+#ifdef TWIN_NATIVE
+    // Past 60 Hz the steps are 60ths of a second, as at 60 Hz (THE LIST 29a): its frames' clock's time this frame
+    {
+        TimeClock* clock = GetContextClock(instance);
+        for (u32 steps = SixtiethsGoneBy(clock->time - clock->advance, clock->time); steps != 0; steps--)
+        {
+            body->state.rideSteps++;
+            if (body->state.rideSteps == ObjectRigidBodyState::RideLostSteps)
+            {
+                StopRiding(body);
+                return;
+            }
+        }
+    }
+#else
     body->state.rideSteps++;
     if (body->state.rideSteps == ObjectRigidBodyState::RideLostSteps)
     {
         StopRiding(body);
         return;
     }
+#endif
 
     ObjectPlace* place = body->node->owner->place;
     place->SyncPosition();
@@ -1380,7 +1396,14 @@ void RightRigidBody(f32 elapsed, ObjectRigidBody* body, Vector4* up)
 
     // Pressed against what it stands on
     const Vector4* normal = &body->contactNormal;
+#ifdef TWIN_NATIVE
+    // (a frame's press: past 60 Hz a frame's time's at 60 Hz, else 144 Hz pressed a chaser down 2.4 times as fast, off an edge
+    // too, THE LIST 29a)
+    const f32 pressed = MovedOverSeconds(Press, elapsed);
+    Vector4 press = {normal->x * pressed, normal->y * pressed, normal->z * pressed, 1.0f};
+#else
     Vector4 press = {normal->x * Press, normal->y * Press, normal->z * Press, 1.0f};
+#endif
     MoveInstance(instance, &press);
 }
 
@@ -1421,10 +1444,23 @@ void StepRigidBody(ObjectRigidBody* body, TimeClock* clock, Vector4* move)
     }
 
     MotionState* motion = body->node->motion;
+#ifdef TWIN_NATIVE
+    // Past 60 Hz the steps are 60ths of a second, as at 60 Hz (THE LIST 29a, #44): counted in frames, a launch that stops at its
+    // first touch 15 steps on (Bandicoot Pursuit's Evil Crash jumps so) was stopped by a touch a tenth of a second into it at
+    // 144 Hz, where 60 Hz goes on for a quarter
+    {
+        u32 steps = body->node->time != 0 ? SixtiethsGoneBy(body->node->time, clock->time) : 1;
+        for (; steps != 0 && body->state.launchSteps != ObjectRigidBodyState::MostSteps; steps--)
+        {
+            body->state.launchSteps++;
+        }
+    }
+#else
     if (body->state.launchSteps != ObjectRigidBodyState::MostSteps)
     {
         body->state.launchSteps++;
     }
+#endif
 
     // Stopped once it touches something or nearly rests, 15 steps after its launch
     ObjectRigidBodyBits bits = body->bits;
@@ -1473,6 +1509,10 @@ void StepRigidBody(ObjectRigidBody* body, TimeClock* clock, Vector4* move)
     if (body->bits.dragged)
     {
         f32 kept = 1.0f - body->drag;
+#ifdef TWIN_NATIVE
+        // (a share kept each frame: past 60 Hz each frame keeps what its time keeps at 60 Hz, THE LIST 29a)
+        kept = KeptOverSeconds(kept, seconds);
+#endif
         velocity->x = velocity->x * kept;
         velocity->y = velocity->y * kept;
         velocity->z = velocity->z * kept;
@@ -1487,6 +1527,9 @@ void StepRigidBody(ObjectRigidBody* body, TimeClock* clock, Vector4* move)
         }
 
         f32 kept = 1.0f - body->grip;
+#ifdef TWIN_NATIVE
+        kept = KeptOverSeconds(kept, seconds);
+#endif
         velocity->x = velocity->x * kept;
         velocity->y = velocity->y * kept;
         velocity->z = velocity->z * kept;
@@ -1535,6 +1578,15 @@ void StepRigidBody(ObjectRigidBody* body, TimeClock* clock, Vector4* move)
         }
     }
 
+#ifdef TWIN_NATIVE
+    // The gravity is added to the velocity before the step, so a step of a frame's seconds comes down gravity * seconds^2 / 2
+    // further than the curve (the character's own steps the same, CharacterAgent::Move): past 60 Hz, what a 60th's step would
+    // have come down more is added to each step off the ground, so a launch flies and lands as at 60 Hz (THE LIST 29a)
+    if (CountsSixtieths() && !bits.touchingInstance && !bits.touchingWorld)
+    {
+        step.y = step.y - body->gravity * (SecondsPerFrame - seconds) * seconds * 0.5f;
+    }
+#endif
     MoveInstance(instance, &step);
     if (move != nullptr)
     {

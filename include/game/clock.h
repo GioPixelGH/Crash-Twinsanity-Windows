@@ -109,6 +109,16 @@ extern "C"
 // Natively, whether the frames are past the PS2's 60 a second (Options > Display's 120 Hz, 144 Hz and unlimited: the game clock's
 // frames a second): the character's steps then make up for being shorter than 60 Hz's (CharacterAgent::Move)
 bool FramesPast60();
+// Whether what retail counts in frames is counted in 60ths of a second (THE LIST 29a): past 60 Hz, unless $TWIN_FRAME_STEPS=1
+bool CountsSixtieths();
+// Past 60 Hz, the 60ths of a second (the PS2's frames) a clock went through from one of its times to another, for what retail
+// counts in frames (a rigid body's steps since its launch, since it last touched what it rides); at 60 Hz and below a frame is
+// one, as on the PS2
+u32 SixtiethsGoneBy(s32 from, s32 to);
+// Past 60 Hz, what retail does to a value once a frame done for a frame of these seconds as at 60 Hz: a share kept (kept to the
+// power of the 60ths gone by: a share never below 0 kept as it is) and a move (times the 60ths); at 60 Hz and below, as it is
+f32 KeptOverSeconds(f32 kept, f32 seconds);
+f32 MovedOverSeconds(f32 moved, f32 seconds);
 // The game clock's ticks now (Platform::Time's): the test runs' under $TWIN_FIXED_TIME, a frame's worth more each frame
 u64 GameClockTicks();
 #endif

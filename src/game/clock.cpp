@@ -7,6 +7,7 @@
 #ifdef TWIN_NATIVE
 #include "game/controllers.h"
 
+#include <cmath>
 #include <cstdlib>
 #endif
 
@@ -304,5 +305,41 @@ bool FramesPast60()
 {
     constexpr s32 NtscFramesPerSecond = 60;
     return G_GameClockController != nullptr && G_GameClockController->framesPerSecond > NtscFramesPerSecond;
+}
+
+bool CountsSixtieths()
+{
+    // ($TWIN_FRAME_STEPS=1: retail's counts and shares a frame past 60 Hz too, the tests' way to see what they did)
+    static const bool frames = std::getenv("TWIN_FRAME_STEPS") != nullptr;
+    return FramesPast60() && !frames;
+}
+
+u32 SixtiethsGoneBy(s32 from, s32 to)
+{
+    if (!CountsSixtieths())
+    {
+        return 1;
+    }
+
+    // (the clock's units counted in 60ths of a second, rounded down: a 60th's boundary passed is one)
+    const double sixtieths = 60.0 / static_cast<double>(g_ClockUnitsPerSecond);
+    const s64 before = static_cast<s64>(std::floor(static_cast<double>(from) * sixtieths));
+    const s64 after = static_cast<s64>(std::floor(static_cast<double>(to) * sixtieths));
+    return after > before ? static_cast<u32>(after - before) : 0;
+}
+
+f32 KeptOverSeconds(f32 kept, f32 seconds)
+{
+    if (!CountsSixtieths() || !(0.0f < kept))
+    {
+        return kept;
+    }
+
+    return static_cast<f32>(std::pow(static_cast<double>(kept), static_cast<double>(seconds) * 60.0));
+}
+
+f32 MovedOverSeconds(f32 moved, f32 seconds)
+{
+    return CountsSixtieths() ? moved * seconds * 60.0f : moved;
 }
 #endif

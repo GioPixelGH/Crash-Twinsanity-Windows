@@ -425,7 +425,7 @@ is a Mod Crate. Each import is written in `.importing-NAME` and takes the mod's 
 source's name, size and date) marks it, so an unchanged source isn't offered again; a folder of that name not made by an
 import stops it. An xdelta, PPF or BPS patch isn't applied here (a patcher makes the image first). Options > Mods (the
 settings' seventh tab, settings.cpp's BuildMods): Import mods while there's something to; each mod a choice, off or on in its
-place ("on · 1", the first; moving one shifts the others; its row's label and description its own, in the overlay's
+place ("on Ãƒâ€šÃ‚Â· 1", the first; moving one shifts the others; its row's label and description its own, in the overlay's
 Windows-1252 with the prompts' glyphs made plain characters, cut to one line); Open the mods folder. Changes are saved to
 mods.txt and used from the next start (the mods are looked at once: the session keeps the list it started with, the
 page's own list is apart). An import's end looks at the mods folder again (Mods::Refresh: the new mods first and on, as the
@@ -513,10 +513,31 @@ the leader takes when the swing is above it (`SolveLinked`), so Crash stepping o
 it was thrown up as high as the frames happened to make it. Natively the node divides by the advance of the frame the move was
 made in, its last update's (`MovementNodeBits::lastAdvance`, in bits retail leaves unused): the same as retail at a steady rate,
 so the 60 Hz pictures are the PS2's still. And past 60 Hz the character's fall makes up for its shorter steps: the gravity is added
-to the velocity before the step, so each of 60 Hz's steps comes down g·h²/2 further than the curve and its jumps are 3 to 4%
+to the velocity before the step, so each of 60 Hz's steps comes down gÃƒâ€šÃ‚Â·hÃƒâ€šÃ‚Â²/2 further than the curve and its jumps are 3 to 4%
 lower than shorter steps make them (2.14 high, 2.22 at 240 Hz); each step in the air past 60 Hz comes down what a 60th's would have
 more (`CharacterAgent::Move`, `FramesPast60`). 50 Hz stays the European PS2's. check_windows.py's physics check measures it:
 `$TWIN_PHYSICS_TEST` (below) at a 144 Hz and a 240 Hz screen's uneven frames against 60 Hz's.
+
+The rigid bodies the other characters move with keep 60 Hz's timing past 60 Hz too (1.4.0, THE LIST 29a: issue #44). They counted
+frames (rigidbodyframe.cpp): a launch that stops at its first touch is armed 15 steps after it (Bandicoot Pursuit's Evil Crash
+jumps the gaps so: a tenth of a second at 144 Hz instead of a quarter), a ride is let go 5 steps after the last touch, a drag and a
+grip keep a share of the velocity once a frame, and a body steering itself is pressed 0.07 into what it stands on once a frame (off
+the ground too); past 60 Hz each counts 60ths (`SixtiethsGoneBy`) or keeps its 60 Hz share or move over the frame's time
+(`KeptOverSeconds`, `MovedOverSeconds`), and a launch's steps fall as at 60 Hz as the character's do. At 50 and 60 Hz nothing
+changes (the pictures and the physics byte for byte); `$TWIN_FRAME_STEPS=1` gives retail's counts past 60 Hz too. check_windows.py's physics check (the jumps and the lift at 144 and 240 Hz
+against 60 Hz's) passes as before.
+
+What stays past 60 Hz (#17, #44): the characters' behaviours (the scripts' graphs, behaviours.cpp) take a state a frame, and on
+the PS2 a frame is a 60th, so past 60 Hz a chain of states that takes a quarter of a second at 60 Hz takes a sixteenth at 240 Hz.
+High Seas Hi-Jinks' walrus runs a chain of 11 to 15 states between its chase packets, so it runs 2.5 units closer behind Crash at
+240 Hz and catches him (#17, reproduced with Crash run by a pad script timed by the game clock, `$TWIN_PAD_SCRIPT_TIME`); Bandicoot
+Pursuit's Evil Crash leaves 0.1 to 0.35 s early behind Cortex. A rule that steps every behaviour once a 60th past 60 Hz, in 60 Hz's
+order, kept both chases as at 60 Hz, but it moved a few cutscenes' characters at their ends (17_dorm_room's Cortex a unit farther
+from 60 Hz's place at 144 Hz, three skips that came out the same with retail's steps came out otherwise): kept for 29b in
+the bench (its patch, its measures and what's open). Fixed steps with the pictures between them drawn (THE LIST
+29b) would remove the question, and the frames' finer steps that meet a landing or a ledge sooner than 60 Hz's (Evil Crash lands
+0.2 to 0.3 units short of 60 Hz's spot, on the far bank all the same) and the stick turned by a camera that moves otherwise at
+another rate.
 
 Options > Display > Show FPS (`show_fps` in options.txt, off; issue #4 asked for it) draws the frames a second in the window's top
 left corner, as a PC game's counter does (ui/fpscounter.cpp): the pictures the window shows, counted by the overlay's hook as each
@@ -1027,7 +1048,9 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   `$TWIN_PAD_SCRIPT=FROM-TO:WHAT[,WHAT...][;...]` holds the pad that way from the pads' FROMth read to before their TOth (a game
   frame each from the start, so with `$TWIN_FIXED_TIME` the same frames every run; "FROM:WHAT" one read): `rx=N`, `ry=N`, `lx=N`,
   `ly=N` a stick's byte (0x80 the middle, up 0) or a button's name (cross, square, circle, triangle, l1, r1, l2, r2, l3, r3, start,
-  select, up, down, left, right), each span logged as it starts. The beach's camera looking up at Crash and Aku Aku against the
+  select, up, down, left, right), each span logged as it starts. With `$TWIN_PAD_SCRIPT_TIME=1` FROM and TO are seconds of the game
+  clock since play started, with fractions (`10-60:ly=255;11.5-11.8:cross`): the same moments at any frame rate, as THE LIST 29a's
+  chases need (High Seas Hi-Jinks' walrus run at 60, 144 and 240 Hz). The beach's camera looking up at Crash and Aku Aku against the
   sky: `620-700:ry=255`; Crash walked into the first boss's arena (its cutscene from about frame 690): `TWIN_START_CHUNK=
   Levels\Earth\Hub\bossarea` with `500-800:ly=0`. With the pictures above, a real run (a window or fullscreen, three threads) is
   the same place every time: a bug seen there is measured in the window as shown and in the picture drawn at once.
@@ -1171,7 +1194,7 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   outline crate's collision and triggers' signals off: #58); `damage:tnt` sends the nearest such instance an explosion's damage
   as the scripts' CreateDamage does, `knock:tnt` a rigid body's knock over a crate's breaking (its agent's Collided) and
   `trigger:tnt` runs its trigger event as a "!" crate's link does (#58's scenario); `idle`
-  stops the scripted input and `input` starts it again; `wait5` waits 5 s; `die` drops it to its death; `mask` gives it a mask as an Aku Aku crate does (the fourth in a row makes it invincible); `hurt` takes a hit point from it and starts 2 s of blinking, as a hit that isn't kept out does (#18's three masks scenario); `movie:H03_F` plays the game's movie whose file has that in its name, as the game asks for one in play, play going on after it (`$TWIN_MOVIE_GUARD=1` puts each piece of a movie's stream right before a page that can't be read, so that FFmpeg reading past a piece crashes every time: check_windows.py's #49 scenario); `credits` rolls the end credits as the game's end asks for them, the Iceberg Lab played after them (#20's scenario: 135 s of credits, not counted as play); with `$TWIN_SWEEP_GAME_TIME=1` the steps' waits and flights go by the game clock instead of real time, so a run with `$TWIN_FIXED_TIME=1` and `$TWINSANITY_AUDIO=frames` makes the same pictures every time (two builds', or two switches', compared frame by frame); `$TWIN_NO_SHADOWS` leaves the characters' shadows out, to compare what they darken; `scripts:director`
+  stops the scripted input and `input` starts it again; `wait5` waits 5 s (`wait1.9`: fractions too); `die` drops it to its death; `mask` gives it a mask as an Aku Aku crate does (the fourth in a row makes it invincible); `hurt` takes a hit point from it and starts 2 s of blinking, as a hit that isn't kept out does (#18's three masks scenario); `movie:H03_F` plays the game's movie whose file has that in its name, as the game asks for one in play, play going on after it (`$TWIN_MOVIE_GUARD=1` puts each piece of a movie's stream right before a page that can't be read, so that FFmpeg reading past a piece crashes every time: check_windows.py's #49 scenario); `credits` rolls the end credits as the game's end asks for them, the Iceberg Lab played after them (#20's scenario: 135 s of credits, not counted as play); with `$TWIN_SWEEP_GAME_TIME=1` the steps' waits and flights go by the game clock instead of real time, so a run with `$TWIN_FIXED_TIME=1` and `$TWINSANITY_AUDIO=frames` makes the same pictures every time (two builds', or two switches', compared frame by frame); `$TWIN_NO_SHADOWS` leaves the characters' shadows out, to compare what they darken; `scripts:director`
   logs the behaviour scripts of the instances whose object's name holds "director" (each runner's graphs, the state they're in,
   every state's bodies: condition, commands, jump) and `state:GRAPH:3` makes the runner that runs a graph whose name holds GRAPH
   jump to its state 3, as a body's jump would (a boss beaten without playing it: check_windows.py's Dingodile). Down a slide (Slip
@@ -1209,7 +1232,7 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   the beehive, Cortex's pipe, the shed), and told at story 0 they do nothing. `$TWIN_SCENE_SCRIPTS=12:director:act_cortex` logs
   the behaviour scripts of the instances named like each NAME (any chunk), 12 s into every cutscene watched, as the hop's
   `scripts:` step does in play (the hop waits while a cutscene plays): what a cutscene that never ends waits for.
-  `native/tools/check_cutscene_skips.py [NAME...] [--waits]` plays each cutscene of its list watched and skipped (and skipped by
+  `native/tools/check_cutscene_skips.py [NAME...] [--waits] [--rate 144|240]` plays each cutscene of its list watched and skipped (and skipped by
   the waits) from the same start and compares what each leaves; a scene's own variables (the story, a later press of the
   button for a part chained onto another's scene, an earlier scene state) are its list entry's fifth item. Its runs' folders and
   settings are absolute paths, and each run is given the disc image (`$TWIN_TEST_PICK`), so a missed settings folder can't open
@@ -1274,6 +1297,12 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   (`$TWIN_SWEEP_LEVEL`, `$TWIN_SWEEP_IDLE`), `$TWIN_PHYSICS_ON=NAME` (the player put on an instance 2 s in: `cavern_lift17`),
   `$TWIN_PHYSICS_TIED` (Cortex tied to it) and `$TWIN_PHYSICS_SECONDS` (the watch's end). `$TWIN_PHYSICS_TRACE=FILE`: every
   frame's place, velocity, ground and movement node's velocity as CSV.
+- `$TWIN_WATCH=NAME[,NAME...]` (with `$TWIN_HOP`): every frame, the live instances whose object's name holds a NAME (any case, any
+  chunk), with the sweep's clock (the game clock's with `$TWIN_SWEEP_GAME_TIME`), their place and the player's: `watch: frame F t
+  T NAME#ID at (X, Y, Z), the player at (X, Y, Z)`, ID the instance's address's low bits (two instances of one name told apart).
+  THE LIST 29a measured its chases with it. `$TWIN_FRAME_STEPS=1`: what the game counts in frames (a rigid body's launch
+  and ride steps, its drag, grip and press) counted a frame at a time past 60 Hz too, as retail did: the way to see what 29a fixed
+  (WINDOWS.md "Frame rates past 60").
 - `$TWIN_PORTABLE_TEST=1` or `=FOLDER` (with `--headless`, ui/portabletest.cpp): from the main menu the settings opened,
   the Game tab's portable mode row stepped and its dialog followed with its own input: asked, left to yes and select copies,
   done, select closes the game as a player's would (exit 0; the folders are check_windows.py's to look at); refused (the folder can't be written to),
