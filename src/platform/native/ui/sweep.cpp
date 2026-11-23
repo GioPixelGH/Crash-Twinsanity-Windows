@@ -1691,6 +1691,22 @@ void SweepFrame(bool fromPads)
             Native::Log("sweep: the story at area %u", static_cast<u32>(play.story));
         }
 
+        // $TWIN_SWEEP_PAIRING=PAIRING[:FIRST:SECOND]: the characters paired as a played game's progress would have them there (3 the
+        // Rollerbrawl, FIRST driving: 0 Crash, 1 Cortex), so play starts on it as from a checkpoint (THE LIST 90b: the ball's end)
+        if (const char* pairing = std::getenv("TWIN_SWEEP_PAIRING"))
+        {
+            u32 kind = 0;
+            u32 first = 0;
+            u32 second = 1;
+            std::sscanf(pairing, "%u:%u:%u", &kind, &first, &second);
+            PlayState play = controller->progress.play;
+            play.pairing = kind;
+            play.character = first;
+            play.second = second;
+            controller->progress.play = play;
+            Native::Log("sweep: the characters paired %u (%u first, %u second)", kind, first, second);
+        }
+
         controller->saveController.Take(&controller->progress, controller->chunkManager, nullptr);
         controller->SetNextState(GameController::StateLoadingLevel);
         Native::Log("sweep: loading %s", g_Level.c_str());

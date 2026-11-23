@@ -1229,7 +1229,9 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   holds NAME, as a trigger tells them (a cutscene's director started where a test can't walk to its trigger).
   `$TWIN_SWEEP_STORY=N` starts the sweep with the story at area N (the open areas up to it), as a played game's progress is
   there: several directors start their cutscene only at a point of the story (`StoryAreaCondition`; the Psychetron room's two,
-  the beehive, Cortex's pipe, the shed), and told at story 0 they do nothing. `$TWIN_SCENE_SCRIPTS=12:director:act_cortex` logs
+  the beehive, Cortex's pipe, the shed), and told at story 0 they do nothing. `$TWIN_SWEEP_PAIRING=3:0:1` starts it with the
+  characters paired as a checkpoint would have them (3 the Rollerbrawl, Crash driving, Cortex riding): the ball's last chunk
+  (l05brawl) rolls into Dingodile's hut by itself (THE LIST 90b). `$TWIN_SCENE_SCRIPTS=12:director:act_cortex` logs
   the behaviour scripts of the instances named like each NAME (any chunk), 12 s into every cutscene watched, as the hop's
   `scripts:` step does in play (the hop waits while a cutscene plays): what a cutscene that never ends waits for.
   `native/tools/check_cutscene_skips.py [NAME...] [--waits] [--rate 144|240]` plays each cutscene of its list watched and skipped (and skipped by

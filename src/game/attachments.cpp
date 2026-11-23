@@ -6,10 +6,17 @@
 #include "game/math.h"
 #include "game/memory.h"
 #include "game/navigation.h"
+#include "game/nodecontrollers.h"
 #include "game/objectnode.h"
 #include "game/place.h"
 #include "game/reference.h"
 #include "game/rigidbody.h"
+
+#ifdef TWIN_NATIVE
+#include "fixes.h"
+#include "native.h"
+#include <cstdlib>
+#endif
 
 // An instance's attachments (its node of kind 6): the instances linked to it, and the path of what's attached to it (instances,
 // AI positions and springs' ends following it in their ways: game/attachment.h's attachments)
@@ -1456,6 +1463,26 @@ void UnlinkSpawned(void* attachments, u32 sleep)
             index++;
             continue;
         }
+
+#ifdef TWIN_NATIVE
+        // Bug fixes (THE LIST 90b, #18): the mask that follows the character stays. Its instance has an ID (a script made it), so
+        // retail lets it go here and puts it to sleep, which releases an instance with an ID: when the Rollerbrawl's ride ends in
+        // Dingodile's hut (and likely Cavern Catastrophe's scene after its ride), the scene's script asks this of Crash and Aku Aku
+        // is gone until a death or a load makes him again (on the PS2 too: the game's code)
+        auto* follower = static_cast<ObjectNode*>(NodeOf(instance, NodeObject));
+        if (NativeFixes::RetailFixes() && follower != nullptr && follower->controller != nullptr &&
+            follower->controller->kind == NodeController::KindMask)
+        {
+            static const bool traced = std::getenv("TWIN_MASK_TRACE") != nullptr;
+            if (traced)
+            {
+                Native::Log("mask trace: the follower mask kept on its character as the spawned attachments are let go");
+            }
+
+            index++;
+            continue;
+        }
+#endif
 
         node->UnlinkIndex(index);
         if (sleep == 0)

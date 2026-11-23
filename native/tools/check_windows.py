@@ -107,6 +107,14 @@ SCENARIOS = [
     ("The two masks' stars back after a cutscene (#18)", "Levels\\Earth\\Hub\\highpath", 40, "idle,mask,wait3,goto:-9:-4:-50,wait30",
      dict(options="retail_fixes=1\n", env={"TWIN_MASK_TRACE": "1"},
           expect=[r"mask trace: shown again after the game was watched, state 4, its stars on"], forbid=[r"its stars off"])),
+    # Issue #18 (THE LIST 90b): the Rollerbrawl's ride into Dingodile's hut, two masks: the hut's scene lets go of Crash's spawned
+    # attachments, and retail's Aku Aku among them is released, gone until a death or a load (the game's code); under Bug fixes he
+    # stays and comes back after the scene. l05brawl started on the ball as from its checkpoint ($TWIN_SWEEP_PAIRING)
+    ("Aku Aku back after the ball's ride into Dingodile's hut (#18)", "Levels\\Ice\\SlipSlide\\l05brawl", 60, "wait2,mask",
+     dict(options="retail_fixes=1\n", env={"TWIN_MASK_TRACE": "1", "TWIN_SWEEP_PAIRING": "3:0:1", "TWIN_FIXED_TIME": "1",
+                                          "TWIN_SWEEP_GAME_TIME": "1", "TWIN_SWEEP_IDLE": "1"},
+          expect=[r"mask trace: the follower mask kept on its character",
+                  r"mask trace: shown again after the game was watched, state 4, its stars on"])),
     # Issue #18 (THE LIST 46): three masks' invincibility going on into a hurt's blinking (hurt as its 8 s end, standing on what
     # hurts), then a second hurt: retail's mask leaves without stopping the invincibility's trails, which go on emitting where they
     # were (on the PS2 too); under Bug fixes the first hurt ends the invincibility as its end does (the hop's hurt step, a hit
@@ -145,7 +153,7 @@ SCENARIOS = [
      "idle,wait10",
      dict(options="drop_shadow=2\n", env={"TWIN_SHADOW_TRACE": "1", "TWIN_SWEEP_GAME_TIME": "1", "TWIN_FIXED_TIME": "1",
                                           "TWIN_PAD_SCRIPT": "700-708:cross"},
-          expect=[r"(?s)pad script: from read 700 .*the ring growing, off the ground.*the ring whole.*"
+          expect=[r"(?s)pad script: from 700 to 708 \(read 700\).*the ring growing, off the ground.*the ring whole.*"
                   r"the ring shrinking, on the ground.*the ring gone"])),
     # Issue #60 (THE LIST 98): Aku Aku's trail (FX_AKUTRAIL, cut off 25 units from the camera) kept on by the played character with
     # a draw distance past the original (long): the camera stopped (unfollow) and Crash run away from it on the beach with a mask
