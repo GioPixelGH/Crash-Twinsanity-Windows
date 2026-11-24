@@ -425,7 +425,7 @@ is a Mod Crate. Each import is written in `.importing-NAME` and takes the mod's 
 source's name, size and date) marks it, so an unchanged source isn't offered again; a folder of that name not made by an
 import stops it. An xdelta, PPF or BPS patch isn't applied here (a patcher makes the image first). Options > Mods (the
 settings' seventh tab, settings.cpp's BuildMods): Import mods while there's something to; each mod a choice, off or on in its
-place ("on Ãƒâ€šÃ‚Â· 1", the first; moving one shifts the others; its row's label and description its own, in the overlay's
+place ("on · 1", the first; moving one shifts the others; its row's label and description its own, in the overlay's
 Windows-1252 with the prompts' glyphs made plain characters, cut to one line); Open the mods folder. Changes are saved to
 mods.txt and used from the next start (the mods are looked at once: the session keeps the list it started with, the
 page's own list is apart). An import's end looks at the mods folder again (Mods::Refresh: the new mods first and on, as the
@@ -513,7 +513,7 @@ the leader takes when the swing is above it (`SolveLinked`), so Crash stepping o
 it was thrown up as high as the frames happened to make it. Natively the node divides by the advance of the frame the move was
 made in, its last update's (`MovementNodeBits::lastAdvance`, in bits retail leaves unused): the same as retail at a steady rate,
 so the 60 Hz pictures are the PS2's still. And past 60 Hz the character's fall makes up for its shorter steps: the gravity is added
-to the velocity before the step, so each of 60 Hz's steps comes down gÃƒâ€šÃ‚Â·hÃƒâ€šÃ‚Â²/2 further than the curve and its jumps are 3 to 4%
+to the velocity before the step, so each of 60 Hz's steps comes down g·h²/2 further than the curve and its jumps are 3 to 4%
 lower than shorter steps make them (2.14 high, 2.22 at 240 Hz); each step in the air past 60 Hz comes down what a 60th's would have
 more (`CharacterAgent::Move`, `FramesPast60`). 50 Hz stays the European PS2's. check_windows.py's physics check measures it:
 `$TWIN_PHYSICS_TEST` (below) at a 144 Hz and a 240 Hz screen's uneven frames against 60 Hz's.
@@ -538,6 +538,18 @@ the bench (its patch, its measures and what's open). Fixed steps with the pictur
 29b) would remove the question, and the frames' finer steps that meet a landing or a ledge sooner than 60 Hz's (Evil Crash lands
 0.2 to 0.3 units short of 60 Hz's spot, on the far bank all the same) and the stick turned by a camera that moves otherwise at
 another rate.
+
+Until 29b, the two chases run at 60 Hz past 60 Hz (1.4.0, THE LIST 29c: #44's Evil Crash still went into the floor and the water
+at 144 Hz in the user's own play after 29a, never in the bench's fixed time). While the player is in Bandicoot Pursuit's three
+chunks (`altdoc`, `altdoc_b`, `altdoc_c`: Evil Crash after Crash and Cortex in each) or the walrus chase's (`gpa10`) and the rate
+chosen is past 60 (120 Hz, 144 Hz or unlimited), the frames are paced at 60 Hz and the game clock's frames a second is 60, as with
+60 Hz chosen; the rate chosen again once the player is in another chunk (features.cpp's `ChaseRateFrame`, every frame after the
+trail has seen the player's chunk; `FrameRate` gives 60 meanwhile, the game clock's `HoldClockAt60` makes a test run's
+`$TWIN_FIXED_TIME` frames 60ths). The setting itself stays as chosen; the log says it each way (`refresh: 60 Hz in
+levels\altearth\hub\altdoc, a chase played at 60 Hz past 60 Hz (144 Hz chosen)`, `refresh: 144 Hz again, the player in ...`).
+check_windows.py's physics check measures both chases at 144 and 240 Hz against 60 Hz's (`CHASES`): with the hold the walrus's
+lead and Evil Crash's times at the first gap are 60 Hz's to the last digit; without it (`$TWIN_CHASES_PAST_60=1`) the walrus ran
+up to 3.0 units closer and Evil Crash up to 0.3 s early. Its scenario plays Bandicoot Pursuit at 144 Hz, then Twinsanity Island.
 
 Options > Display > Show FPS (`show_fps` in options.txt, off; issue #4 asked for it) draws the frames a second in the window's top
 left corner, as a PC game's counter does (ui/fpscounter.cpp): the pictures the window shows, counted by the overlay's hook as each
@@ -1304,7 +1316,8 @@ with `\` throughout (Native::LogPath: the texture pack's, the fonts', the mods',
   T NAME#ID at (X, Y, Z), the player at (X, Y, Z)`, ID the instance's address's low bits (two instances of one name told apart).
   THE LIST 29a measured its chases with it. `$TWIN_FRAME_STEPS=1`: what the game counts in frames (a rigid body's launch
   and ride steps, its drag, grip and press) counted a frame at a time past 60 Hz too, as retail did: the way to see what 29a fixed
-  (WINDOWS.md "Frame rates past 60").
+  (WINDOWS.md "Frame rates past 60"). `$TWIN_CHASES_PAST_60=1`: Bandicoot Pursuit's and the walrus's chunks at the rate chosen
+  past 60 Hz, not held at 60 (29c): the way to measure the chases for 29b.
 - `$TWIN_PORTABLE_TEST=1` or `=FOLDER` (with `--headless`, ui/portabletest.cpp): from the main menu the settings opened,
   the Game tab's portable mode row stepped and its dialog followed with its own input: asked, left to yes and select copies,
   done, select closes the game as a player's would (exit 0; the folders are check_windows.py's to look at); refused (the folder can't be written to),

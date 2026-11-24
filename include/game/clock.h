@@ -109,6 +109,9 @@ extern "C"
 // Natively, whether the frames are past the PS2's 60 a second (Options > Display's 120 Hz, 144 Hz and unlimited: the game clock's
 // frames a second): the character's steps then make up for being shorter than 60 Hz's (CharacterAgent::Move)
 bool FramesPast60();
+// Natively, the game clock held at 60 Hz past 60 (THE LIST 29c, the two chases: NativeUi::ChaseRateFrame): a test run's fixed
+// frames ($TWIN_FIXED_TIME's rates) are then 60ths, as the frames paced at 60 are
+void HoldClockAt60(bool held);
 // Whether what retail counts in frames is counted in 60ths of a second (THE LIST 29a): past 60 Hz, unless $TWIN_FRAME_STEPS=1
 bool CountsSixtieths();
 // Past 60 Hz, the 60ths of a second (the PS2's frames) a clock went through from one of its times to another, for what retail

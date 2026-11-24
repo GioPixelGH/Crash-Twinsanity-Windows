@@ -457,6 +457,7 @@ void Frame()
 {
     UiShotsFrame();
     TrailFrame();
+    ChaseRateFrame();
     SweepFrame();
     SaveTestFrame();
     HintsTestFrame();

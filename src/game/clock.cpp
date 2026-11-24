@@ -22,6 +22,10 @@ constexpr u64 FrameSlack = 0x4E;
 constexpr u32 TestTimeChecks = 16;
 u64 g_TestTicks;
 u32 g_TestTimeChecks;
+#ifdef TWIN_NATIVE
+// The game clock held at 60 Hz past 60 (HoldClockAt60: THE LIST 29c's chases)
+bool g_HeldAt60 = false;
+#endif
 
 u64 Now()
 {
@@ -61,7 +65,8 @@ u64 TestFrameTicks(const GameTimeController* controller)
         }
     }
 
-    if (count != 0)
+    // (held at 60 Hz the frames are the clock's own 60ths, the rates' turn kept for after)
+    if (count != 0 && !g_HeldAt60)
     {
         ticks = controller->ticksPerSecond / rates[next];
         next = (next + 1) % count;
@@ -305,6 +310,11 @@ bool FramesPast60()
 {
     constexpr s32 NtscFramesPerSecond = 60;
     return G_GameClockController != nullptr && G_GameClockController->framesPerSecond > NtscFramesPerSecond;
+}
+
+void HoldClockAt60(bool held)
+{
+    g_HeldAt60 = held;
 }
 
 bool CountsSixtieths()

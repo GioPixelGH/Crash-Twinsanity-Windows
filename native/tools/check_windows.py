@@ -185,6 +185,22 @@ SCENARIOS = [
           # (The North American disc's data has no such step: he follows Cortex with Bug fixes off too, THE LIST 31c)
           expect_usa=[r"hop:   \S*EVILCRASH at \((4\d|5\d|6[0-5])\."],
           forbid_usa=[r"route trace: \S*EVILCRASH"])),
+    # THE LIST 29c (#44, #17): past 60 Hz Bandicoot Pursuit's and the walrus's chunks run at 60 Hz (their chasers' behaviours take
+    # a state a frame), the rate chosen again elsewhere. At 144 Hz with a 144 Hz screen's uneven frames, Evil Crash 9.4 s into play
+    # where 60 Hz has him, (63.2, 6.3) (at 144 Hz without the hold (61.5, 5.9)), then Twinsanity Island loaded at 144 Hz again.
+    # check_windows' physics measures both chases at 144 and 240 Hz
+    ("Bandicoot Pursuit's chase at 60 Hz with 144 Hz chosen, 144 Hz again on Twinsanity Island (#44)",
+     "Levels\\AltEarth\\Hub\\altdoc", 16,
+     "idle,wait2,goto:75.3:2.6:-100.8,goto:62.49:1.6:-100.8,wait3.4,states:DOCAMOK_EVILCRASH,load:Levels\\AltEarth\\Hub\\alta,"
+     "wait2,idle",
+     dict(options="skip_cutscenes=1\nretail_fixes=1\nrefresh_60hz=3\n",
+          env={"TWIN_SWEEP_GAME_TIME": "1", "TWIN_FIXED_TIME": "144,144,60"},
+          expect=[r"refresh: 60 Hz in levels\\altearth\\hub\\altdoc, .*\(144 Hz chosen\)",
+                  r"hop:   \S*DOCAMOK_EVILCRASH at \((62\.[89]|6[34]\.\d), 6\.\d",
+                  r"refresh: 144 Hz again, the player in levels\\altearth\\hub\\alta"],
+          # (the North American disc's Evil Crash takes another way: THE LIST 37)
+          expect_usa=[r"refresh: 60 Hz in levels\\altearth\\hub\\altdoc, .*\(144 Hz chosen\)",
+                      r"refresh: 144 Hz again, the player in levels\\altearth\\hub\\alta"])),
     # Issue #32 (THE LIST 16): Ant Agony's walls and doors, 32 bit textures uploaded to 2800/4 each frame, were read from the
     # buffer bossarea's sky is drawn into there (a target of that address and width left from earlier play), its clamped edge
     # streaking their repeats; only a target's own drawing is a texture's source now (hwgs.cpp: Target::drawn). bossarea
@@ -1084,6 +1100,94 @@ def physics(exe, work):
         passed = worst <= 1.0 and hop_share <= 1.0
         results.append((name, passed, f"the jumps' most apart: {worst_what}; "
                                       f"the lift's hop {hop:.2f} high (60 Hz {reference_hop:.2f})"))
+    return results + chases(exe, work)
+
+
+# THE LIST 29a (#17, #44): two chases at each of PHYSICS_RATES against 60 Hz's, the chaser's places at the same moments of the
+# game clock since play started ($TWIN_WATCH every frame, $TWIN_SWEEP_GAME_TIME). The walrus of High Seas Hi-Jinks (gpa10, the
+# cutscene skipped) after Crash, run down the deck by a pad script timed by the game clock ($TWIN_PAD_SCRIPT_TIME: the stick down,
+# a jump at each of its first three gaps; he falls at the fourth at 21.4 s): Crash minus the walrus's z each half second from 13 to
+# 20 s, within CHASE_GAP of 60 Hz's (past 60 Hz the walrus's behaviour took its steps every frame: it ran 2.5 units closer at
+# 240 Hz and caught him). Bandicoot Pursuit's Evil Crash (altdoc, Bug fixes on: THE LIST 37), Crash put on the checkpoint, then on
+# the pad: Evil Crash's arrival at the first gap's edge (x 66.8 or less) and his jump over it (y past 3.6), within CHASE_SECONDS of
+# 60 Hz's (he jumped up to 0.35 s early). Since THE LIST 29c both chases' chunks run at 60 Hz past 60 Hz (features.cpp's
+# ChaseRateFrame), so this checks that hold; with $TWIN_CHASES_PAST_60=1 in a chase's environment they run at the rate chosen again
+# (29b's measure: the walrus 2.5 closer at 240 Hz, Evil Crash early). Each: (name, chunk, seconds, hops, environment, options)
+CHASES = [
+    ("the walrus's lead on Crash", "Levels\\Ice\\HighSeas\\gpa10", 21, "idle",
+     {"TWIN_PAD_SCRIPT": "10-60:ly=255;11.5-11.8:cross;16.4-16.7:cross;17.9-18.2:cross", "TWIN_PAD_SCRIPT_TIME": "1",
+      "TWIN_SWEEP_IDLE": "1", "TWIN_WATCH": "act_WALRUS2"}, "skip_cutscenes=1\n"),
+    ("Evil Crash at Bandicoot Pursuit's first gap", "Levels\\AltEarth\\Hub\\altdoc", 13,
+     "idle,wait2,goto:75.3:2.6:-100.8,goto:62.49:1.6:-100.8", {"TWIN_WATCH": "DOCAMOK_EVILCRASH"},
+     "skip_cutscenes=1\nretail_fixes=1\n"),
+]
+CHASE_GAP = 0.75
+CHASE_SECONDS = 0.1
+WATCHED = re.compile(r"watch: frame \d+ t ([\d.]+) (\S+) at \(([-\d.]+), ([-\d.]+), ([-\d.]+)\), the player at "
+                     r"\(([-\d.]+), ([-\d.]+), ([-\d.]+)\)")
+
+
+def chase_measure(index, log):
+    """What a run of CHASES[index] measured: {time: gap} for the walrus, (arrival, jump) for Evil Crash, or what went wrong"""
+    lines = [(float(m[1]), m[2], float(m[3]), float(m[4]), float(m[5]), float(m[8])) for m in WATCHED.finditer(log)]
+    if not lines:
+        return "nothing watched"
+    start = lines[0][0]
+    if index == 0:
+        # (the walrus on the deck, not gpa10's other one under it)
+        walrus = [(t - start, z, crash_z) for t, _, _, _, z, crash_z in lines if -320.0 < z < -150.0]
+        gaps = {}
+        for half in range(26, 41):
+            at = half / 2.0
+            near = min(walrus, key=lambda sample: abs(sample[0] - at), default=None)
+            if near is None or abs(near[0] - at) > 0.05:
+                return f"the walrus not watched at {at:.1f} s"
+            gaps[at] = near[2] - near[1]
+        return gaps
+    arrival = jump = None
+    for t, _, x, y, _, _ in lines:
+        if x < -100.0:
+            continue
+        if arrival is None and x <= 66.8:
+            arrival = t - start
+        if arrival is not None and y > 3.6 and x < 66.7:
+            jump = t - start
+            break
+    return (arrival, jump) if jump is not None else f"Evil Crash {'never jumped' if arrival else 'never reached the gap'}"
+
+
+def chases(exe, work, image=None):
+    """CHASES at each of PHYSICS_RATES against 60 Hz's: [(name, passed, what happened)]"""
+    def one(index, rate):
+        name, chunk, seconds, hops, environment, options = CHASES[index]
+        _, frames, refresh = rate
+        status, log = run_game(exe, work / f"chase-{index}-{frames.replace(',', '-')}", ["--headless", "--quiet-stubs"],
+                               {"TWIN_SWEEP_LEVEL": chunk, "TWIN_SWEEP_SECONDS": str(seconds), "TWIN_SWEEP_TIMEOUT": "180",
+                                "TWIN_HOP": hops, "TWIN_SWEEP_GAME_TIME": "1", "TWIN_FIXED_TIME": frames, **environment},
+                               timeout=seconds * 10 + 300, options=f"{options}refresh_60hz={refresh}\npause_on_focus_loss=0\n",
+                               image=image)
+        return chase_measure(index, log) if status == 0 else f"exit {status}"
+    with ThreadPoolExecutor(3) as pool:
+        runs = {(index, rate[1]): pool.submit(one, index, rate) for index in range(len(CHASES)) for rate in PHYSICS_RATES}
+        measured = {key: future.result() for key, future in runs.items()}
+    results = []
+    for index, (chase, *_) in enumerate(CHASES):
+        reference = measured[(index, PHYSICS_RATES[0][1])]
+        for name, frames, _ in PHYSICS_RATES[1:]:
+            ours = measured[(index, frames)]
+            label = f"{name}, {chase}"
+            if isinstance(reference, str) or isinstance(ours, str):
+                results.append((label, False, f"60 Hz: {reference if isinstance(reference, str) else 'measured'}; "
+                                              f"{name}: {ours if isinstance(ours, str) else 'measured'}"))
+            elif index == 0:
+                at = max(reference, key=lambda t: abs(ours[t] - reference[t]))
+                apart = abs(ours[at] - reference[at])
+                results.append((label, apart <= CHASE_GAP, f"the lead most apart {ours[at]:.2f} at {at:.1f} s (60 Hz "
+                                                          f"{reference[at]:.2f}), {len(ours)} moments"))
+            else:
+                apart = max(abs(ours[0] - reference[0]), abs(ours[1] - reference[1]))
+                results.append((label, apart <= CHASE_SECONDS, f"at the edge {ours[0]:.3f} s, jumping {ours[1]:.3f} s (60 Hz "
+                                                              f"{reference[0]:.3f}, {reference[1]:.3f})"))
     return results
 
 

@@ -42,6 +42,25 @@ constexpr s32 NtscFramesPerSecond = 60;
 constexpr s32 FrameRates[] = {PalFramesPerSecond, NtscFramesPerSecond, 120, 144, 0};
 constexpr s32 UnlimitedBudgetRate = 240;
 constexpr f32 GameTick = 1.0f / 60.0f;
+
+// THE LIST 29c (#44, #17): the chunks of the two chases that still go wrong past 60 Hz (their chasers' behaviours take a state a
+// frame: WINDOWS.md "Frame rates past 60"), where the game runs at 60 Hz whatever the rate chosen, until 29b's fixed steps: Bandicoot
+// Pursuit's three (Evil Crash after Crash and Cortex in each) and High Seas Hi-Jinks' deck (the walrus's)
+constexpr const char* ChaseChunks[] = {"levels\\altearth\\hub\\altdoc", "levels\\altearth\\hub\\altdoc_b",
+                                       "levels\\altearth\\hub\\altdoc_c", "levels\\ice\\highseas\\gpa10"};
+// Whether the player is in one of them (ChaseRateFrame)
+bool g_InChase = false;
+
+// The option's frame rate (0 unlimited)
+s32 ChosenFrameRate()
+{
+    return FrameRates[std::clamp(GetOption(OptionRefresh60), 0, 4)];
+}
+
+bool PastSixty(s32 rate)
+{
+    return rate == 0 || rate > NtscFramesPerSecond;
+}
 }
 
 void ApplyOption(Option option)
@@ -477,7 +496,47 @@ s32 FramesPerSecond(s32 retail)
 
 s32 FrameRate()
 {
-    return FrameRates[std::clamp(GetOption(OptionRefresh60), 0, 4)];
+    const s32 chosen = ChosenFrameRate();
+    return g_InChase && PastSixty(chosen) ? NtscFramesPerSecond : chosen;
+}
+
+void ChaseRateFrame()
+{
+    // (the player's chunk as the trail last saw it: TrailFrame runs first; $TWIN_CHASES_PAST_60=1 leaves the chases at the rate
+    // chosen, the tests' way to see them past 60 Hz)
+    static const bool past = std::getenv("TWIN_CHASES_PAST_60") != nullptr;
+    const char* chunk = TrailChunk();
+    bool inChase = false;
+    for (const char* name : ChaseChunks)
+    {
+        inChase = inChase || (!past && chunk != nullptr && SDL_strcasecmp(chunk, name) == 0);
+    }
+
+    const s32 chosen = ChosenFrameRate();
+    const bool held = inChase && PastSixty(chosen);
+    static bool wasHeld = false;
+    if (held != wasHeld)
+    {
+        char rate[16] = "unlimited";
+        if (chosen != 0)
+        {
+            std::snprintf(rate, sizeof(rate), "%d Hz", chosen);
+        }
+
+        if (held)
+        {
+            Native::Log("refresh: 60 Hz in %s, a chase played at 60 Hz past 60 Hz (%s chosen)", chunk, rate);
+        }
+        else
+        {
+            Native::Log("refresh: %s again%s%s", rate, chunk != nullptr ? ", the player in " : "", chunk != nullptr ? chunk : "");
+        }
+
+        wasHeld = held;
+    }
+
+    g_InChase = inChase;
+    HoldClockAt60(held);
 }
 
 u32 GameTicks(f32 seconds, f32* carried)

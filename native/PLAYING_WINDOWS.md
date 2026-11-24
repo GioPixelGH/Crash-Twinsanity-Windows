@@ -216,7 +216,7 @@ Your saves stay ones the original game could make.
 | Window size, fullscreen | How the game's window is shown. |
 | Resolution | 1x to 8x the PS2's. It's applied when you stop on a choice, not at each step. |
 | Widescreen | 4:3, 16:10, 16:9, 21:9 or 32:9. 16:10 fits the Steam Deck's screen. At 32:9 the menus and the HUD stay in the middle 16:9. |
-| Refresh rate | 50 Hz (the European PS2's), 60 Hz (the default), 120 Hz, 144 Hz, or unlimited (turn v-sync off for it). The game runs at the same speed at any rate, and Crash jumps as far and as high as at 60 Hz. Above 60, it goes only as fast as your computer can draw it. |
+| Refresh rate | 50 Hz (the European PS2's), 60 Hz (the default), 120 Hz, 144 Hz, or unlimited (turn v-sync off for it). The game runs at the same speed at any rate, and Crash jumps as far and as high as at 60 Hz. Above 60, it goes only as fast as your computer can draw it. Bandicoot Pursuit and the walrus chase in High Seas Hi-Jinks play at 60 Hz when the rate is above 60, and your rate comes back after them. |
 | V-sync | As its name says. |
 | Show FPS | A frames per second counter in the top left corner. Off by default. |
 | Texture filtering, Anisotropic filtering | Under **Picture**. Smooth or sharp textures. Anisotropic filtering is off by default, as on the PS2. Up to 16x, it sharpens textures seen at an angle. |

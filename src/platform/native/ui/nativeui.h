@@ -723,8 +723,12 @@ void SkipHoldForTest(bool forced, const std::vector<s32>& inputs, f32 seconds);
 f32 SkipHoldSecondsForTest();
 // The game clock's frames a second for the retail value (the 60 Hz option's)
 s32 FramesPerSecond(s32 retail);
-// The frame rate the frames are paced at (50, 60, 120, 144; 0 as fast as they come)
+// The frame rate the frames are paced at (50, 60, 120, 144; 0 as fast as they come): the option's, but 60 past 60 while the
+// player is in a chase that still goes wrong there (ChaseRateFrame)
 s32 FrameRate();
+// THE LIST 29c (#44, #17): the frame rate held at 60 while the player is in Bandicoot Pursuit's chunks or the walrus chase's, if
+// the option's is past 60, and the option's again once the player is elsewhere (a log line each way); every frame
+void ChaseRateFrame();
 // The game's work done a frame at a time that counts in 60ths of a second (the particles' emitters and events, the decals'
 // lives): at 50 and 60 Hz once a frame, as the PS2 did it; faster, once for each 60th gone by (none some frames), the time
 // left over kept in carried
