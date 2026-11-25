@@ -1455,8 +1455,10 @@ Desktop has to be running): built afresh in Docker (`build_linux_docker.py --con
 its licences (the MIT code's in the program too), its version, and the beach played from it for 20 seconds, headless on Xvfb
 with Mesa, the disc image mounted read-only), its
 program searched for the game's blocks as the zip's is (none the Windows program of the same commit or the last release's
-hasn't). Its lines start with `linux`; `--no-linux` releases the zip alone, when Docker isn't there. It prints the commit and
-both files' SHA-256. `publish` makes the release (`vVERSION`; with `--preview` a preview, GitHub's pre-release, as every
+hasn't). Its lines start with `linux`; `--no-linux` releases the zip alone, when Docker isn't there. Since 1.4.0 the zip and
+the AppImage are then scanned by Microsoft Defender (`MpCmdRun.exe -Scan -ScanType 3 -File FILE -DisableRemediation`: a zip's
+files looked into, a detection listed and nothing quarantined; exit code 0 for none, 2 for a threat), its line naming the
+security intelligence's version, for the README's "Is it safe?". It prints the commit and both files' SHA-256. `publish` makes the release (`vVERSION`; with `--preview` a preview, GitHub's pre-release, as every
 release before 1.0.8 was) from NOTES.md with `{commit}`, `{sha256}` (the zip's) and `{sha256_linux}` (the AppImage's) filled
 in, opens its discussion (Discussions > Announcements, where players can talk about it), uploads the zip and the AppImage,
 downloads them back and compares their SHA-256, and beside each uploads `NAME.sha256` (sha256sum's line: the hash, two

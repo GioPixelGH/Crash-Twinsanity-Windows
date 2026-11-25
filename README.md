@@ -88,6 +88,8 @@ Nobody has tried it on a Deck yet, so **testers are wanted** ([#34]).
   On Windows, `Get-FileHash` prints your download's, to compare.
   On Linux, `sha256sum -c` checks it for you.
   Here is [VirusTotal's report on 1.0.12's download](https://www.virustotal.com/gui/url/6ed9050e25993157d30ef77a69c4b7e7aba61368c9669caca1caf95553cd1e90/detection).
+- Since 1.4.0, each download is scanned with Microsoft Defender before it's published.
+  The release notes give the result.
 - You can also build it yourself from this code ([below](#building-on-windows)).
 
 [SECURITY.md](.github/SECURITY.md) has the details, and how to report a security problem privately.

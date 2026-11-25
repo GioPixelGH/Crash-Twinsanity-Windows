@@ -13,8 +13,9 @@ and check_windows.py's checks with the pictures compared with the last release's
 (build_linux_docker.py --configure --check: Docker has to be running) and checked there by check_linux.py (its libraries, the
 glibc it needs, its version, the beach played from it headless), and its program searched for the game's bytes as the zip's
 is (none the Windows program of the same commit or the last release's hasn't). --no-linux leaves the AppImage out of the
-release (said so in the result). It prints the commit, the version and the files' SHA-256, and keeps them for publish
-(build/native/release/release.json).
+release (said so in the result). Last, the zip and the AppImage scanned by Microsoft Defender (MpCmdRun's custom scan, archives
+looked into, nothing quarantined), its security intelligence's version in the line. It prints the commit, the version and the
+files' SHA-256, and keeps them for publish (build/native/release/release.json).
 
 publish: the release vVERSION on GitHub (a preview with --preview, as every release before 1.0.8 was), its text NOTES.md with
 {commit}, {sha256} (the zip's) and {sha256_linux} (the AppImage's) filled in; the zip and the AppImage uploaded, then
@@ -57,6 +58,8 @@ LINUX_PROGRAM = LINUX / "crash-twinsanity"
 ALLOWED_IMPORTS = re.compile(r"^(KERNEL32|WINMM|WINHTTP|SDL3|avcodec-\d+|avutil-\d+|api-ms-win-crt-[a-z]+-l1-1-0)\.dll$", re.I)
 # The retail executable's sections whose bytes the program mustn't carry (native/WINDOWS.md, "The game's data from the disc")
 GAME_SECTIONS = (".data", ".rodata", ".sdata", ".vutext", ".vudata")
+# Microsoft Defender's command line scanner (the README's "Is it safe?")
+DEFENDER = Path(r"C:\Program Files\Windows Defender\MpCmdRun.exe")
 
 
 def git(*arguments):
@@ -259,6 +262,7 @@ def check(arguments):
     else:
         failed |= not linux_check(wanted, retail, found | (theirs.result()[1] if theirs else set()))
         linux = sha256(APPIMAGE) if APPIMAGE.exists() else None
+    failed |= not defender([ZIP] + ([APPIMAGE] if linux else []))
 
     digest = sha256(ZIP)
     (WORK / "release.json").write_text(json.dumps({"version": wanted, "commit": commit, "sha256": digest,
@@ -270,6 +274,29 @@ def check(arguments):
         print(f"sha-256         {linux}")
     print("result          " + ("FAILED: don't publish" if failed else f"ready: release_windows.py publish NOTES.md"))
     sys.exit(1 if failed else 0)
+
+
+def defender(paths):
+    """Each file scanned by Microsoft Defender (MpCmdRun -Scan -ScanType 3 -File: a custom scan of one file, a zip's files
+    looked into; -DisableRemediation: a detection listed, nothing quarantined or deleted). Its exit code is 0 with no threat, 2
+    with one. One line, with the security intelligence's version (Get-MpComputerStatus). True when no file had a threat"""
+    if not DEFENDER.exists():
+        print(f"defender        FAILED: no {DEFENDER} (Microsoft Defender's scanner) on this PC")
+        return False
+    status = subprocess.run(["powershell", "-NoProfile", "-Command", "(Get-MpComputerStatus).AntivirusSignatureVersion"],
+                            capture_output=True, text=True)
+    intelligence = status.stdout.strip() or "unknown"
+    found = []
+    for path in paths:
+        scan = subprocess.run([str(DEFENDER), "-Scan", "-ScanType", "3", "-File", str(path), "-DisableRemediation"],
+                              capture_output=True, text=True, errors="replace")
+        if scan.returncode != 0:
+            said = [line.strip() for line in scan.stdout.splitlines() if line.strip()]
+            found.append(f"{path.name} (exit {scan.returncode}: {said[-1] if said else 'no output'})")
+    names = " and ".join(path.name for path in paths)
+    print(f"defender        {'no threats in ' + names if not found else 'FAILED: ' + '; '.join(found)} "
+          f"(Microsoft Defender, security intelligence {intelligence})")
+    return not found
 
 
 def linux_check(wanted, retail, windows_blocks):
