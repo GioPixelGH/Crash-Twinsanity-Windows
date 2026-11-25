@@ -21,6 +21,17 @@ body:
       label: PC
       description: Windows or Linux version, graphics card and its driver's version.
       placeholder: "Windows 11, NVIDIA GeForce GTX 1650, driver 581.57"
+  - type: dropdown
+    id: disc
+    attributes:
+      label: Disc
+      description: The disc image you play. From 1.4.0 on, Options > Game > Disc shows it.
+      options:
+        - "PAL (Europe/Australia, SLES-52568)"
+        - "PAL, translated or modded"
+        - "North American, version 2.00 (SLUS-20909)"
+    validations:
+      required: true
   - type: textarea
     id: what
     attributes:
@@ -55,5 +66,5 @@ body:
     attributes:
       label: Your copy of the game
       options:
-        - label: I'm playing with a disc image of my own PAL copy of Crash Twinsanity (SLES-52568).
+        - label: I'm playing with a disc image of my own copy of Crash Twinsanity, the PAL release (SLES-52568) or the North American version 2.00 (SLUS-20909).
           required: true
