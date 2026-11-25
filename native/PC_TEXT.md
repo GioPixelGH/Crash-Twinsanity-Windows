@@ -357,6 +357,7 @@ text can't hold, such as curly quotes, stays empty, as the ui self-test finds th
 | 0x231 | this is the disc image the game is playing. | c'est l'image disque que le jeu utilise. | das spiel nutzt dieses disc-image schon. | es la imagen de disco que el juego está usando. | è l'immagine del disco che il gioco sta usando. |  |
 | 0x232 | this file isn't a disc image the game plays. | ce fichier n'est pas une image disque que le jeu peut utiliser. | diese datei ist kein disc-image, das das spiel nutzen kann. | este archivo no es una imagen de disco que el juego pueda usar. | questo file non è un'immagine del disco che il gioco può usare. |  |
 | 0x233 | quit to desktop? | quitter vers le bureau ? | zum desktop beenden? | ¿salir al escritorio? | uscire al desktop? |  |
+| 0x234 | the brazilian portuguese texts | les textes en portugais du brésil | die texte auf brasilianischem portugiesisch | los textos en portugués de brasil | i testi in portoghese brasiliano |  |
 
 ## English (29 lines)
 

@@ -401,6 +401,8 @@ enum NativeText : u32
     TextDiscRefused,
     // The improved main menu's quit to desktop's confirmation (THE LIST 63c, #33; the row is TextQuitDesktop)
     TextQuitDesktopAsk,
+    // The credits' part for the port's texts in Brazilian Portuguese (#25, NormanTheFox's translation)
+    TextCreditsTranslation,
     NativeTextEnd,
 };
 

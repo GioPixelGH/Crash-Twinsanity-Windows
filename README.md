@@ -24,7 +24,7 @@ No emulator.**
 > No game files are included.
 > You need a disc image of your own PAL copy of the game (Europe/Australia, SLES-52568).
 > A translated or modded copy of the PAL disc works too.
-> The North American disc doesn't work yet.
+> Since 1.4.0, so does the North American disc, version 2.00 (SLUS-20909).
 >
 > Crash Twinsanity and Crash Bandicoot are trademarks of Activision.
 > PlayStation is a trademark of Sony Interactive Entertainment.
@@ -44,6 +44,7 @@ This repository brings it to Windows and Linux, keeps it at a steady 60 fps, and
 - A graphics card with OpenGL 3.3 or Vulkan.
   Any card from the last ten years has them.
 - A disc image of **your own** PAL copy of the game, as an `.iso`, `.bin` or `.img`.
+  The North American disc, version 2.00, works too.
 - A keyboard and mouse, or a controller.
   Xbox, PlayStation, Switch and most other controllers work out of the box.
 
@@ -99,14 +100,16 @@ It's a Windows or Linux program of its own.
 It only reads the game's data from your disc image.
 
 **Where do I get the game?**
-From your own PAL disc.
+From your own disc.
 Copy it into an `.iso` with a PC's DVD drive and a disc-copying program, such as ImgBurn on Windows.
 Nobody here can share the game's files.
 
 **Does the North American disc work?**
-Not yet ([#14]).
-It's on the [roadmap](#roadmap).
-Translated or modded copies of the PAL disc work.
+Yes, since 1.4.0, if it's version 2.00 (SLUS-20909) ([#14]).
+It plays in English, the only language on that disc, and keeps its saves on a memory card of its own.
+Mods are made for the PAL disc, so they aren't used with it.
+Version 1.00 and the Japanese disc don't work, and the game says so.
+Translated or modded copies of the PAL disc work too.
 
 **Is the game changed?**
 No.
@@ -117,14 +120,16 @@ It stays off until you turn it on.
 **Why is it slow on my older PC?**
 The port draws the PS2's graphics the way the PS2's graphics chip does, on your processor.
 That's hard work for older processors.
-Try the settings in [If something goes wrong](#if-something-goes-wrong).
-A faster renderer is on the [roadmap](#roadmap), aimed at 1.4.0.
+Since 1.4.0 there's a fast renderer, still experimental, in **Options > Display > Renderer > Renderer**.
+It draws the scenery more directly, and it should look the same.
+Try it, and the settings in [If something goes wrong](#if-something-goes-wrong).
 
 **Does it play at more than 60 fps?**
 Yes: 120, 144 or unlimited, in Options > Display.
 The game keeps the same speed.
-A few places still go wrong above 60, such as the seal chase ([#17]) and Evil Crash in Bandicoot Pursuit ([#44]).
-60 is the safe choice.
+Two chases play at 60 fps whatever you choose, Bandicoot Pursuit ([#44]) and the walrus chase in High Seas Hi-Jinks ([#17]), because above 60 they went wrong.
+The rate you chose comes back as soon as you leave them.
+60 is still the safest choice.
 
 **Do texture packs and mods work?**
 Yes.
@@ -160,16 +165,20 @@ Bugs go in the [issues](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/i
 - Anisotropic filtering up to 16x, for sharp textures seen at an angle.
 - The PS2's dithering, or off for full colour.
 - A longer draw distance, if you'd like grass and small things to appear sooner.
+  It also keeps the particles near Crash when the camera is far away ([#60]).
 - HD texture packs made for PCSX2 work as they are ([how](#texture-packs)).
+  Packs in BC7 and the other compressed DDS kinds stay compressed on the graphics card, so they need much less memory ([#55]).
 
 **Smoothness**
 
 - A steady 60 fps, or 50, 120, 144 or unlimited, always at the same game speed.
+  Above 60, two chases play at 60 ([#17], [#44]).
 - No pauses to prepare graphics when you reach a new area.
 - OpenGL or Vulkan, your choice ([#37]).
   OpenGL is the default.
-  Vulkan is new in 1.3.0, and testers are wanted.
+  Vulkan came in 1.3.0, and testers are wanted.
 - If a start fails with one of them, the game uses the other.
+- A fast renderer for older processors, new in 1.4.0 and still experimental.
 
 **Playing**
 
@@ -178,6 +187,7 @@ Bugs go in the [issues](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/i
 - The settings open while you play, with F1 or with Select+Start on a controller.
 - On the Display and Accessibility tabs, the game shows behind the settings, so you see each change at once.
 - A master volume, and a choice of the monitor the game opens on.
+- The disc you're playing shown in the options, where you can pick another disc image.
 - The text language and the voice language chosen separately: English text with French voices, for example.
 - Saves that work like a PC game's, with no memory card screens.
 - Portable mode: everything kept in the game's folder, to carry it on a USB stick.
@@ -187,19 +197,23 @@ Bugs go in the [issues](https://github.com/GioPixelGH/Crash-Twinsanity-Windows/i
 - Skip cutscenes, now including 42 of the game's 51 scripted ones ([#28]).
 - Infinite lives.
 - A stronger Aku Aku: one or two masks protect you from TNT and Nitro ([#30]).
-- With three masks on, a touch breaks crates and beats enemies, as a spin does ([#18]).
+- With three masks on, a touch breaks crates and beats enemies within a spin's reach, as in the earlier Crash games ([#18], [#56]).
+- Three masks' invincibility for 20 seconds, as in the earlier games, instead of 8 ([#56]).
 - An automatic camera that swings behind you by itself ([#42]).
   Or an assisted one, which you still turn, and which swings behind you once you let go.
 - The slide's long jump at any moment, or an easier one ([#11], [#35]).
 - A double jump later in a fall, at any moment of it, or after a slide jump ([#47]).
-- Improved menus, where the pause menu starts at the top and has the gems and the extras as rows ([#48]).
+- Improved menus ([#48]).
+  The main menu gets Continue, which loads your newest save, and Quit to desktop ([#33]).
+  The pause menu starts at the top and has the gems and the extras as rows.
 - Restart Checkpoint in the pause menu, which the PS2's pause menu doesn't have.
 - Level select, from the gems' pages in the main menu or the pause menu ([#48]).
   Its saves are kept apart from yours.
 - A speedrun timer.
 - A shadow under you in the air, with a yellow ring if you like, so it shows on dark ground too ([#11]).
+  The ring grows as you jump and shrinks as you land.
 - Aku Aku's shadow ([#51]), and your shadow on crates.
-- Bug fixes for six bugs of the original game: the masks' particles and stars ([#18]), Rockslide Rumble's smoke ([#41]), and Evil Crash in Bandicoot Pursuit.
+- Bug fixes for eight bugs of the original game: the masks' particles and stars, and Aku Aku lost after the fight ball's ride into Dingodile's hut ([#18]), Rockslide Rumble's smoke ([#41]), outline crates broken before their "!" crate ([#58]), and Evil Crash in Bandicoot Pursuit.
 
 **Mods**
 
@@ -218,6 +232,8 @@ On top of HAB3X's port (its GPU renderer, widescreen and 21:9, HD texture packs,
 - **Speed:** the game, the PS2's vector unit (VU1) and the graphics run on three threads, and the renderer's hot paths are faster.
   The graphics' shader programs are made when the game starts.
   Since 1.3.0 the renderer makes about a sixth of the OpenGL calls it made, and decodes a quarter of the texels it did for the shadows and the colour filter.
+- **The fast renderer** (experimental, since 1.4.0) runs the scenery's VU1 program as native code, with the same results bit for bit, and draws each strip of triangles at once instead of a shape at a time.
+  Its results were compared with the accurate renderer's in every area the level sweep plays, and none differed.
 - **OpenGL and Vulkan:** since 1.3.0 the renderer records each frame as a list of commands, and OpenGL or Vulkan draws it.
   Vulkan goes through SDL's GPU API, its shaders made from the OpenGL ones by glslang.
   The design follows [Tenkaichi3Decomp's](https://github.com/z3xox/Tenkaichi3Decomp) renderer.
@@ -232,6 +248,9 @@ On top of HAB3X's port (its GPU renderer, widescreen and 21:9, HD texture packs,
 - **Languages:** a translated disc's texts are recognised by their language ([#25]).
 - **Cutscene skip:** besides the developers' own skips, the others end the scene's waits in order (TwinsanityEvolved's skip, with its author's permission).
   Each one was checked to end as when watched.
+- **Frame rates above 60:** Crash's own movement and the rigid bodies, such as Evil Crash's jumps, keep their 60 Hz timing.
+  The two chases that still went wrong play at 60 Hz until the game's steps are kept at 60 for every rate.
+- **Texture packs:** a pack's BC1, BC2, BC3 and BC7 DDS files go to the graphics card compressed, with their own mipmaps, and leave RAM once there.
 - **Level select** comes from HAB3X's Mac port, on a memory card of its own.
 - **Quit to desktop, a Credits page, and the update check** (Windows only) are in Options > Game.
 - **Mods:** each mod is a folder in `%APPDATA%\Crash Twinsanity\mods`, a Mod Crate as it comes or files laid out as the disc's.
@@ -244,11 +263,17 @@ On top of HAB3X's port (its GPU renderer, widescreen and 21:9, HD texture packs,
   - The characters at high resolutions: the game's distance haze and the first boss's sky at the chosen resolution (no more stepped outlines), the colours VU1 writes after sending its vertices (no more patches on the bodies), triangles thinner than a PS2 pixel (no more thin black lines), and textures' detail for the chosen resolution.
   - Ant Agony's metal doors, walls and floors, which were read from an old buffer of the first boss's area ([#32]).
   - The story movies' rare crash ([#49]), from the movie decoder reading a little past each piece of the movie.
-  - Under the Bug fixes option: the masks' invincibility particles lost in the next area, two masks' stars lost after a cutscene, three masks' particles stuck after a hurt, two masks' particles left in the final boss's arena ([#18]), Rockslide Rumble's endless explosions where its purple smoke belongs ([#41]), and Bandicoot Pursuit's Evil Crash standing still.
+  - Vulkan's stops of 4 to 6 seconds ([#55]), when the renderer let go of thousands of textures at once.
+  - The level select's memory card, which took your own saves' list on its first autosave ([#38]).
+    Your own card was never written.
+  - Under the Bug fixes option: the masks' invincibility particles lost in the next area, two masks' stars lost after a cutscene, three masks' particles stuck after a hurt, two masks' particles left in the final boss's arena, Aku Aku released by the hut's scene after the fight ball's ride ([#18]), Rockslide Rumble's endless explosions where its purple smoke belongs ([#41]), outline crates set off by an explosion before their "!" crate ([#58]), and Bandicoot Pursuit's Evil Crash standing still.
 - **Controllers:** a modern controller's round stick is mapped to the PS2 stick's square, so Crash runs on diagonals too.
 - **The game's data from your disc:** the program carries none of it.
-  It reads the data from your disc image's executable when it starts, checks that it's the PAL release, and says so clearly when the disc image is wrong.
+  It reads the data from your disc image's executable when it starts, checks which release it is, and says so clearly when the disc image is wrong.
   The log says what the image is (the retail disc, a modified copy or an unknown image), by redump.org's dumps.
+- **The North American disc:** its program is the PAL one built again, with the same code at other addresses.
+  The port runs the PAL program on that disc's data, through a map of where each piece of data is in its executable.
+  TwinsanityEvolved's region map tool makes the map, and each difference between the two discs was decided one by one.
 
 [native/WINDOWS.md](native/WINDOWS.md) explains each change, why it was needed and how it was tested.
 
@@ -264,10 +289,11 @@ On top of HAB3X's port (its GPU renderer, widescreen and 21:9, HD texture packs,
 - **All 131 of the game's areas were tried** with scripted input, 30 seconds each, with no unexpected crash ([results](native/sweep/results_windows.md)).
   108 played.
   The other 23 can only be entered from a neighbouring area.
+- **The North American disc**, new in 1.4.0, has checks of its own, and all its areas were tried as the PAL disc's were.
 - **Vulkan**, new in 1.3.0, is tested on the same PC.
   There the checks' pictures come out the same as OpenGL's.
   Each release also starts it on Linux with Mesa's Vulkan on the processor.
-  It hasn't been tried on other graphics cards yet.
+  Players have played with it on an NVIDIA GeForce GTX 1650 ([#55]) and on a ROG Ally ([#65]).
 - **Linux:** built and checked with each release since 1.2.0.
   It plays on x86-64 (tried on Debian 13).
 - **macOS:** HAB3X's code for it is still here, but this fork isn't built or tested on macOS.
@@ -276,12 +302,12 @@ On top of HAB3X's port (its GPU renderer, widescreen and 21:9, HD texture packs,
 
 ## Known issues
 
-- **The North American disc doesn't work yet** ([#14]).
-  The game says the disc image isn't the PAL release.
-  It's on the [roadmap](#roadmap).
 - **Older PCs can run well below 60 fps** ([#23], [#39]).
   The PS2's graphics are emulated on the processor, which is hard work for older ones: a two-core laptop processor from 2011 ran it at 18 fps.
-  A faster renderer is on the roadmap.
+  The fast renderer of 1.4.0 helps, and more of it is on the roadmap.
+- **The fast renderer is experimental.**
+  It should look the same as the accurate one, which stays the default.
+  If something looks different with it, please tell us.
 - **A black screen at start on a few AMD PCs** ([#12], [#16]).
   It doesn't happen on the PC the port is tested on.
   Since 1.3.0, a start that hangs before its first pictures makes the next one use the other graphics API.
@@ -289,9 +315,7 @@ On top of HAB3X's port (its GPU renderer, widescreen and 21:9, HD texture packs,
 - **The camera can stop following Crash after a high path scene** ([#23], [#52]).
   It wasn't reproduced here yet.
   The detailed log now says what the camera was doing when it happens.
-- **Aku Aku disappears in two cutscenes** ([#18]), by Cavern Catastrophe's excavator and at Dingodile's house.
-  Not solved yet.
-- **Vulkan is new** ([#37]), so OpenGL stays the default.
+- **Vulkan has been tried on few PCs** ([#37]), so OpenGL stays the default.
   Testers with other graphics cards are wanted.
 - **The Steam Deck hasn't been tried** ([#34]).
   Testers wanted.
@@ -301,10 +325,10 @@ On top of HAB3X's port (its GPU renderer, widescreen and 21:9, HD texture packs,
 | Problem | What to do |
 | --- | --- |
 | Windows says "Windows protected your PC" | Choose **More info**, then **Run anyway**. The program isn't code-signed. |
-| The game asks for the disc image again | You moved or renamed it. Pick it again. To use a different one, delete `disc_image.txt` from the settings folder (below). |
-| The game refuses the disc image | It takes only the PAL disc (SLES-52568), or a translated or modded copy of it. The North American disc doesn't work yet ([#14]). |
+| The game asks for the disc image again | You moved or renamed it. Pick it again. To use a different one, select **Options > Game > Disc** and pick it. |
+| The game refuses the disc image | It takes the PAL disc (SLES-52568), a translated or modded copy of it, or the North American disc, version 2.00 (SLUS-20909). The North American version 1.00 and the Japanese disc don't work. |
 | A black screen at start | If the game doesn't respond, end it in the Task Manager and start it again. The next start uses the other graphics API. Update your graphics card's driver too. If it stays black, attach `log.txt` on [#16]. |
-| Below 60 fps | In Options > Display, set Resolution to 1x, Draw distance to short, and Anti-aliasing off. You can also try Vulkan, under Graphics API. Then attach `log.txt` on [#23]: it says where each frame's time goes. |
+| Below 60 fps | In Options > Display, set Resolution to 1x, Draw distance to short, and Anti-aliasing off. You can also try Vulkan, under Graphics API, and the fast renderer, under Renderer. Then attach `log.txt` on [#23]: it says where each frame's time goes. |
 | A laptop's `log.txt` names its built-in graphics card | In Windows' **Settings > System > Display > Graphics**, choose **High performance** for `CrashTwinsanity.exe`. |
 | A pause when a new area appears | The first start after a graphics driver update takes a little longer. If the game still pauses while you play, attach `log.txt`: its `slow frame` lines say why. |
 | Sounds or a level wrong with mods on | Turn the mods off in Options > Mods, then restart. Saves made with mods are on their own memory card, so yours come back as soon as all mods are off. |
@@ -337,25 +361,22 @@ The [players' guide](native/PLAYING_WINDOWS.md#where-things-are) lists every fil
 Plans, not promises, roughly from the quickest to the longest.
 New game options will be off by default, so the game stays the original.
 
-- [ ] The port's own texts in Brazilian Portuguese ([#25]).
-  NormanTheFox is translating them, and the program is ready for them since 1.3.0.
+- [ ] The rest of the port's own texts in Brazilian Portuguese ([#25]).
+  1.4.0 has NormanTheFox's translation of more than two thirds of them.
 - [ ] Eight save slots.
 - [ ] A checked skip for the last six cutscenes, like the final boss's start ([#28]).
-- [ ] Aku Aku disappearing in two cutscenes, compared with the original game ([#18]).
-- [ ] Frame rates other than 60 checked through the game: the seal chase at 240 fps ([#17]), Evil Crash at 120 and 144 Hz ([#44]), the cannon's bombs below 60 fps ([#12]).
+- [ ] An animated title screen, from ichagas7's designs ([#48]).
+- [ ] A mod's movies larger than the original ones, such as upscaled ones ([#46], [#57]).
+- [ ] Frame rates other than 60 right everywhere: the game's steps kept at 60 and the pictures between them drawn, so the two chases play at any rate ([#17], [#44]), and the cannon's bombs below 60 fps ([#12]).
 - [ ] The black screen at start on some AMD PCs ([#12], [#16]).
-- [ ] HD texture packs in BC7, and texture upscaling.
+- [ ] Texture upscaling.
 - [ ] The characters' shadows at the chosen resolution.
   They stay at the PS2's, softer than the rest of the picture at high resolutions.
-- [ ] The North American disc, NTSC-U v2.00 ([#14]).
-- [ ] A faster renderer as an option for weaker PCs ([#23], [#39]): the game's models and scenes drawn straight on the graphics card, instead of emulating the PS2's graphics chip a shape at a time.
-  Planned for 1.3.0, now aimed at 1.4.0.
-  1.3.0 laid its base, with the renderer's work recorded as a list of commands that OpenGL or Vulkan draws.
-- [ ] An animated title screen, and Continue in the main menu, from ichagas7's designs ([#48]).
+- [ ] More of the fast renderer for weaker PCs ([#23], [#39]): the characters, particles, sky and texts drawn straight on the graphics card, as 1.4.0 draws the scenery.
 - [ ] Achievements, kept on your PC (RetroAchievements doesn't award them for ports).
 - [ ] Subtitles for the cutscenes ([#11]).
 
-Maybe later: fast-forwarding cutscenes as well as skipping them ([#9]); two-player co-op; some of the North American release's differences as options on the PAL disc ([#14]); progress kept when you go back to an area, such as crates broken, cutscenes seen and challenges done ([#38]); a mod's movies larger than the original ones ([#46]); and character packs from the other Crash games (a mod, since it needs those games' discs).
+Maybe later: fast-forwarding cutscenes as well as skipping them ([#9]); two-player co-op; some of the North American release's differences as options on the PAL disc ([#14]); progress kept when you go back to an area, such as crates broken, cutscenes seen and challenges done ([#38]); a glow around gems and crystals ([#62]); a button to hold for pushing bombs and round objects ([#64]); and character packs from the other Crash games (a mod, since it needs those games' discs).
 
 <details>
 <summary><b>Done so far</b></summary>
@@ -404,6 +425,19 @@ Maybe later: fast-forwarding cutscenes as well as skipping them ([#9]); two-play
 - [x] Improved menus, and the level select from the gems' pages ([#48]).
   Restart Checkpoint in the pause menu as an option, off by default.
 - [x] The end credits checked to lead back into the Iceberg Lab ([#20]).
+- [x] A fast renderer for older processors, experimental, with the scenery drawn more directly and the same pictures ([#23], [#39]).
+- [x] The North American disc, version 2.00 ([#14]), with its saves on a memory card of its own.
+- [x] The disc you're playing shown in the options, and another disc image picked there.
+- [x] Continue and Quit to desktop in the improved main menu ([#48], [#33]).
+- [x] Most of the port's own texts in Brazilian Portuguese, NormanTheFox's translation ([#25]).
+- [x] Texture packs kept compressed on the graphics card, BC7 included, and Vulkan's long stops fixed ([#55]).
+- [x] Three masks' touch with a spin's reach and a 20-second invincibility, as game options ([#56]).
+- [x] Under the bug fixes option: outline crates whole until their "!" crate ([#58]), and Aku Aku back after the fight ball's ride into Dingodile's hut ([#18]).
+- [x] The outlined drop shadow's ring growing as you jump and shrinking as you land ([#11]).
+- [x] Particles near Crash kept with the longer draw distances ([#60]).
+- [x] The level select's memory card no longer taking your saves' list ([#38]).
+- [x] The options' mouse wheel scrolls the list and never changes a setting, and the scrollbar can be dragged.
+- [x] Above 60 fps, Evil Crash's jumps timed as at 60, and the two chases played at 60 ([#17], [#44]).
 
 </details>
 
@@ -439,6 +473,14 @@ Maybe later: fast-forwarding cutscenes as well as skipping them ([#9]); two-play
 [#49]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/49
 [#51]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/51
 [#52]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/52
+[#55]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/55
+[#56]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/56
+[#57]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/57
+[#58]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/58
+[#60]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/60
+[#62]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/62
+[#64]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/64
+[#65]: https://github.com/GioPixelGH/Crash-Twinsanity-Windows/issues/65
 
 ## Texture packs
 
@@ -522,7 +564,7 @@ Screenshot by [NormanTheFox](https://github.com/NormanTheFox), thank you!*
 - CRASHARKI, for the HD texture pack the Mac port was tested with.
 - [SMAA](https://github.com/iryoku/smaa) by Jorge Jimenez, Jose I. Echevarria, Belen Masia, Fernando Navarro and Diego Gutierrez (MIT): the SMAA anti-aliasing.
 - [TwinsanityEvolved](https://github.com/menaman123/TwinsanityEvolved) by menaman123, another PC port.
-  Code under its MIT licence (the disc image's CRC-32 and SHA-1, and how a text bank's language is told, from its engine NativeEE), with its notices kept.
+  Code under its MIT licence (the disc image's CRC-32 and SHA-1, and how a text bank's language is told, from its engine NativeEE; its region map tool, which maps the North American disc's executable onto the PAL one), with its notices kept.
   With menaman123's permission ([TwinsanityEvolved#19](https://github.com/menaman123/TwinsanityEvolved/issues/19)), its cutscene skip and its census of the game's cutscenes, under its MIT licence.
   [`native/third_party/twinsanityevolved`](native/third_party/twinsanityevolved/README.md) lists what.
 
@@ -530,7 +572,8 @@ Screenshot by [NormanTheFox](https://github.com/NormanTheFox), thank you!*
 
 - [Gabriel-TwoBits](https://github.com/Gabriel-TwoBits): the Linux build, with its fixes and low memory emulation, named backtraces, and the build script with its AppImage (#1, #2, #3).
 - [jeff1-cpu](https://github.com/jeff1-cpu): the automatic camera (#45).
-- The players whose reports and tests made it better: [NitorikoSkye](https://github.com/NitorikoSkye) (the ROG Ally and AMD graphics, the physics past 60 Hz, the movies' crash, many suggestions), [NormanTheFox](https://github.com/NormanTheFox) (the masks' bugs, mods, shadows and many suggestions), [ichagas7](https://github.com/ichagas7) (the double jump and the menus' designs), [GNRTX-3](https://github.com/GNRTX-3) (the camera, with videos and logs), [GamerAlfa117](https://github.com/GamerAlfa117) (mods and ReShade), [SSStylishh](https://github.com/SSStylishh) (played it to the end), [APerson7778](https://github.com/APerson7778) (mouse look) and [VenezuelanHell](https://github.com/VenezuelanHell) (older AMD drivers).
+- [NormanTheFox](https://github.com/NormanTheFox): the port's own texts in Brazilian Portuguese (#25).
+- The players whose reports and tests made it better: [NitorikoSkye](https://github.com/NitorikoSkye) (the ROG Ally and AMD graphics, the physics past 60 Hz, the movies' crash, many suggestions), [NormanTheFox](https://github.com/NormanTheFox) (the masks' bugs, Vulkan's stops, Bandicoot Pursuit above 60 fps, mods, shadows and many suggestions), [ichagas7](https://github.com/ichagas7) (the double jump, the menus' designs and the level select's saves), [GNRTX-3](https://github.com/GNRTX-3) (the camera, with videos and logs), [GamerAlfa117](https://github.com/GamerAlfa117) (mods and ReShade), [SSStylishh](https://github.com/SSStylishh) (played it to the end), [APerson7778](https://github.com/APerson7778) (mouse look) and [VenezuelanHell](https://github.com/VenezuelanHell) (older AMD drivers).
 - [Onaga00](https://github.com/Onaga00), with thanks.
 
 Bug reports, suggestions and pull requests are welcome: see [CONTRIBUTING.md](.github/CONTRIBUTING.md).
